@@ -1,0 +1,5 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { Container, PageHero, Section } from "@/components/ui";
+export const metadata: Metadata = { title: "Team Impact" };
+export default function TeamImpactPage() { return <><PageHero eyebrow="Team Impact" title="One team. One shared goal. One verified result." lead="Friends, colleges, offices, schools and communities can rally around a single campaign."/><Section tone="cream"><Container className="max-w-4xl"><div className="grid gap-4 md:grid-cols-3">{[["Choose a goal","Pick an impact target and a contribution goal."],["Invite your people","Share one page, one link and one QR code."],["See verified progress","Only verified, non-refunded contributions count." ]].map(([a,b])=><div key={a} className="rounded-3xl bg-white p-6 ring-1 ring-teal-900/10"><h2 className="font-display text-xl font-bold text-teal-900">{a}</h2><p className="mt-2 text-sm leading-6 text-teal-950/70">{b}</p></div>)}</div><Link href="/campaigns/new?type=Team" className="mt-7 inline-block rounded-xl bg-saffron px-6 py-3 text-sm font-bold text-white">Create a team campaign</Link></Container></Section></> }
