@@ -8,6 +8,9 @@ export default function manifest(): MetadataRoute.Manifest {
     display: "standalone",
     background_color: "#fcf8f1",
     theme_color: "#052f2c",
-    icons: [{ src: "/logo/janaseva-mark.svg", sizes: "any", type: "image/svg+xml", purpose: "maskable" }],
+    icons: [
+      { src: "/logo/janaseva-mark.png", sizes: "192x192", type: "image/png", purpose: "maskable" },
+      { src: "/logo/janaseva-logo.png", sizes: "512x512", type: "image/png", purpose: "any" },
+    ],
   };
 }

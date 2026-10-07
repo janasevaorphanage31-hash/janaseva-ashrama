@@ -40,9 +40,9 @@ export const metadata: Metadata = {
   creator: SITE.name,
   publisher: SITE.name,
   icons: {
-    icon: "/icon.svg",
-    shortcut: "/icon.svg",
-    apple: "/icon.svg",
+    icon: "/icon.png",
+    shortcut: "/icon.png",
+    apple: "/icon.png",
   },
   robots: {
     index: true,

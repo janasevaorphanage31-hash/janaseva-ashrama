@@ -1,7 +1,7 @@
-export function LogoMark({ size = 40 }: { size?: number }) {
+export function LogoMark({ size = 44 }: { size?: number }) {
   return (
     // eslint-disable-next-line @next/next/no-img-element
-    <img src="/logo/janaseva-mark.svg" alt="Janaseva Ashrama mark" width={size} height={size} className="shrink-0 rounded-full" />
+    <img src="/logo/janaseva-mark.png" alt="Janaseva Ashrama mark" width={size} height={size} className="shrink-0 rounded-full object-contain shadow-xs" />
   );
 }
 
