@@ -28,6 +28,12 @@ const moreMenuLinks = [
     icon: "book",
   },
   {
+    href: "/#activities",
+    label: "NGO Outreach & Drives",
+    desc: "Health camps, food relief, city cleaning & village outreach",
+    icon: "heart",
+  },
+  {
     href: "/janaseva-crew",
     label: "Give Your Time (Volunteers)",
     desc: "Weekend tutoring & social creators",
@@ -57,6 +63,7 @@ const mobileMenuLinks = [
   { href: "/", label: "Home", icon: "home" },
   { href: "/celebrate-special-day", label: "Celebrate Special Day", icon: "star", highlight: true },
   { href: "/impact", label: "Today's Needs & Basket", icon: "heart", highlight: true },
+  { href: "/#activities", label: "NGO Outreach & Drives", icon: "heart" },
   { href: "/make-a-day-matter", label: "Make a Day Matter", icon: "gift" },
   { href: "/stories", label: "Stories of Hope", icon: "book" },
   { href: "/impact-wall", label: "Live Impact Wall", icon: "chart" },

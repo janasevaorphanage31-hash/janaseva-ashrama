@@ -30,6 +30,7 @@ export function SiteFooter() {
           <p className="text-xs font-bold uppercase tracking-wider text-gold mb-3">Giving Programs</p>
           <ul className="space-y-2 text-xs">
             <li><Link href="/celebrate-special-day" className="hover:text-gold transition font-bold text-gold">Celebrate Special Day (Birthdays &amp; Anniversaries)</Link></li>
+            <li><Link href="/#activities" className="hover:text-gold transition font-bold text-white">NGO Outreach &amp; Drives (Health, Food, Swachh)</Link></li>
             <li><Link href="/impact" className="hover:text-gold transition">Today&apos;s Needs &amp; Basket</Link></li>
             <li><Link href="/make-a-day-matter" className="hover:text-gold transition">Make a Day Matter (Occasion Giving)</Link></li>
             <li><Link href="/recurring-giving" className="hover:text-gold transition">Monthly Regular Giving</Link></li>

@@ -3,6 +3,7 @@ import { ThemeNavBar } from "@/components/ThemeNavBar";
 import { ImpactCart } from "@/components/ImpactCart";
 import { TrendingBirthdaySection } from "@/components/sections/TrendingBirthdaySection";
 import { TodaySection } from "@/components/sections/TodaySection";
+import { CommunityActivitiesSection } from "@/components/sections/CommunityActivitiesSection";
 import { DocumentaryVideoSection } from "@/components/sections/DocumentaryVideoSection";
 import { VerifiedImpactSection } from "@/components/sections/VerifiedImpactSection";
 import { InvolvedSection } from "@/components/sections/InvolvedSection";
@@ -50,7 +51,10 @@ export default async function Home() {
       {/* 5. Today at Janaseva (Real Daily Visual Moments & Kitchen Updates) */}
       <TodaySection updates={updates} />
 
-      {/* 6. Life in Motion: Documentary Video Chapters */}
+      {/* 6. On-Ground NGO Activities & Community Outreach Campaigns */}
+      <CommunityActivitiesSection />
+
+      {/* 7. Life in Motion: Documentary Video Chapters */}
       <DocumentaryVideoSection />
 
       {/* 7. Verified Impact Platform Metrics */}
