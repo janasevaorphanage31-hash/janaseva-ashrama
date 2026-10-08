@@ -16,17 +16,21 @@ const URGENT_PRESETS = [
 
 export function UrgentDonationBar() {
   const pathname = usePathname();
-  const { openBottomDonate, isBottomDonateOpen, count } = useCart();
-  const [minimized, setMinimized] = useState(false);
+  const { openBottomDonate, isBottomDonateOpen, count, total } = useCart();
+  const [dismissed, setDismissed] = useState(false);
   const [activePreset, setActivePreset] = useState<number>(101);
 
-  // Auto-hide on admin, checkout, or when bottom donation drawer is open
-  if (pathname?.startsWith("/admin") || pathname === "/checkout" || isBottomDonateOpen) {
+  // Auto-hide on admin, checkout, when bottom drawer is open, if dismissed, OR when user has items in cart
+  if (
+    dismissed ||
+    pathname?.startsWith("/admin") ||
+    pathname === "/checkout" ||
+    isBottomDonateOpen ||
+    count > 0 ||
+    total > 0
+  ) {
     return null;
   }
-
-  // If user already has items in giving basket, yield space to the basket banner on mobile
-  const isBasketActive = count > 0;
 
   const handlePresetClick = (amount: number) => {
     setActivePreset(amount);
@@ -39,41 +43,17 @@ export function UrgentDonationBar() {
     openBottomDonate(activePreset, activePreset === 4500 || activePreset === 2501 || activePreset === 2500 ? "food_one_day" : undefined);
   };
 
-  if (minimized) {
-    return (
-      <div className="fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] left-3 z-40 md:bottom-5 md:left-6 no-print">
-        <button
-          type="button"
-          onClick={() => setMinimized(false)}
-          aria-label="Expand urgent donation bar"
-          className="focus-ring tap-scale group flex items-center gap-2 rounded-2xl bg-gradient-to-r from-saffron to-amber-600 px-3.5 py-2.5 text-xs font-black text-white shadow-lg ring-2 ring-white/60 hover:scale-105 active:scale-95 cursor-pointer animate-heartbeat"
-        >
-          <span className="relative flex h-2.5 w-2.5">
-            <span className="animate-beacon absolute inline-flex h-full w-full rounded-full bg-white opacity-85"></span>
-            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-200"></span>
-          </span>
-          <span className="uppercase tracking-wider">🔴 URGENT NEED · 25 BOYS</span>
-          <span className="text-[10px] text-amber-200">▲</span>
-        </button>
-      </div>
-    );
-  }
-
   return (
     <aside
       aria-label="Urgent Donation Action Bar"
-      className={`fixed z-40 no-print transition-all duration-300 ${
-        isBasketActive
-          ? "bottom-[calc(9.5rem+env(safe-area-inset-bottom))] md:bottom-5"
-          : "bottom-[calc(4.25rem+env(safe-area-inset-bottom))] md:bottom-5"
-      } inset-x-2 sm:inset-x-4 md:left-1/2 md:-translate-x-1/2 md:max-w-4xl md:w-full`}
+      className="fixed z-40 no-print transition-all duration-300 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] md:bottom-5 inset-x-2 sm:inset-x-4 md:left-1/2 md:-translate-x-1/2 md:max-w-4xl md:w-full"
     >
       <div className="relative overflow-hidden rounded-2xl md:rounded-3xl bg-teal-950/95 text-white p-3 sm:p-3.5 shadow-2xl ring-1 ring-amber-400/40 backdrop-blur-md border border-white/10">
         {/* Subtle Ambient Glow */}
         <div className="pointer-events-none absolute -top-10 -left-10 h-32 w-32 rounded-full bg-saffron/20 blur-2xl" />
         <div className="pointer-events-none absolute -bottom-10 -right-10 h-32 w-32 rounded-full bg-amber-400/15 blur-2xl" />
 
-        <div className="relative flex flex-col sm:flex-row items-center justify-between gap-2.5 sm:gap-4">
+        <div className="relative flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-4">
           {/* Urgency Status Indicator */}
           <div className="flex items-center gap-2.5 min-w-0 w-full sm:w-auto">
             <span className="relative flex h-3 w-3 shrink-0">
@@ -95,13 +75,13 @@ export function UrgentDonationBar() {
               </p>
             </div>
 
-            {/* Minimize button */}
+            {/* Mobile Dismiss button */}
             <button
               type="button"
-              onClick={() => setMinimized(true)}
-              aria-label="Minimize urgent donation bar"
-              className="sm:hidden text-white/60 hover:text-white p-1 text-xs shrink-0"
-              title="Minimize"
+              onClick={() => setDismissed(true)}
+              aria-label="Dismiss urgent donation bar"
+              className="sm:hidden text-white/60 hover:text-white p-1 text-xs shrink-0 cursor-pointer"
+              title="Dismiss"
             >
               ✕
             </button>
@@ -147,13 +127,13 @@ export function UrgentDonationBar() {
               <span className="hidden md:inline text-[10px] opacity-90 font-normal">({formatINR(activePreset)})</span>
             </button>
 
-            {/* Desktop Close/Minimize */}
+            {/* Desktop Dismiss */}
             <button
               type="button"
-              onClick={() => setMinimized(true)}
-              aria-label="Minimize bar"
-              className="hidden sm:block text-white/50 hover:text-white p-1 text-xs shrink-0 ml-1"
-              title="Minimize urgent banner"
+              onClick={() => setDismissed(true)}
+              aria-label="Dismiss bar"
+              className="hidden sm:block text-white/50 hover:text-white p-1 text-xs shrink-0 ml-1 cursor-pointer"
+              title="Dismiss urgent banner"
             >
               ✕
             </button>

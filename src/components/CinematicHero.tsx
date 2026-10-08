@@ -146,7 +146,7 @@ export function CinematicHero({ content }: { content?: Partial<SiteContentMap> }
           muted={isMuted}
           loop
           playsInline
-          preload="auto"
+          preload="metadata"
           aria-hidden
           onLoadedData={() => setVideoReady(true)}
           className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-1000 ${

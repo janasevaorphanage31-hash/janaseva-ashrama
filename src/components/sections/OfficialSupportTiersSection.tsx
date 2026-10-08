@@ -361,14 +361,14 @@ export function OfficialSupportTiersSection() {
                   <span className="text-[10px] text-white/60 uppercase block">Account Holder</span>
                   <p className="font-bold text-white text-xs">{OFFICIAL_FORM_META.societyName}</p>
                 </div>
-                <div className="grid grid-cols-2 gap-2 pt-1">
-                  <div>
-                    <span className="text-[10px] text-white/60 uppercase block">Account No</span>
-                    <p className="font-mono font-bold text-amber-300 text-sm">913020019616990</p>
+                <div className="space-y-2 pt-1">
+                  <div className="rounded-xl bg-black/25 p-2.5 border border-white/10 flex flex-col">
+                    <span className="text-[10px] text-amber-300/80 uppercase tracking-wider block font-bold">Account Number (Axis Bank)</span>
+                    <p className="font-mono font-bold text-amber-300 text-sm tracking-wider select-all break-all mt-0.5">913020019616990</p>
                   </div>
-                  <div>
-                    <span className="text-[10px] text-white/60 uppercase block">IFSC Code</span>
-                    <p className="font-mono font-bold text-amber-300 text-sm">UTIB0000102</p>
+                  <div className="rounded-xl bg-black/25 p-2.5 border border-white/10 flex flex-col">
+                    <span className="text-[10px] text-amber-300/80 uppercase tracking-wider block font-bold">IFSC Code (Banashankari Branch)</span>
+                    <p className="font-mono font-bold text-amber-300 text-sm tracking-wider select-all mt-0.5">UTIB0000102</p>
                   </div>
                 </div>
                 <div className="pt-1 text-[11px] text-white/70">

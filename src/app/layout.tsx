@@ -5,11 +5,10 @@ import "./globals.css";
 import { CartProvider } from "@/components/CartProvider";
 import { SiteHeader } from "@/components/SiteHeader";
 import { BottomNav } from "@/components/BottomNav";
-import { MobileQuickActions } from "@/components/MobileQuickActions";
+import { ScrollToTopButton } from "@/components/ScrollToTopButton";
 import { SiteFooter } from "@/components/SiteFooter";
 import { FloatingSocials } from "@/components/FloatingSocials";
 import { BottomDonationDrawer } from "@/components/BottomDonationDrawer";
-import { BlinkingDonationFloatingButton } from "@/components/BlinkingDonationButton";
 import { UrgentDonationBar } from "@/components/UrgentDonationBar";
 import { LiveDonationToast } from "@/components/LiveDonationToast";
 import { ChatWithUsButton } from "@/components/ChatWithUsButton";
@@ -256,7 +255,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
           <main className="w-full max-w-full min-w-0 overflow-x-hidden">{children}</main>
           <SiteFooter />
           <FloatingSocials />
-          <MobileQuickActions />
+          <ScrollToTopButton />
           <UrgentDonationBar />
           <LiveDonationToast />
           <ChatWithUsButton />

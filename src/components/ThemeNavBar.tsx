@@ -176,7 +176,7 @@ export function ThemeNavBar() {
     setActiveId(id);
     const el = document.getElementById(id);
     if (!el) return;
-    const yOffset = -58; // Offset for sticky top bar
+    const yOffset = -105; // Offset for sticky header (56px) + ThemeNavBar (44px)
     const y = el.getBoundingClientRect().top + window.pageYOffset + yOffset;
     window.scrollTo({ top: y, behavior: "smooth" });
   };
@@ -184,7 +184,7 @@ export function ThemeNavBar() {
   return (
     <nav
       aria-label="Quick Themes Navigation"
-      className="relative sm:sticky sm:top-14 z-30 w-full border-b border-teal-900/10 bg-white/95 backdrop-blur-md shadow-xs no-print"
+      className="sticky top-14 z-30 w-full border-b border-teal-900/10 bg-white/95 backdrop-blur-md shadow-xs no-print"
     >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-2">
         <div className="flex items-center gap-1.5 md:gap-2 lg:gap-2.5 overflow-x-auto no-scrollbar scrollbar-none py-0.5 md:justify-center">
