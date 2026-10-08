@@ -2,37 +2,20 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { CINEMATIC, SITE, formatINR } from "@/lib/site";
+import { formatINR, SITE } from "@/lib/site";
 import type { SiteContentMap } from "@/lib/site-content";
 import { useCart } from "./CartProvider";
 import { track } from "@/lib/track";
-
-const HERO_PRESETS = [
-  { slug: "meal", label: "Warm Meal", amount: 100 },
-  { slug: "fruits", label: "Fruit & Milk", amount: 150 },
-  { slug: "school-kit", label: "School Kit", amount: 250 },
-  { slug: "uniform", label: "Uniform", amount: 400 },
-  { slug: "birthday-feast", label: "Birthday Feast", amount: 1500 },
-];
 
 export function CinematicHero({ content }: { content?: Partial<SiteContentMap> }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [videoReady, setVideoReady] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
-  const [addedSlug, setAddedSlug] = useState<string | null>(null);
   const cart = useCart();
 
   useEffect(() => {
-    track("hero_view", { type: "cinematic_hero" });
+    track("hero_view", { type: "givea_style_cinematic_hero" });
   }, []);
-
-  const handleQuickAdd = (slug: string) => {
-    const current = cart.qty[slug] || 0;
-    cart.setQty(slug, current + 1);
-    setAddedSlug(slug);
-    track("hero_preset_add", { slug });
-    setTimeout(() => setAddedSlug(null), 2200);
-  };
 
   const toggleSound = () => {
     if (!videoRef.current) return;
@@ -41,272 +24,221 @@ export function CinematicHero({ content }: { content?: Partial<SiteContentMap> }
     setIsMuted(nextMuted);
   };
 
-  const posterSrc = content?.heroPosterUrl || CINEMATIC.posterDesktop;
-  const videoSrc = content?.heroVideoUrl || CINEMATIC.videoDesktop;
-  const headline = content?.heroHeadline || "A HOME TODAY.\nA FUTURE WE BUILD TOGETHER.";
-  const subheadline =
-    content?.heroSubheadline ||
-    `Janaseva Ashrama is a licensed children's home & orphanage in Bengaluru providing daily nutritious meals (Annadana), school education, medical care, and safe shelter for 25 young boys (ages 07–18) under Juvenile Justice Act Form 28 (KA18CH0242). 100% direct allocation with Form 10AC 80G tax exemption.`;
+  // Video source showing steaming hot kitchen Annadana and meals
+  const posterSrc = content?.heroPosterUrl || "/media/food.jpg";
+  const videoSrc = content?.heroVideoUrl || "/media/chapter2_breakfast.mp4";
 
   return (
     <section
       aria-label="Janaseva Ashrama Introduction"
-      className="relative min-h-[88svh] max-h-[860px] w-full max-w-full overflow-hidden bg-teal-950 flex flex-col justify-between"
+      className="relative w-full max-w-full overflow-hidden bg-teal-950 flex flex-col"
     >
-      {/* Background poster (LCP-critical, fetchPriority=high) */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={posterSrc}
-        alt="Children smiling at Janaseva Ashrama"
-        fetchPriority="high"
-        className="absolute inset-0 h-full w-full object-cover object-center"
-      />
+      {/* ── 1. FULL-WIDTH EDGE-TO-EDGE CINEMATIC VIDEO (GIVEA STYLE) ── */}
+      <div className="relative w-full h-[45svh] sm:h-[55svh] md:h-[64svh] lg:h-[72svh] max-h-[780px] overflow-hidden bg-black select-none">
+        {/* Background poster (LCP-critical) */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={posterSrc}
+          alt="Fresh Annadana food preparation for 25 boys at Janaseva Ashrama"
+          fetchPriority="high"
+          className="absolute inset-0 h-full w-full object-cover object-center"
+        />
 
-      {/* Autoplay ambient video (fades in over poster) */}
-      <video
-        ref={videoRef}
-        src={videoSrc}
-        autoPlay
-        muted={isMuted}
-        loop
-        playsInline
-        preload="auto"
-        aria-hidden
-        onLoadedData={() => setVideoReady(true)}
-        className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-1200 ${
-          videoReady ? "opacity-100" : "opacity-0"
-        }`}
-      />
+        {/* Autoplay edge-to-edge looping video */}
+        <video
+          ref={videoRef}
+          src={videoSrc}
+          autoPlay
+          muted={isMuted}
+          loop
+          playsInline
+          preload="auto"
+          aria-hidden
+          onLoadedData={() => setVideoReady(true)}
+          className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-1000 ${
+            videoReady ? "opacity-100" : "opacity-0"
+          }`}
+        />
 
-      {/* Multi-layer scrim: natural gradient, darker at bottom for text legibility */}
-      <div className="absolute inset-0 bg-gradient-to-t from-teal-950 via-teal-950/55 to-teal-950/40" />
-      <div className="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-teal-950 to-transparent" />
+        {/* Minimal scrim gradient for text legibility at bottom and top */}
+        <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-black/60 to-transparent pointer-events-none" />
+        <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-teal-950 via-teal-950/60 to-transparent pointer-events-none" />
 
-      {/* ── SOUND TOGGLE ── */}
-      <div className="relative z-10 mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 pt-4 flex justify-end">
-        <button
-          type="button"
-          onClick={toggleSound}
-          aria-label={isMuted ? "Unmute ambient sound" : "Mute ambient sound"}
-          className="focus-ring tap-scale flex items-center gap-2 rounded-xl border border-white/25 bg-teal-950/55 px-3 py-1.5 text-xs font-bold text-white backdrop-blur hover:bg-teal-900/70 shadow transition cursor-pointer"
-        >
-          {isMuted ? (
-            <svg className="h-4 w-4 fill-current text-white/70" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27l4.73 4.73H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z" />
-            </svg>
-          ) : (
-            <svg className="h-4 w-4 fill-current text-gold" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z" />
-            </svg>
-          )}
-          <span className="hidden sm:inline">{isMuted ? "Sound Off" : "Sound On"}</span>
-        </button>
-      </div>
-
-      {/* ── MAIN HERO CONTENT ── */}
-      <div className="relative z-10 mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 py-8 sm:py-10 lg:py-12 flex-1 flex flex-col justify-end pb-4 sm:pb-6">
-        <div className="w-full lg:grid lg:grid-cols-[1.3fr_0.9fr] lg:gap-10 xl:gap-14 lg:items-end">
-          {/* Left Column */}
-          <div className="max-w-2xl">
-            {/* Trust badges row */}
-            <div className="mb-4 flex flex-wrap items-center gap-2">
-              <span className="rounded-lg bg-teal-900/80 border border-gold/30 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-gold backdrop-blur">
-                Bangalore · Registered Public Trust
-              </span>
-              <span className="rounded-lg bg-white/15 px-3 py-1 text-[11px] font-bold text-white/90 backdrop-blur">
-                Form 10AC 80G Tax Exemption
-              </span>
-              <span className="rounded-lg bg-white/15 px-3 py-1 text-[11px] font-bold text-white/90 backdrop-blur">
-                JJ Act Reg: KA18CH0242
-              </span>
-              <span className="rounded-lg bg-emerald-500/25 border border-emerald-400/30 px-3 py-1 text-[11px] font-bold text-emerald-200 backdrop-blur">
-                MCA CSR-1: CSR00078800
-              </span>
-            </div>
-
-            {/* Headline */}
-            <h1 className="font-display text-3xl sm:text-5xl md:text-6xl font-bold leading-[1.07] text-white tracking-tight">
-              {headline.split("\n").map((line, i) => (
-                <span key={i} className="block">
-                  {line}
-                </span>
-              ))}
-            </h1>
-
-            {/* Sub-headline */}
-            <p className="mt-3 text-sm sm:text-base leading-relaxed text-white/85 max-w-xl">
-              {subheadline}
-            </p>
-
-            {/* Quick-add impact chips */}
-            <div className="mt-5">
-              <p className="text-xs font-bold uppercase tracking-wider text-teal-200/80 mb-2.5">
-                Select an Immediate Need:
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {HERO_PRESETS.map((p) => {
-                  const inCart = (cart.qty[p.slug] || 0) > 0;
-                  const justAdded = addedSlug === p.slug;
-                  return (
-                    <button
-                      key={p.slug}
-                      type="button"
-                      onClick={() => handleQuickAdd(p.slug)}
-                      className={`focus-ring tap-scale inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition shadow-sm cursor-pointer ${
-                        justAdded
-                          ? "bg-emerald-500 text-white ring-2 ring-emerald-300"
-                          : inCart
-                          ? "bg-gold text-teal-950 font-extrabold ring-2 ring-white/50"
-                          : "bg-white/18 text-white backdrop-blur hover:bg-white/28 border border-white/20"
-                      }`}
-                    >
-                      <span>{p.label}</span>
-                      <span className="opacity-75 font-normal">({formatINR(p.amount)})</span>
-                      <span className="font-bold">
-                        {justAdded ? "✓" : inCart ? `(${cart.qty[p.slug]})+` : "+"}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Primary CTA pair */}
-            <div className="mt-6 flex flex-wrap items-center gap-3">
-              <button
-                type="button"
-                onClick={() => cart.openBottomDonate(4500, "food_one_day")}
-                className="btn-primary flex items-center gap-2 cursor-pointer shadow-xl animate-heartbeat"
-              >
-                <span className="relative flex h-2.5 w-2.5">
-                  <span className="animate-beacon absolute inline-flex h-full w-full rounded-full bg-white opacity-80"></span>
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-200"></span>
-                </span>
-                <span>SPONSOR 25 BOYS (₹4,500) 💝</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => cart.openBottomDonate(100)}
-                className="btn-outline-gold flex items-center gap-1.5 cursor-pointer"
-              >
-                <span>⚡ Feed 1 Child (₹100)</span>
-              </button>
-
-              <Link
-                href="/celebrate-special-day"
-                className="focus-ring px-3.5 py-2.5 rounded-xl border border-white/20 bg-white/10 text-xs font-bold text-white hover:bg-white/20 transition cursor-pointer"
-              >
-                🎉 Celebrate Occasion
-              </Link>
-
-              <a
-                href="#official-tiers"
-                className="focus-ring px-3 py-2 text-xs font-bold text-amber-300 hover:text-white transition underline underline-offset-4 cursor-pointer"
-              >
-                Official 5 Tiers ↓
-              </a>
-            </div>
+        {/* ── Top Bar Controls ── */}
+        <div className="absolute inset-x-0 top-3 sm:top-5 z-20 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 flex items-center justify-between pointer-events-auto">
+          {/* Live Kitchen Badge */}
+          <div className="flex items-center gap-2 rounded-full bg-black/55 px-3 sm:px-4 py-1.5 text-[11px] sm:text-xs font-bold text-white backdrop-blur border border-white/20 shadow-lg">
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-80"></span>
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
+            </span>
+            <span className="uppercase tracking-wider">Live Ashrama Kitchen · Annadana for 25 Boys</span>
           </div>
 
-          {/* Right Column: Desktop Interactive Impact Snapshot Card */}
-          <div className="hidden lg:flex flex-col rounded-3xl bg-teal-950/80 p-6 xl:p-7 backdrop-blur-xl border border-white/20 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-white/10 pb-3">
-              <div className="flex items-center gap-2">
-                <span className="flex h-2.5 w-2.5 relative">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-                </span>
-                <span className="text-xs font-bold uppercase tracking-wider text-emerald-300">
-                  Live Ashram Snapshot
-                </span>
-              </div>
-              <span className="rounded-md bg-gold/20 px-2 py-0.5 text-[10px] font-bold text-gold uppercase tracking-wider">
-                Bengaluru Campus
-              </span>
-            </div>
+          {/* Sound Toggle */}
+          <button
+            type="button"
+            onClick={toggleSound}
+            aria-label={isMuted ? "Unmute video sound" : "Mute video sound"}
+            className="focus-ring tap-scale flex items-center gap-2 rounded-full border border-white/25 bg-black/55 px-3 sm:px-4 py-1.5 text-xs font-bold text-white backdrop-blur hover:bg-black/75 shadow-lg transition cursor-pointer"
+          >
+            {isMuted ? (
+              <svg className="h-4 w-4 fill-current text-white/80" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27l4.73 4.73H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z" />
+              </svg>
+            ) : (
+              <svg className="h-4 w-4 fill-current text-amber-400" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z" />
+              </svg>
+            )}
+            <span className="hidden sm:inline">{isMuted ? "Sound Off" : "Sound On"}</span>
+          </button>
+        </div>
 
-            <div className="grid grid-cols-3 gap-2.5 text-center">
-              <div className="rounded-2xl bg-white/10 p-2.5 border border-white/10">
-                <span className="block font-display text-2xl font-black text-gold">25</span>
-                <span className="text-[10px] text-white/70 font-semibold uppercase tracking-wider">Resident Boys (07–18 Yrs)</span>
-              </div>
-              <div className="rounded-2xl bg-white/10 p-2.5 border border-white/10">
-                <span className="block font-display text-2xl font-black text-white">3</span>
-                <span className="text-[10px] text-white/70 font-semibold uppercase tracking-wider">Hot Meals Daily</span>
-              </div>
-              <div className="rounded-2xl bg-white/10 p-2.5 border border-white/10">
-                <span className="block font-display text-2xl font-black text-emerald-400">100%</span>
-                <span className="text-[10px] text-white/70 font-semibold uppercase tracking-wider">Direct To Plate</span>
-              </div>
-            </div>
+        {/* ── Floating Video Action Trigger (Bottom Center) ── */}
+        <div className="absolute inset-x-0 bottom-4 sm:bottom-6 z-20 flex flex-col sm:flex-row items-center justify-center gap-3 px-4 pointer-events-auto">
+          <button
+            type="button"
+            onClick={() => cart.openBottomDonate(4500, "food_one_day")}
+            className="focus-ring tap-scale group flex items-center gap-2.5 rounded-2xl bg-gradient-to-r from-saffron to-amber-600 px-6 py-3.5 text-xs sm:text-sm font-black text-white shadow-[0_8px_30px_rgba(217,121,36,0.6)] ring-2 ring-white/60 border border-amber-300 hover:scale-105 transition-all cursor-pointer animate-heartbeat"
+          >
+            <span className="relative flex h-3 w-3">
+              <span className="animate-beacon absolute inline-flex h-full w-full rounded-full bg-white opacity-85"></span>
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-200"></span>
+            </span>
+            <span className="uppercase tracking-wider">SPONSOR 25 BOYS (₹4,500 FULL DAY ANNADANA) 💝</span>
+          </button>
 
-            <div className="rounded-2xl bg-white/10 p-4 border border-white/10 space-y-2.5">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-white uppercase tracking-wider">
-                  Instant Annadana Seva
-                </span>
-                <span className="text-[11px] text-gold font-semibold">
-                  Kitchen Allocation
-                </span>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                {[
-                  { title: "1 Child Meal", cost: 100, slug: "meal" },
-                  { title: "5 Child Meals", cost: 500, slug: "meal", qty: 5 },
-                  { title: "Day Breakfast", cost: 1500, slug: "meal", qty: 15 },
-                  { title: "All 25 Boys Full Day", cost: 4500, slug: "meal", qty: 25 },
-                ].map((tier) => (
-                  <button
-                    key={tier.title}
-                    type="button"
-                    onClick={() => {
-                      cart.openBottomDonate(tier.cost, "food_one_day");
-                    }}
-                    className="focus-ring rounded-xl bg-white/10 hover:bg-white/20 p-2 text-left border border-white/15 transition cursor-pointer"
-                  >
-                    <span className="block text-xs font-bold text-white">{tier.title}</span>
-                    <span className="block font-display text-sm font-black text-gold">{formatINR(tier.cost)}</span>
-                  </button>
-                ))}
-              </div>
-
-              <button
-                type="button"
-                onClick={() => cart.openBottomDonate(4500, "food_one_day")}
-                className="focus-ring block w-full rounded-xl bg-saffron py-3 text-center text-xs font-extrabold uppercase tracking-wider text-white shadow-lg hover:bg-saffron-dark transition cursor-pointer animate-heartbeat"
-              >
-                SPONSOR ANNADANA ONLINE (₹4,500) →
-              </button>
-            </div>
-
-            <div className="pt-1 flex items-center justify-between text-[11px] text-white/75">
-              <span className="flex items-center gap-1 font-semibold text-emerald-300">
-                <span>✓</span> Form 10AC 80G Tax Deductible
-              </span>
-              <span className="text-white/60">
-                UPI (GPay / PhonePe)
-              </span>
-            </div>
-          </div>
+          <button
+            type="button"
+            onClick={() => cart.openBottomDonate(100)}
+            className="focus-ring tap-scale flex items-center gap-1.5 rounded-2xl bg-white/20 hover:bg-white/30 backdrop-blur-md px-4 py-3 text-xs font-bold text-white border border-white/25 shadow-md transition cursor-pointer"
+          >
+            <span>⚡ Feed 1 Child (₹100)</span>
+          </button>
         </div>
       </div>
 
-      {/* ── CLEAN TRUST ROW (Zero lag) ── */}
-      <div className="relative z-10 border-t border-white/10 bg-teal-950/85 backdrop-blur-sm py-2 px-4">
-        <div className="mx-auto flex max-w-7xl px-4 sm:px-6 lg:px-8 flex-wrap items-center justify-between gap-2 text-xs font-semibold text-white/80">
-          <span className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-emerald-400" />
-            <span>25 Children Sheltered &amp; Educated</span>
-          </span>
-          <span className="hidden sm:inline">·</span>
-          <span>JJ Act Reg: KA18CH0242</span>
-          <span className="hidden sm:inline">·</span>
-          <span>MCA CSR-1: CSR00078800</span>
-          <span className="hidden sm:inline">·</span>
-          <span>Form 10AC 80G Tax Exemption</span>
-          <span className="hidden sm:inline">·</span>
-          <span>100% Direct Allocation</span>
+      {/* ── 2. GIVEA-STYLE 5 CATEGORY ICON DOCK (DIRECTLY UNDER VIDEO) ── */}
+      <div className="relative z-30 w-full bg-teal-950 border-t border-white/15 py-3 sm:py-5 px-3 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-4 items-stretch">
+            {/* Block 1: Support / Seva */}
+            <button
+              type="button"
+              onClick={() => cart.openBottomDonate(100)}
+              className="focus-ring tap-scale group flex flex-col items-center justify-center text-center p-3 sm:p-4 rounded-2xl bg-white/10 hover:bg-white/18 border border-white/15 transition-all cursor-pointer hover:border-amber-400"
+            >
+              {/* Hand Holding Heart SVG Icon */}
+              <div className="flex h-11 w-11 sm:h-12 sm:w-12 items-center justify-center rounded-2xl bg-amber-500/20 text-amber-400 mb-2 group-hover:scale-110 transition-transform">
+                <svg className="h-6 w-6 sm:h-7 sm:w-7 fill-none stroke-current stroke-2" viewBox="0 0 24 24" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+                </svg>
+              </div>
+              <span className="font-display text-xs sm:text-sm font-bold text-white group-hover:text-amber-300 transition-colors">
+                Support a Boy
+              </span>
+              <span className="text-[10px] text-amber-200/80 font-medium">
+                ಒಬ್ಬ ಮಗುವಿಗೆ ಸೇವೆ
+              </span>
+              <span className="mt-1 inline-block rounded-md bg-white/15 px-2 py-0.5 text-[10px] font-extrabold text-amber-300">
+                ₹100 / ₹500
+              </span>
+            </button>
+
+            {/* Block 2: 25 Resident Boys (Family / 3 Children with Heart Icon) */}
+            <button
+              type="button"
+              onClick={() => cart.openBottomDonate(4500, "food_one_day")}
+              className="focus-ring tap-scale group flex flex-col items-center justify-center text-center p-3 sm:p-4 rounded-2xl bg-white/10 hover:bg-white/18 border border-white/15 transition-all cursor-pointer hover:border-amber-400"
+            >
+              {/* 3 People / Group Icon */}
+              <div className="flex h-11 w-11 sm:h-12 sm:w-12 items-center justify-center rounded-2xl bg-amber-500/20 text-amber-400 mb-2 group-hover:scale-110 transition-transform">
+                <svg className="h-6 w-6 sm:h-7 sm:w-7 fill-none stroke-current stroke-2" viewBox="0 0 24 24" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5c.83 0 1.5-.67 1.5-1.5S12.83 1.5 12 1.5s-1.5.67-1.5 1.5.67 1.5 1.5 1.5zm-5 4c.83 0 1.5-.67 1.5-1.5S7.83 5.5 7 5.5 5.5 6.17 5.5 7 6.17 8.5 7 8.5zm10 0c.83 0 1.5-.67 1.5-1.5S17.83 5.5 17 5.5s-1.5.67-1.5 1.5.67 1.5 1.5 1.5z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9c-2.21 0-4 1.79-4 4v5h8v-5c0-2.21-1.79-4-4-4zm-6 3c-1.66 0-3 1.34-3 3v3h3v-4c0-.73.26-1.4.7-1.93-.42-.05-.85-.07-1.7-.07zm12 0c-.85 0-1.28.02-1.7.07.44.53.7 1.2.7 1.93v4h3v-3c0-1.66-1.34-3-3-3z" />
+                </svg>
+              </div>
+              <span className="font-display text-xs sm:text-sm font-bold text-white group-hover:text-amber-300 transition-colors">
+                25 Resident Boys
+              </span>
+              <span className="text-[10px] text-amber-200/80 font-medium">
+                ಮಕ್ಕಳ ಆಶ್ರಯ ಕೇಂದ್ರ
+              </span>
+              <span className="mt-1 inline-block rounded-md bg-white/15 px-2 py-0.5 text-[10px] font-extrabold text-amber-300">
+                Daily Care &amp; Shelter
+              </span>
+            </button>
+
+            {/* Block 3: Celebrate Birthday (Birthday Cake with Candle Icon) */}
+            <Link
+              href="/celebrate-special-day"
+              className="focus-ring tap-scale group flex flex-col items-center justify-center text-center p-3 sm:p-4 rounded-2xl bg-white/10 hover:bg-white/18 border border-white/15 transition-all cursor-pointer hover:border-amber-400"
+            >
+              {/* Birthday Cake SVG Icon */}
+              <div className="flex h-11 w-11 sm:h-12 sm:w-12 items-center justify-center rounded-2xl bg-amber-500/20 text-amber-400 mb-2 group-hover:scale-110 transition-transform">
+                <svg className="h-6 w-6 sm:h-7 sm:w-7 fill-none stroke-current stroke-2" viewBox="0 0 24 24" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v3m-1-5.5a1 1 0 012 0c0 .55-.45 1.5-1 2.5-.55-1-1-1.95-1-2.5zM7 9h10a2 2 0 012 2v2H5v-2a2 2 0 012-2zm-3 6h16a1 1 0 011 1v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4a1 1 0 011-1z" />
+                </svg>
+              </div>
+              <span className="font-display text-xs sm:text-sm font-bold text-white group-hover:text-amber-300 transition-colors">
+                Celebrate Birthday
+              </span>
+              <span className="text-[10px] text-amber-200/80 font-medium">
+                ಹುಟ್ಟುಹಬ್ಬದ ಹಬ್ಬ
+              </span>
+              <span className="mt-1 inline-block rounded-md bg-white/15 px-2 py-0.5 text-[10px] font-extrabold text-amber-300">
+                Feast · ₹3,500
+              </span>
+            </Link>
+
+            {/* Block 4: Community / Education (Hands Holding Community Icon) */}
+            <button
+              type="button"
+              onClick={() => cart.openBottomDonate(9600, "education_one_year")}
+              className="focus-ring tap-scale group flex flex-col items-center justify-center text-center p-3 sm:p-4 rounded-2xl bg-white/10 hover:bg-white/18 border border-white/15 transition-all cursor-pointer hover:border-amber-400"
+            >
+              {/* Community Hands Embracing Icon */}
+              <div className="flex h-11 w-11 sm:h-12 sm:w-12 items-center justify-center rounded-2xl bg-amber-500/20 text-amber-400 mb-2 group-hover:scale-110 transition-transform">
+                <svg className="h-6 w-6 sm:h-7 sm:w-7 fill-none stroke-current stroke-2" viewBox="0 0 24 24" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M16 11c1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3 1.34 3 3 3zm-8 0c1.66 0 3-1.34 3-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 17c1.5 2 4 3 9 3s7.5-1 9-3" />
+                </svg>
+              </div>
+              <span className="font-display text-xs sm:text-sm font-bold text-white group-hover:text-amber-300 transition-colors">
+                Child Education
+              </span>
+              <span className="text-[10px] text-amber-200/80 font-medium">
+                ಶಾಲಾ ವಿದ್ಯಾಭ್ಯಾಸ
+              </span>
+              <span className="mt-1 inline-block rounded-md bg-white/15 px-2 py-0.5 text-[10px] font-extrabold text-amber-300">
+                Tuition &amp; Kits
+              </span>
+            </button>
+
+            {/* Block 5: Annadana Meals (Food Cloche on Platter Icon) */}
+            <button
+              type="button"
+              onClick={() => cart.openBottomDonate(4500, "food_one_day")}
+              className="focus-ring tap-scale group col-span-2 sm:col-span-1 flex flex-col items-center justify-center text-center p-3 sm:p-4 rounded-2xl bg-gradient-to-b from-amber-500/25 to-teal-900 border-2 border-amber-400/60 transition-all cursor-pointer hover:border-amber-300 shadow-md"
+            >
+              {/* Food Cloche SVG Icon */}
+              <div className="flex h-11 w-11 sm:h-12 sm:w-12 items-center justify-center rounded-2xl bg-amber-400 text-teal-950 mb-2 group-hover:scale-110 transition-transform">
+                <svg className="h-6 w-6 sm:h-7 sm:w-7 fill-none stroke-current stroke-2" viewBox="0 0 24 24" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v2m0 0a8 8 0 018 8H4a8 8 0 018-8zm-9 11h18a1 1 0 011 1v1a1 1 0 01-1 1H3a1 1 0 01-1-1v-1a1 1 0 011-1zm3 5h12" />
+                </svg>
+              </div>
+              <span className="font-display text-xs sm:text-sm font-black text-amber-300 transition-colors">
+                Annadana Meals
+              </span>
+              <span className="text-[10px] text-white/90 font-bold">
+                ಎಲ್ಲಾ ಮಕ್ಕಳಿಗೆ ಊಟ
+              </span>
+              <span className="mt-1 inline-block rounded-md bg-amber-400 px-2 py-0.5 text-[10px] font-black text-teal-950">
+                Full Day · ₹4,500
+              </span>
+            </button>
+          </div>
         </div>
       </div>
     </section>
