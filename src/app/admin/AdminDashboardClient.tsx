@@ -30,6 +30,12 @@ interface AdminDashboardProps {
 }
 
 const CATEGORIES = [
+  "Official Tiers",
+  "Annadana",
+  "Vidya",
+  "Arogya",
+  "Ashraya",
+  "Celebrations",
   "Annadana (Food)",
   "Vidya (Education)",
   "Arogya (Health)",
@@ -2781,6 +2787,11 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
 
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 md:grid-cols-6">
                   {[
+                    { name: "prayer-meals.jpg", type: "image", url: "/media/prayer-meals.jpg" },
+                    { name: "art-schooling.jpg", type: "image", url: "/media/art-schooling.jpg" },
+                    { name: "swimming-outing.jpg", type: "image", url: "/media/swimming-outing.jpg" },
+                    { name: "festival-pooja.jpg", type: "image", url: "/media/festival-pooja.jpg" },
+                    { name: "evening-circle.jpg", type: "image", url: "/media/evening-circle.jpg" },
                     { name: "ashrama_video.mp4", type: "video", url: "/media/ashrama_video.mp4" },
                     { name: "chapter1_dawn.mp4", type: "video", url: "/media/chapter1_dawn.mp4" },
                     { name: "chapter2_breakfast.mp4", type: "video", url: "/media/chapter2_breakfast.mp4" },

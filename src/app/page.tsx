@@ -42,11 +42,11 @@ export default async function Home() {
       {/* 1. Cinematic Opening (Awareness & Emotional Hook: 25 Boys Residential Orphanage) */}
       <CinematicHero content={siteContent} />
 
-      {/* 2. Horizontal Moving Reel (Video Clips & Photographs Moving Horizontally) */}
-      <HorizontalMovingReel />
-
-      {/* 3. Exact 5 Official Support Tiers & Pricing (Official Trust Sponsorship Section at Top) */}
+      {/* 2. Exact 5 Official Support Tiers & Pricing (Official Trust Sponsorship Section at Top) */}
       <OfficialSupportTiersSection />
+
+      {/* 3. Horizontal Moving Reel (Video Clips & Photographs Moving Horizontally) */}
+      <HorizontalMovingReel />
 
       {/* 4. Top Theme Quick Navigation (Instant Anchor Jump with Icons & Short Names) */}
       <ThemeNavBar />

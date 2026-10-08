@@ -13,6 +13,7 @@ const QUICK_GIVE_PRESETS = [100, 250, 500, 1000, 2500];
 
 const CATEGORIES = [
   { id: "all", label: "All Needs", icon: "🌟" },
+  { id: "Official Tiers", label: "Official Support Tiers", icon: "🏛️" },
   { id: "Annadana", label: "Food & Annadana", icon: "🍲" },
   { id: "Vidya", label: "Education & Vidya", icon: "📚" },
   { id: "Arogya", label: "Healthcare & Arogya", icon: "🩺" },
@@ -49,18 +50,40 @@ export function ImpactCart({
   // Compute category item counts
   const categoryCounts = useMemo(() => {
     const counts: Record<string, number> = { all: catalog.length };
-    for (const item of catalog) {
-      counts[item.category] = (counts[item.category] || 0) + 1;
+    for (const cat of CATEGORIES) {
+      if (cat.id === "all") continue;
+      if (cat.id === "Official Tiers") {
+        counts[cat.id] = catalog.filter((i) => i.category === "Official Tiers" || i.slug.startsWith("tier-")).length;
+      } else if (cat.id === "Annadana") {
+        counts[cat.id] = catalog.filter((i) => i.category === "Annadana" || itemMatchesTier(i.slug, ["tier-1", "tier-2"])).length;
+      } else if (cat.id === "Vidya") {
+        counts[cat.id] = catalog.filter((i) => i.category === "Vidya" || itemMatchesTier(i.slug, ["tier-4", "tier-5"])).length;
+      } else if (cat.id === "Ashraya") {
+        counts[cat.id] = catalog.filter((i) => i.category === "Ashraya" || itemMatchesTier(i.slug, ["tier-3"])).length;
+      } else {
+        counts[cat.id] = catalog.filter((i) => i.category === cat.id).length;
+      }
     }
     return counts;
   }, [catalog]);
+
+  function itemMatchesTier(slug: string, prefixes: string[]) {
+    return prefixes.some((p) => slug.startsWith(p));
+  }
 
   // Priority-sorted and category-filtered catalog: Today's need first, then featured items
   const filtered = useMemo(() => {
     const list =
       selectedCategory === "all"
         ? [...catalog]
-        : catalog.filter((item) => item.category === selectedCategory);
+        : selectedCategory === "Official Tiers"
+        ? catalog.filter((item) => item.category === "Official Tiers" || item.slug.startsWith("tier-"))
+        : catalog.filter((item) =>
+            item.category === selectedCategory ||
+            (selectedCategory === "Annadana" && (item.slug.startsWith("tier-1") || item.slug.startsWith("tier-2"))) ||
+            (selectedCategory === "Vidya" && (item.slug.startsWith("tier-4") || item.slug.startsWith("tier-5"))) ||
+            (selectedCategory === "Ashraya" && item.slug.startsWith("tier-3"))
+          );
 
     return list.sort((a, b) => {
       if (a.todayNeed && !b.todayNeed) return -1;
