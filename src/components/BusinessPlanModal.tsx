@@ -18,8 +18,9 @@ export function BusinessPlanModal({
   const fullPlanMarkdown = `# JANASEVA ASHRAMA BANGALORE
 ## Comprehensive NGO Business Plan & Donation Strategy Playbook (2026–2028)
 **Entity**: JANA SEVA SAMRUDDI EDUCATION & RURAL DEVELOPMENT SOCIETY R  
-**PAN**: ${SITE.pan} | **Form 10AC URN**: ${SITE.urn} | **Location**: Bangalore, Karnataka  
-**Official Bank**: Axis Bank (Banashankari Branch) | **A/c No**: ${SITE.bankDetails.accountNumber} | **IFSC**: ${SITE.bankDetails.ifscCode}  
+**Govt JJ Act Reg**: KA18CH0242 (Capacity: 25 Children, Boys 07-18) | **MCA CSR Reg**: CSR00078800 | **12AA**: Tax-Exempt  
+**PAN**: ${SITE.pan} | **Form 10AC URN**: ${SITE.urn} (AY 2024-25 to 2026-27) | **Location**: Bangalore, Karnataka  
+**Official Charity Bank**: Axis Bank (Banashankari Branch) | **A/c No**: ${SITE.bankDetails.accountNumber} | **IFSC**: ${SITE.bankDetails.ifscCode}  
 **Core Mission**: Providing loving residential shelter, wholesome daily Annadana, quality English-medium education (Vidya), and pediatric care (Arogya) for 25 destitute and orphaned children in our residential orphanage.
 
 ---

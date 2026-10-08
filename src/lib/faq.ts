@@ -58,6 +58,16 @@ export const FAQ_ITEMS: FAQItem[] = [
     a: "You can select the 'Complete School Kit & Bag' (₹250), 'School Uniform & Shoes' (₹400), or 'Evening Tutoring Support' (₹250) directly from our Needs Catalog. For long-term educational sponsorships or corporate CSR programs, please reach out to our trustees directly.",
   },
   {
+    q: "Is Janaseva Ashrama legally licensed by the Government as a Child Care Institution / Orphanage?",
+    category: "Legal & Governance",
+    a: "Yes. Janaseva Ashrama is an officially licensed and registered Child Care Institution (Children Home for Boys) under Section 41(1) of the Juvenile Justice (Care and Protection of Children) Act, 2015 as amended in 2021. Our registration certificate (Form 28, Registration No: KA18CH0242) is issued by the Directorate of Child Protection, Government of Karnataka, authorizing residential care for an approved capacity of 25 boys (ages 07-18). The official certificate is publicly viewable and downloadable on our Transparency page.",
+  },
+  {
+    q: "Is Janaseva Ashrama eligible for Corporate CSR funding under the Companies Act?",
+    category: "Corporate & CSR",
+    a: "Yes. We are registered with the Ministry of Corporate Affairs, Government of India (Office of Registrar of Companies, ROC-Delhi) under Form CSR-1 with Registration Number CSR00078800 (Application SRN: SRN-F98737448). This makes us fully eligible to receive CSR grants and execute corporate social responsibility partnerships under Section 135 of the Companies Act, 2013.",
+  },
+  {
     q: "How can I volunteer my time or skills at Janaseva Ashrama?",
     category: "Volunteering",
     a: "We warmly welcome volunteers in Bangalore for evening study mentoring, English speaking, computer training, sports, music, art, and healthcare camps. You can apply through our Janaseva Crew page or contact us on WhatsApp.",

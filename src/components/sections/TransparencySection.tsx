@@ -24,81 +24,211 @@ export function TransparencySection({ docs, standalone = false }: { docs: Doc[];
           lead="Registration, governance, policies and reports are listed clearly. Each document includes name, publication date and version."
         />
         
-        {/* Verified Form 10AC Certificate Summary */}
-        <div className="mb-8 overflow-hidden rounded-3xl border border-teal-900/15 bg-white shadow-sm ring-1 ring-teal-900/10">
-          <div className="bg-teal-950 px-6 py-4 text-white sm:flex sm:items-center sm:justify-between">
+        {/* 5-Pillar Government Registration & Credential Verification Hub */}
+        <div className="mb-10 space-y-6">
+          <div className="flex items-center justify-between border-b border-teal-900/10 pb-3">
             <div>
-              <span className="inline-flex items-center rounded-md bg-emerald-500/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-300 ring-1 ring-emerald-400/30">
-                Income Tax Department · Form No. 10AC
-              </span>
-              <h3 className="mt-1 font-display text-base font-bold text-white">
-                Order for Provisional Approval under Section 80G
+              <span className="text-xs font-bold uppercase tracking-widest text-teal-800">Verified Legal Framework</span>
+              <h3 className="font-display text-xl sm:text-2xl font-bold text-teal-950 mt-1">
+                Official Government Accreditations &amp; Registrations
               </h3>
             </div>
-            <div className="mt-2 sm:mt-0 text-xs text-gold font-mono">
-              URN: {FORM_10AC.urn}
-            </div>
+            <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-800 ring-1 ring-emerald-600/20">
+              ✓ 100% Verified &amp; Active
+            </span>
           </div>
 
-          <div className="p-6 space-y-4 text-xs">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <div className="rounded-xl bg-cream p-3">
-                <span className="text-[10px] font-bold text-teal-900/60 uppercase block">PAN</span>
-                <span className="font-mono font-bold text-sm text-teal-950">{FORM_10AC.pan}</span>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {/* 1. JJ Act Child Care Institution Registration */}
+            <div className="flex flex-col justify-between rounded-3xl border-2 border-emerald-700/20 bg-white p-5 shadow-sm ring-1 ring-teal-900/10">
+              <div>
+                <div className="flex items-center justify-between gap-2 mb-3">
+                  <span className="rounded-md bg-emerald-600/15 px-2.5 py-1 text-[11px] font-bold text-emerald-800 ring-1 ring-emerald-600/30">
+                    Govt of Karnataka
+                  </span>
+                  <span className="font-mono text-[11px] font-bold text-teal-900">Form 28</span>
+                </div>
+                <h4 className="font-display text-base font-bold text-teal-950 leading-snug">
+                  Child Care Institution Registration (JJ Act 2015)
+                </h4>
+                <p className="mt-1 text-xs text-teal-900/60 font-semibold">
+                  Directorate of Child Protection, Karnataka
+                </p>
+                <div className="mt-3 space-y-1.5 rounded-xl bg-cream p-3 text-xs">
+                  <p><strong>Reg No:</strong> <span className="font-mono font-bold text-teal-950">KA18CH0242</span></p>
+                  <p><strong>Capacity:</strong> <span className="font-bold text-emerald-800">25 Children</span> (Boys, Age 07-18)</p>
+                  <p><strong>Validity:</strong> 5 Years (From 27/03/2025 to 2030)</p>
+                  <p><strong>Facility:</strong> Children Home for Boys, Thurahalli, Bangalore South</p>
+                </div>
               </div>
-              <div className="rounded-xl bg-cream p-3">
-                <span className="text-[10px] font-bold text-teal-900/60 uppercase block">Document ID (DIN)</span>
-                <span className="font-mono font-bold text-xs text-teal-950 break-all">{FORM_10AC.din}</span>
-              </div>
-              <div className="rounded-xl bg-cream p-3">
-                <span className="text-[10px] font-bold text-teal-900/60 uppercase block">Application No.</span>
-                <span className="font-mono font-bold text-xs text-teal-950 break-all">{FORM_10AC.applicationNumber}</span>
-              </div>
-              <div className="rounded-xl bg-cream p-3">
-                <span className="text-[10px] font-bold text-teal-900/60 uppercase block">Assessment Years</span>
-                <span className="font-bold text-sm text-teal-950">AY 2024-25 to 2026-27</span>
-              </div>
+              <a
+                href="/documents/jj-act-child-care-institution-registration-form-28.pdf"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="focus-ring mt-4 inline-flex items-center justify-center gap-1.5 rounded-xl bg-teal-900 px-4 py-2.5 text-xs font-bold text-white hover:bg-teal-950 transition shadow-sm"
+              >
+                <span>View Form 28 PDF (JJ Act)</span>
+                <span>↗</span>
+              </a>
             </div>
 
-            <div className="rounded-xl bg-sand/40 p-4 border border-teal-900/10 text-xs leading-relaxed space-y-1">
-              <p><strong>Legal Society Name:</strong> {FORM_10AC.legalName}</p>
-              <p><strong>Registered Society Address:</strong> {FORM_10AC.registeredAddress.full}</p>
-              <p><strong>Operational Children&apos;s Home:</strong> {FORM_10AC.operationalFacility.name}, {FORM_10AC.operationalFacility.address}</p>
-              <p><strong>Approval Code:</strong> {FORM_10AC.section}</p>
+            {/* 2. Form 10AC Section 80G Approval */}
+            <div className="flex flex-col justify-between rounded-3xl border-2 border-gold/40 bg-white p-5 shadow-sm ring-1 ring-teal-900/10">
+              <div>
+                <div className="flex items-center justify-between gap-2 mb-3">
+                  <span className="rounded-md bg-gold/25 px-2.5 py-1 text-[11px] font-bold text-amber-900 ring-1 ring-amber-600/30">
+                    Income Tax Dept
+                  </span>
+                  <span className="font-mono text-[11px] font-bold text-teal-900">Form 10AC</span>
+                </div>
+                <h4 className="font-display text-base font-bold text-teal-950 leading-snug">
+                  Section 80G Tax Exemption Approval
+                </h4>
+                <p className="mt-1 text-xs text-teal-900/60 font-semibold">
+                  Principal Commissioner of Income Tax
+                </p>
+                <div className="mt-3 space-y-1.5 rounded-xl bg-cream p-3 text-xs">
+                  <p><strong>URN:</strong> <span className="font-mono font-bold text-teal-950 break-all">{FORM_10AC.urn}</span></p>
+                  <p><strong>DIN:</strong> <span className="font-mono text-[11px] text-teal-950 break-all">{FORM_10AC.din}</span></p>
+                  <p><strong>Valid Assessment Years:</strong> AY 2024-25 to 2026-27</p>
+                  <p><strong>Donor Benefit:</strong> <span className="font-bold text-emerald-800">50% Tax Deduction</span> on all contributions</p>
+                </div>
+              </div>
+              <a
+                href="/documents/form-10ac-80g-approval.pdf"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="focus-ring mt-4 inline-flex items-center justify-center gap-1.5 rounded-xl bg-teal-900 px-4 py-2.5 text-xs font-bold text-white hover:bg-teal-950 transition shadow-sm"
+              >
+                <span>View Form 10AC PDF (80G)</span>
+                <span>↗</span>
+              </a>
             </div>
 
-            <p className="text-teal-950/75 leading-relaxed pt-1">
-              {TAX_NOTE}
-            </p>
+            {/* 3. Ministry of Corporate Affairs CSR-1 Approval */}
+            <div className="flex flex-col justify-between rounded-3xl border-2 border-teal-800/20 bg-white p-5 shadow-sm ring-1 ring-teal-900/10">
+              <div>
+                <div className="flex items-center justify-between gap-2 mb-3">
+                  <span className="rounded-md bg-blue-600/15 px-2.5 py-1 text-[11px] font-bold text-blue-900 ring-1 ring-blue-600/30">
+                    Ministry of Corporate Affairs
+                  </span>
+                  <span className="font-mono text-[11px] font-bold text-teal-900">Form CSR-1</span>
+                </div>
+                <h4 className="font-display text-base font-bold text-teal-950 leading-snug">
+                  CSR Registration Approval for Entities
+                </h4>
+                <p className="mt-1 text-xs text-teal-900/60 font-semibold">
+                  Office of Registrar of Companies (ROC-Delhi)
+                </p>
+                <div className="mt-3 space-y-1.5 rounded-xl bg-cream p-3 text-xs">
+                  <p><strong>CSR Reg No:</strong> <span className="font-mono font-bold text-teal-950">CSR00078800</span></p>
+                  <p><strong>Application Ref:</strong> <span className="font-mono text-[11px] text-teal-950">SRN-F98737448</span></p>
+                  <p><strong>Approval Date:</strong> 17-09-2024</p>
+                  <p><strong>Corporate Scope:</strong> Qualified under Section 135 Companies Act 2013</p>
+                </div>
+              </div>
+              <a
+                href="/documents/mca-csr-1-registration-certificate.pdf"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="focus-ring mt-4 inline-flex items-center justify-center gap-1.5 rounded-xl bg-teal-900 px-4 py-2.5 text-xs font-bold text-white hover:bg-teal-950 transition shadow-sm"
+              >
+                <span>View MCA CSR-1 PDF</span>
+                <span>↗</span>
+              </a>
+            </div>
 
-            {/* Official Charity Bank Details for Direct Audit & Transfers */}
-            <div className="mt-3 rounded-2xl bg-teal-950 text-white p-4 sm:p-5">
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-teal-800 pb-2.5">
-                <span className="font-display font-bold text-sm text-gold">
-                  Official Charity Bank Account (Direct NEFT / IMPS / RTGS)
-                </span>
-                <span className="rounded bg-teal-800/80 px-2 py-0.5 text-[10px] font-bold text-teal-200">
-                  Axis Bank · Banashankari Branch
-                </span>
-              </div>
-              <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
-                <div>
-                  <span className="text-[10px] uppercase font-bold text-white/60 block">A/c Holder Name</span>
-                  <span className="font-bold text-white leading-snug">{BANK_DETAILS.accountName}</span>
+            {/* 4. Section 12AA Registration Order */}
+            <div className="flex flex-col justify-between rounded-3xl border-2 border-teal-800/20 bg-white p-5 shadow-sm ring-1 ring-teal-900/10">
+              <div>
+                <div className="flex items-center justify-between gap-2 mb-3">
+                  <span className="rounded-md bg-purple-600/15 px-2.5 py-1 text-[11px] font-bold text-purple-900 ring-1 ring-purple-600/30">
+                    CIT (Exemptions) Bangalore
+                  </span>
+                  <span className="font-mono text-[11px] font-bold text-teal-900">Section 12AA</span>
                 </div>
-                <div>
-                  <span className="text-[10px] uppercase font-bold text-white/60 block">Bank &amp; Branch</span>
-                  <span className="font-bold text-white">{BANK_DETAILS.bankName} ({BANK_DETAILS.branch})</span>
-                </div>
-                <div>
-                  <span className="text-[10px] uppercase font-bold text-gold block">Account Number</span>
-                  <span className="font-mono font-bold text-sm text-white">{BANK_DETAILS.accountNumber}</span>
-                </div>
-                <div>
-                  <span className="text-[10px] uppercase font-bold text-gold block">IFSC Code</span>
-                  <span className="font-mono font-bold text-sm text-white">{BANK_DETAILS.ifscCode}</span>
+                <h4 className="font-display text-base font-bold text-teal-950 leading-snug">
+                  12AA Income Tax Registration Order
+                </h4>
+                <p className="mt-1 text-xs text-teal-900/60 font-semibold">
+                  Ministry of Finance, Govt of India
+                </p>
+                <div className="mt-3 space-y-1.5 rounded-xl bg-cream p-3 text-xs">
+                  <p><strong>Order No:</strong> <span className="font-mono text-[11px] text-teal-950 break-all">ITBA/EXM/S/12AA/2018-19/1012296034(1)</span></p>
+                  <p><strong>Reg No:</strong> <span className="font-mono text-[11px] text-teal-950">CIT(EXEMPTIONS) BANGALORE/12AA/2018-19/A/10403</span></p>
+                  <p><strong>Order Date:</strong> 18/09/2018 (AY 2018-19 onwards)</p>
+                  <p><strong>Status:</strong> 100% Tax-Exempt Charitable Trust u/s 11 &amp; 12</p>
                 </div>
               </div>
+              <a
+                href="/documents/section-12aa-registration-certificate.pdf"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="focus-ring mt-4 inline-flex items-center justify-center gap-1.5 rounded-xl bg-teal-900 px-4 py-2.5 text-xs font-bold text-white hover:bg-teal-950 transition shadow-sm"
+              >
+                <span>View Section 12AA PDF</span>
+                <span>↗</span>
+              </a>
+            </div>
+
+            {/* 5. Income Tax Permanent Account Number (PAN Card) */}
+            <div className="flex flex-col justify-between rounded-3xl border-2 border-teal-800/20 bg-white p-5 shadow-sm ring-1 ring-teal-900/10">
+              <div>
+                <div className="flex items-center justify-between gap-2 mb-3">
+                  <span className="rounded-md bg-emerald-600/15 px-2.5 py-1 text-[11px] font-bold text-emerald-800 ring-1 ring-emerald-600/30">
+                    Govt of India
+                  </span>
+                  <span className="font-mono text-[11px] font-bold text-teal-900">PAN Card</span>
+                </div>
+                <h4 className="font-display text-base font-bold text-teal-950 leading-snug">
+                  Income Tax Permanent Account Number
+                </h4>
+                <p className="mt-1 text-xs text-teal-900/60 font-semibold">
+                  Income Tax PAN Services Unit, NSDL
+                </p>
+                <div className="mt-3 space-y-1.5 rounded-xl bg-cream p-3 text-xs">
+                  <p><strong>PAN:</strong> <span className="font-mono font-bold text-base text-teal-950">{FORM_10AC.pan}</span></p>
+                  <p><strong>Constituted:</strong> 02/04/2013 (Over 13 years active)</p>
+                  <p><strong>Entity:</strong> JANA SEVA SAMRUDDI EDUCATION &amp; RURAL DEV SOC R</p>
+                  <p><strong>Jurisdiction:</strong> Bangalore, Karnataka</p>
+                </div>
+              </div>
+              <a
+                href="/documents/society-pan-card.pdf"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="focus-ring mt-4 inline-flex items-center justify-center gap-1.5 rounded-xl bg-teal-900 px-4 py-2.5 text-xs font-bold text-white hover:bg-teal-950 transition shadow-sm"
+              >
+                <span>View PAN Card PDF</span>
+                <span>↗</span>
+              </a>
+            </div>
+
+            {/* 6. Official Society Bank Account (Direct Transfers) */}
+            <div className="flex flex-col justify-between rounded-3xl bg-teal-950 p-5 text-white shadow-sm ring-1 ring-teal-900/10">
+              <div>
+                <div className="flex items-center justify-between gap-2 mb-3">
+                  <span className="rounded-md bg-gold/25 px-2.5 py-1 text-[11px] font-bold text-gold ring-1 ring-gold/40">
+                    Axis Bank Verified
+                  </span>
+                  <span className="text-[11px] text-teal-300">Banashankari</span>
+                </div>
+                <h4 className="font-display text-base font-bold text-white leading-snug">
+                  Charity Bank Account (NEFT / IMPS / RTGS)
+                </h4>
+                <p className="mt-1 text-xs text-teal-200">
+                  Direct Bank Contributions &amp; CSR Allocations
+                </p>
+                <div className="mt-3 space-y-1.5 rounded-xl bg-white/10 p-3 text-xs backdrop-blur">
+                  <p><span className="text-white/60">A/c Name:</span> <span className="font-bold text-white">{BANK_DETAILS.accountName}</span></p>
+                  <p><span className="text-gold">A/c No:</span> <span className="font-mono font-bold text-sm text-white">{BANK_DETAILS.accountNumber}</span></p>
+                  <p><span className="text-gold">IFSC:</span> <span className="font-mono font-bold text-sm text-white">{BANK_DETAILS.ifscCode}</span></p>
+                  <p><span className="text-white/60">Branch:</span> <span className="text-white">{BANK_DETAILS.branch}, Bangalore</span></p>
+                </div>
+              </div>
+              <p className="mt-3 text-[11px] text-white/70 leading-relaxed">
+                Direct transfers generate verified 80G tax receipts upon sharing receipt to WhatsApp or email.
+              </p>
             </div>
           </div>
         </div>

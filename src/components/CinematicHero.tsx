@@ -116,8 +116,11 @@ export function CinematicHero({ content }: { content?: Partial<SiteContentMap> }
               <span className="rounded-lg bg-white/15 px-3 py-1 text-[11px] font-bold text-white/90 backdrop-blur">
                 Form 10AC 80G Tax Exemption
               </span>
+              <span className="rounded-lg bg-white/15 px-3 py-1 text-[11px] font-bold text-white/90 backdrop-blur">
+                JJ Act Reg: KA18CH0242
+              </span>
               <span className="rounded-lg bg-emerald-500/25 border border-emerald-400/30 px-3 py-1 text-[11px] font-bold text-emerald-200 backdrop-blur">
-                100% Direct Allocation
+                MCA CSR-1: CSR00078800
               </span>
             </div>
 
@@ -288,9 +291,13 @@ export function CinematicHero({ content }: { content?: Partial<SiteContentMap> }
             <span>25 Children Sheltered &amp; Educated</span>
           </span>
           <span className="hidden sm:inline">·</span>
-          <span>100% Direct Allocation</span>
+          <span>JJ Act Reg: KA18CH0242</span>
           <span className="hidden sm:inline">·</span>
-          <span>Instant Verified 80G Receipt</span>
+          <span>MCA CSR-1: CSR00078800</span>
+          <span className="hidden sm:inline">·</span>
+          <span>Form 10AC 80G Tax Exemption</span>
+          <span className="hidden sm:inline">·</span>
+          <span>100% Direct Allocation</span>
         </div>
       </div>
     </section>

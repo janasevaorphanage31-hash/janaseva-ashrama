@@ -20,9 +20,9 @@ const TRUST_PILLARS = [
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
       </svg>
     ),
-    badge: "Governance",
-    title: "Registered Charitable Trust",
-    desc: "Janaseva Ashrama is a legally registered public charitable trust. Governance bylaws, annual filings, and trustee oversight are transparently documented.",
+    badge: "Govt Licensed",
+    title: "JJ Act Registered Orphanage (KA18CH0242)",
+    desc: "Officially registered Child Care Institution under Directorate of Child Protection, Govt of Karnataka (Form 28, capacity 25 children, age 07-18).",
   },
   {
     icon: (
@@ -183,6 +183,65 @@ export function TrustSection() {
                 <p className="mt-0.5 text-teal-950/80 leading-relaxed">
                   {FORM_10AC.operationalFacility.name}, {FORM_10AC.operationalFacility.address}
                 </p>
+              </div>
+            </div>
+
+            {/* Direct Official PDF Download Links */}
+            <div className="rounded-2xl bg-cream p-4 border border-teal-900/10">
+              <span className="text-[11px] uppercase tracking-wider font-bold text-teal-900/70 block mb-2.5">
+                Official Government Certificates &amp; Filings (Direct PDF Downloads):
+              </span>
+              <div className="flex flex-wrap gap-2 text-xs">
+                <a
+                  href="/documents/jj-act-child-care-institution-registration-form-28.pdf"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-white px-3 py-1.5 font-bold text-teal-900 border border-teal-900/15 hover:bg-gold/20 hover:border-teal-900/30 transition shadow-xs"
+                >
+                  <span>📄 JJ Act Govt Reg (Form 28)</span>
+                  <span className="text-teal-700 font-normal">· KA18CH0242</span>
+                  <span>↗</span>
+                </a>
+                <a
+                  href="/documents/form-10ac-80g-approval.pdf"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-white px-3 py-1.5 font-bold text-teal-900 border border-teal-900/15 hover:bg-gold/20 hover:border-teal-900/30 transition shadow-xs"
+                >
+                  <span>📄 Section 80G Approval (Form 10AC)</span>
+                  <span className="text-teal-700 font-normal">· AABTJ7431MF20231</span>
+                  <span>↗</span>
+                </a>
+                <a
+                  href="/documents/mca-csr-1-registration-certificate.pdf"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-white px-3 py-1.5 font-bold text-teal-900 border border-teal-900/15 hover:bg-gold/20 hover:border-teal-900/30 transition shadow-xs"
+                >
+                  <span>📄 MCA CSR-1 Certificate</span>
+                  <span className="text-teal-700 font-normal">· CSR00078800</span>
+                  <span>↗</span>
+                </a>
+                <a
+                  href="/documents/section-12aa-registration-certificate.pdf"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-white px-3 py-1.5 font-bold text-teal-900 border border-teal-900/15 hover:bg-gold/20 hover:border-teal-900/30 transition shadow-xs"
+                >
+                  <span>📄 Section 12AA Registration Order</span>
+                  <span className="text-teal-700 font-normal">· Tax Exempt</span>
+                  <span>↗</span>
+                </a>
+                <a
+                  href="/documents/society-pan-card.pdf"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-white px-3 py-1.5 font-bold text-teal-900 border border-teal-900/15 hover:bg-gold/20 hover:border-teal-900/30 transition shadow-xs"
+                >
+                  <span>📄 Society PAN Card</span>
+                  <span className="text-teal-700 font-normal">· AABTJ7431M</span>
+                  <span>↗</span>
+                </a>
               </div>
             </div>
 

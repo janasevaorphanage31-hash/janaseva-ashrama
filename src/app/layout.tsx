@@ -22,7 +22,7 @@ export const metadata: Metadata = {
     template: "%s · Janaseva Ashrama Bangalore",
   },
   description:
-    "Support Janaseva Ashrama, a registered public charitable children's home & orphanage in Bengaluru, Karnataka. Sponsor daily meals (Annadana), school kits, healthcare, and birthday feasts for 25 children. 100% verified allocation with Form 10AC 80G tax exemption.",
+    "Support Janaseva Ashrama, a registered public charitable children's home & orphanage in Bengaluru, Karnataka. Sponsor daily meals (Annadana), school kits, healthcare, and birthday feasts for 25 children. 100% verified allocation with Form 10AC 80G tax exemption, JJ Act registration (KA18CH0242), and MCA CSR-1 approval (CSR00078800).",
   keywords: [
     "orphanage in bangalore",
     "children home bangalore",
@@ -111,12 +111,12 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
           "Janaseva Children's Home Bangalore",
         ],
         description:
-          "Janaseva Ashrama is a registered public charitable trust and residential home for orphaned and vulnerable children in Bengaluru (Bangalore), Karnataka. Providing daily nutritious meals (Annadana), schooling, healthcare, and shelter with Form 10AC provisional 80G tax exemption.",
+          "Janaseva Ashrama is a registered public charitable trust and residential home for orphaned and vulnerable children in Bengaluru (Bangalore), Karnataka. Child Care Institution registered under JJ Act 2015 (KA18CH0242), MCA CSR-1 approved (CSR00078800), and Form 10AC provisional 80G tax exemption.",
         url: SITE.url,
         logo: `${SITE.url}/media/poster.jpg`,
         email: SITE.email,
         taxID: SITE.pan,
-        identifier: SITE.urn,
+        identifier: [SITE.urn, SITE.jjActNumber, SITE.csrNumber, SITE.pan],
         address: {
           "@type": "PostalAddress",
           streetAddress: "#27, Gundu Thopu Turahalli, Near Govt School, Jayanagar housing Society Layout, Subramanyapura",
