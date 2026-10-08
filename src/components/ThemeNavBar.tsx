@@ -11,6 +11,16 @@ interface ThemeItem {
 
 const THEMES: ThemeItem[] = [
   {
+    id: "official-tiers",
+    shortName: "5 Tiers",
+    fullName: "Official Support Tiers",
+    icon: (cls = "h-4 w-4") => (
+      <svg className={cls} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z" />
+      </svg>
+    ),
+  },
+  {
     id: "today",
     shortName: "Today",
     fullName: "Live Ashram Feed",

@@ -72,7 +72,7 @@ function MenuIcon() {
 
 export function BottomNav() {
   const path = usePathname();
-  const { total, count } = useCart();
+  const { total, count, openBottomDonate } = useCart();
   const [open, setOpen] = useState(false);
   const [prevTotal, setPrevTotal] = useState(total);
   const [prevPath, setPrevPath] = useState(path);
@@ -228,14 +228,17 @@ export function BottomNav() {
 
           {/* CENTER IMPACT BUTTON */}
           <li className="flex-1 text-center">
-            <Link
-              href="/impact"
-              onClick={() => track("cta_make_impact", { where: "bottom_nav" })}
-              aria-current={active("/impact") ? "page" : undefined}
-              className="focus-ring -mt-5 relative flex flex-col items-center justify-center group tap-scale"
+            <button
+              type="button"
+              onClick={() => {
+                track("cta_make_impact", { where: "bottom_nav" });
+                openBottomDonate(4500, "food_one_day");
+              }}
+              aria-label="Open donation options for 25 boys"
+              className="focus-ring -mt-5 relative flex flex-col items-center justify-center group tap-scale cursor-pointer"
             >
               <div
-                className={`relative flex h-14 w-14 items-center justify-center rounded-2xl text-white shadow-lg ring-4 ring-white transition ${
+                className={`relative flex h-14 w-14 items-center justify-center rounded-2xl text-white shadow-lg ring-4 ring-white transition animate-heartbeat ${
                   active("/impact")
                     ? "bg-saffron-dark"
                     : "bg-saffron hover:bg-saffron-dark"
@@ -249,10 +252,9 @@ export function BottomNav() {
                 )}
               </div>
               <span className="mt-0.5 text-[9px] font-extrabold tracking-wide text-saffron-dark">
-                IMPACT
+                DONATE 💝
               </span>
-              {active("/impact") && <span className="h-1 w-3 rounded-full bg-saffron mt-0.5" />}
-            </Link>
+            </button>
           </li>
 
           {/* MORE */}

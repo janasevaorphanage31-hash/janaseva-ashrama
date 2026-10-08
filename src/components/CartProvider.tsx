@@ -16,9 +16,15 @@ type Ctx = CartState & {
   total: number;
   count: number;
   hydrated: boolean;
+  isBottomDonateOpen: boolean;
+  donateInitialAmount: number;
+  donateInitialTierId?: string;
   setQty: (slug: string, qty: number) => void;
   setCustom: (amount: number) => void;
   setCampaign: (c: CartState["campaign"]) => void;
+  openBottomDonate: (initialAmount?: number, initialTierId?: string) => void;
+  closeBottomDonate: () => void;
+  toggleBottomDonate: () => void;
   clear: () => void;
 };
 
@@ -29,6 +35,9 @@ const CartCtx = createContext<Ctx | null>(null);
 export function CartProvider({ catalog, children }: { catalog: ImpactItem[]; children: ReactNode }) {
   const [state, setState] = useState<CartState>(empty);
   const [hydrated, setHydrated] = useState(false);
+  const [isBottomDonateOpen, setIsBottomDonateOpen] = useState(false);
+  const [donateInitialAmount, setDonateInitialAmount] = useState(0);
+  const [donateInitialTierId, setDonateInitialTierId] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     try {
@@ -66,14 +75,64 @@ export function CartProvider({ catalog, children }: { catalog: ImpactItem[]; chi
   const setCampaign = useCallback((campaign: CartState["campaign"]) => setState((s) => ({ ...s, campaign })), []);
   const clear = useCallback(() => setState((s) => ({ ...empty, campaign: s.campaign })), []);
 
+  const openBottomDonate = useCallback((initialAmount?: number, initialTierId?: string) => {
+    if (initialAmount && initialAmount > 0) {
+      setDonateInitialAmount(initialAmount);
+    }
+    if (initialTierId) {
+      setDonateInitialTierId(initialTierId);
+    }
+    setIsBottomDonateOpen(true);
+    track("bottom_donate_open", { initialAmount: initialAmount || 0, initialTierId: initialTierId || "" });
+  }, []);
+
+  const closeBottomDonate = useCallback(() => {
+    setIsBottomDonateOpen(false);
+  }, []);
+
+  const toggleBottomDonate = useCallback(() => {
+    setIsBottomDonateOpen((prev) => !prev);
+  }, []);
+
   const value = useMemo<Ctx>(() => {
     const lines = catalog
       .filter((i) => (state.qty[i.slug] ?? 0) > 0)
       .map((item) => ({ item, qty: state.qty[item.slug], subtotal: item.unitPrice * state.qty[item.slug] }));
     const total = lines.reduce((a, l) => a + l.subtotal, 0) + state.custom;
     const count = lines.reduce((a, l) => a + l.qty, 0) + (state.custom > 0 ? 1 : 0);
-    return { ...state, catalog, lines, total, count, hydrated, setQty, setCustom, setCampaign, clear };
-  }, [state, catalog, hydrated, setQty, setCustom, setCampaign, clear]);
+    return {
+      ...state,
+      catalog,
+      lines,
+      total,
+      count,
+      hydrated,
+      isBottomDonateOpen,
+      donateInitialAmount,
+      donateInitialTierId,
+      setQty,
+      setCustom,
+      setCampaign,
+      openBottomDonate,
+      closeBottomDonate,
+      toggleBottomDonate,
+      clear,
+    };
+  }, [
+    state,
+    catalog,
+    hydrated,
+    isBottomDonateOpen,
+    donateInitialAmount,
+    donateInitialTierId,
+    setQty,
+    setCustom,
+    setCampaign,
+    openBottomDonate,
+    closeBottomDonate,
+    toggleBottomDonate,
+    clear,
+  ]);
 
   return <CartCtx.Provider value={value}>{children}</CartCtx.Provider>;
 }

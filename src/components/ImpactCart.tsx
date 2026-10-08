@@ -235,21 +235,23 @@ export function ImpactCart({
         </span>
       </div>
 
-      <Link
-        href={checkoutHref}
-        aria-disabled={total === 0}
-        onClick={(e) => {
-          if (total === 0) e.preventDefault();
-          else track("checkout_start", { total });
-        }}
-        className={`focus-ring block rounded-xl px-5 py-3.5 sm:py-4 text-center text-xs sm:text-sm font-bold tracking-wide text-white transition active:scale-95 ${
-          total === 0
-            ? "cursor-not-allowed bg-teal-900/30"
-            : "bg-saffron shadow-md hover:bg-saffron-dark"
-        }`}
-      >
-        PROCEED TO IMPACT CHECKOUT ({formatINR(total)}) →
-      </Link>
+      {total === 0 ? (
+        <button
+          type="button"
+          onClick={() => cart.openBottomDonate(4500, "food_one_day")}
+          className="focus-ring block w-full rounded-xl px-5 py-3.5 sm:py-4 text-center text-xs sm:text-sm font-bold tracking-wide text-white bg-saffron shadow-md hover:bg-saffron-dark transition active:scale-95 cursor-pointer animate-heartbeat"
+        >
+          QUICK SPONSOR 25 BOYS (₹4,500) 💝
+        </button>
+      ) : (
+        <Link
+          href={checkoutHref}
+          onClick={() => track("checkout_start", { total })}
+          className="focus-ring block rounded-xl px-5 py-3.5 sm:py-4 text-center text-xs sm:text-sm font-bold tracking-wide text-white bg-saffron shadow-md hover:bg-saffron-dark transition active:scale-95 animate-heartbeat"
+        >
+          PROCEED TO IMPACT CHECKOUT ({formatINR(total)}) →
+        </Link>
+      )}
 
       <div className="text-center text-[10px] sm:text-[11px] text-teal-950/60 space-y-1">
         <p className="flex items-center justify-center gap-1 font-semibold text-emerald-800">
@@ -453,9 +455,17 @@ export function ImpactCart({
                     Fast 1-tap contribution chips ideal for mobile donors.
                   </p>
                 </div>
-                <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-saffron/15 text-saffron-dark">
-                  ⚡
-                </span>
+                <button
+                  type="button"
+                  onClick={() => cart.openBottomDonate(custom > 0 ? custom : 2500)}
+                  className="animate-heartbeat focus-ring px-3.5 py-1.5 rounded-xl bg-saffron text-white text-xs font-black uppercase tracking-wider shadow-md hover:bg-saffron-dark cursor-pointer flex items-center gap-1.5"
+                >
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-beacon absolute inline-flex h-full w-full rounded-full bg-white opacity-80"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-200"></span>
+                  </span>
+                  <span>Instant Donate 💝</span>
+                </button>
               </div>
 
               <div className="flex flex-wrap gap-2 pt-1">

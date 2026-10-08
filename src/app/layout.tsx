@@ -8,6 +8,8 @@ import { BottomNav } from "@/components/BottomNav";
 import { MobileQuickActions } from "@/components/MobileQuickActions";
 import { SiteFooter } from "@/components/SiteFooter";
 import { FloatingSocials } from "@/components/FloatingSocials";
+import { BottomDonationDrawer } from "@/components/BottomDonationDrawer";
+import { BlinkingDonationFloatingButton } from "@/components/BlinkingDonationButton";
 import { getImpactItems } from "@/lib/content";
 import { PWARegister } from "@/components/PWARegister";
 import { FAQ_ITEMS } from "@/lib/faq";
@@ -252,6 +254,8 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
           <SiteFooter />
           <FloatingSocials />
           <MobileQuickActions />
+          <BlinkingDonationFloatingButton />
+          <BottomDonationDrawer />
           <BottomNav />
         </CartProvider>
       </body>

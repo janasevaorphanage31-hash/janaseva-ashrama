@@ -175,24 +175,36 @@ export function CinematicHero({ content }: { content?: Partial<SiteContentMap> }
             <div className="mt-6 flex flex-wrap items-center gap-3">
               <button
                 type="button"
-                onClick={() => handleQuickAdd("meal")}
-                className="btn-primary cursor-pointer"
+                onClick={() => cart.openBottomDonate(4500, "food_one_day")}
+                className="btn-primary flex items-center gap-2 cursor-pointer shadow-xl animate-heartbeat"
               >
-                FEED A CHILD TODAY (₹100)
+                <span className="relative flex h-2.5 w-2.5">
+                  <span className="animate-beacon absolute inline-flex h-full w-full rounded-full bg-white opacity-80"></span>
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-200"></span>
+                </span>
+                <span>SPONSOR 25 BOYS (₹4,500) 💝</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => cart.openBottomDonate(100)}
+                className="btn-outline-gold flex items-center gap-1.5 cursor-pointer"
+              >
+                <span>⚡ Feed 1 Child (₹100)</span>
               </button>
 
               <Link
                 href="/celebrate-special-day"
-                className="btn-outline-gold cursor-pointer"
+                className="focus-ring px-3.5 py-2.5 rounded-xl border border-white/20 bg-white/10 text-xs font-bold text-white hover:bg-white/20 transition cursor-pointer"
               >
-                CELEBRATE AN OCCASION
+                🎉 Celebrate Occasion
               </Link>
 
               <a
-                href="#impact"
-                className="focus-ring px-3 py-2 text-xs font-bold text-white/75 hover:text-white transition underline underline-offset-4 cursor-pointer"
+                href="#official-tiers"
+                className="focus-ring px-3 py-2 text-xs font-bold text-amber-300 hover:text-white transition underline underline-offset-4 cursor-pointer"
               >
-                Explore all needs ↓
+                Official 5 Tiers ↓
               </a>
             </div>
           </div>
@@ -243,14 +255,13 @@ export function CinematicHero({ content }: { content?: Partial<SiteContentMap> }
                   { title: "1 Child Meal", cost: 100, slug: "meal" },
                   { title: "5 Child Meals", cost: 500, slug: "meal", qty: 5 },
                   { title: "Day Breakfast", cost: 1500, slug: "meal", qty: 15 },
-                  { title: "Birthday Feast", cost: 3500, slug: "birthday-feast" },
+                  { title: "All 25 Boys Full Day", cost: 4500, slug: "meal", qty: 25 },
                 ].map((tier) => (
                   <button
                     key={tier.title}
                     type="button"
                     onClick={() => {
-                      if (tier.qty) cart.setQty("meal", (cart.qty["meal"] || 0) + tier.qty);
-                      else handleQuickAdd(tier.slug);
+                      cart.openBottomDonate(tier.cost, "food_one_day");
                     }}
                     className="focus-ring rounded-xl bg-white/10 hover:bg-white/20 p-2 text-left border border-white/15 transition cursor-pointer"
                   >
@@ -260,15 +271,13 @@ export function CinematicHero({ content }: { content?: Partial<SiteContentMap> }
                 ))}
               </div>
 
-              <Link
-                href="/checkout"
-                onClick={() => {
-                  if (cart.total === 0) handleQuickAdd("meal");
-                }}
-                className="focus-ring block w-full rounded-xl bg-saffron py-3 text-center text-xs font-extrabold uppercase tracking-wider text-white shadow-lg hover:bg-saffron-dark transition cursor-pointer"
+              <button
+                type="button"
+                onClick={() => cart.openBottomDonate(4500, "food_one_day")}
+                className="focus-ring block w-full rounded-xl bg-saffron py-3 text-center text-xs font-extrabold uppercase tracking-wider text-white shadow-lg hover:bg-saffron-dark transition cursor-pointer animate-heartbeat"
               >
-                SPONSOR ANNADANA ONLINE →
-              </Link>
+                SPONSOR ANNADANA ONLINE (₹4,500) →
+              </button>
             </div>
 
             <div className="pt-1 flex items-center justify-between text-[11px] text-white/75">

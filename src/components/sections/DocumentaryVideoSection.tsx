@@ -121,11 +121,8 @@ export function DocumentaryVideoSection() {
 
   const handleSupportMoment = (slug: string) => {
     cart.setQty(slug, (cart.qty[slug] || 0) + 1);
+    cart.openBottomDonate(current.associatedPrice);
     track("support_video_moment", { slug, chapter: current.id });
-    const el = document.getElementById("impact");
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth" });
-    }
   };
 
   return (
@@ -235,9 +232,13 @@ export function DocumentaryVideoSection() {
               <button
                 type="button"
                 onClick={() => handleSupportMoment(current.associatedSlug)}
-                className="focus-ring w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-saffron px-6 py-3 text-xs sm:text-sm font-bold text-white shadow-md hover:bg-saffron-dark transition active:scale-95 shrink-0"
+                className="focus-ring w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-saffron px-6 py-3 text-xs sm:text-sm font-bold text-white shadow-md hover:bg-saffron-dark transition active:scale-95 shrink-0 animate-heartbeat"
               >
-                <span>+ ADD TO BASKET</span>
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-beacon absolute inline-flex h-full w-full rounded-full bg-white opacity-80"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-200"></span>
+                </span>
+                <span>💝 SPONSOR THIS MOMENT</span>
                 <span>({formatINR(current.associatedPrice)})</span>
               </button>
             </div>

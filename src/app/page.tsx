@@ -1,10 +1,13 @@
 import { CinematicHero } from "@/components/CinematicHero";
+import { HorizontalMovingReel } from "@/components/HorizontalMovingReel";
+import { OfficialSupportTiersSection } from "@/components/sections/OfficialSupportTiersSection";
 import { ThemeNavBar } from "@/components/ThemeNavBar";
 import { TodaySection } from "@/components/sections/TodaySection";
 import { ImpactCart } from "@/components/ImpactCart";
 import { TrendingBirthdaySection } from "@/components/sections/TrendingBirthdaySection";
 import { CommunityActivitiesSection } from "@/components/sections/CommunityActivitiesSection";
 import { DocumentaryVideoSection } from "@/components/sections/DocumentaryVideoSection";
+import { EmotionalQuotesSection } from "@/components/sections/EmotionalQuotesSection";
 import { TransparencySection } from "@/components/sections/TransparencySection";
 import { TrustSection } from "@/components/sections/TrustSection";
 import { VerifiedImpactSection } from "@/components/sections/VerifiedImpactSection";
@@ -39,23 +42,32 @@ export default async function Home() {
       {/* 1. Cinematic Opening (Awareness & Emotional Hook: 25 Boys Residential Orphanage) */}
       <CinematicHero content={siteContent} />
 
-      {/* 2. Top Theme Quick Navigation (Instant Anchor Jump with Icons & Short Names) */}
+      {/* 2. Horizontal Moving Reel (Video Clips & Photographs Moving Horizontally) */}
+      <HorizontalMovingReel />
+
+      {/* 3. Exact 5 Official Support Tiers & Pricing (Official Trust Sponsorship Section at Top) */}
+      <OfficialSupportTiersSection />
+
+      {/* 4. Top Theme Quick Navigation (Instant Anchor Jump with Icons & Short Names) */}
       <ThemeNavBar />
 
-      {/* 3. Today at Janaseva (Real Daily Visual Moments, Kitchen Updates & Daily Annadana Status) */}
+      {/* 5. Today at Janaseva (Real Daily Visual Moments, Kitchen Updates & Daily Annadana Status) */}
       <TodaySection updates={updates} />
 
-      {/* 4. Verified Needs Catalogue & Direct Giving Basket (Categorized Food, Vidya, Health, Shelter) */}
+      {/* 6. Verified Needs Catalogue & Direct Giving Basket (Categorized Food, Vidya, Health, Shelter) */}
       <Track event="need_view" onView />
       <ImpactCart />
 
-      {/* 5. Celebrate Milestones with 25 Boys (Occasion, Birthday Feast & WhatsApp Video Delivery) */}
+      {/* 7. Deep Emotional Voices & Caregiver Reflections (Donor Psychology & Empathy) */}
+      <EmotionalQuotesSection />
+
+      {/* 8. Celebrate Milestones with 25 Boys (Occasion, Birthday Feast & WhatsApp Video Delivery) */}
       <TrendingBirthdaySection wishVideos={siteContent?.wishVideos} />
 
-      {/* 6. On-Ground NGO Activities & Community Outreach Campaigns (2-col grid mobile) */}
+      {/* 9. On-Ground NGO Activities & Community Outreach Campaigns (2-col grid mobile) */}
       <CommunityActivitiesSection />
 
-      {/* 7. Life in Motion: Documentary Video Chapters (Unstaged Daily Boy Life) */}
+      {/* 10. Life in Motion: Documentary Video Chapters (Unstaged Daily Boy Life) */}
       <DocumentaryVideoSection />
 
       {/* 8. Transparency Center & 5 Official Govt Accreditations (Form 28, Form 10AC, CSR-1, 12AA, PAN) */}

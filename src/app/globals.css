@@ -161,3 +161,79 @@ h1, h2, h3, .font-display {
   body { background: #fff; padding-bottom: 0; }
   .no-print { display: none !important; }
 }
+
+/* =============================================
+   HORIZONTAL MARQUEE & KINETIC REEL
+   ============================================= */
+@keyframes horizontal-marquee {
+  0% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-marquee {
+  display: flex;
+  width: max-content;
+  animation: horizontal-marquee 42s linear infinite;
+}
+
+.animate-marquee:hover,
+.animate-marquee:focus-within {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-marquee {
+    animation: none;
+    overflow-x: auto;
+  }
+}
+
+/* =============================================
+   BLINKING / HEARTBEAT DONATION GLOW
+   ============================================= */
+@keyframes donor-heartbeat {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 4px 18px rgba(217, 121, 36, 0.35);
+  }
+  14% {
+    transform: scale(1.04);
+    box-shadow: 0 8px 26px rgba(217, 121, 36, 0.65), 0 0 0 4px rgba(232, 179, 74, 0.4);
+  }
+  28% {
+    transform: scale(1);
+    box-shadow: 0 4px 18px rgba(217, 121, 36, 0.35);
+  }
+  42% {
+    transform: scale(1.03);
+    box-shadow: 0 6px 22px rgba(217, 121, 36, 0.55), 0 0 0 3px rgba(232, 179, 74, 0.3);
+  }
+  70% {
+    transform: scale(1);
+    box-shadow: 0 4px 18px rgba(217, 121, 36, 0.35);
+  }
+}
+
+.animate-heartbeat {
+  animation: donor-heartbeat 2.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@keyframes beacon-ping {
+  0% {
+    transform: scale(0.95);
+    opacity: 0.9;
+  }
+  70%, 100% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+}
+
+.animate-beacon {
+  animation: beacon-ping 1.8s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
