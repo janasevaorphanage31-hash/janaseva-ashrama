@@ -16,6 +16,12 @@ const primaryNavLinks = [
 
 const moreMenuLinks = [
   {
+    href: "/supporter-form",
+    label: "Official Supporter Form",
+    desc: "Digital Makkala Ashraya Kendra sponsor form for food, clothes & education",
+    icon: "document",
+  },
+  {
     href: "/make-a-day-matter",
     label: "Make a Day Matter",
     desc: "Dedicate a birthday, anniversary or milestone",
@@ -61,6 +67,7 @@ const moreMenuLinks = [
 
 const mobileMenuLinks = [
   { href: "/", label: "Home", icon: "home" },
+  { href: "/supporter-form", label: "Official Supporter Form", icon: "document", highlight: true },
   { href: "/celebrate-special-day", label: "Celebrate Special Day", icon: "star", highlight: true },
   { href: "/impact", label: "Today's Needs & Basket", icon: "heart", highlight: true },
   { href: "/#activities", label: "NGO Outreach & Drives", icon: "heart" },
@@ -83,6 +90,7 @@ function NavIcon({ type }: { type: string | null }) {
   if (!type) return null;
   const icons: Record<string, string> = {
     home: "M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z",
+    document: "M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z",
     star: "M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z",
     heart: "M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z",
     gift: "M20 6h-2.18c.11-.31.18-.65.18-1 0-1.66-1.34-3-3-3-1.05 0-1.96.54-2.5 1.35l-.5.65-.5-.65C10.96 2.54 10.05 2 9 2 7.34 2 6 3.34 6 5c0 .35.07.69.18 1H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2z",

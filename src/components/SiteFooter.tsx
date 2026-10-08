@@ -35,6 +35,7 @@ export function SiteFooter() {
         <div>
           <p className="text-xs font-bold uppercase tracking-wider text-gold mb-3">Giving Programs</p>
           <ul className="space-y-2 text-xs">
+            <li><Link href="/supporter-form" className="hover:text-gold transition font-bold text-emerald-300">📋 Official Supporter Form (Makkala Ashraya Kendra)</Link></li>
             <li><Link href="/celebrate-special-day" className="hover:text-gold transition font-bold text-gold">Celebrate Special Day (Birthdays &amp; Anniversaries)</Link></li>
             <li><Link href="/#activities" className="hover:text-gold transition font-bold text-white">NGO Outreach &amp; Drives (Health, Food, Swachh)</Link></li>
             <li><Link href="/impact" className="hover:text-gold transition">Today&apos;s Needs &amp; Basket</Link></li>

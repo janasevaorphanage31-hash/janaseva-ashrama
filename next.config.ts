@@ -66,6 +66,12 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  async rewrites() {
+    return [
+      { source: "/support", destination: "/supporter-form" },
+      { source: "/supporter", destination: "/supporter-form" },
+    ];
+  },
 };
 
 export default nextConfig;

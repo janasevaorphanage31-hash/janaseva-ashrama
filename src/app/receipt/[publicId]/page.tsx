@@ -34,9 +34,23 @@ export default async function ReceiptPage({ params }: { params: Promise<{ public
   const demo = d.status === "demo";
   const refunded = d.status === "refunded";
   const pending = d.status === "created";
+  const pledged = d.status === "pledged";
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8">
+      {pledged && (
+        <div className="no-print mb-5 rounded-3xl bg-emerald-900 p-6 text-center text-white shadow-lg">
+          <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-800 text-emerald-200 ring-1 ring-white/20">
+            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <h1 className="mt-1 font-display text-2xl font-bold">Supporter Pledge Confirmed!</h1>
+          <p className="mt-1 text-sm text-emerald-100">
+            Thank you, {d.donorName.split(" ")[0]}. Your official Supporter Form pledge has been recorded in our Ashrama register (Ref: {d.receiptNo || d.publicId}).
+          </p>
+        </div>
+      )}
       {verified && (
         <div className="no-print mb-5 rounded-3xl bg-teal-900 p-6 text-center text-white">
           <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-2xl bg-teal-800 text-teal-200 ring-1 ring-white/20">
