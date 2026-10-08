@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { Chip, Container, Head, Section } from "../ui";
-import { BANK_DETAILS, FORM_10AC, SITE, TAX_NOTE } from "@/lib/site";
-import { TaxSavingsCalculator } from "../TaxSavingsCalculator";
+import { BANK_DETAILS, SITE } from "@/lib/site";
 
 const TRUST_PILLARS = [
   {
@@ -106,186 +105,37 @@ export function TrustSection() {
           ))}
         </div>
 
-        {/* Interactive 80G Tax Exemption & Savings Calculator */}
-        <div className="mt-8">
-          <TaxSavingsCalculator />
-        </div>
-
-        {/* Form 10AC Official Government 80G Approval Certificate Card */}
-        <div className="mt-8 overflow-hidden rounded-3xl border-2 border-emerald-800/20 bg-white shadow-md ring-1 ring-teal-900/10">
-          <div className="bg-teal-950 px-6 py-4 text-white sm:flex sm:items-center sm:justify-between">
+        {/* Official Charity Bank Account for Direct Transfers */}
+        <div className="mt-8 rounded-3xl bg-teal-950 text-white p-5 sm:p-6 shadow-md border border-teal-800">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-teal-800 pb-3">
             <div>
-              <div className="flex items-center gap-2">
-                <span className="inline-flex items-center rounded-md bg-emerald-500/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-300 ring-1 ring-emerald-400/30">
-                  Government of India · Income Tax Department
-                </span>
-                <span className="inline-flex items-center rounded-md bg-gold/20 px-2 py-0.5 text-[10px] font-bold text-gold ring-1 ring-gold/30">
-                  Form No. 10AC Verified
-                </span>
-              </div>
-              <h4 className="mt-1.5 font-display text-lg font-bold text-white">
-                Order for Provisional Approval under Section 80G
-              </h4>
-            </div>
-            <div className="mt-3 sm:mt-0 sm:text-right">
-              <span className="text-xs font-semibold text-emerald-400">✓ Provisional Approval Active</span>
-              <p className="text-[11px] text-white/70">AY 2024-25 to AY 2026-27</p>
-            </div>
-          </div>
-
-          <div className="p-6 sm:p-7 space-y-5">
-            {/* 4 Key Tax Identity Attributes */}
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <div className="rounded-2xl bg-cream p-3 border border-teal-900/10">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-teal-900/60">PAN (Income Tax)</p>
-                <p className="mt-1 font-mono text-sm sm:text-base font-bold text-teal-950">{FORM_10AC.pan}</p>
-                <p className="text-[10px] text-teal-950/60">Permanent Account No.</p>
-              </div>
-
-              <div className="rounded-2xl bg-cream p-3 border border-teal-900/10">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-teal-900/60">Unique Reg. No (URN)</p>
-                <p className="mt-1 font-mono text-xs sm:text-sm font-bold text-teal-950 break-all">{FORM_10AC.urn}</p>
-                <p className="text-[10px] text-teal-950/60">Section 80G URN</p>
-              </div>
-
-              <div className="rounded-2xl bg-cream p-3 border border-teal-900/10">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-teal-900/60">Document ID (DIN)</p>
-                <p className="mt-1 font-mono text-xs sm:text-sm font-bold text-teal-950 break-all">{FORM_10AC.din}</p>
-                <p className="text-[10px] text-teal-950/60">Order DIN</p>
-              </div>
-
-              <div className="rounded-2xl bg-cream p-3 border border-teal-900/10">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-teal-900/60">Assessment Years</p>
-                <p className="mt-1 font-display text-sm sm:text-base font-bold text-teal-950">2024-25 to 2026-27</p>
-                <p className="text-[10px] text-teal-950/60">Approved Validity</p>
-              </div>
-            </div>
-
-            {/* Legal Entity & Address Metadata */}
-            <div className="rounded-2xl bg-sand/35 p-4 border border-teal-900/10 grid gap-3 sm:grid-cols-2 text-xs">
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-teal-900/60">Legal Registered Society Name</p>
-                <p className="mt-1 font-bold text-teal-950 leading-snug">{FORM_10AC.legalName}</p>
-                <p className="mt-1 text-[11px] text-teal-950/70">
-                  <strong>Section:</strong> {FORM_10AC.section}
-                </p>
-                <p className="text-[11px] text-teal-950/70">
-                  <strong>Application No:</strong> <span className="font-mono">{FORM_10AC.applicationNumber}</span>
-                </p>
-              </div>
-
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-teal-900/60">Registered Society Office (Row 2b)</p>
-                <p className="mt-1 text-teal-950/80 leading-relaxed">
-                  {FORM_10AC.registeredAddress.doorNo}, {FORM_10AC.registeredAddress.premises}, {FORM_10AC.registeredAddress.postOffice}, {FORM_10AC.registeredAddress.locality}, {FORM_10AC.registeredAddress.city}, {FORM_10AC.registeredAddress.state} {FORM_10AC.registeredAddress.pincode}
-                </p>
-                <p className="mt-2 text-[10px] font-bold uppercase tracking-wider text-teal-900/60">Operational Children&apos;s Home</p>
-                <p className="mt-0.5 text-teal-950/80 leading-relaxed">
-                  {FORM_10AC.operationalFacility.name}, {FORM_10AC.operationalFacility.address}
-                </p>
-              </div>
-            </div>
-
-            {/* Direct Official PDF Download Links */}
-            <div className="rounded-2xl bg-cream p-4 border border-teal-900/10">
-              <span className="text-[11px] uppercase tracking-wider font-bold text-teal-900/70 block mb-2.5">
-                Official Government Certificates &amp; Filings (Direct PDF Downloads):
+              <span className="font-display font-bold text-sm sm:text-base text-gold">
+                Official Charity Bank Account (Direct NEFT / IMPS / RTGS)
               </span>
-              <div className="flex flex-wrap gap-2 text-xs">
-                <a
-                  href="/documents/jj-act-child-care-institution-registration-form-28.pdf"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-white px-3 py-1.5 font-bold text-teal-900 border border-teal-900/15 hover:bg-gold/20 hover:border-teal-900/30 transition shadow-xs"
-                >
-                  <span>📄 JJ Act Govt Reg (Form 28)</span>
-                  <span className="text-teal-700 font-normal">· KA18CH0242</span>
-                  <span>↗</span>
-                </a>
-                <a
-                  href="/documents/form-10ac-80g-approval.pdf"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-white px-3 py-1.5 font-bold text-teal-900 border border-teal-900/15 hover:bg-gold/20 hover:border-teal-900/30 transition shadow-xs"
-                >
-                  <span>📄 Section 80G Approval (Form 10AC)</span>
-                  <span className="text-teal-700 font-normal">· AABTJ7431MF20231</span>
-                  <span>↗</span>
-                </a>
-                <a
-                  href="/documents/mca-csr-1-registration-certificate.pdf"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-white px-3 py-1.5 font-bold text-teal-900 border border-teal-900/15 hover:bg-gold/20 hover:border-teal-900/30 transition shadow-xs"
-                >
-                  <span>📄 MCA CSR-1 Certificate</span>
-                  <span className="text-teal-700 font-normal">· CSR00078800</span>
-                  <span>↗</span>
-                </a>
-                <a
-                  href="/documents/section-12aa-registration-certificate.pdf"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-white px-3 py-1.5 font-bold text-teal-900 border border-teal-900/15 hover:bg-gold/20 hover:border-teal-900/30 transition shadow-xs"
-                >
-                  <span>📄 Section 12AA Registration Order</span>
-                  <span className="text-teal-700 font-normal">· Tax Exempt</span>
-                  <span>↗</span>
-                </a>
-                <a
-                  href="/documents/society-pan-card.pdf"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-white px-3 py-1.5 font-bold text-teal-900 border border-teal-900/15 hover:bg-gold/20 hover:border-teal-900/30 transition shadow-xs"
-                >
-                  <span>📄 Society PAN Card</span>
-                  <span className="text-teal-700 font-normal">· AABTJ7431M</span>
-                  <span>↗</span>
-                </a>
-              </div>
-            </div>
-
-            {/* Official Charity Bank Account for Direct Transfers */}
-            <div className="rounded-2xl bg-teal-950 text-white p-4 sm:p-5">
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-teal-800 pb-2.5">
-                <span className="font-display font-bold text-sm text-gold">
-                  Official Charity Bank Account (Direct NEFT / IMPS / RTGS)
-                </span>
-                <span className="rounded bg-teal-800/80 px-2 py-0.5 text-[10px] font-bold text-teal-200">
-                  Axis Bank · Banashankari Branch
-                </span>
-              </div>
-              <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
-                <div>
-                  <span className="text-[10px] uppercase font-bold text-white/60 block">A/c Holder Name</span>
-                  <span className="font-bold text-white leading-snug">{BANK_DETAILS.accountName}</span>
-                </div>
-                <div>
-                  <span className="text-[10px] uppercase font-bold text-white/60 block">Bank &amp; Branch</span>
-                  <span className="font-bold text-white">{BANK_DETAILS.bankName} ({BANK_DETAILS.branch})</span>
-                </div>
-                <div>
-                  <span className="text-[10px] uppercase font-bold text-gold block">Account Number</span>
-                  <span className="font-mono font-bold text-sm text-white">{BANK_DETAILS.accountNumber}</span>
-                </div>
-                <div>
-                  <span className="text-[10px] uppercase font-bold text-gold block">IFSC Code</span>
-                  <span className="font-mono font-bold text-sm text-white">{BANK_DETAILS.ifscCode}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Regulatory Note & Verification CTA */}
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between pt-2 border-t border-teal-900/10 text-xs">
-              <p className="text-teal-950/75 leading-relaxed max-w-2xl">
-                {TAX_NOTE}
+              <p className="text-xs text-teal-200 mt-0.5">
+                Transfer directly to our registered charity account with verified 80G tax exemption.
               </p>
-              <Link
-                href="/transparency"
-                className="focus-ring shrink-0 inline-flex items-center justify-center rounded-xl bg-teal-900 px-5 py-2.5 text-xs font-bold text-white transition hover:bg-teal-950 shadow-sm"
-              >
-                View Full Filing &amp; Docs →
-              </Link>
+            </div>
+            <span className="rounded bg-teal-800 px-2.5 py-1 text-[11px] font-bold text-teal-200">
+              Axis Bank · Banashankari Branch
+            </span>
+          </div>
+          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+            <div>
+              <span className="text-[10px] uppercase font-bold text-white/60 block">A/c Holder Name</span>
+              <span className="font-bold text-white leading-snug">{BANK_DETAILS.accountName}</span>
+            </div>
+            <div>
+              <span className="text-[10px] uppercase font-bold text-white/60 block">Bank &amp; Branch</span>
+              <span className="font-bold text-white">{BANK_DETAILS.bankName} ({BANK_DETAILS.branch})</span>
+            </div>
+            <div>
+              <span className="text-[10px] uppercase font-bold text-gold block">Account Number</span>
+              <span className="font-mono font-bold text-sm text-white">{BANK_DETAILS.accountNumber}</span>
+            </div>
+            <div>
+              <span className="text-[10px] uppercase font-bold text-gold block">IFSC Code</span>
+              <span className="font-mono font-bold text-sm text-white">{BANK_DETAILS.ifscCode}</span>
             </div>
           </div>
         </div>

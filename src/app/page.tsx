@@ -61,7 +61,7 @@ export default async function Home() {
       {/* 8. Transparency Center & 5 Official Govt Accreditations (Form 28, Form 10AC, CSR-1, 12AA, PAN) */}
       <TransparencySection docs={docs} />
 
-      {/* 9. 80G Tax Savings Calculator, 256-Bit Security & Axis Bank Direct Transfer Details */}
+      {/* 9. Trust & Accountability Pillars, 256-Bit Security & Axis Bank Direct Transfer Details */}
       <TrustSection />
 
       {/* 10. Verified Impact Platform Metrics */}

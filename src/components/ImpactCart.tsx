@@ -8,7 +8,6 @@ import { useCart } from "./CartProvider";
 import { Container, Head, Section, Chip } from "./ui";
 import { formatINR } from "@/lib/site";
 import { track } from "@/lib/track";
-import { DonationStrategySuite } from "./DonationStrategySuite";
 
 const QUICK_GIVE_PRESETS = [100, 250, 500, 1000, 2500];
 
@@ -514,9 +513,6 @@ export function ImpactCart({
             {summary}
           </div>
         </div>
-
-        {/* Multi-Strategy Donation Accelerator Suite & Business Plan Exporter */}
-        <DonationStrategySuite />
       </Container>
     </Section>
   );
