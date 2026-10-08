@@ -193,7 +193,7 @@ export const SITE = {
   childrenCountLabel: "25 Resident Boys (Ages 07–18)",
   headline: "A HOME TODAY. A FUTURE WE BUILD TOGETHER.",
   tagline: "Service to children without families is the highest temple of devotion.",
-  url: process.env.NEXT_PUBLIC_SITE_URL || "https://janasevaorphanage.org",
+  url: process.env.NEXT_PUBLIC_SITE_URL || "https://www.janasevaashrama.org",
   phone: "9980359595",
   phoneIntl: "+919980359595",
   whatsapp: "919980359595",

@@ -290,7 +290,7 @@ export function CelebrateBirthdayClient({ wishVideos }: { wishVideos?: WishVideo
   };
 
   const copyInstagramStory = () => {
-    const text = `Celebrated my special day by feeding 25 children at Janaseva Ashrama in Bengaluru! The purest smiles and sincere blessings. You can also celebrate your birthday or milestone here: https://janasevaorphanage.org/celebrate-birthday #JanasevaAshrama #BirthdayGiving #BengaluruNGO #Bangalore`;
+    const text = `Celebrated my special day by feeding 25 children at Janaseva Ashrama in Bengaluru! The purest smiles and sincere blessings. You can also celebrate your birthday or milestone here: https://www.janasevaashrama.org/celebrate-birthday #JanasevaAshrama #BirthdayGiving #BengaluruNGO #Bangalore`;
     if (typeof navigator !== "undefined" && navigator.clipboard) {
       navigator.clipboard.writeText(text);
       setCopiedStory(true);
@@ -928,7 +928,7 @@ export function CelebrateBirthdayClient({ wishVideos }: { wishVideos?: WishVideo
 
               <a
                 href={`https://wa.me/?text=${encodeURIComponent(
-                  "Hey! For my birthday this year, I am celebrating with 25 children at Janaseva Ashrama in Bengaluru. Join me or sponsor a wholesome meal here: https://janasevaorphanage.org/celebrate-birthday"
+                  "Hey! For my birthday this year, I am celebrating with 25 children at Janaseva Ashrama in Bengaluru. Join me or sponsor a wholesome meal here: https://www.janasevaashrama.org/celebrate-birthday"
                 )}`}
                 target="_blank"
                 rel="noopener noreferrer"
