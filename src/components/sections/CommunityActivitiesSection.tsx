@@ -137,6 +137,28 @@ const ACTIVITIES: NgoActivity[] = [
     sponsorAmount: 500,
     volunteerRole: "Subject Tutors, Reading Mentors & Career Guides",
   },
+  {
+    id: "clean-water-sanitation",
+    category: "cleanliness",
+    categoryLabel: "Clean Water & Hygiene",
+    title: "Rural Drinking Water & Sanitation Drives",
+    subtitle: "Safe drinking water purification units & sanitation setups in rural clusters",
+    cadence: "Quarterly Field Drives",
+    image: "/media/wellness.jpg",
+    metricBadge: "12+ Water Points · 850+ Families",
+    description:
+      "Preventing waterborne illnesses among vulnerable rural children and elders by distributing community water filters, setting up clean water stations, and conducting hygiene workshops in unserved peri-urban pockets.",
+    keyHighlights: [
+      "Community ceramic & bio-sand water filters installed in village centers",
+      "Hygiene, soap distribution & safe water handling demonstrations",
+      "Sanitation kit distribution with antiseptic supplies and clean storage buckets",
+      "Follow-up water quality testing and community maintenance training",
+    ],
+    sponsorSlug: "health",
+    sponsorName: "Support Rural Clean Water",
+    sponsorAmount: 500,
+    volunteerRole: "Sanitation Volunteers & Field Technicians",
+  },
 ];
 
 const METRICS_SUMMARY = [
@@ -267,63 +289,69 @@ export function CommunityActivitiesSection() {
           </div>
         )}
 
-        {/* Activity Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* Activity Cards Grid: 2-in-a-row on mobile, 3-in-a-row on desktop */}
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 md:gap-6 lg:grid-cols-3">
           {filtered.map((activity) => (
             <article
               key={activity.id}
-              className="group flex flex-col justify-between rounded-3xl bg-white border border-teal-900/10 shadow-xs overflow-hidden transition hover:-translate-y-1 hover:shadow-md"
+              className="group flex flex-col justify-between rounded-2xl sm:rounded-3xl bg-white border border-teal-900/10 shadow-xs overflow-hidden transition hover:-translate-y-1 hover:shadow-md"
             >
               <div>
                 {/* Photo & Badge Banner */}
-                <div className="relative h-48 w-full bg-teal-900/10 overflow-hidden">
+                <div className="relative h-28 xs:h-32 sm:h-44 md:h-48 w-full bg-teal-900/10 overflow-hidden">
                   <Image
                     src={activity.image}
                     alt={activity.title}
                     fill
                     className="object-cover transition duration-300 group-hover:scale-105"
-                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                    sizes="(max-width: 640px) 50vw, (max-width: 1024px) 50vw, 33vw"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-teal-950/80 via-teal-950/20 to-transparent" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-teal-950/85 via-teal-950/25 to-transparent" />
                   
                   {/* Top Cadence Pill */}
-                  <div className="absolute top-3 left-3 flex flex-wrap gap-1.5">
-                    <span className="rounded-full bg-teal-900/90 backdrop-blur-xs px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-white">
+                  <div className="absolute top-2 left-2 sm:top-3 sm:left-3 flex flex-wrap gap-1">
+                    <span className="rounded-full bg-teal-900/90 backdrop-blur-xs px-2 py-0.5 sm:px-2.5 sm:py-1 text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-white">
                       {activity.cadence}
                     </span>
                   </div>
 
                   {/* Bottom Metric Badge */}
-                  <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between">
-                    <span className="rounded-lg bg-gold/90 backdrop-blur-xs px-2.5 py-1 text-[11px] font-extrabold text-teal-950 shadow-xs">
+                  <div className="absolute bottom-2 left-2 right-2 sm:bottom-3 sm:left-3 sm:right-3 flex items-center justify-between">
+                    <span className="rounded-md sm:rounded-lg bg-gold/95 backdrop-blur-xs px-1.5 py-0.5 sm:px-2.5 sm:py-1 text-[9px] sm:text-[11px] font-black text-teal-950 shadow-xs truncate">
                       {activity.metricBadge}
                     </span>
                   </div>
                 </div>
 
                 {/* Content Details */}
-                <div className="p-5 md:p-6">
-                  <span className="block text-xs font-bold text-saffron-dark uppercase tracking-wider mb-1">
+                <div className="p-3 sm:p-5 md:p-6">
+                  <span className="block text-[10px] sm:text-xs font-bold text-saffron-dark uppercase tracking-wider mb-0.5 sm:mb-1 truncate">
                     {activity.categoryLabel}
                   </span>
-                  <h3 className="font-display text-lg font-bold text-teal-950 leading-snug">
+                  <h3 className="font-display text-xs sm:text-base md:text-lg font-bold text-teal-950 leading-snug line-clamp-2">
                     {activity.title}
                   </h3>
-                  <p className="mt-1 text-xs text-teal-950/70 font-medium">
+                  <p className="mt-0.5 sm:mt-1 text-[10px] sm:text-xs text-teal-950/70 font-medium line-clamp-1 sm:line-clamp-2">
                     {activity.subtitle}
                   </p>
                   
-                  <p className="mt-3 text-xs leading-relaxed text-teal-950/80 border-t border-teal-900/5 pt-3">
+                  <p className="mt-2 sm:mt-3 text-[10px] sm:text-xs leading-relaxed text-teal-950/80 border-t border-teal-900/5 pt-2 sm:pt-3 line-clamp-2 sm:line-clamp-none">
                     {activity.description}
                   </p>
 
                   {/* Key Highlights Checklist */}
-                  <div className="mt-4 rounded-xl bg-cream/70 p-3.5 border border-teal-900/10 space-y-1.5">
-                    <span className="block text-[11px] font-bold text-teal-900 uppercase tracking-wider mb-1">
-                      Initiative Highlights:
+                  <div className="mt-2.5 sm:mt-4 rounded-xl bg-cream/70 p-2 sm:p-3.5 border border-teal-900/10 space-y-1">
+                    <span className="block text-[9px] sm:text-[11px] font-bold text-teal-900 uppercase tracking-wider mb-0.5 sm:mb-1">
+                      Key Highlights:
                     </span>
-                    {activity.keyHighlights.map((hl, i) => (
-                      <div key={i} className="flex items-start gap-2 text-[11px] text-teal-950/80">
+                    {activity.keyHighlights.slice(0, 2).map((hl, i) => (
+                      <div key={i} className="flex items-start gap-1 sm:gap-2 text-[9px] sm:text-[11px] text-teal-950/80">
+                        <span className="text-emerald-700 font-bold shrink-0">✓</span>
+                        <span className="leading-tight truncate sm:whitespace-normal">{hl}</span>
+                      </div>
+                    ))}
+                    {activity.keyHighlights.slice(2).map((hl, i) => (
+                      <div key={i} className="hidden sm:flex items-start gap-2 text-[11px] text-teal-950/80">
                         <span className="text-emerald-700 font-bold shrink-0">✓</span>
                         <span className="leading-tight">{hl}</span>
                       </div>
@@ -332,35 +360,35 @@ export function CommunityActivitiesSection() {
 
                   {/* Volunteer Role */}
                   {activity.volunteerRole && (
-                    <div className="mt-3 flex items-center gap-1.5 text-[11px] text-teal-900/70 font-semibold">
+                    <div className="mt-2 sm:mt-3 flex items-center gap-1 text-[9px] sm:text-[11px] text-teal-900/70 font-semibold truncate">
                       <span>🤝</span>
-                      <span>Seva roles: {activity.volunteerRole}</span>
+                      <span className="truncate">{activity.volunteerRole}</span>
                     </div>
                   )}
                 </div>
               </div>
 
               {/* Action Buttons Footer */}
-              <div className="p-5 md:p-6 pt-0 border-t border-teal-900/5 mt-4 flex flex-col sm:flex-row gap-2">
+              <div className="p-3 sm:p-5 md:p-6 pt-0 border-t border-teal-900/5 mt-2 sm:mt-4 flex flex-col gap-1.5 sm:flex-row sm:gap-2">
                 {activity.sponsorSlug ? (
                   <button
                     type="button"
                     onClick={() => handleSponsor(activity)}
-                    className="focus-ring flex-1 rounded-xl bg-saffron px-4 py-2.5 text-center text-xs font-bold text-white transition hover:bg-saffron-dark shadow-xs"
+                    className="focus-ring w-full flex-1 rounded-xl bg-saffron px-2.5 py-2 sm:py-2.5 text-center text-[10px] sm:text-xs font-bold text-white transition hover:bg-saffron-dark shadow-xs"
                   >
-                    Sponsor This (₹{activity.sponsorAmount})
+                    Sponsor (₹{activity.sponsorAmount})
                   </button>
                 ) : (
                   <Link
                     href="/get-involved?interest=Teaching#join"
-                    className="focus-ring flex-1 rounded-xl bg-teal-900 px-4 py-2.5 text-center text-xs font-bold text-white transition hover:bg-teal-950 shadow-xs"
+                    className="focus-ring w-full flex-1 rounded-xl bg-teal-900 px-2.5 py-2 sm:py-2.5 text-center text-[10px] sm:text-xs font-bold text-white transition hover:bg-teal-950 shadow-xs"
                   >
-                    Volunteer for Drive
+                    Volunteer
                   </Link>
                 )}
                 <Link
                   href="/contact"
-                  className="focus-ring rounded-xl border border-teal-900/15 bg-white px-3.5 py-2.5 text-center text-xs font-bold text-teal-900 transition hover:bg-cream"
+                  className="hidden sm:inline-block focus-ring rounded-xl border border-teal-900/15 bg-white px-3 py-2 sm:py-2.5 text-center text-[10px] sm:text-xs font-bold text-teal-900 transition hover:bg-cream"
                 >
                   Inquire
                 </Link>

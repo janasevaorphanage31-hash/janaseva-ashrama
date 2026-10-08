@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useCart } from "./CartProvider";
@@ -29,6 +30,65 @@ const OCCASION_CHOICES = [
   "Festival / Celebration",
   "Tribute",
 ];
+
+const POPULAR_QUICK_ITEMS = [
+  {
+    slug: "meal",
+    name: "Sponsor a Warm Meal (Annadana)",
+    desc: "Fresh hot lunch or dinner for 1 child with rice, dal, and vegetables",
+    unitPrice: 100,
+    image: "/media/food.jpg",
+    icon: "🍲",
+    badge: "Most Popular",
+  },
+  {
+    slug: "fruits",
+    name: "Fresh Fruit & Milk Nutrition",
+    desc: "Apples, bananas, and milk providing essential vitamins and minerals",
+    unitPrice: 150,
+    image: "/media/fruits.jpg",
+    icon: "🍎",
+    badge: "Daily Health",
+  },
+  {
+    slug: "school-kit",
+    name: "Complete School & Vidya Kit",
+    desc: "Sturdy school backpack, full set of notebooks, stationery & geometry box",
+    unitPrice: 250,
+    image: "/media/school-kit.jpg",
+    icon: "🎒",
+    badge: "Education",
+  },
+  {
+    slug: "health",
+    name: "Medical Care & Pediatric Checkup",
+    desc: "Doctor consultation, essential medicines, and routine pediatric screening",
+    unitPrice: 500,
+    image: "/media/health.jpg",
+    icon: "🩺",
+    badge: "Healthcare",
+  },
+  {
+    slug: "uniform",
+    name: "New School Uniform & Footwear",
+    desc: "Complete tailored school uniform, sturdy shoes, and sports wear",
+    unitPrice: 600,
+    image: "/media/learning.jpg",
+    icon: "👕",
+    badge: "Dignity",
+  },
+  {
+    slug: "birthday-feast",
+    name: "Celebrate Special Day Feast",
+    desc: "Festive sweet feast, dessert, and celebration meal for 48 children",
+    unitPrice: 1500,
+    image: "/media/meals.jpg",
+    icon: "🎂",
+    badge: "Celebration",
+  },
+];
+
+const PRESET_CUSTOM_AMOUNTS = [250, 500, 1000, 2500, 5000];
 
 declare global {
   interface Window {
@@ -71,6 +131,8 @@ export function CheckoutClient() {
   const [demoNote, setDemoNote] = useState(false);
   const [validationModalOpen, setValidationModalOpen] = useState(false);
   const [validationModalMessage, setValidationModalMessage] = useState("");
+  const [showAddDrawer, setShowAddDrawer] = useState(false);
+  const [customInputValue, setCustomInputValue] = useState("");
   const attempt = useRef<{ sig: string; key: string } | null>(null);
 
   // Check URL params for pre-set occasion (e.g. from Make a Day Matter)
@@ -86,20 +148,10 @@ export function CheckoutClient() {
   }, [search]);
 
   if (!cart.hydrated) {
-    return <div className="px-5 py-16 text-center text-teal-900/60">Loading your impact…</div>;
-  }
-
-  if (cart.total === 0) {
     return (
-      <div className="mx-auto max-w-md px-5 py-16 text-center">
-        <p className="font-display text-2xl font-bold text-teal-900">Your impact basket is empty</p>
-        <p className="mt-2 text-teal-950/65">Choose an impact area or give your own amount to continue.</p>
-        <Link
-          href="/impact"
-          className="mt-5 inline-block rounded-xl bg-saffron px-7 py-3.5 text-sm font-bold text-white shadow-md hover:bg-saffron-dark transition"
-        >
-          BROWSE TODAY&apos;S NEEDS
-        </Link>
+      <div className="mx-auto max-w-md px-5 py-24 text-center">
+        <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-teal-900 border-t-transparent" />
+        <p className="mt-4 text-sm font-semibold text-teal-900/70">Preparing your impact basket…</p>
       </div>
     );
   }
@@ -107,6 +159,14 @@ export function CheckoutClient() {
   const finish = (publicId: string) => {
     cart.clear();
     router.push(`/receipt/${publicId}`);
+  };
+
+  const handleApplyCustomAmount = (amountNum: number) => {
+    if (amountNum >= 10 && amountNum <= 500000) {
+      cart.setCustom(amountNum);
+      setCustomInputValue("");
+      track("quick_custom_add", { amount: amountNum });
+    }
   };
 
   async function submit(e?: React.FormEvent) {
@@ -133,18 +193,16 @@ export function CheckoutClient() {
       return;
     }
 
-    // 3. Validate Phone (Digits only, exactly 10 digits for India or 10-15 digits)
-    if (form.phone.trim()) {
-      const phoneCheck = validatePhone(form.phone, false, "Mobile phone number");
-      if (!phoneCheck.valid) {
-        setError(phoneCheck.error!);
-        setValidationModalMessage(phoneCheck.error!);
-        setValidationModalOpen(true);
-        return;
-      }
+    // 3. Validate Mobile Phone (REQUIRED: 10 digits for Indian standard)
+    const phoneCheck = validatePhone(form.phone, true, "Mobile phone number");
+    if (!phoneCheck.valid) {
+      setError(phoneCheck.error!);
+      setValidationModalMessage(phoneCheck.error!);
+      setValidationModalOpen(true);
+      return;
     }
 
-    // 4. Validate PAN (5 letters, 4 digits, 1 letter format)
+    // 4. Validate PAN (5 letters, 4 digits, 1 letter format if provided)
     if (form.pan.trim()) {
       const panCheck = validatePan(form.pan, false);
       if (!panCheck.valid) {
@@ -164,6 +222,15 @@ export function CheckoutClient() {
         setValidationModalOpen(true);
         return;
       }
+    }
+
+    // 6. Validate Consent
+    if (!updateConsent) {
+      const consentMsg = "Please confirm the receipt and updates acknowledgment to proceed.";
+      setError(consentMsg);
+      setValidationModalMessage(consentMsg);
+      setValidationModalOpen(true);
+      return;
     }
 
     setBusy(true);
@@ -229,7 +296,7 @@ export function CheckoutClient() {
         amount: data.amount * 100,
         currency: "INR",
         name: "Janaseva Ashrama",
-        description: dedicationEnabled ? `${dedication.occasion} Dedication` : "Impact contribution",
+        description: dedicationEnabled ? `${dedication.occasion} Dedication` : "Child Welfare Contribution",
         prefill: { name: form.name, email: form.email, contact: form.phone },
         theme: { color: "#06312f" },
         modal: {
@@ -274,20 +341,348 @@ export function CheckoutClient() {
     }
   }
 
-  return (
-    <form onSubmit={submit} className="mx-auto grid max-w-5xl gap-6 px-5 py-8 lg:grid-cols-[1fr_380px]" noValidate>
-      <div className="space-y-5">
-        {/* Donor Info Card */}
-        <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-teal-900/10">
-          <h2 className="font-display text-xl font-bold text-teal-900">Your details</h2>
-          <p className="mt-1 text-xs text-teal-950/60">
-            Used for your official tax receipt. Never shared or sold.
+  // ═════════════════════════════════════════════════════════════════════════
+  // ── EMPTY BASKET STATE: INTERACTIVE SELECTION HUB (NO DEAD ENDS!) ─────────
+  // ═════════════════════════════════════════════════════════════════════════
+  if (cart.total === 0) {
+    return (
+      <div className="mx-auto max-w-4xl px-4 py-8 sm:py-12">
+        {/* Psychological Reassurance Hero */}
+        <div className="rounded-3xl bg-gradient-to-br from-teal-950 via-teal-900 to-teal-950 p-6 sm:p-8 text-white shadow-xl text-center">
+          <span className="inline-block rounded-full bg-gold/20 px-3 py-1 text-xs font-black uppercase tracking-widest text-gold mb-3">
+            ✨ Step 1: Select Your Impact Area
+          </span>
+          <h1 className="font-display text-2xl sm:text-3xl md:text-4xl font-bold leading-tight">
+            Choose What You Would Like to Provide Today
+          </h1>
+          <p className="mx-auto mt-2 max-w-2xl text-xs sm:text-sm text-white/80 leading-relaxed">
+            Every contribution directly feeds, shelters, and educates orphaned and destitute children. Select a preset daily need below or enter your own custom amount.
           </p>
 
-          <div className="mt-4 space-y-3.5">
+          <div className="mt-5 flex flex-wrap items-center justify-center gap-3 text-[11px] sm:text-xs text-gold/90 font-semibold">
+            <span className="rounded-lg bg-white/10 px-2.5 py-1">✓ Form 10AC 80G Tax Exemption (50% Deduction)</span>
+            <span className="rounded-lg bg-white/10 px-2.5 py-1">✓ 100% Direct Child Allocation</span>
+            <span className="rounded-lg bg-white/10 px-2.5 py-1">✓ Instant WhatsApp 80G Receipt</span>
+          </div>
+        </div>
+
+        {/* 6 Popular Impact Selection Cards (2 in a row on mobile!) */}
+        <div className="mt-8">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-display text-lg sm:text-xl font-bold text-teal-950">
+              Verified Daily Needs &amp; Programs
+            </h2>
+            <span className="text-xs font-bold text-teal-900/60">Tap to add</span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3">
+            {POPULAR_QUICK_ITEMS.map((item) => {
+              const currentQty = cart.qty[item.slug] || 0;
+              return (
+                <div
+                  key={item.slug}
+                  className="group flex flex-col justify-between rounded-2xl bg-white p-3 sm:p-4 border border-teal-900/10 shadow-xs transition hover:border-teal-900/30 hover:shadow-md"
+                >
+                  <div>
+                    <div className="relative h-28 sm:h-36 w-full rounded-xl bg-teal-900/10 overflow-hidden mb-2.5">
+                      <Image
+                        src={item.image}
+                        alt={item.name}
+                        fill
+                        className="object-cover transition duration-300 group-hover:scale-105"
+                        sizes="(max-width: 640px) 50vw, 33vw"
+                      />
+                      <span className="absolute top-2 left-2 rounded-md bg-teal-950/85 backdrop-blur-xs px-2 py-0.5 text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-gold shadow-xs">
+                        {item.badge}
+                      </span>
+                    </div>
+
+                    <div className="flex items-baseline justify-between gap-1">
+                      <h3 className="font-display text-xs sm:text-sm font-bold text-teal-950 line-clamp-2 leading-snug">
+                        {item.name}
+                      </h3>
+                    </div>
+                    <p className="mt-1 text-[10px] sm:text-xs text-teal-950/70 line-clamp-2">
+                      {item.desc}
+                    </p>
+                  </div>
+
+                  <div className="mt-3 pt-2.5 border-t border-teal-900/10 flex items-center justify-between gap-1.5">
+                    <span className="font-display font-bold text-xs sm:text-base text-teal-950">
+                      {formatINR(item.unitPrice)}
+                    </span>
+
+                    {currentQty > 0 ? (
+                      <div className="flex items-center gap-1.5 rounded-xl bg-teal-900 text-white px-2 py-1">
+                        <button
+                          type="button"
+                          onClick={() => cart.setQty(item.slug, currentQty - 1)}
+                          className="h-5 w-5 rounded bg-white/20 text-xs font-bold hover:bg-white/30"
+                        >
+                          −
+                        </button>
+                        <span className="text-xs font-bold font-mono px-1">{currentQty}</span>
+                        <button
+                          type="button"
+                          onClick={() => cart.setQty(item.slug, currentQty + 1)}
+                          className="h-5 w-5 rounded bg-white/20 text-xs font-bold hover:bg-white/30"
+                        >
+                          +
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          cart.setQty(item.slug, 1);
+                          track("quick_item_add", { item: item.slug });
+                        }}
+                        className="focus-ring rounded-xl bg-saffron px-3 py-1.5 text-[11px] sm:text-xs font-bold text-white transition hover:bg-saffron-dark shadow-xs"
+                      >
+                        + Add
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Or Give Any Custom Amount (Direct Input) */}
+        <div className="mt-8 rounded-3xl bg-white p-5 sm:p-7 border border-teal-900/10 shadow-xs">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
             <div>
-              <label className="block text-sm font-semibold text-teal-900">
-                Full name *
+              <h3 className="font-display text-base sm:text-lg font-bold text-teal-950">
+                Or Give Your Own Custom Amount
+              </h3>
+              <p className="text-xs text-teal-950/65">
+                Every single rupee supports daily vegetables, milk, gas, and medicines.
+              </p>
+            </div>
+            <span className="text-xs font-bold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-lg w-fit">
+              80G Tax Deductible
+            </span>
+          </div>
+
+          {/* Quick Preset Buttons */}
+          <div className="flex flex-wrap gap-2 mb-4">
+            {PRESET_CUSTOM_AMOUNTS.map((amt) => (
+              <button
+                key={amt}
+                type="button"
+                onClick={() => handleApplyCustomAmount(amt)}
+                className="focus-ring flex-1 min-w-[70px] rounded-xl border-2 border-teal-900/15 bg-cream px-3 py-2 text-xs font-bold text-teal-950 transition hover:border-teal-900 hover:bg-teal-900 hover:text-white"
+              >
+                ₹{amt}
+              </button>
+            ))}
+          </div>
+
+          {/* Custom Input */}
+          <div className="flex flex-col sm:flex-row gap-2">
+            <div className="relative flex-1">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-base font-bold text-teal-900/60 font-mono">
+                ₹
+              </span>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={customInputValue}
+                onChange={(e) => setCustomInputValue(sanitizeNumeric(e.target.value))}
+                placeholder="Enter custom amount (e.g. 500, 1000, 5000)"
+                className="w-full rounded-2xl border-2 border-teal-900/20 bg-cream py-3 pl-8 pr-4 text-base font-mono font-bold text-teal-950 outline-none focus:border-teal-900"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => handleApplyCustomAmount(Number(customInputValue))}
+              disabled={!customInputValue || Number(customInputValue) < 10}
+              className="rounded-2xl bg-saffron px-6 py-3 text-sm font-bold text-white transition hover:bg-saffron-dark disabled:opacity-50 shadow-sm shrink-0"
+            >
+              Continue to Give &rarr;
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ═════════════════════════════════════════════════════════════════════════
+  // ── ACTIVE BASKET STATE: FULL CONTROL, ALTERING & VERIFIED CHECKOUT ──────
+  // ═════════════════════════════════════════════════════════════════════════
+  return (
+    <form onSubmit={submit} className="mx-auto grid max-w-5xl gap-6 px-4 sm:px-6 py-6 lg:grid-cols-[1fr_390px]" noValidate>
+      <div className="space-y-6">
+
+        {/* ── CARD 1: REVIEW & ALTER YOUR SELECTIONS (Donor Empowerment) ── */}
+        <div className="rounded-3xl bg-white p-5 sm:p-6 shadow-sm ring-1 ring-teal-900/10">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-teal-900/10 pb-3">
+            <div>
+              <h2 className="font-display text-lg sm:text-xl font-bold text-teal-950 flex items-center gap-2">
+                <span>🛒 Your Impact Basket</span>
+                <span className="rounded-full bg-teal-100 px-2 py-0.5 text-xs font-bold text-teal-900">
+                  {cart.count} {cart.count === 1 ? "item" : "items"}
+                </span>
+              </h2>
+              <p className="text-xs text-teal-950/65 mt-0.5">
+                Adjust quantities, add extra items, or remove anything anytime.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowAddDrawer(!showAddDrawer)}
+                className="text-xs font-bold text-teal-900 bg-cream hover:bg-sand border border-teal-900/15 rounded-xl px-3 py-1.5 transition"
+              >
+                {showAddDrawer ? "Close Items ✕" : "+ Add More Items"}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (confirm("Are you sure you want to clear your entire impact basket?")) {
+                    cart.clear();
+                  }
+                }}
+                className="text-xs font-bold text-red-700/80 hover:text-red-800 rounded-xl px-2.5 py-1.5 transition"
+              >
+                Clear All 🗑
+              </button>
+            </div>
+          </div>
+
+          {/* Quick Add In-Place Selector (When expanded) */}
+          {showAddDrawer && (
+            <div className="mt-4 p-4 rounded-2xl bg-cream/70 border border-teal-900/15 animate-in fade-in">
+              <p className="text-xs font-bold text-teal-900 uppercase tracking-wider mb-2.5">
+                Quick Add More Impact Items:
+              </p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {POPULAR_QUICK_ITEMS.map((item) => (
+                  <button
+                    key={item.slug}
+                    type="button"
+                    onClick={() => {
+                      cart.setQty(item.slug, (cart.qty[item.slug] || 0) + 1);
+                      track("drawer_add", { item: item.slug });
+                    }}
+                    className="flex flex-col text-left p-2.5 rounded-xl bg-white border border-teal-900/10 hover:border-teal-900/30 transition shadow-xs"
+                  >
+                    <span className="text-xs font-bold text-teal-950 truncate">{item.icon} {item.name}</span>
+                    <span className="text-[11px] font-mono font-bold text-saffron-dark mt-1">
+                      +{formatINR(item.unitPrice)}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Line items with Live Stepper & Remover */}
+          <div className="mt-4 space-y-3">
+            {cart.lines.map((l) => (
+              <div
+                key={l.item.slug}
+                className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl bg-cream/50 p-3.5 border border-teal-900/10 transition"
+              >
+                <div className="min-w-0 flex-1">
+                  <h3 className="font-bold text-sm text-teal-950 leading-snug">
+                    {l.item.name}
+                  </h3>
+                  <p className="text-xs text-teal-950/60 font-mono mt-0.5">
+                    {formatINR(l.item.unitPrice)} each
+                  </p>
+                </div>
+
+                {/* Alter Quantity & Subtotal Stepper */}
+                <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0">
+                  <div className="flex items-center gap-1.5 rounded-xl bg-white p-1 border border-teal-900/15 shadow-2xs">
+                    <button
+                      type="button"
+                      onClick={() => cart.setQty(l.item.slug, l.qty - 1)}
+                      aria-label="Decrease quantity"
+                      className="h-7 w-7 rounded-lg bg-cream hover:bg-sand text-teal-950 font-bold flex items-center justify-center transition active:scale-95"
+                    >
+                      −
+                    </button>
+                    <span className="w-6 text-center font-bold font-mono text-xs text-teal-950">
+                      {l.qty}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => cart.setQty(l.item.slug, l.qty + 1)}
+                      aria-label="Increase quantity"
+                      className="h-7 w-7 rounded-lg bg-teal-900 hover:bg-teal-950 text-white font-bold flex items-center justify-center transition active:scale-95"
+                    >
+                      +
+                    </button>
+                  </div>
+
+                  <span className="w-20 text-right font-display font-bold text-sm sm:text-base text-teal-950">
+                    {formatINR(l.subtotal)}
+                  </span>
+
+                  <button
+                    type="button"
+                    onClick={() => cart.setQty(l.item.slug, 0)}
+                    aria-label={`Remove ${l.item.name}`}
+                    className="p-1.5 rounded-lg text-red-700/70 hover:text-red-800 hover:bg-red-50 transition"
+                    title="Remove item"
+                  >
+                    🗑
+                  </button>
+                </div>
+              </div>
+            ))}
+
+            {/* Custom contribution item (if added) */}
+            {cart.custom > 0 && (
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl bg-gold/15 p-3.5 border border-gold/30">
+                <div className="min-w-0 flex-1">
+                  <h3 className="font-bold text-sm text-teal-950">
+                    Custom Contribution
+                  </h3>
+                  <p className="text-xs text-teal-950/70">
+                    General Ashrama food &amp; education allocation
+                  </p>
+                </div>
+                <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0">
+                  <span className="font-display font-bold text-base text-teal-950">
+                    {formatINR(cart.custom)}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => cart.setCustom(0)}
+                    className="p-1.5 rounded-lg text-red-700/70 hover:text-red-800 hover:bg-red-50 transition"
+                    title="Remove custom contribution"
+                  >
+                    🗑
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ── CARD 2: DONOR CONTACT & VERIFIED RECEIPT DETAILS ── */}
+        <div className="rounded-3xl bg-white p-5 sm:p-6 shadow-sm ring-1 ring-teal-900/10">
+          <div className="flex items-center justify-between">
+            <h2 className="font-display text-lg sm:text-xl font-bold text-teal-950">
+              Donor Information
+            </h2>
+            <span className="text-xs font-bold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-lg">
+              Official 80G Receipt
+            </span>
+          </div>
+          <p className="mt-1 text-xs text-teal-950/65">
+            Your verified Form 10AC tax exemption receipt and impact photos will be generated instantly.
+          </p>
+
+          <div className="mt-5 space-y-4">
+            {/* Full Name */}
+            <div>
+              <label className="block text-xs sm:text-sm font-bold text-teal-950">
+                Full Name *
                 <input
                   className={`${inputCls} mt-1`}
                   autoComplete="name"
@@ -299,58 +694,72 @@ export function CheckoutClient() {
               </label>
               {form.name.trim().length >= 2 && NAME_REGEX.test(form.name.trim()) && (
                 <p className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-emerald-700">
-                  <span className="font-bold">✓</span> Printed on your 80G tax certificate
+                  <span className="font-bold">✓</span> Printed on your official 80G tax certificate
                 </p>
               )}
             </div>
 
+            {/* Email Address */}
             <div>
-              <label className="block text-sm font-semibold text-teal-900">
-                Email address *
+              <label className="block text-xs sm:text-sm font-bold text-teal-950">
+                Email Address *
                 <input
-                  className={`${inputCls} mt-1`}
                   type="email"
+                  className={`${inputCls} mt-1`}
                   autoComplete="email"
-                  inputMode="email"
                   value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  onChange={(e) => setForm({ ...form, email: e.target.value.trim() })}
                   placeholder="name@example.com"
                   required
                 />
               </label>
-              {EMAIL_REGEX.test(form.email.trim()) && (
+              {EMAIL_REGEX.test(form.email) && (
                 <p className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-emerald-700">
                   <span className="font-bold">✓</span> Instant 80G PDF receipt will be sent here
                 </p>
               )}
             </div>
 
+            {/* Mobile / WhatsApp Number (MANDATORY for Razorpay & WhatsApp Receipt) */}
             <div>
-              <label className="block text-sm font-semibold text-teal-900">
-                WhatsApp / Mobile Phone{" "}
-                <span className="font-normal text-teal-900/50">(optional for updates)</span>
-                <input
-                  className={`${inputCls} mt-1`}
-                  type="tel"
-                  autoComplete="tel"
-                  inputMode="numeric"
-                  maxLength={15}
-                  placeholder="10-digit number e.g. 9876543210"
-                  value={form.phone}
-                  onChange={(e) => setForm({ ...form, phone: sanitizeNumeric(e.target.value).slice(0, 15) })}
-                />
+              <label className="block text-xs sm:text-sm font-bold text-teal-950">
+                Mobile / WhatsApp Phone Number *
+                <span className="block font-normal text-xs text-teal-950/65 mt-0.5">
+                  Required for Razorpay gateway verification &amp; instant WhatsApp 80G receipt
+                </span>
+                <div className="relative mt-1">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-bold text-teal-900/60 font-mono">
+                    +91
+                  </span>
+                  <input
+                    type="tel"
+                    inputMode="numeric"
+                    maxLength={10}
+                    className={`${inputCls} pl-12 font-mono font-medium`}
+                    autoComplete="tel"
+                    value={form.phone}
+                    onChange={(e) => setForm({ ...form, phone: sanitizeNumeric(e.target.value).slice(0, 10) })}
+                    placeholder="9876543210"
+                    required
+                  />
+                </div>
               </label>
-              {form.phone.length === 10 && /^[6-9]\d{9}$/.test(form.phone) && (
+              {form.phone.length === 10 && /^[6-9]\d{9}$/.test(form.phone) ? (
                 <p className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-emerald-700">
-                  <span className="font-bold">✓</span> 10-digit mobile confirmed for photo & video updates
+                  <span className="font-bold">✓</span> 10-digit mobile confirmed for instant WhatsApp 80G receipt &amp; photos
                 </p>
-              )}
+              ) : form.phone.length > 0 && form.phone.length < 10 ? (
+                <p className="mt-1 text-[11px] text-amber-800">
+                  {10 - form.phone.length} more digits needed (10-digit Indian mobile number)
+                </p>
+              ) : null}
             </div>
 
+            {/* PAN Number (Optional) */}
             <div>
-              <label className="block text-sm font-semibold text-teal-900">
+              <label className="block text-xs sm:text-sm font-bold text-teal-950">
                 PAN Number{" "}
-                <span className="font-normal text-teal-900/50">(optional, for official 80G tax receipt)</span>
+                <span className="font-normal text-teal-950/60">(Optional, for Income Tax 80G rebate)</span>
                 <input
                   className={`${inputCls} mt-1 uppercase font-mono`}
                   maxLength={10}
@@ -371,10 +780,10 @@ export function CheckoutClient() {
             </div>
 
             {/* Anonymous preference */}
-            <label className="flex items-start gap-3 rounded-2xl bg-cream p-3 text-sm text-teal-900 cursor-pointer">
+            <label className="flex items-start gap-3 rounded-2xl bg-cream p-3 text-xs sm:text-sm text-teal-950 cursor-pointer">
               <input
                 type="checkbox"
-                className="mt-1 h-5 w-5 rounded accent-teal-800"
+                className="mt-0.5 h-4 w-4 rounded accent-teal-800"
                 checked={form.anonymous}
                 onChange={(e) => setForm({ ...form, anonymous: e.target.checked })}
               />
@@ -385,32 +794,32 @@ export function CheckoutClient() {
           </div>
         </div>
 
-        {/* Occasion / Dedication Block (GiveA-Style Feature) */}
-        <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-teal-900/10">
+        {/* ── CARD 3: DEDICATE THIS IMPACT (Optional) ── */}
+        <div className="rounded-3xl bg-white p-5 sm:p-6 shadow-sm ring-1 ring-teal-900/10">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="font-display text-xl font-bold text-teal-900">
-                Dedicate this impact (Optional)
+              <h2 className="font-display text-lg sm:text-xl font-bold text-teal-950">
+                Dedicate this Impact (Optional)
               </h2>
               <p className="text-xs text-teal-950/60 mt-0.5">
-                Celebrate a birthday, anniversary, or dedicate this in memory of someone dear.
+                Celebrate a birthday, anniversary, or dedicate in loving memory of family.
               </p>
             </div>
             <button
               type="button"
               onClick={() => setDedicationEnabled(!dedicationEnabled)}
-              className={`rounded-xl px-4 py-1.5 text-xs font-bold transition ${
+              className={`rounded-xl px-3.5 py-1.5 text-xs font-bold transition ${
                 dedicationEnabled
                   ? "bg-saffron text-white"
-                  : "bg-cream text-teal-900 border border-teal-900/15"
+                  : "bg-cream text-teal-900 border border-teal-900/15 hover:bg-sand"
               }`}
             >
-              {dedicationEnabled ? "Dedication Active ✓" : "+ Add Dedication"}
+              {dedicationEnabled ? "Active ✓" : "+ Add"}
             </button>
           </div>
 
           {dedicationEnabled && (
-            <div className="mt-4 space-y-3 pt-3 border-t border-teal-900/10">
+            <div className="mt-4 space-y-3 pt-3 border-t border-teal-900/10 animate-in fade-in">
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-teal-900/70 mb-1.5">
                   Occasion Type
@@ -447,12 +856,12 @@ export function CheckoutClient() {
 
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-teal-900/70">
-                  Dedication Message (will appear on receipt & impact certificate)
+                  Dedication Message (appears on 80G certificate)
                 </label>
                 <textarea
                   rows={2}
                   className={`${inputCls} mt-1 text-sm`}
-                  placeholder="e.g. Wishing you boundless joy and health on your special day."
+                  placeholder="e.g. Wishing you boundless joy, good health and blessings on your special day."
                   value={dedication.message}
                   onChange={(e) => setDedication({ ...dedication, message: e.target.value })}
                 />
@@ -461,23 +870,20 @@ export function CheckoutClient() {
           )}
         </div>
 
-        {/* Delivery & Updates Consent (WhatsApp / Email) */}
-        <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-teal-900/10">
-          <h2 className="font-display text-lg font-bold text-teal-900">
-            Receipt & Impact Proof Delivery
+        {/* ── CARD 4: RECEIPT DELIVERY & MANDATORY CONSENT ── */}
+        <div className="rounded-3xl bg-white p-5 sm:p-6 shadow-sm ring-1 ring-teal-900/10">
+          <h2 className="font-display text-lg font-bold text-teal-950">
+            Receipt &amp; Impact Proof Delivery
           </h2>
-          <p className="mt-0.5 text-xs text-teal-950/60">
-            Where would you like to receive your verified receipt and genuine impact reports?
-          </p>
-          <p className="mt-1 text-[11px] text-emerald-800 font-semibold flex items-center gap-1">
-            <span>✓</span> Official 80G Tax Receipt (Form 10AC) &amp; meal proof video sent to your WhatsApp &amp; Email
+          <p className="mt-0.5 text-xs text-teal-950/65">
+            Choose where to receive your verified Form 10AC tax receipt and photo updates:
           </p>
 
           <div className="mt-3 grid grid-cols-3 gap-2">
             {[
-              { id: "email", label: "Email only" },
+              { id: "both", label: "WhatsApp & Email" },
               { id: "whatsapp", label: "WhatsApp" },
-              { id: "both", label: "Both" },
+              { id: "email", label: "Email only" },
             ].map((p) => (
               <button
                 key={p.id}
@@ -494,20 +900,22 @@ export function CheckoutClient() {
             ))}
           </div>
 
-          <label className="mt-3 flex items-start gap-2.5 text-xs text-teal-900/80 cursor-pointer">
+          {/* Mandatory Transparency & Receipt Consent Checkbox */}
+          <label className="mt-4 flex items-start gap-2.5 text-xs text-teal-950/80 cursor-pointer p-3 rounded-xl bg-cream border border-teal-900/10">
             <input
               type="checkbox"
               className="mt-0.5 h-4 w-4 rounded accent-teal-800"
               checked={updateConsent}
               onChange={(e) => setUpdateConsent(e.target.checked)}
+              required
             />
-            <span>
-              I wish to receive transparent updates when Janaseva Ashrama publishes verified outcome photos and reports. (Zero marketing spam).
+            <span className="leading-relaxed">
+              <strong>I confirm my details for official Form 10AC 80G tax receipt generation *</strong> and agree to receive transparent child outcome reports. (Zero marketing spam).
             </span>
           </label>
         </div>
 
-        {/* Error / Failure Banner with Graceful Recovery */}
+        {/* Failure / Error Alert with Reassurance */}
         {error && (
           <div role="alert" className="rounded-3xl bg-red-50 p-5 ring-1 ring-red-200">
             <div className="flex items-start gap-3">
@@ -516,14 +924,9 @@ export function CheckoutClient() {
               </svg>
               <div>
                 <h3 className="font-bold text-sm text-red-900">
-                  {paymentFailed ? "Payment Incomplete - No Amount Deducted" : "Attention"}
+                  {paymentFailed ? "Payment Incomplete - No Amount Deducted" : "Please Check"}
                 </h3>
                 <p className="mt-1 text-xs text-red-800 leading-relaxed">{error}</p>
-                {paymentFailed && (
-                  <p className="mt-2 text-xs text-red-700">
-                    If an amount was debited by your UPI provider, it will be automatically reversed by your bank within 24-48 hours.
-                  </p>
-                )}
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                   <button
                     type="button"
@@ -533,17 +936,11 @@ export function CheckoutClient() {
                   >
                     Retry Payment
                   </button>
-                  <Link
-                    href="/impact"
-                    className="rounded-xl border border-red-300 px-4 py-1.5 text-xs font-bold text-red-800 hover:bg-red-100"
-                  >
-                    Review Items
-                  </Link>
                   <a
                     href="tel:9980359595"
                     className="text-xs font-bold text-red-900 underline ml-2"
                   >
-                    Help: +91 9980359595
+                    Direct Helpline: +91 9980359595
                   </a>
                 </div>
               </div>
@@ -552,87 +949,118 @@ export function CheckoutClient() {
         )}
       </div>
 
-      {/* Sticky Right Column Summary */}
-      <aside className="h-fit rounded-3xl bg-white p-5 shadow-sm ring-1 ring-teal-900/10 lg:sticky lg:top-20">
-        <h2 className="font-display text-xl font-bold text-teal-900">Your Impact Summary</h2>
+      {/* ── STICKY RIGHT COLUMN: ORDER SUMMARY & TRUST GUARANTEES ── */}
+      <aside className="h-fit rounded-3xl bg-white p-5 sm:p-6 shadow-sm ring-1 ring-teal-900/10 lg:sticky lg:top-20 space-y-4">
+        <h2 className="font-display text-xl font-bold text-teal-950">
+          Giving Summary
+        </h2>
 
         {cart.campaign && (
-          <p className="mt-2 rounded-xl bg-saffron/10 px-3 py-2 text-xs font-semibold text-saffron-dark">
+          <p className="rounded-xl bg-saffron/10 px-3 py-2 text-xs font-semibold text-saffron-dark">
             Supporting: {cart.campaign.title}
           </p>
         )}
 
         {dedicationEnabled && dedication.name && (
-          <div className="mt-2 rounded-xl bg-teal-50 px-3 py-2 text-xs text-teal-900 border border-teal-900/10">
+          <div className="rounded-xl bg-teal-50 px-3 py-2 text-xs text-teal-900 border border-teal-900/10">
             <span className="font-bold text-saffron-dark">{dedication.occasion}:</span> {dedication.name}
           </div>
         )}
 
-        <ul className="mt-3 space-y-2 font-mono text-sm">
+        {/* Itemized List with Instant Controls */}
+        <div className="divide-y divide-teal-900/10 text-xs">
           {cart.lines.map((l) => (
-            <li key={l.item.slug} className="flex justify-between gap-3">
-              <span>{l.item.name.replace(" Support", "")} × {l.qty}</span>
-              <span>{formatINR(l.subtotal)}</span>
-            </li>
+            <div key={l.item.slug} className="py-2.5 flex items-center justify-between gap-2">
+              <div className="min-w-0 flex-1">
+                <p className="font-bold text-teal-950 truncate">{l.item.name}</p>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="text-teal-950/60 font-mono">{formatINR(l.item.unitPrice)}</span>
+                  <span className="text-teal-900 font-bold">× {l.qty}</span>
+                  <button
+                    type="button"
+                    onClick={() => cart.setQty(l.item.slug, 0)}
+                    className="text-[11px] text-red-700/60 hover:text-red-800 underline ml-1"
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+              <span className="font-display font-bold text-sm text-teal-950 shrink-0">
+                {formatINR(l.subtotal)}
+              </span>
+            </div>
           ))}
-          {cart.custom > 0 && (
-            <li className="flex justify-between">
-              <span>Your own contribution</span>
-              <span>{formatINR(cart.custom)}</span>
-            </li>
-          )}
-        </ul>
 
-        <div className="mt-4 flex items-baseline justify-between border-t border-dashed border-teal-900/20 pt-3">
-          <span className="text-xs font-bold uppercase tracking-wider text-teal-900/60">Total</span>
-          <span className="font-display text-3xl font-bold text-teal-900">{formatINR(cart.total)}</span>
+          {cart.custom > 0 && (
+            <div className="py-2.5 flex items-center justify-between gap-2">
+              <div>
+                <p className="font-bold text-teal-950">Custom Contribution</p>
+                <button
+                  type="button"
+                  onClick={() => cart.setCustom(0)}
+                  className="text-[11px] text-red-700/60 hover:text-red-800 underline"
+                >
+                  Remove
+                </button>
+              </div>
+              <span className="font-display font-bold text-sm text-teal-950 shrink-0">
+                {formatINR(cart.custom)}
+              </span>
+            </div>
+          )}
         </div>
 
+        {/* Total calculation */}
+        <div className="border-t border-dashed border-teal-900/20 pt-3 flex items-baseline justify-between">
+          <div>
+            <span className="text-xs font-bold uppercase tracking-wider text-teal-900/60">Total Contribution</span>
+            <p className="text-[11px] text-emerald-800 font-semibold">✓ 100% Tax Deductible (80G)</p>
+          </div>
+          <span className="font-display text-2xl sm:text-3xl font-bold text-teal-950">
+            {formatINR(cart.total)}
+          </span>
+        </div>
+
+        {/* Primary Checkout Button */}
         <button
           disabled={busy}
           type="submit"
-          className="focus-ring mt-4 w-full rounded-xl bg-saffron px-6 py-4 text-sm font-bold tracking-wide text-white shadow-lg transition hover:bg-saffron-dark disabled:opacity-60"
+          className="focus-ring w-full rounded-2xl bg-saffron px-6 py-4 text-sm font-bold tracking-wide text-white shadow-lg transition hover:bg-saffron-dark disabled:opacity-60 active:scale-95"
         >
-          {busy ? "Processing secure payment…" : `PAY ${formatINR(cart.total)} SECURELY`}
+          {busy ? "Processing Secure Payment…" : `GIVE ${formatINR(cart.total)} SECURELY`}
         </button>
 
-        <Link
-          href="/impact"
-          className="mt-3 block text-center text-xs font-semibold text-teal-800 underline"
-        >
-          ← Edit impact basket
-        </Link>
-
-        <div className="mt-4 space-y-2 border-t border-teal-900/10 pt-3 text-xs text-teal-950/60 text-center">
-          <p className="flex items-center justify-center gap-1.5 font-semibold text-teal-900">
-            <svg className="h-4 w-4 text-teal-800" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+        {/* Trust & Psychological Reassurances */}
+        <div className="rounded-2xl bg-cream p-3.5 border border-teal-900/10 space-y-2 text-[11px] text-teal-950/70">
+          <p className="flex items-center gap-1.5 font-bold text-teal-950">
+            <svg className="h-4 w-4 text-emerald-700 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
             </svg>
-            <span>Instant UPI (GPay, PhonePe, Paytm, BHIM) &amp; Cards</span>
+            <span>Bank-Grade 256-Bit SSL Encryption</span>
           </p>
-          <p className="font-semibold text-emerald-800 text-[11px]">
-            ✓ Form 10AC Provisional 80G Tax Deductible (URN: AABTJ7431MF20231)
+          <p className="leading-relaxed">
+            Powered by <strong>Razorpay</strong>. Instant UPI (Google Pay, PhonePe, Paytm, BHIM), NetBanking &amp; Cards.
           </p>
-          <p>
-            Zero platform commission deducted. Amounts are verified directly on our server.
+          <p className="font-semibold text-emerald-900 pt-1 border-t border-teal-900/10">
+            ✓ Form 10AC Provisional 80G Approval (AY 2024-25 to 2026-27)
           </p>
         </div>
 
         {demoNote && (
-          <p className="mt-2 text-xs font-semibold text-saffron-dark text-center">
+          <p className="text-xs font-semibold text-saffron-dark text-center">
             Demo environment: Simulated payment verification.
           </p>
         )}
       </aside>
 
-      {/* Mobile Sticky Bar */}
+      {/* Mobile Sticky Payment Bar */}
       <div className="fixed inset-x-3 bottom-[calc(4.8rem+env(safe-area-inset-bottom))] z-30 rounded-2xl bg-white/95 p-2.5 shadow-2xl ring-1 ring-teal-900/10 backdrop-blur lg:hidden no-print">
         <button
           disabled={busy}
           type="submit"
           className="focus-ring flex w-full items-center justify-between rounded-xl bg-saffron px-5 py-3.5 text-sm font-bold text-white disabled:opacity-60 shadow-md"
         >
-          <span>{busy ? "Please wait…" : "PAY SECURELY"}</span>
+          <span>{busy ? "Please wait…" : "GIVE SECURELY"}</span>
           <span>{formatINR(cart.total)}</span>
         </button>
       </div>
