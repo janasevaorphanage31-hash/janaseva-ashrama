@@ -14,6 +14,7 @@ import {
   sanitizePan,
 } from "@/lib/validation";
 import { ValidationErrorModal } from "@/components/ValidationErrorModal";
+import { BusinessPlanModal } from "@/components/BusinessPlanModal";
 
 type Tab = "analytics" | "crm" | "celebrations" | "content" | "media" | "catalogs" | "documents" | "community" | "team";
 
@@ -56,6 +57,18 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
   const [notification, setNotification] = useState("");
   const [valModalOpen, setValModalOpen] = useState(false);
   const [valModalMsg, setValModalMsg] = useState("");
+
+  // Business Plan & Strategy State
+  const [businessPlanOpen, setBusinessPlanOpen] = useState(false);
+
+  // Today Daily Moments & Photo Upload State
+  const [dailyPhotoModalOpen, setDailyPhotoModalOpen] = useState(false);
+  const [dailyPhotoFile, setDailyPhotoFile] = useState<File | null>(null);
+  const [dailyPhotoPreview, setDailyPhotoPreview] = useState("");
+  const [dailyPhotoTitle, setDailyPhotoTitle] = useState("");
+  const [dailyPhotoBody, setDailyPhotoBody] = useState("");
+  const [dailyPhotoCategory, setDailyPhotoCategory] = useState("Kitchen & Annadana");
+  const [dailyPhotoUploading, setDailyPhotoUploading] = useState(false);
 
   // CRM state
   const [donations, setDonations] = useState<any[]>([]);
@@ -165,6 +178,54 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
       return null;
     } finally {
       setUploading(false);
+    }
+  }
+
+  // Handle publishing a new daily photo / moment for "Today at Janaseva"
+  async function handlePublishDailyPhoto(e: FormEvent) {
+    e.preventDefault();
+    if (!dailyPhotoTitle.trim()) {
+      setNotification("Please enter a title for today's moment.");
+      return;
+    }
+    setDailyPhotoUploading(true);
+    try {
+      let finalImageUrl = dailyPhotoPreview;
+
+      if (dailyPhotoFile) {
+        const uploaded = await handleFileUpload(dailyPhotoFile, "images");
+        if (uploaded) {
+          finalImageUrl = uploaded;
+        }
+      }
+
+      const res = await fetch("/api/admin/today-updates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: dailyPhotoTitle.trim(),
+          body: dailyPhotoBody.trim() || dailyPhotoTitle.trim(),
+          category: dailyPhotoCategory,
+          imageUrl: finalImageUrl || null,
+          status: "published",
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        setNotification("✨ Today's photo published live! It is now the #1 featured moment on the website.");
+        setDailyPhotoModalOpen(false);
+        setDailyPhotoFile(null);
+        setDailyPhotoPreview("");
+        setDailyPhotoTitle("");
+        setDailyPhotoBody("");
+      } else {
+        setNotification(data.error || "Failed to publish today update.");
+      }
+    } catch {
+      setNotification("Network error publishing today update.");
+    } finally {
+      setDailyPhotoUploading(false);
     }
   }
 
@@ -842,13 +903,29 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setDailyPhotoModalOpen(true)}
+              className="rounded-xl bg-saffron text-white px-3.5 py-2 text-xs font-bold hover:bg-saffron-dark transition flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95"
+            >
+              <span>📸</span>
+              <span>+ Post Today&apos;s Photo</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setBusinessPlanOpen(true)}
+              className="rounded-xl bg-gold/90 text-teal-950 px-3.5 py-2 text-xs font-bold hover:bg-gold transition flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95"
+            >
+              <span>📊</span>
+              <span>Strategy &amp; Business Plan</span>
+            </button>
             <Link
               href="/"
               target="_blank"
-              className="rounded-xl bg-white/10 px-3.5 py-2 text-xs font-bold text-white hover:bg-white/20 transition flex items-center gap-1.5"
+              className="rounded-xl bg-white/10 px-3 py-2 text-xs font-bold text-white hover:bg-white/20 transition flex items-center gap-1.5"
             >
-              <span>View Live Website</span>
+              <span>Live Site</span>
               <svg className="h-3.5 w-3.5 fill-current" viewBox="0 0 24 24">
                 <path d="M14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3m-2 16H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7z" />
               </svg>
@@ -861,7 +938,7 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
             >
               <button
                 type="submit"
-                className="rounded-xl bg-red-600/20 text-red-200 border border-red-500/30 px-3.5 py-2 text-xs font-bold hover:bg-red-600/30 transition"
+                className="rounded-xl bg-red-600/20 text-red-200 border border-red-500/30 px-3 py-2 text-xs font-bold hover:bg-red-600/30 transition"
               >
                 Sign Out
               </button>
@@ -3580,6 +3657,164 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
           </div>
         </div>
       )}
+
+      {/* ==================== TODAY DAILY PHOTO UPLOAD MODAL ==================== */}
+      {dailyPhotoModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-teal-950/70 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl ring-1 ring-teal-900/15">
+            <div className="flex items-center justify-between border-b border-teal-900/10 pb-4">
+              <div className="flex items-center gap-2.5">
+                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-saffron text-white text-xl">
+                  📸
+                </span>
+                <div>
+                  <h3 className="font-display text-lg font-bold text-teal-950">
+                    Post Today&apos;s Ashrama Photo &amp; Moment
+                  </h3>
+                  <p className="text-xs text-teal-900/60">
+                    Upload today&apos;s ground photo to immediately feature on the homepage.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDailyPhotoModalOpen(false)}
+                className="rounded-lg bg-cream px-2.5 py-1 text-xs font-bold text-teal-950 hover:bg-sand cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handlePublishDailyPhoto} className="mt-4 space-y-4">
+              {/* Photo Upload & Preview */}
+              <div>
+                <label className="block text-xs font-bold text-teal-900 mb-1.5">
+                  Select Photo (Camera or File) *
+                </label>
+                <div className="flex flex-col sm:flex-row items-center gap-3">
+                  <label className="focus-ring w-full sm:w-auto shrink-0 cursor-pointer rounded-xl bg-teal-900 px-4 py-2.5 text-xs font-bold text-white hover:bg-teal-950 transition flex items-center justify-center gap-2 shadow-xs">
+                    <span>📷 Pick Photo</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        setDailyPhotoFile(file);
+                        const reader = new FileReader();
+                        reader.onload = () => {
+                          setDailyPhotoPreview(reader.result as string);
+                        };
+                        reader.readAsDataURL(file);
+                      }}
+                      className="hidden"
+                    />
+                  </label>
+                  <span className="text-xs text-teal-900/60">or enter image path below</span>
+                </div>
+
+                {dailyPhotoPreview && (
+                  <div className="mt-3 relative aspect-[16/10] w-full rounded-2xl bg-teal-950/10 overflow-hidden border border-teal-900/15">
+                    <img
+                      src={dailyPhotoPreview}
+                      alt="Today preview"
+                      className="h-full w-full object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDailyPhotoFile(null);
+                        setDailyPhotoPreview("");
+                      }}
+                      className="absolute top-2 right-2 rounded-lg bg-black/60 px-2 py-1 text-[10px] font-bold text-white hover:bg-black/80 cursor-pointer"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                )}
+
+                {!dailyPhotoPreview && (
+                  <input
+                    value={dailyPhotoPreview}
+                    onChange={(e) => setDailyPhotoPreview(e.target.value)}
+                    placeholder="Image URL (e.g. /media/food.jpg or paste link)"
+                    className="mt-2 w-full rounded-xl border p-2.5 text-xs font-mono text-teal-900"
+                  />
+                )}
+              </div>
+
+              {/* Moment Title */}
+              <div>
+                <label className="block text-xs font-bold text-teal-900 mb-1">
+                  Moment Headline / Title *
+                </label>
+                <input
+                  required
+                  value={dailyPhotoTitle}
+                  onChange={(e) => setDailyPhotoTitle(e.target.value)}
+                  placeholder="e.g. Morning Hot Annadana Breakfast Cooked Fresh"
+                  className="w-full rounded-xl border p-2.5 text-xs font-semibold text-teal-900"
+                />
+              </div>
+
+              {/* Category */}
+              <div>
+                <label className="block text-xs font-bold text-teal-900 mb-1">Category</label>
+                <select
+                  value={dailyPhotoCategory}
+                  onChange={(e) => setDailyPhotoCategory(e.target.value)}
+                  className="w-full rounded-xl border p-2.5 text-xs font-semibold text-teal-900 bg-white"
+                >
+                  <option value="Daily Kitchen & Food">Daily Kitchen &amp; Food (Annadana)</option>
+                  <option value="Education & Study Hour">Education &amp; Study Hour (Vidya)</option>
+                  <option value="Outdoor Play & Childhood">Outdoor Play &amp; Childhood</option>
+                  <option value="Health Check & Wellness">Health Check &amp; Wellness (Arogya)</option>
+                  <option value="Volunteers at Work">Volunteers &amp; Seva Community</option>
+                  <option value="Ashrama Celebrations">Ashrama Celebrations &amp; Feasts</option>
+                </select>
+              </div>
+
+              {/* Story / Description */}
+              <div>
+                <label className="block text-xs font-bold text-teal-900 mb-1">
+                  Story / What happened today?
+                </label>
+                <textarea
+                  rows={3}
+                  value={dailyPhotoBody}
+                  onChange={(e) => setDailyPhotoBody(e.target.value)}
+                  placeholder="e.g. 48 children sat together for warm steaming rice, nutritious dal, and bananas before morning school bells."
+                  className="w-full rounded-xl border p-2.5 text-xs text-teal-900"
+                />
+              </div>
+
+              {/* Buttons */}
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-teal-900/10">
+                <button
+                  type="button"
+                  onClick={() => setDailyPhotoModalOpen(false)}
+                  className="rounded-xl bg-cream px-4 py-2.5 text-xs font-bold text-teal-900 hover:bg-sand cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={dailyPhotoUploading || (!dailyPhotoPreview && !dailyPhotoFile)}
+                  className="focus-ring rounded-xl bg-saffron px-5 py-2.5 text-xs font-bold text-white hover:bg-saffron-dark disabled:opacity-50 transition shadow-xs cursor-pointer"
+                >
+                  {dailyPhotoUploading ? "Publishing Photo..." : "🚀 Publish Live to Website"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ==================== STRATEGY & BUSINESS PLAN MODAL ==================== */}
+      <BusinessPlanModal
+        isOpen={businessPlanOpen}
+        onClose={() => setBusinessPlanOpen(false)}
+      />
 
       <ValidationErrorModal
         isOpen={valModalOpen}

@@ -143,14 +143,37 @@ export const getImpactItem = (slug: string): Promise<ImpactItem | null> =>
 
 export const getTodayUpdates = () =>
   safe(
-    () =>
-      db
+    async () => {
+      const rows = await db
         .select()
         .from(todayUpdates)
-        .where(eq(todayUpdates.status, "published"))
+        .where(sql`lower(${todayUpdates.status}) = 'published'`)
         .orderBy(desc(todayUpdates.publishedAt))
-        .limit(12),
-    [],
+        .limit(12);
+
+      if (rows.length > 0) return rows;
+
+      return TODAY_SEED.map((u, i) => ({
+        id: i + 1,
+        title: u.title,
+        body: u.body,
+        category: u.category,
+        imageUrl: u.imageUrl,
+        isSample: true,
+        status: "published",
+        publishedAt: new Date(),
+      }));
+    },
+    TODAY_SEED.map((u, i) => ({
+      id: i + 1,
+      title: u.title,
+      body: u.body,
+      category: u.category,
+      imageUrl: u.imageUrl,
+      isSample: true,
+      status: "published",
+      publishedAt: new Date(),
+    })),
   );
 
 export const getDocuments = () =>

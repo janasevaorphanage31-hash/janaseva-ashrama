@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCart } from "./CartProvider";
 import { formatINR, SITE } from "@/lib/site";
-import { BusinessPlanModal } from "./BusinessPlanModal";
 
 export function DonationStrategySuite() {
   const router = useRouter();
@@ -14,7 +13,6 @@ export function DonationStrategySuite() {
   const [activeStrategy, setActiveStrategy] = useState<"bundle" | "tax" | "occasions" | "monthly" | "daily">("bundle");
   const [taxDonationAmount, setTaxDonationAmount] = useState<number>(10000);
   const [taxSlab, setTaxSlab] = useState<number>(30); // 30% slab default
-  const [businessPlanOpen, setBusinessPlanOpen] = useState(false);
   const [bundleAdded, setBundleAdded] = useState(false);
 
   // 80G Tax Calculation: In India, 80G deduction allows 50% of the donated amount to be deducted from taxable income.
@@ -46,34 +44,22 @@ export function DonationStrategySuite() {
 
   return (
     <div className="mt-10 rounded-3xl bg-white p-5 sm:p-7 md:p-8 shadow-sm ring-1 ring-teal-900/10 border border-teal-900/5">
-      {/* Header with Title and Business Plan Export Button */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-teal-900/10 pb-5">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="rounded-full bg-saffron/15 px-2.5 py-0.5 text-[11px] font-extrabold uppercase tracking-wider text-saffron-dark">
-              Strategic Giving Suite
-            </span>
-            <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[11px] font-bold text-emerald-800">
-              ✓ Form 10AC 80G Approved
-            </span>
-          </div>
-          <h3 className="mt-2 font-display text-xl sm:text-2xl font-bold text-teal-950">
-            More Ways to Maximize Your Giving Impact
-          </h3>
-          <p className="mt-1 text-xs sm:text-sm text-teal-950/70">
-            Choose from psychological anchor bundles, 80G tax benefit calculation, sacred life celebrations, and monthly sustainer pledges.
-          </p>
+      {/* Header with Title */}
+      <div className="border-b border-teal-900/10 pb-5">
+        <div className="flex items-center gap-2">
+          <span className="rounded-full bg-saffron/15 px-2.5 py-0.5 text-[11px] font-extrabold uppercase tracking-wider text-saffron-dark">
+            Strategic Giving Suite
+          </span>
+          <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[11px] font-bold text-emerald-800">
+            ✓ Form 10AC 80G Approved
+          </span>
         </div>
-
-        {/* Business Plan Export Button */}
-        <button
-          type="button"
-          onClick={() => setBusinessPlanOpen(true)}
-          className="focus-ring shrink-0 inline-flex items-center justify-center gap-2 rounded-2xl bg-teal-900 px-4 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-teal-950 transition active:scale-95"
-        >
-          <span>📊</span>
-          <span>Export NGO Strategy &amp; Business Plan</span>
-        </button>
+        <h3 className="mt-2 font-display text-xl sm:text-2xl font-bold text-teal-950">
+          More Ways to Maximize Your Giving Impact
+        </h3>
+        <p className="mt-1 text-xs sm:text-sm text-teal-950/70">
+          Choose from psychological anchor bundles, 80G tax benefit calculation, sacred life celebrations, and monthly sustainer pledges.
+        </p>
       </div>
 
       {/* Strategy Navigation Tabs */}
@@ -493,12 +479,6 @@ export function DonationStrategySuite() {
           <span>Bank-Grade 256-Bit SSL</span>
         </div>
       </div>
-
-      {/* Render Business Plan Export Modal */}
-      <BusinessPlanModal
-        isOpen={businessPlanOpen}
-        onClose={() => setBusinessPlanOpen(false)}
-      />
     </div>
   );
 }

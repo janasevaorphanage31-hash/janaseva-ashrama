@@ -91,9 +91,18 @@ export async function POST(req: Request) {
     const finalFilename = `${cleanBaseName}_${uniqueTag}.${extension}`;
     const filePath = join(uploadDir, finalFilename);
 
-    await writeFile(filePath, buffer);
-
-    const publicUrl = `/uploads/${safeCategory}/${finalFilename}`;
+    let publicUrl = `/uploads/${safeCategory}/${finalFilename}`;
+    try {
+      await mkdir(uploadDir, { recursive: true });
+      await writeFile(filePath, buffer);
+    } catch (fsErr) {
+      // In serverless environments like Vercel (read-only filesystem), encode image directly as base64 Data URI
+      if (isImage || file.size < 6 * 1024 * 1024) {
+        publicUrl = `data:${mimeType};base64,${buffer.toString("base64")}`;
+      } else {
+        throw fsErr;
+      }
+    }
 
     return NextResponse.json({
       ok: true,
