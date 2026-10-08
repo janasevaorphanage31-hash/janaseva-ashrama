@@ -40,15 +40,27 @@ const POPULAR_QUICK_ITEMS = [
     image: "/media/food.jpg",
     icon: "🍲",
     badge: "Most Popular",
+    category: "food",
   },
   {
     slug: "fruits",
     name: "Fresh Fruit & Milk Nutrition",
-    desc: "Apples, bananas, and milk providing essential vitamins and minerals",
+    desc: "Apples, bananas, and pure milk for immunity and healthy growth",
     unitPrice: 150,
     image: "/media/fruits.jpg",
     icon: "🍎",
     badge: "Daily Health",
+    category: "food",
+  },
+  {
+    slug: "pantry",
+    name: "50kg Monthly Kitchen Staples",
+    desc: "Sona Masoori rice and Toor dal bulk sacks for the main kitchen",
+    unitPrice: 2500,
+    image: "/media/pantry.jpg",
+    icon: "🍚",
+    badge: "Bulk Nutrition",
+    category: "food",
   },
   {
     slug: "school-kit",
@@ -58,34 +70,86 @@ const POPULAR_QUICK_ITEMS = [
     image: "/media/school-kit.jpg",
     icon: "🎒",
     badge: "Education",
+    category: "edu",
+  },
+  {
+    slug: "uniform",
+    name: "New School Uniform & Footwear",
+    desc: "Complete tailored school uniform, sturdy shoes, and daily wear",
+    unitPrice: 400,
+    image: "/media/learning.jpg",
+    icon: "👕",
+    badge: "Dignity",
+    category: "edu",
+  },
+  {
+    slug: "digital-lab",
+    name: "Digital Coding & Computer Lab",
+    desc: "Computer lab access, educational typing, and digital literacy mentoring",
+    unitPrice: 750,
+    image: "/media/poster.jpg",
+    icon: "💻",
+    badge: "Future Skills",
+    category: "edu",
   },
   {
     slug: "health",
-    name: "Medical Care & Pediatric Checkup",
+    name: "Pediatric Health & Doctor Care",
     desc: "Doctor consultation, essential medicines, and routine pediatric screening",
     unitPrice: 500,
     image: "/media/health.jpg",
     icon: "🩺",
     badge: "Healthcare",
+    category: "health",
   },
   {
-    slug: "uniform",
-    name: "New School Uniform & Footwear",
-    desc: "Complete tailored school uniform, sturdy shoes, and sports wear",
-    unitPrice: 600,
-    image: "/media/learning.jpg",
-    icon: "👕",
-    badge: "Dignity",
+    slug: "clean-water",
+    name: "Safe Drinking Water & Sanitation",
+    desc: "RO purifier filter replacements and child hygiene protection units",
+    unitPrice: 350,
+    image: "/media/wellness.jpg",
+    icon: "💧",
+    badge: "Hygiene",
+    category: "health",
+  },
+  {
+    slug: "health-camp",
+    name: "Rural Health & Eye Camp Kit",
+    desc: "Diagnostics vitals, eye refraction testing, and emergency medicines",
+    unitPrice: 1200,
+    image: "/media/wellness.jpg",
+    icon: "🏥",
+    badge: "Community Camp",
+    category: "health",
   },
   {
     slug: "birthday-feast",
-    name: "Celebrate Special Day Feast",
+    name: "Grand Birthday Celebration Feast",
     desc: "Festive sweet feast, dessert, and celebration meal for 48 children",
     unitPrice: 1500,
-    image: "/media/meals.jpg",
+    image: "/media/food.jpg",
     icon: "🎂",
     badge: "Celebration",
+    category: "celebration",
   },
+  {
+    slug: "memorial-meal",
+    name: "Sacred Remembrance Meal (Smrithi)",
+    desc: "Honour departed parents or elders by feeding 10 children with silent prayers",
+    unitPrice: 1000,
+    image: "/media/food.jpg",
+    icon: "🕊️",
+    badge: "Remembrance",
+    category: "celebration",
+  },
+];
+
+const EMPTY_CATEGORIES = [
+  { id: "all", label: "All Needs", icon: "🌟" },
+  { id: "food", label: "Food", icon: "🍲" },
+  { id: "edu", label: "Education", icon: "📚" },
+  { id: "health", label: "Healthcare", icon: "🩺" },
+  { id: "celebration", label: "Celebrations", icon: "🎉" },
 ];
 
 const PRESET_CUSTOM_AMOUNTS = [250, 500, 1000, 2500, 5000];
@@ -133,6 +197,7 @@ export function CheckoutClient() {
   const [validationModalMessage, setValidationModalMessage] = useState("");
   const [showAddDrawer, setShowAddDrawer] = useState(false);
   const [customInputValue, setCustomInputValue] = useState("");
+  const [emptyCategory, setEmptyCategory] = useState<string>("all");
   const attempt = useRef<{ sig: string; key: string } | null>(null);
 
   // Check URL params for pre-set occasion (e.g. from Make a Day Matter)
@@ -366,17 +431,72 @@ export function CheckoutClient() {
           </div>
         </div>
 
-        {/* 6 Popular Impact Selection Cards (2 in a row on mobile!) */}
+        {/* 1-Tap Anchor Bundle Banner */}
+        <div className="mt-8 rounded-2xl bg-gradient-to-r from-amber-500/15 via-gold/20 to-teal-500/10 p-4 sm:p-5 border border-amber-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="rounded-md bg-saffron px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-white">
+                Best All-Round Impact
+              </span>
+              <span className="text-xs font-bold text-teal-900">1-Month Full Foster Care</span>
+            </div>
+            <h3 className="font-display text-sm sm:text-base font-bold text-teal-950 mt-1">
+              Complete Child Sponsor Bundle ({formatINR(2500)})
+            </h3>
+            <p className="text-xs text-teal-950/70 mt-0.5">
+              10 Hot Meals + School Kit + Pediatric Healthcare + Care &amp; Bedding
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              cart.setQty("meal", 10);
+              cart.setQty("school-kit", 1);
+              cart.setQty("health", 1);
+              cart.setQty("bedding", 1);
+              cart.setQty("fruits", 1);
+              track("bundle_add", { source: "checkout_empty" });
+            }}
+            className="focus-ring shrink-0 rounded-xl bg-saffron px-4 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-saffron-dark transition active:scale-95"
+          >
+            ⚡ 1-Tap Add Bundle (₹2,500)
+          </button>
+        </div>
+
+        {/* Categorized Impact Selection Cards (2 in a row on mobile!) */}
         <div className="mt-8">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-display text-lg sm:text-xl font-bold text-teal-950">
-              Verified Daily Needs &amp; Programs
-            </h2>
-            <span className="text-xs font-bold text-teal-900/60">Tap to add</span>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+            <div>
+              <h2 className="font-display text-lg sm:text-xl font-bold text-teal-950">
+                Verified Daily Needs &amp; Catalogs
+              </h2>
+              <p className="text-xs text-teal-950/65">
+                Browse by category or tap to add directly into your contribution.
+              </p>
+            </div>
+
+            {/* Category Filter Pills */}
+            <div className="flex flex-wrap gap-1 sm:gap-1.5">
+              {EMPTY_CATEGORIES.map((cat) => (
+                <button
+                  key={cat.id}
+                  type="button"
+                  onClick={() => setEmptyCategory(cat.id)}
+                  className={`rounded-xl px-2.5 sm:px-3 py-1.5 text-xs font-bold transition flex items-center gap-1 ${
+                    emptyCategory === cat.id
+                      ? "bg-teal-900 text-white shadow-xs"
+                      : "bg-white text-teal-950/70 border border-teal-900/10 hover:bg-cream"
+                  }`}
+                >
+                  <span>{cat.icon}</span>
+                  <span>{cat.label}</span>
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3">
-            {POPULAR_QUICK_ITEMS.map((item) => {
+            {POPULAR_QUICK_ITEMS.filter((item) => emptyCategory === "all" || item.category === emptyCategory).map((item) => {
               const currentQty = cart.qty[item.slug] || 0;
               return (
                 <div
