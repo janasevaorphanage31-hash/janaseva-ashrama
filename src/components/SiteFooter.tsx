@@ -23,7 +23,7 @@ export function SiteFooter() {
               ✓ Form 10AC Provisional 80G Approval (AY 2024-25 to 2026-27)
             </p>
             <p className="text-[10px] text-emerald-300 font-semibold">
-              ✓ JJ Act Child Care Home: KA18CH0242 (25 Children)
+              ✓ JJ Act Child Care Home: KA18CH0242 (25 Boys, 07–18 Yrs)
             </p>
             <p className="text-[10px] text-teal-200 font-semibold">
               ✓ MCA CSR-1 Approved: CSR00078800 · 12AA Certified

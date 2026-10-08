@@ -22,7 +22,7 @@ const TRUST_PILLARS = [
     ),
     badge: "Govt Licensed",
     title: "JJ Act Registered Orphanage (KA18CH0242)",
-    desc: "Officially registered Child Care Institution under Directorate of Child Protection, Govt of Karnataka (Form 28, capacity 25 children, age 07-18).",
+    desc: "Officially registered Child Care Institution under Directorate of Child Protection, Govt of Karnataka (Form 28, capacity 25 boys, age 07-18).",
   },
   {
     icon: (

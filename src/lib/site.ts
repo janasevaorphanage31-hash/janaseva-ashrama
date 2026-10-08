@@ -190,7 +190,7 @@ export const SITE = {
   section12aaNumber: SECTION_12AA.registrationNumber,
   entityType: "Registered Children's Home (JJ Act KA18CH0242) & 80G/12AA Charitable Society",
   childrenCount: 25,
-  childrenCountLabel: "25 Resident Children",
+  childrenCountLabel: "25 Resident Boys (Ages 07–18)",
   headline: "A HOME TODAY. A FUTURE WE BUILD TOGETHER.",
   tagline: "Service to children without families is the highest temple of devotion.",
   url: process.env.NEXT_PUBLIC_SITE_URL || "https://janasevaorphanage.org",

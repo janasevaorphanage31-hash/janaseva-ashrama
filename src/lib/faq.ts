@@ -10,7 +10,7 @@ export const FAQ_ITEMS: FAQItem[] = [
   {
     q: "What is Janaseva Ashrama?",
     category: "About & Mission",
-    a: "Janaseva Ashrama is a registered public charitable trust and residential orphanage located in Bengaluru (Bangalore), Karnataka, India. The Ashrama provides complete residential care, 3 nutritious hot meals daily (Annadana), school education, healthcare, and loving family mentorship to 25 orphaned, abandoned, and economically vulnerable children.",
+    a: "Janaseva Ashrama is an officially licensed residential children's home and orphanage located in Bengaluru, Karnataka, India. Registered under Juvenile Justice Act Form 28 (KA18CH0242), the Ashrama provides complete residential foster care, 3 wholesome hot meals daily (Annadana), schooling, healthcare, and loving mentorship exclusively to 25 young boys (ages 07–18).",
   },
   {
     q: "Are donations to Janaseva Ashrama eligible for 80G tax deductions in India?",
@@ -20,12 +20,12 @@ export const FAQ_ITEMS: FAQItem[] = [
   {
     q: "Where is Janaseva Ashrama located in Bangalore, and can I visit?",
     category: "Visiting & Location",
-    a: `Janaseva Ashrama is situated at #27, Gundu Thopu Turahalli, Near Govt School, Jayanagar housing Society Layout, Subramanyapura, Bangalore - 560061, Karnataka. Visiting hours are Monday to Sunday from 10:00 AM to 6:00 PM (IST). To safeguard the children's daily study routines, privacy, and health, donors and visitors are requested to schedule their visit in advance by calling or messaging us on WhatsApp at +91 ${SITE.phone}.`,
+    a: `Janaseva Ashrama is situated at #27, Gundu Thopu Turahalli, Near Govt School, Jayanagar housing Society Layout, Subramanyapura, Bangalore - 560061, Karnataka. Visiting hours are Monday to Sunday from 10:00 AM to 6:00 PM (IST). To safeguard the boys' daily study routines, privacy, and health, donors and visitors are requested to schedule their visit in advance by calling or messaging us on WhatsApp at +91 ${SITE.phone}.`,
   },
   {
     q: "Can I celebrate my birthday, anniversary, or a family milestone at the Ashrama?",
     category: "Occasions & Giving",
-    a: "Yes! Through our 'Make a Day Matter' initiative, you can sponsor a special celebratory feast with traditional sweets (Payasam / Laddoo) for all 25 children on your birthday, wedding anniversary, child's milestone, or in sacred memory of departed elders (Smrithi Seva). You can visit to serve the meal in person or receive verified photo/video updates on WhatsApp.",
+    a: "Yes! Through our 'Make a Day Matter' initiative, you can sponsor a special celebratory feast with traditional sweets (Payasam / Laddoo) for all 25 boys on your birthday, wedding anniversary, milestone, or in sacred memory of departed elders (Smrithi Seva). You can visit to serve the meal in person or receive verified photo/video updates on WhatsApp.",
   },
   {
     q: "How does 100% verified allocation work? Is there administrative waste?",

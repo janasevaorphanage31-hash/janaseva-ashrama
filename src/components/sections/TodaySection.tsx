@@ -26,10 +26,101 @@ export function TodaySection({
     <Section id="today" tone="cream" className="py-10 md:py-16">
       <Container>
         <Head
-          eyebrow="Real Daily Moments"
-          title="Today at Janaseva"
-          lead="Fresh meals prepared before dawn. Quiet study tables in the evening. Joyful laughter in the courtyard. See real moments from the Ashrama today."
+          eyebrow="Real Daily Moments &amp; Transparency"
+          title="Today at Janaseva Ashrama"
+          lead="Fresh meals prepared before dawn for 25 young boys. Quiet study tables in the evening. Joyful laughter in the courtyard. See authentic, unstaged moments from our home today."
         />
+
+        {/* ── LIVE DAILY MEALS STATUS TRACKER (Donor Psychology & Urgency) ── */}
+        <div className="mt-6 mb-8 rounded-3xl bg-gradient-to-br from-teal-950 via-teal-900 to-teal-950 p-5 sm:p-6 text-white shadow-lg border border-teal-800">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-white/10 pb-3">
+            <div className="flex items-center gap-2">
+              <span className="flex h-2.5 w-2.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="text-xs font-bold uppercase tracking-wider text-emerald-300">
+                Today&apos;s Annadana Seva Status · 25 Resident Boys
+              </span>
+            </div>
+            <span className="text-xs text-gold font-bold">
+              Banashankari / Turahalli Campus
+            </span>
+          </div>
+
+          <div className="mt-4 grid grid-cols-2 lg:grid-cols-4 gap-3">
+            {/* Breakfast */}
+            <div className="rounded-2xl bg-white/10 p-3.5 border border-white/10 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between text-[11px] mb-1">
+                  <span className="font-bold text-white/80">🌅 7:30 AM Breakfast</span>
+                  <span className="rounded-md bg-emerald-500/20 px-1.5 py-0.5 text-[10px] font-bold text-emerald-300">
+                    Served ✓
+                  </span>
+                </div>
+                <p className="text-xs font-bold text-white mt-1">Steaming Idlis &amp; Warm Milk</p>
+                <p className="text-[10px] text-white/60 mt-0.5">Energy for morning school</p>
+              </div>
+              <span className="mt-3 text-[10px] text-emerald-400 font-semibold">
+                ✓ Sponsored by Bangalore Well-wisher
+              </span>
+            </div>
+
+            {/* Lunch */}
+            <div className="rounded-2xl bg-white/10 p-3.5 border border-white/10 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between text-[11px] mb-1">
+                  <span className="font-bold text-white/80">☀️ 1:00 PM Lunch</span>
+                  <span className="rounded-md bg-emerald-500/20 px-1.5 py-0.5 text-[10px] font-bold text-emerald-300">
+                    Served ✓
+                  </span>
+                </div>
+                <p className="text-xs font-bold text-white mt-1">Hot Rice, Sambar &amp; Palya</p>
+                <p className="text-[10px] text-white/60 mt-0.5">Wholesome midday nutrition</p>
+              </div>
+              <span className="mt-3 text-[10px] text-emerald-400 font-semibold">
+                ✓ Sponsored by Devotee Family
+              </span>
+            </div>
+
+            {/* Evening Snack */}
+            <div className="rounded-2xl bg-amber-500/15 p-3.5 border border-amber-500/30 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between text-[11px] mb-1">
+                  <span className="font-bold text-amber-200">🍎 4:30 PM Snack</span>
+                  <span className="rounded-md bg-amber-500/30 px-1.5 py-0.5 text-[10px] font-bold text-amber-200">
+                    Open ⏳
+                  </span>
+                </div>
+                <p className="text-xs font-bold text-white mt-1">Fresh Fruit &amp; Pure Milk</p>
+                <p className="text-[10px] text-white/70 mt-0.5">Immunity for 25 boys</p>
+              </div>
+              <Link
+                href="/checkout"
+                className="mt-3 inline-flex items-center justify-center rounded-xl bg-saffron px-3 py-1.5 text-xs font-bold text-white hover:bg-saffron-dark transition shadow-2xs"
+              >
+                Sponsor Fruits (₹150) →
+              </Link>
+            </div>
+
+            {/* Dinner */}
+            <div className="rounded-2xl bg-amber-500/15 p-3.5 border border-amber-500/30 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between text-[11px] mb-1">
+                  <span className="font-bold text-amber-200">🌙 8:00 PM Dinner</span>
+                  <span className="rounded-md bg-amber-500/30 px-1.5 py-0.5 text-[10px] font-bold text-amber-200">
+                    Open ⏳
+                  </span>
+                </div>
+                <p className="text-xs font-bold text-white mt-1">Hot Wholesome Dinner</p>
+                <p className="text-[10px] text-white/70 mt-0.5">Nourishing 25 boys</p>
+              </div>
+              <Link
+                href="/checkout"
+                className="mt-3 inline-flex items-center justify-center rounded-xl bg-gold text-teal-950 px-3 py-1.5 text-xs font-extrabold hover:bg-gold-light transition shadow-2xs"
+              >
+                Sponsor Meal (₹100) →
+              </Link>
+            </div>
+          </div>
+        </div>
 
         {updates.length === 0 ? (
           <p className="rounded-2xl bg-white p-6 text-teal-900/70">
@@ -37,7 +128,7 @@ export function TodaySection({
           </p>
         ) : (
           <div className="space-y-6 sm:space-y-8">
-            {/* Primary Editorial Lead Story (Section 8 Layout) */}
+            {/* Primary Editorial Lead Story */}
             {featured && (
               <article className="overflow-hidden rounded-2xl sm:rounded-3xl bg-white shadow-md ring-1 ring-teal-900/10 grid lg:grid-cols-[1.1fr_0.9fr] transition hover:shadow-lg">
                 {/* Large Visual */}

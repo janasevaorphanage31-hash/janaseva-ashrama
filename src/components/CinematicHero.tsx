@@ -46,7 +46,7 @@ export function CinematicHero({ content }: { content?: Partial<SiteContentMap> }
   const headline = content?.heroHeadline || "A HOME TODAY.\nA FUTURE WE BUILD TOGETHER.";
   const subheadline =
     content?.heroSubheadline ||
-    `Janaseva Ashrama is a registered orphanage and children's home in Bengaluru providing daily nutritious meals (Annadana), school education, medical care, and safe shelter for 25 orphaned and vulnerable children. 100% direct allocation with Form 10AC 80G tax exemption.`;
+    `Janaseva Ashrama is a licensed children's home & orphanage in Bengaluru providing daily nutritious meals (Annadana), school education, medical care, and safe shelter for 25 young boys (ages 07–18) under Juvenile Justice Act Form 28 (KA18CH0242). 100% direct allocation with Form 10AC 80G tax exemption.`;
 
   return (
     <section
@@ -217,7 +217,7 @@ export function CinematicHero({ content }: { content?: Partial<SiteContentMap> }
             <div className="grid grid-cols-3 gap-2.5 text-center">
               <div className="rounded-2xl bg-white/10 p-2.5 border border-white/10">
                 <span className="block font-display text-2xl font-black text-gold">25</span>
-                <span className="text-[10px] text-white/70 font-semibold uppercase tracking-wider">Resident Children</span>
+                <span className="text-[10px] text-white/70 font-semibold uppercase tracking-wider">Resident Boys (07–18 Yrs)</span>
               </div>
               <div className="rounded-2xl bg-white/10 p-2.5 border border-white/10">
                 <span className="block font-display text-2xl font-black text-white">3</span>

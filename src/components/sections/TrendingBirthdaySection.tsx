@@ -36,8 +36,8 @@ const FEAST_OPTIONS: FeastOption[] = [
     slug: "meal",
     title: "Special Birthday Lunch with Payasam",
     cost: 3500,
-    description: "Hot rice, sambar, seasonal vegetable curry, pooris, and traditional festival sweet (payasam) served to all 25 children.",
-    servings: "Feeds all 25 children",
+    description: "Hot rice, sambar, seasonal vegetable curry, pooris, and traditional festival sweet (payasam) served to all 25 boys.",
+    servings: "Feeds all 25 boys in ashrama",
     popular: true,
   },
   {
@@ -46,15 +46,15 @@ const FEAST_OPTIONS: FeastOption[] = [
     title: "Evening Snacks & Fresh Fruit Platter",
     cost: 2500,
     description: "Evening warm milk, healthy savouries, banana/apple fruit baskets, and joyful evening celebration time.",
-    servings: "Evening treat for 25 children",
+    servings: "Evening treat for all 25 boys",
   },
   {
     id: "feast-breakfast",
     slug: "meal",
     title: "Wholesome Morning Breakfast",
     cost: 1500,
-    description: "Nutritious steaming idlis or upma, chutney, and warm milk to start the children's school day with energy.",
-    servings: "Morning breakfast for all 25 children",
+    description: "Nutritious steaming idlis or upma, chutney, and warm milk to start the boys' school day with energy.",
+    servings: "Morning breakfast for all 25 boys",
   },
   {
     id: "feast-full-day",
@@ -62,7 +62,7 @@ const FEAST_OPTIONS: FeastOption[] = [
     title: "Complete Day Nourishment & Care",
     cost: 7500,
     description: "Sponsor breakfast, special birthday lunch with sweets, evening snacks, and wholesome dinner for the entire day.",
-    servings: "Full 24-hour Ashrama meal coverage",
+    servings: "Full 24-hour Ashrama meal coverage for 25 boys",
   },
 ];
 
@@ -97,7 +97,7 @@ export function TrendingBirthdaySection({ wishVideos }: { wishVideos?: WishVideo
       packageCost: 7500,
       videoUrl: "/media/chapter2_breakfast.mp4",
       thumbnailUrl: "/media/fruits.jpg",
-      quote: "Happy 25th Anniversary Uncle & Aunty! All 25 children chanted your names during morning prayer and thanked you for the feast!",
+        quote: "Happy 25th Anniversary Uncle & Aunty! All 25 boys chanted your names during morning prayer and thanked you for the feast!",
     },
     {
       id: "wish-3",
@@ -122,7 +122,7 @@ export function TrendingBirthdaySection({ wishVideos }: { wishVideos?: WishVideo
   };
 
   const handleCopyStory = () => {
-    const text = `This birthday, I am celebrating with 25 children at Janaseva Ashrama in Bengaluru! Instead of material gifts, join me in sponsoring wholesome meals: https://janasevaorphanage.org/celebrate-birthday #JanasevaAshrama #BirthdayGiving #Bengaluru`;
+    const text = `This birthday, I am celebrating with 25 boys at Janaseva Ashrama in Bengaluru! Instead of material gifts, join me in sponsoring wholesome meals: https://janasevaorphanage.org/celebrate-birthday #JanasevaAshrama #BirthdayGiving #Bengaluru`;
     if (typeof navigator !== "undefined" && navigator.clipboard) {
       navigator.clipboard.writeText(text);
       setCopiedStory(true);
@@ -143,8 +143,8 @@ export function TrendingBirthdaySection({ wishVideos }: { wishVideos?: WishVideo
 
         <Head
           eyebrow="Heartfelt Celebrations"
-          title="Celebrate Your Birthday with 25 Children"
-          lead="Experience the profound joy of sharing your milestone with young souls. Sponsoring a birthday feast or visiting the Ashrama creates heartwarming memories that outlast any ordinary party."
+          title="Celebrate Your Birthday with 25 Boys"
+          lead="Experience the profound joy of sharing your milestone with young boys. Sponsoring a birthday feast or visiting the Ashrama creates heartwarming memories that outlast any ordinary party."
         />
 
         {/* Real Delivered WhatsApp Wish Video Showcase Card */}

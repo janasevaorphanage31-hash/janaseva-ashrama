@@ -11,6 +11,16 @@ interface ThemeItem {
 
 const THEMES: ThemeItem[] = [
   {
+    id: "today",
+    shortName: "Today",
+    fullName: "Live Ashram Feed",
+    icon: (cls = "h-4 w-4") => (
+      <svg className={cls} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <path d="M12 12m-3.2 0a3.2 3.2 0 106.4 0 3.2 3.2 0 10-6.4 0zM9 2L7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2h-3.17L15 2H9zm3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z" />
+      </svg>
+    ),
+  },
+  {
     id: "impact",
     shortName: "Meals",
     fullName: "Food & Nutrition",
@@ -27,16 +37,6 @@ const THEMES: ThemeItem[] = [
     icon: (cls = "h-4 w-4") => (
       <svg className={cls} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
         <path d="M12 6a2 2 0 100-4 2 2 0 000 4zm7 4h-2V9a1 1 0 00-1-1H8a1 1 0 00-1 1v1H5a3 3 0 00-3 3v7a2 2 0 002 2h16a2 2 0 002-2v-7a3 3 0 00-3-3zM9 10h6v1H9v-1zm11 9H4v-5h16v5z" />
-      </svg>
-    ),
-  },
-  {
-    id: "today",
-    shortName: "Today",
-    fullName: "Live Ashram Feed",
-    icon: (cls = "h-4 w-4") => (
-      <svg className={cls} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-        <path d="M12 12m-3.2 0a3.2 3.2 0 106.4 0 3.2 3.2 0 10-6.4 0zM9 2L7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2h-3.17L15 2H9zm3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z" />
       </svg>
     ),
   },
@@ -61,6 +61,26 @@ const THEMES: ThemeItem[] = [
     ),
   },
   {
+    id: "transparency",
+    shortName: "80G Docs",
+    fullName: "Official Certifications",
+    icon: (cls = "h-4 w-4") => (
+      <svg className={cls} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z" />
+      </svg>
+    ),
+  },
+  {
+    id: "trust",
+    shortName: "Tax Calc",
+    fullName: "Tax Benefits & Bank",
+    icon: (cls = "h-4 w-4") => (
+      <svg className={cls} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14h-2v-4H6v-2h4V7h2v4h4v2h-4v4z" />
+      </svg>
+    ),
+  },
+  {
     id: "impact-stats",
     shortName: "Impact",
     fullName: "Verified Results",
@@ -77,16 +97,6 @@ const THEMES: ThemeItem[] = [
     icon: (cls = "h-4 w-4") => (
       <svg className={cls} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
         <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" />
-      </svg>
-    ),
-  },
-  {
-    id: "transparency",
-    shortName: "80G Tax",
-    fullName: "Tax Exemption & Audit",
-    icon: (cls = "h-4 w-4") => (
-      <svg className={cls} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-        <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z" />
       </svg>
     ),
   },
