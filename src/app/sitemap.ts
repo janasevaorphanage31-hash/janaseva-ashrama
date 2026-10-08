@@ -1,10 +1,21 @@
 import type { MetadataRoute } from "next";
+import { headers } from "next/headers";
 import { and, eq, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { campaigns } from "@/db/schema";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://janasevaorphanage.org";
+  let baseUrl = process.env.NEXT_PUBLIC_SITE_URL;
+  if (!baseUrl) {
+    try {
+      const h = await headers();
+      const host = h.get("x-forwarded-host") || h.get("host") || "www.janasevaashrama.org";
+      const proto = h.get("x-forwarded-proto") || "https";
+      baseUrl = `${proto}://${host}`;
+    } catch {
+      baseUrl = "https://www.janasevaashrama.org";
+    }
+  }
 
   const staticRoutes = [
     { path: "", priority: 1.0, changeFrequency: "daily" as const },
