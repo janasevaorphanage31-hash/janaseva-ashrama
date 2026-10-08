@@ -28,7 +28,17 @@ export function ensureSeed(): Promise<void> {
   if (process.env.ALLOW_DEMO_SEED !== "true") return Promise.resolve();
   if (!seeding) {
     seeding = (async () => {
-      await db.insert(impactItems).values(DEFAULT_ITEMS).onConflictDoNothing();
+      await db
+        .insert(impactItems)
+        .values(DEFAULT_ITEMS)
+        .onConflictDoUpdate({
+          target: impactItems.slug,
+          set: {
+            unitPrice: sql`excluded.unit_price`,
+            name: sql`excluded.name`,
+            description: sql`excluded.description`,
+          },
+        });
       const [{ t }] = await db.select({ t: count() }).from(todayUpdates);
       if (t === 0) {
         await db

@@ -15,7 +15,7 @@ export function BlinkingDonationFloatingButton() {
 
   const handleClick = () => {
     track("floating_blinking_donate_click", { page: pathname });
-    openBottomDonate(4500, "food_one_day");
+    openBottomDonate(101, "meal");
   };
 
   return (

@@ -7,17 +7,18 @@ import { formatINR } from "@/lib/site";
 import { track } from "@/lib/track";
 
 const URGENT_PRESETS = [
-  { amount: 100, label: "₹100", sublabel: "1 Meal" },
-  { amount: 500, label: "₹500", sublabel: "5 Meals" },
-  { amount: 2500, label: "₹2,500", sublabel: "Full Dinner", isPopular: true },
-  { amount: 4500, label: "₹4,500", sublabel: "Full Day" },
+  { amount: 11, label: "₹11", sublabel: "1 Milk" },
+  { amount: 51, label: "₹51", sublabel: "Breakfast" },
+  { amount: 101, label: "₹101", sublabel: "Full Meal", isPopular: true },
+  { amount: 501, label: "₹501", sublabel: "Arogya" },
+  { amount: 2501, label: "₹2,501", sublabel: "Hall Feast" },
 ];
 
 export function UrgentDonationBar() {
   const pathname = usePathname();
   const { openBottomDonate, isBottomDonateOpen, count } = useCart();
   const [minimized, setMinimized] = useState(false);
-  const [activePreset, setActivePreset] = useState<number>(2500);
+  const [activePreset, setActivePreset] = useState<number>(101);
 
   // Auto-hide on admin, checkout, or when bottom donation drawer is open
   if (pathname?.startsWith("/admin") || pathname === "/checkout" || isBottomDonateOpen) {
@@ -30,12 +31,12 @@ export function UrgentDonationBar() {
   const handlePresetClick = (amount: number) => {
     setActivePreset(amount);
     track("urgent_bar_preset_select", { amount });
-    openBottomDonate(amount, amount === 4500 || amount === 2500 ? "food_one_day" : undefined);
+    openBottomDonate(amount, amount === 4500 || amount === 2501 || amount === 2500 ? "food_one_day" : undefined);
   };
 
   const handleDonateNow = () => {
     track("urgent_bar_donate_click", { amount: activePreset });
-    openBottomDonate(activePreset, activePreset === 4500 || activePreset === 2500 ? "food_one_day" : undefined);
+    openBottomDonate(activePreset, activePreset === 4500 || activePreset === 2501 || activePreset === 2500 ? "food_one_day" : undefined);
   };
 
   if (minimized) {
@@ -90,7 +91,7 @@ export function UrgentDonationBar() {
                 </span>
               </div>
               <p className="text-[10px] text-white/70 hidden sm:block truncate mt-0.5">
-                Rice, sambar &amp; fresh milk · ₹2,500 fills full dining hall · 80G Tax Exemption
+                Rice, sambar &amp; fresh milk · ₹2,501 fills full dining hall · 80G Tax Exemption
               </p>
             </div>
 

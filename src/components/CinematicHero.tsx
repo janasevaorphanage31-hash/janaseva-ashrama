@@ -7,14 +7,98 @@ import type { SiteContentMap } from "@/lib/site-content";
 import { useCart } from "./CartProvider";
 import { track } from "@/lib/track";
 
+export interface ShagunTier {
+  amount: number;
+  name: string;
+  kannada: string;
+  meaning: string;
+  icon: string;
+  isPopular?: boolean;
+}
+
+export const DIVINE_SHAGUN_TIERS: ShagunTier[] = [
+  {
+    amount: 11,
+    name: "Ekadashi Shagun",
+    kannada: "ಶುಭ ಹಾಲು ಸೇವೆ",
+    meaning: "1 Glass Pure Morning Cow Milk for 1 Boy",
+    icon: "🥛",
+  },
+  {
+    amount: 21,
+    name: "Dharma Jyothi",
+    kannada: "ಹಣ್ಣು ಪೋಷಣೆ",
+    meaning: "Fresh Banana & Morning Fruit Nutrition",
+    icon: "🍌",
+  },
+  {
+    amount: 51,
+    name: "Pancha Bhoota",
+    kannada: "ಬೆಳಗಿನ ಬಿಸಿ ತಿಂಡಿ",
+    meaning: "Steaming Hot Idlis & Sambar Breakfast for 1 Boy",
+    icon: "🍲",
+  },
+  {
+    amount: 101,
+    name: "Punya Annadana",
+    kannada: "ಮಧ್ಯಾಹ್ನದ ಅನ್ನದಾನ",
+    meaning: "Full Hot Lunch (Rice, Dal, Sabzi & Curd) for 1 Boy",
+    icon: "🍛",
+    isPopular: true,
+  },
+  {
+    amount: 251,
+    name: "Saraswati Vidya",
+    kannada: "ವಿದ್ಯಾ ಕಿಟ್ ಸೇವೆ",
+    meaning: "School Notebooks, Geometry & Stationery Kit",
+    icon: "📚",
+  },
+  {
+    amount: 501,
+    name: "Arogya Raksha",
+    kannada: "ಆರೋಗ್ಯ ರಕ್ಷಣೆ",
+    meaning: "Pediatric Health Checkup, Vitamins & Tonic",
+    icon: "🩺",
+  },
+  {
+    amount: 1001,
+    name: "Anna Daata",
+    kannada: "ವಾರದ ರೇಷನ್ ಸೇವೆ",
+    meaning: "1-Week Kitchen Vegetables & Sona Masoori Rice",
+    icon: "🍚",
+  },
+  {
+    amount: 2101,
+    name: "Maha Prasada",
+    kannada: "ಸಿಹಿ ಪಾಯಸದ ಹಬ್ಬ",
+    meaning: "Festival Sweet Payasam Feast for All 25 Boys",
+    icon: "🎉",
+  },
+  {
+    amount: 2501,
+    name: "Sampoorna Bhojana",
+    kannada: "ಎಲ್ಲಾ 25 ಮಕ್ಕಳಿಗೆ ಊಟ",
+    meaning: "1-Time Full Dining Hall Feast for All 25 Boys",
+    icon: "🥘",
+  },
+  {
+    amount: 5001,
+    name: "Sarva Seva",
+    kannada: "ಸಂಪೂರ್ಣ ದಿನದ ಅನ್ನದಾನ",
+    meaning: "Full Day All 3 Meals + Snacks for All 25 Boys",
+    icon: "👑",
+  },
+];
+
 export function CinematicHero({ content }: { content?: Partial<SiteContentMap> }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [videoReady, setVideoReady] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
+  const [selectedShagun, setSelectedShagun] = useState<number>(101);
   const cart = useCart();
 
   useEffect(() => {
-    track("hero_view", { type: "givea_style_cinematic_hero" });
+    track("hero_view", { type: "unobstructed_video_hero_with_divine_shagun" });
   }, []);
 
   const toggleSound = () => {
@@ -24,27 +108,37 @@ export function CinematicHero({ content }: { content?: Partial<SiteContentMap> }
     setIsMuted(nextMuted);
   };
 
-  // Video source showing authentic Ashrama prayer, Annadana and boys
+  const handleSelectShagun = (amount: number) => {
+    setSelectedShagun(amount);
+    track("hero_shagun_select", { amount });
+  };
+
+  const handleInstantDonate = () => {
+    track("hero_instant_shagun_donate", { amount: selectedShagun });
+    cart.openBottomDonate(selectedShagun);
+  };
+
+  const activeTier = DIVINE_SHAGUN_TIERS.find((t) => t.amount === selectedShagun) || DIVINE_SHAGUN_TIERS[3];
   const posterSrc = content?.heroPosterUrl || "/media/annadana-hall-hd.jpg";
   const videoSrc = content?.heroVideoUrl || "/media/video-chant-prayer.mp4";
 
   return (
     <section
-      aria-label="Janaseva Ashrama Introduction"
-      className="relative w-full max-w-full overflow-hidden bg-teal-950 flex flex-col"
+      aria-label="Janaseva Ashrama Introduction and Divine Shagun Giving"
+      className="relative w-full max-w-full overflow-hidden bg-teal-950 flex flex-col text-white"
     >
-      {/* ── 1. FULL-WIDTH EDGE-TO-EDGE CINEMATIC VIDEO (GIVEA STYLE) ── */}
-      <div className="relative w-full h-[45svh] sm:h-[55svh] md:h-[64svh] lg:h-[72svh] max-h-[780px] overflow-hidden bg-black select-none">
+      {/* ── 1. FULL-WIDTH 100% UNOBSTRUCTED CINEMATIC VIDEO VIEWPORT ── */}
+      <div className="relative w-full h-[46svh] sm:h-[56svh] md:h-[66svh] lg:h-[72svh] max-h-[740px] overflow-hidden bg-black select-none">
         {/* Background poster (LCP-critical) */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={posterSrc}
-          alt="Fresh Annadana food preparation for 25 boys at Janaseva Ashrama"
+          alt="Authentic Annadana food preparation and prayers for 25 boys at Janaseva Ashrama"
           fetchPriority="high"
           className="absolute inset-0 h-full w-full object-cover object-center"
         />
 
-        {/* Autoplay edge-to-edge looping video */}
+        {/* Autoplay edge-to-edge looping video - 100% UNBLOCKED! */}
         <video
           ref={videoRef}
           src={videoSrc}
@@ -60,19 +154,19 @@ export function CinematicHero({ content }: { content?: Partial<SiteContentMap> }
           }`}
         />
 
-        {/* Minimal scrim gradient for text legibility at bottom and top */}
-        <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-black/60 to-transparent pointer-events-none" />
-        <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-teal-950 via-teal-950/60 to-transparent pointer-events-none" />
+        {/* Subtle, non-intrusive vignette for contrast */}
+        <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/60 to-transparent pointer-events-none" />
+        <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-teal-950 via-teal-950/60 to-transparent pointer-events-none" />
 
-        {/* ── Top Bar Controls ── */}
+        {/* Top Floating Controls */}
         <div className="absolute inset-x-0 top-3 sm:top-5 z-20 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 flex items-center justify-between pointer-events-auto">
-          {/* Live Kitchen Badge */}
-          <div className="flex items-center gap-2 rounded-full bg-black/55 px-3 sm:px-4 py-1.5 text-[11px] sm:text-xs font-bold text-white backdrop-blur border border-white/20 shadow-lg">
+          {/* Live Kitchen Beacon */}
+          <div className="flex items-center gap-2 rounded-full bg-black/60 px-3 sm:px-4 py-1.5 text-[11px] sm:text-xs font-bold text-white backdrop-blur border border-white/20 shadow-lg">
             <span className="relative flex h-2.5 w-2.5">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-80"></span>
               <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
             </span>
-            <span className="uppercase tracking-wider">Live Ashrama Kitchen · Annadana for 25 Boys</span>
+            <span className="uppercase tracking-wider">Live Ashrama Feed · 25 Resident Boys</span>
           </div>
 
           {/* Sound Toggle */}
@@ -80,7 +174,7 @@ export function CinematicHero({ content }: { content?: Partial<SiteContentMap> }
             type="button"
             onClick={toggleSound}
             aria-label={isMuted ? "Unmute video sound" : "Mute video sound"}
-            className="focus-ring tap-scale flex items-center gap-2 rounded-full border border-white/25 bg-black/55 px-3 sm:px-4 py-1.5 text-xs font-bold text-white backdrop-blur hover:bg-black/75 shadow-lg transition cursor-pointer"
+            className="focus-ring tap-scale flex items-center gap-2 rounded-full border border-white/25 bg-black/60 px-3 sm:px-4 py-1.5 text-xs font-bold text-white backdrop-blur hover:bg-black/80 shadow-lg transition cursor-pointer"
           >
             {isMuted ? (
               <svg className="h-4 w-4 fill-current text-white/80" viewBox="0 0 24 24" aria-hidden="true">
@@ -95,110 +189,185 @@ export function CinematicHero({ content }: { content?: Partial<SiteContentMap> }
           </button>
         </div>
 
-        {/* ── Urgent Need & Quick Give Panel (Floating on Bottom of Video) ── */}
-        <div className="absolute inset-x-0 bottom-3 sm:bottom-6 z-20 mx-auto max-w-4xl px-3 sm:px-6 pointer-events-auto">
-          <div className="rounded-2xl sm:rounded-3xl bg-teal-950/85 backdrop-blur-md p-3.5 sm:p-5 border border-white/20 shadow-2xl space-y-3">
-            {/* Live Annadana Goal Meter */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5 sm:gap-4">
-              <div className="flex items-center gap-2">
-                <span className="flex h-2.5 w-2.5 relative">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
-                </span>
-                <span className="text-xs sm:text-sm font-black text-amber-300 uppercase tracking-wide">
-                  Today&apos;s Annadana Seva Status
-                </span>
-              </div>
-              <span className="text-[11px] sm:text-xs font-bold text-white/90">
-                19 of 25 Boys Sponsored · <span className="text-amber-400 font-extrabold">6 Meals Still Needed</span>
+        {/* Minimal Bottom Location Tag (Does NOT cover the video!) */}
+        <div className="absolute inset-x-0 bottom-3 z-20 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 flex items-center justify-between text-[11px] sm:text-xs text-white/80 pointer-events-none">
+          <span className="rounded-lg bg-black/50 px-2.5 py-1 backdrop-blur border border-white/10 font-medium">
+            📍 Turahalli, Bangalore · Chanting, Prayer &amp; Pure Annadana
+          </span>
+          <span className="hidden sm:inline-block rounded-lg bg-black/50 px-2.5 py-1 backdrop-blur border border-white/10 font-bold text-amber-300">
+            Form 10AC 80G Tax Deductible
+          </span>
+        </div>
+      </div>
+
+      {/* ── 2. HIGH-CONVERSION SALES PSYCHOLOGY & DIVINE SHAGUN ENGINE (Directly Below Video) ── */}
+      <div className="w-full bg-gradient-to-b from-teal-950 via-teal-900 to-teal-950 px-3 sm:px-6 lg:px-8 py-6 sm:py-8 border-b border-white/15">
+        <div className="mx-auto max-w-5xl space-y-4 sm:space-y-5">
+          {/* Live Annadana Status Tracker */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 rounded-2xl bg-white/10 p-3 sm:p-4 border border-white/15 shadow-sm">
+            <div className="flex items-center gap-2">
+              <span className="relative flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-500"></span>
+              </span>
+              <span className="text-xs sm:text-sm font-black text-amber-300 uppercase tracking-wider">
+                🔥 Live Urgent Seva Status Today:
+              </span>
+              <span className="text-xs sm:text-sm font-bold text-white">
+                19 of 25 Boys Sponsored · <strong className="text-amber-400">6 Meals Still Needed</strong>
               </span>
             </div>
 
-            {/* Visual Progress Bar */}
-            <div className="w-full bg-white/15 h-2 sm:h-2.5 rounded-full overflow-hidden">
+            {/* Mini Progress Bar */}
+            <div className="w-full sm:w-48 bg-white/15 h-2.5 rounded-full overflow-hidden">
               <div
-                className="h-full bg-gradient-to-r from-amber-500 via-saffron to-amber-400 rounded-full transition-all duration-1000 relative"
+                className="h-full bg-gradient-to-r from-amber-500 via-saffron to-amber-400 rounded-full transition-all duration-1000"
                 style={{ width: "76%" }}
-              >
-                <div className="absolute inset-0 bg-white/25 animate-pulse" />
+              />
+            </div>
+          </div>
+
+          {/* Emotional Mandate Headline */}
+          <div className="text-center max-w-3xl mx-auto space-y-1.5">
+            <div className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/20 px-3.5 py-1 text-xs font-black uppercase tracking-widest text-amber-300 border border-amber-400/30">
+              <span>✨ Divine Shagun Math · ಪವಿತ್ರ ಶಕುನ ಸೇವೆ</span>
+            </div>
+            <h2 className="font-display text-2xl sm:text-3xl md:text-4xl font-bold leading-tight text-white">
+              Every Visitor Leaves a Blessing — Even ₹11 Feeds a Child
+            </h2>
+            <p className="text-xs sm:text-sm text-white/80 leading-relaxed max-w-2xl mx-auto">
+              ₹11 is less than a cup of tea, but in an ashrama it gives a glass of fresh milk to a boy who lost his parents. Select your sacred Shagun below and touch a young life with 1-tap UPI.
+            </p>
+          </div>
+
+          {/* ── 9 SACRED DIVINE SHAGUN BUTTONS (Mathematical Conversion Architecture) ── */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-xs font-bold text-amber-200">
+              <span className="uppercase tracking-wider">Select Your Auspicious Shagun:</span>
+              <span className="font-mono text-amber-300">Selected: {formatINR(selectedShagun)}</span>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 sm:gap-2.5">
+              {DIVINE_SHAGUN_TIERS.map((tier) => {
+                const isSelected = selectedShagun === tier.amount;
+                return (
+                  <button
+                    key={tier.amount}
+                    type="button"
+                    onClick={() => handleSelectShagun(tier.amount)}
+                    className={`focus-ring tap-scale relative p-3 rounded-2xl text-left border transition-all cursor-pointer ${
+                      isSelected
+                        ? "bg-gradient-to-b from-amber-400 to-amber-500 text-teal-950 border-amber-300 shadow-lg ring-2 ring-white/70 scale-[1.02]"
+                        : "bg-white/10 hover:bg-white/18 text-white border-white/15 hover:border-amber-400/50"
+                    }`}
+                  >
+                    {tier.isPopular && (
+                      <span className="absolute -top-2 right-2 rounded-full bg-saffron px-1.5 py-0.2 text-[8px] font-black uppercase text-white shadow">
+                        Popular ★
+                      </span>
+                    )}
+
+                    <div className="flex items-center justify-between gap-1">
+                      <span className={`font-display text-base sm:text-lg font-black ${isSelected ? "text-teal-950" : "text-amber-300"}`}>
+                        ₹{tier.amount}
+                      </span>
+                      <span className="text-base" aria-hidden="true">{tier.icon}</span>
+                    </div>
+
+                    <span className={`block text-xs font-bold mt-1 leading-tight ${isSelected ? "text-teal-950 font-black" : "text-white"}`}>
+                      {tier.name}
+                    </span>
+
+                    <span className={`block text-[10px] mt-0.5 line-clamp-1 ${isSelected ? "text-teal-900/90 font-medium" : "text-amber-200/80"}`}>
+                      {tier.kannada}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Active Selected Tier Real-World Breakdown Box */}
+          <div className="rounded-2xl bg-white/10 p-3.5 sm:p-4 border border-white/20 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shadow-inner">
+            <div className="flex items-center gap-3">
+              <span className="text-3xl shrink-0" aria-hidden="true">{activeTier.icon}</span>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="rounded bg-amber-400 text-teal-950 px-2 py-0.5 text-[10px] font-black uppercase">
+                    Your Impact
+                  </span>
+                  <h3 className="font-display text-sm sm:text-base font-bold text-white">
+                    {activeTier.name} — {formatINR(activeTier.amount)}
+                  </h3>
+                </div>
+                <p className="text-xs text-amber-200 mt-0.5">
+                  {activeTier.meaning} ({activeTier.kannada})
+                </p>
               </div>
             </div>
 
-            {/* 1-Tap Tactile Quick Amount Chips */}
-            <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar pt-0.5">
-              {[
-                { amount: 100, label: "₹100", sub: "1 Boy Meal" },
-                { amount: 300, label: "₹300", sub: "3 Meals" },
-                { amount: 500, label: "₹500", sub: "5 Meals" },
-                { amount: 1500, label: "₹1,500", sub: "Breakfast" },
-                { amount: 4500, label: "₹4,500", sub: "Full Day (25 Boys)", popular: true },
-              ].map((chip) => (
-                <button
-                  key={chip.amount}
-                  type="button"
-                  onClick={() => cart.openBottomDonate(chip.amount, chip.amount === 4500 ? "food_one_day" : undefined)}
-                  className={`shrink-0 rounded-xl px-2.5 sm:px-3 py-1.5 text-left border transition active:scale-95 cursor-pointer ${
-                    chip.popular
-                      ? "bg-saffron text-white border-amber-300 shadow-md ring-1 ring-white/50"
-                      : "bg-white/12 text-white border-white/20 hover:bg-white/20"
-                  }`}
-                >
-                  <span className="block text-xs font-black leading-tight text-amber-300">{chip.label}</span>
-                  <span className="block text-[9px] sm:text-[10px] text-white/80 leading-tight truncate">{chip.sub}</span>
-                </button>
-              ))}
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="text-[11px] text-emerald-300 font-semibold flex items-center gap-1">
+                <span>✓</span> 80G Tax Exemption
+              </span>
+              <span className="text-[11px] text-amber-300 font-semibold flex items-center gap-1">
+                <span>✓</span> 100% Direct Allocation
+              </span>
             </div>
+          </div>
 
-            {/* Primary Action Buttons */}
-            <div className="flex flex-col sm:flex-row items-center gap-2 pt-1">
-              <button
-                type="button"
-                onClick={() => cart.openBottomDonate(4500, "food_one_day")}
-                className="focus-ring w-full sm:flex-1 flex items-center justify-center gap-2 rounded-xl sm:rounded-2xl bg-gradient-to-r from-saffron via-amber-500 to-saffron px-5 py-3 text-xs sm:text-sm font-black text-white shadow-lg hover:brightness-110 active:scale-98 transition cursor-pointer"
-              >
-                <span>🍛 SPONSOR NOW (UPI / GPAY / CARDS)</span>
-                <span>&rarr;</span>
-              </button>
+          {/* Primary High-Conversion Action Button */}
+          <div className="flex flex-col sm:flex-row items-center gap-2.5 pt-1">
+            <button
+              type="button"
+              onClick={handleInstantDonate}
+              className="focus-ring tap-scale w-full sm:flex-1 flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-saffron via-amber-500 to-saffron px-6 py-4 text-sm sm:text-base font-black text-white shadow-xl hover:brightness-110 active:scale-98 transition cursor-pointer animate-heartbeat"
+            >
+              <span className="relative flex h-3 w-3 shrink-0">
+                <span className="animate-beacon absolute inline-flex h-full w-full rounded-full bg-white opacity-90"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-200"></span>
+              </span>
+              <span>⚡ DONATE {formatINR(selectedShagun)} SHAGUN (UPI / GPAY / CARDS) →</span>
+            </button>
 
-              <Link
-                href="/celebrate-special-day"
-                className="w-full sm:w-auto text-center px-4 py-2.5 rounded-xl sm:rounded-2xl bg-white/15 hover:bg-white/25 text-white text-xs font-bold border border-white/25 transition active:scale-98"
-              >
-                🎂 Celebrate Birthday (₹3,500)
-              </Link>
-            </div>
+            <Link
+              href="/celebrate-special-day"
+              className="w-full sm:w-auto text-center px-5 py-4 rounded-2xl bg-white/15 hover:bg-white/25 text-white text-xs sm:text-sm font-bold border border-white/25 transition active:scale-98 shrink-0"
+            >
+              🎂 Sponsor Birthday Feast ({formatINR(2101)})
+            </Link>
           </div>
         </div>
       </div>
 
-      {/* ── 2. SLEEK HORIZONTAL CATEGORY DOCK (STREAMLINED FOR MOBILE) ── */}
-      <div className="relative z-30 w-full bg-teal-950 border-t border-white/15 py-3 sm:py-4 px-3 sm:px-6 lg:px-8">
+      {/* ── 3. SLEEK HORIZONTAL CATEGORY DOCK (STREAMLINED FOR MOBILE) ── */}
+      <div className="relative z-30 w-full bg-teal-950 py-3 sm:py-4 px-3 sm:px-6 lg:px-8 border-b border-teal-900/40">
         <div className="mx-auto max-w-7xl">
           <div className="flex overflow-x-auto gap-2 sm:gap-3 pb-1 no-scrollbar md:grid md:grid-cols-5 md:gap-3.5">
             {/* Block 1: Support a Boy */}
             <button
               type="button"
-              onClick={() => cart.openBottomDonate(100)}
+              onClick={() => cart.openBottomDonate(11)}
               className="focus-ring tap-scale shrink-0 w-36 md:w-auto flex flex-col items-center justify-center text-center p-2.5 sm:p-3 rounded-2xl bg-white/10 hover:bg-white/18 border border-white/15 transition-all cursor-pointer group hover:border-amber-400"
             >
               <div className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-xl bg-amber-500/20 text-amber-400 mb-1.5 group-hover:scale-110 transition-transform">
                 <span className="text-lg">🤲</span>
               </div>
               <span className="text-xs font-bold text-white group-hover:text-amber-300 truncate">
-                Support a Boy
+                Shagun Seva
               </span>
               <span className="text-[10px] text-amber-200/80 font-medium truncate">
                 ಒಬ್ಬ ಮಗುವಿಗೆ ಸೇವೆ
               </span>
               <span className="mt-1 rounded-md bg-white/15 px-1.5 py-0.2 text-[9px] font-extrabold text-amber-300">
-                ₹100 / ₹500
+                ₹11 / ₹101
               </span>
             </button>
 
             {/* Block 2: 25 Resident Boys */}
             <button
               type="button"
-              onClick={() => cart.openBottomDonate(4500, "food_one_day")}
+              onClick={() => cart.openBottomDonate(2501)}
               className="focus-ring tap-scale shrink-0 w-36 md:w-auto flex flex-col items-center justify-center text-center p-2.5 sm:p-3 rounded-2xl bg-white/10 hover:bg-white/18 border border-white/15 transition-all cursor-pointer group hover:border-amber-400"
             >
               <div className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-xl bg-amber-500/20 text-amber-400 mb-1.5 group-hover:scale-110 transition-transform">
@@ -211,7 +380,7 @@ export function CinematicHero({ content }: { content?: Partial<SiteContentMap> }
                 ಮಕ್ಕಳ ಆಶ್ರಯ ಕೇಂದ್ರ
               </span>
               <span className="mt-1 rounded-md bg-white/15 px-1.5 py-0.2 text-[9px] font-extrabold text-amber-300">
-                Daily Care &amp; Shelter
+                Care &amp; Shelter
               </span>
             </button>
 
@@ -230,34 +399,34 @@ export function CinematicHero({ content }: { content?: Partial<SiteContentMap> }
                 ಹುಟ್ಟುಹಬ್ಬದ ಹಬ್ಬ
               </span>
               <span className="mt-1 rounded-md bg-white/15 px-1.5 py-0.2 text-[9px] font-extrabold text-amber-300">
-                Feast · ₹3,500
+                Feast · ₹2,101
               </span>
             </Link>
 
             {/* Block 4: Child Education */}
             <button
               type="button"
-              onClick={() => cart.openBottomDonate(9600, "education_one_year")}
+              onClick={() => cart.openBottomDonate(251)}
               className="focus-ring tap-scale shrink-0 w-36 md:w-auto flex flex-col items-center justify-center text-center p-2.5 sm:p-3 rounded-2xl bg-white/10 hover:bg-white/18 border border-white/15 transition-all cursor-pointer group hover:border-amber-400"
             >
               <div className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-xl bg-amber-500/20 text-amber-400 mb-1.5 group-hover:scale-110 transition-transform">
                 <span className="text-lg">📚</span>
               </div>
               <span className="text-xs font-bold text-white group-hover:text-amber-300 truncate">
-                Child Education
+                Child Vidya
               </span>
               <span className="text-[10px] text-amber-200/80 font-medium truncate">
                 ಶಾಲಾ ವಿದ್ಯಾಭ್ಯಾಸ
               </span>
               <span className="mt-1 rounded-md bg-white/15 px-1.5 py-0.2 text-[9px] font-extrabold text-amber-300">
-                Tuition &amp; Kits
+                Kit · ₹251
               </span>
             </button>
 
             {/* Block 5: Full Day Annadana */}
             <button
               type="button"
-              onClick={() => cart.openBottomDonate(4500, "food_one_day")}
+              onClick={() => cart.openBottomDonate(5001)}
               className="focus-ring tap-scale shrink-0 w-36 md:w-auto flex flex-col items-center justify-center text-center p-2.5 sm:p-3 rounded-2xl bg-gradient-to-b from-amber-500/25 to-teal-900 border border-amber-400/60 transition-all cursor-pointer group hover:border-amber-300 shadow-sm"
             >
               <div className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-xl bg-amber-400 text-teal-950 mb-1.5 group-hover:scale-110 transition-transform">
@@ -270,7 +439,7 @@ export function CinematicHero({ content }: { content?: Partial<SiteContentMap> }
                 ಎಲ್ಲಾ ಮಕ್ಕಳಿಗೆ ಊಟ
               </span>
               <span className="mt-1 rounded-md bg-amber-400 px-1.5 py-0.2 text-[9px] font-black text-teal-950">
-                Full Day · ₹4,500
+                Full Day · ₹5,001
               </span>
             </button>
           </div>

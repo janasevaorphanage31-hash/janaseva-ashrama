@@ -93,10 +93,10 @@ export function TodaySection({
                 <p className="text-[10px] text-white/70 mt-0.5">Immunity for 25 boys</p>
               </div>
               <Link
-                href="/checkout?amount=150"
+                href="/checkout?amount=51"
                 className="mt-3 inline-flex items-center justify-center rounded-xl bg-saffron px-3 py-1.5 text-xs font-bold text-white hover:bg-saffron-dark transition shadow-2xs"
               >
-                Sponsor Fruits (₹150) →
+                Sponsor Fruits &amp; Milk (₹51) →
               </Link>
             </div>
 
@@ -113,10 +113,10 @@ export function TodaySection({
                 <p className="text-[10px] text-white/70 mt-0.5">Nourishing 25 boys</p>
               </div>
               <Link
-                href="/checkout?amount=100"
+                href="/checkout?amount=101"
                 className="mt-3 inline-flex items-center justify-center rounded-xl bg-gold text-teal-950 px-3 py-1.5 text-xs font-extrabold hover:bg-gold-light transition shadow-2xs"
               >
-                Sponsor Meal (₹100) →
+                Sponsor Punya Meal (₹101) →
               </Link>
             </div>
           </div>

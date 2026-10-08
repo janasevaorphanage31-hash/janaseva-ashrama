@@ -9,13 +9,16 @@ import { numberToIndianWords } from "@/lib/number-words";
 import { track } from "@/lib/track";
 
 const QUICK_AMOUNTS = [
-  { amount: 100, label: "1 Warm Meal", subtitle: "Direct meal for 1 boy" },
-  { amount: 500, label: "5 Boy Meals", subtitle: "Nourishing 5 boys" },
-  { amount: 1500, label: "Day Breakfast", subtitle: "Breakfast for all 25 boys" },
-  { amount: 2500, label: "1 Time Annadana", subtitle: "Lunch or dinner for 25 boys" },
-  { amount: 4500, label: "Full Day Annadana", subtitle: "All 3 meals for all 25 boys", isPopular: true },
-  { amount: 6000, label: "1 Mo. Groceries", subtitle: "Ration for 4 boys" },
-  { amount: 9600, label: "1 Yr. Education", subtitle: "Full annual school fees" },
+  { amount: 11, label: "₹11 Ekadashi", subtitle: "1 glass milk for 1 boy" },
+  { amount: 21, label: "₹21 Dharma", subtitle: "Fresh fruit & morning snack" },
+  { amount: 51, label: "₹51 Breakfast", subtitle: "Hot idlis & sambar for 1 boy" },
+  { amount: 101, label: "₹101 Punya Meal", subtitle: "Full hot lunch for 1 boy", isPopular: true },
+  { amount: 251, label: "₹251 Vidya Kit", subtitle: "Full notebooks & school stationery" },
+  { amount: 501, label: "₹501 Arogya", subtitle: "Pediatric doctor care & tonic" },
+  { amount: 1001, label: "₹1,001 Anna Daata", subtitle: "1 week groceries & fresh vegetables" },
+  { amount: 2101, label: "₹2,101 Maha Prasada", subtitle: "Sweet payasam feast for all 25 boys" },
+  { amount: 2501, label: "₹2,501 Sampoorna", subtitle: "1-time feast for all 25 boys" },
+  { amount: 5001, label: "₹5,001 Sarva Seva", subtitle: "Full day 3 meals for all 25 boys" },
 ];
 
 export function BottomDonationDrawer() {
@@ -28,7 +31,7 @@ export function BottomDonationDrawer() {
     setCustom,
   } = useCart();
 
-  const [selectedAmount, setSelectedAmount] = useState<number>(4500);
+  const [selectedAmount, setSelectedAmount] = useState<number>(101);
   const [customInput, setCustomInput] = useState<string>("");
   const [activeTab, setActiveTab] = useState<"quick" | "tiers" | "bank">("quick");
   const [selectedTierOption, setSelectedTierOption] = useState<{ categoryId: string; optionId: string }>({
@@ -203,7 +206,7 @@ export function BottomDonationDrawer() {
                 <span className="text-xl shrink-0">🔥</span>
                 <div className="text-[11px] leading-tight text-teal-950 font-medium">
                   <strong className="text-saffron-dark font-black uppercase tracking-wider block text-[10px]">Live Urgent Need:</strong>
-                  6 unassigned evening meals for 25 boys in Bangalore · ₹100 feeds 1 child tonight
+                  6 unassigned evening meals for 25 boys in Bangalore · Even ₹11 gives fresh milk, ₹101 feeds 1 child tonight
                 </div>
               </div>
 
@@ -268,7 +271,7 @@ export function BottomDonationDrawer() {
                       type="button"
                       onClick={() => {
                         setCustomInput("");
-                        setSelectedAmount(4500);
+                        setSelectedAmount(101);
                       }}
                       className="text-xs font-bold text-teal-900/50 hover:text-teal-900 cursor-pointer"
                     >

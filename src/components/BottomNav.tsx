@@ -330,7 +330,7 @@ export function BottomNav() {
               type="button"
               onClick={() => {
                 track("cta_make_impact", { where: "bottom_nav" });
-                openBottomDonate(4500, "food_one_day");
+                openBottomDonate(101, "meal");
               }}
               aria-label="Open donation options for 25 boys"
               className="focus-ring -mt-5 relative flex flex-col items-center justify-center group tap-scale cursor-pointer"

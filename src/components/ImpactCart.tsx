@@ -9,7 +9,7 @@ import { Container, Head, Section, Chip } from "./ui";
 import { formatINR } from "@/lib/site";
 import { track } from "@/lib/track";
 
-const QUICK_GIVE_PRESETS = [100, 250, 500, 1000, 2500];
+const QUICK_GIVE_PRESETS = [11, 21, 51, 101, 251, 501, 1001, 2501, 5001];
 
 const CATEGORIES = [
   { id: "all", label: "All Needs", icon: "🌟" },
@@ -218,7 +218,7 @@ export function ImpactCart({
                     onClick={() => setQty("fruits", 1)}
                     className="focus-ring rounded-lg bg-white px-2.5 py-1 text-[11px] font-bold text-teal-900 shadow-2xs border border-teal-900/10 hover:bg-gold transition active:scale-95"
                   >
-                    + Fruits ({formatINR(150)})
+                    + Fruits ({formatINR(151)})
                   </button>
                 )}
                 {!hasMeal && (
@@ -227,7 +227,7 @@ export function ImpactCart({
                     onClick={() => setQty("meal", 1)}
                     className="focus-ring rounded-lg bg-white px-2.5 py-1 text-[11px] font-bold text-teal-900 shadow-2xs border border-teal-900/10 hover:bg-gold transition active:scale-95"
                   >
-                    + Warm Meal ({formatINR(100)})
+                    + Warm Meal ({formatINR(101)})
                   </button>
                 )}
                 {!hasSchoolKit && (
@@ -236,7 +236,7 @@ export function ImpactCart({
                     onClick={() => setQty("school-kit", 1)}
                     className="focus-ring rounded-lg bg-white px-2.5 py-1 text-[11px] font-bold text-teal-900 shadow-2xs border border-teal-900/10 hover:bg-gold transition active:scale-95"
                   >
-                    + School Kit ({formatINR(250)})
+                    + School Kit ({formatINR(251)})
                   </button>
                 )}
               </div>
@@ -261,10 +261,10 @@ export function ImpactCart({
       {total === 0 ? (
         <button
           type="button"
-          onClick={() => cart.openBottomDonate(4500, "food_one_day")}
+          onClick={() => cart.openBottomDonate(101, "food_one_day")}
           className="focus-ring block w-full rounded-xl px-5 py-3.5 sm:py-4 text-center text-xs sm:text-sm font-bold tracking-wide text-white bg-saffron shadow-md hover:bg-saffron-dark transition active:scale-95 cursor-pointer animate-heartbeat"
         >
-          QUICK SPONSOR 25 BOYS (₹4,500) 💝
+          QUICK SPONSOR 25 BOYS (₹101 / ₹2,501) 💝
         </button>
       ) : (
         <Link
@@ -494,7 +494,7 @@ export function ImpactCart({
                 </div>
                 <button
                   type="button"
-                  onClick={() => cart.openBottomDonate(custom > 0 ? custom : 2500)}
+                  onClick={() => cart.openBottomDonate(custom > 0 ? custom : 101)}
                   className="animate-heartbeat focus-ring px-3.5 py-1.5 rounded-xl bg-saffron text-white text-xs font-black uppercase tracking-wider shadow-md hover:bg-saffron-dark cursor-pointer flex items-center gap-1.5"
                 >
                   <span className="relative flex h-2 w-2">
