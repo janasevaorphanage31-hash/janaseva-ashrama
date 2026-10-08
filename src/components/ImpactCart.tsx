@@ -455,6 +455,20 @@ export function ImpactCart({
                           </div>
                         )}
                       </div>
+
+                      {/* 1-Tap Instant Donate Trigger */}
+                      <button
+                        type="button"
+                        onClick={() => cart.openBottomDonate(item.unitPrice)}
+                        className="w-full mt-2 rounded-xl bg-amber-500/15 border border-amber-500/30 py-1 sm:py-1.5 px-2 text-[10px] sm:text-[11px] font-bold text-teal-950 hover:bg-amber-500/25 transition flex items-center justify-center gap-1 cursor-pointer tap-scale"
+                        title="1-Tap Instant Donate"
+                      >
+                        <span className="relative flex h-1.5 w-1.5">
+                          <span className="animate-beacon absolute inline-flex h-full w-full rounded-full bg-saffron opacity-80" />
+                          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-saffron" />
+                        </span>
+                        <span>Instant Donate 💝</span>
+                      </button>
                     </div>
                   </li>
                 );

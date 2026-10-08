@@ -425,7 +425,7 @@ export function BottomDonationDrawer() {
                     rel="noopener noreferrer"
                     className="font-bold underline text-teal-900"
                   >
-                    +91 99452 23232
+                    +91 99803 59595 / 99452 23232
                   </a>{" "}
                   along with your PAN for official 80G tax receipt issuance.
                 </p>

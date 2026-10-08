@@ -122,7 +122,7 @@ export function TrendingBirthdaySection({ wishVideos }: { wishVideos?: WishVideo
   };
 
   const handleCopyStory = () => {
-    const origin = typeof window !== "undefined" ? window.location.origin : "https://www.janasevaashrama.org";
+    const origin = typeof window !== "undefined" ? window.location.origin : (SITE.url || "https://www.janasevaashrama.org");
     const text = `This birthday, I am celebrating with 25 boys at Janaseva Ashrama in Bengaluru! Instead of material gifts, join me in sponsoring wholesome meals: ${origin}/celebrate-birthday #JanasevaAshrama #BirthdayGiving #Bengaluru`;
     if (typeof navigator !== "undefined" && navigator.clipboard) {
       navigator.clipboard.writeText(text);

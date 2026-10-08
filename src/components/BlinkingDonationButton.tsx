@@ -19,7 +19,7 @@ export function BlinkingDonationFloatingButton() {
   };
 
   return (
-    <div className="fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] left-3 z-40 md:bottom-6 md:left-6 no-print">
+    <div className="hidden md:block fixed md:bottom-6 md:left-6 z-40 no-print">
       <button
         type="button"
         onClick={handleClick}

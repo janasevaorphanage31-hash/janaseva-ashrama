@@ -74,7 +74,7 @@ export function SupporterFormClient() {
 
   const formUrl = typeof window !== "undefined"
     ? `${window.location.origin}/supporter-form`
-    : "https://www.janasevaashrama.org/supporter-form";
+    : `${SITE.url || "https://www.janasevaashrama.org"}/supporter-form`;
 
   // Calculate Total
   const calculateTotal = () => {

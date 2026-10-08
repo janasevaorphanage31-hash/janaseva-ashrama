@@ -67,7 +67,8 @@ export function VerifiedImpactSection({
       : DEFAULT_VERIFIED_METRICS;
 
   return (
-    <Section id="impact-stats" tone="teal">
+    <Section id="impact-metrics" tone="teal" className="scroll-mt-14">
+      <div id="impact-stats" className="scroll-mt-14" />
       <Container>
         <Head
           eyebrow="Verified impact"

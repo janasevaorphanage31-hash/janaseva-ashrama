@@ -126,7 +126,8 @@ export function DocumentaryVideoSection() {
   };
 
   return (
-    <Section id="videos" tone="teal" className="overflow-hidden py-10 md:py-16">
+    <Section id="videos" tone="teal" className="overflow-hidden py-10 md:py-16 scroll-mt-14">
+      <div id="documentary" className="scroll-mt-14" />
       <Container>
         <div className="mb-2">
           <Chip tone="gold">Documentary Lens</Chip>
