@@ -9,11 +9,11 @@ import { useCart } from "../CartProvider";
 import { track } from "@/lib/track";
 
 const TIER_IMAGES: Record<string, string> = {
-  food_one_day: "/media/prayer-meals.jpg",
-  food_one_month: "/media/prayer-meals.jpg",
-  cloth_one_set: "/media/evening-circle.jpg",
-  education_one_month: "/media/art-schooling.jpg",
-  education_one_year: "/media/art-schooling.jpg",
+  food_one_day: "/media/annadana-hall-hd.jpg",
+  food_one_month: "/media/banana-leaf-feast.jpg",
+  cloth_one_set: "/media/boys-group-red-assembly.jpg",
+  education_one_month: "/media/art-drawings.jpg",
+  education_one_year: "/media/abacus-math-class.jpg",
 };
 
 const TIER_SLUG_MAP: Record<string, Record<string, string>> = {

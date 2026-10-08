@@ -6,6 +6,7 @@ import { TodaySection } from "@/components/sections/TodaySection";
 import { ImpactCart } from "@/components/ImpactCart";
 import { TrendingBirthdaySection } from "@/components/sections/TrendingBirthdaySection";
 import { CommunityActivitiesSection } from "@/components/sections/CommunityActivitiesSection";
+import { RealBoysGallerySection } from "@/components/sections/RealBoysGallerySection";
 import { DocumentaryVideoSection } from "@/components/sections/DocumentaryVideoSection";
 import { EmotionalQuotesSection } from "@/components/sections/EmotionalQuotesSection";
 import { TransparencySection } from "@/components/sections/TransparencySection";
@@ -67,7 +68,10 @@ export default async function Home() {
       {/* 9. On-Ground NGO Activities & Community Outreach Campaigns (2-col grid mobile) */}
       <CommunityActivitiesSection />
 
-      {/* 10. Life in Motion: Documentary Video Chapters (Unstaged Daily Boy Life) */}
+      {/* 10. Real Boys Interactive Visual Gallery (39 Curated Ground Moments, Prayers, Classes & Sports) */}
+      <RealBoysGallerySection />
+
+      {/* 11. Life in Motion: Documentary Video Chapters (Unstaged Daily Boy Life) */}
       <DocumentaryVideoSection />
 
       {/* 8. Transparency Center & 5 Official Govt Accreditations (Form 28, Form 10AC, CSR-1, 12AA, PAN) */}

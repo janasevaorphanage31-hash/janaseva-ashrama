@@ -15,6 +15,7 @@ import {
 } from "@/lib/validation";
 import { ValidationErrorModal } from "@/components/ValidationErrorModal";
 import { BusinessPlanModal } from "@/components/BusinessPlanModal";
+import { CURATED_GALLERY, type GalleryItem } from "@/data/ashrama-curated-gallery";
 
 type Tab = "analytics" | "crm" | "celebrations" | "content" | "media" | "catalogs" | "documents" | "community" | "team";
 
@@ -114,6 +115,14 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
 
   // Media Manager state
   const [selectedVideoPreview, setSelectedVideoPreview] = useState<string | null>(null);
+  const [selectedImagePreview, setSelectedImagePreview] = useState<{
+    url: string;
+    title: string;
+    kannada?: string;
+    desc?: string;
+  } | null>(null);
+  const [mediaSearchQuery, setMediaSearchQuery] = useState("");
+  const [mediaCategoryFilter, setMediaCategoryFilter] = useState("all");
 
   // Catalogs state
   const [catalogs, setCatalogs] = useState<any[]>([]);
@@ -2776,68 +2785,133 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
 
               {/* LOCAL MEDIA REPOSITORY GALLERY */}
               <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-teal-900/10 space-y-4">
-                <div>
-                  <h3 className="font-display text-base font-bold text-teal-900">
-                    Ashrama Media Gallery & Video Library
-                  </h3>
-                  <p className="text-xs text-teal-950/60">
-                    Real videos and photos bundled in public media. Click any item to preview or copy its URL.
-                  </p>
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                  <div>
+                    <h3 className="font-display text-base font-bold text-teal-900">
+                      Ashrama Media Gallery &amp; Video Library ({CURATED_GALLERY.length} Authentic Assets)
+                    </h3>
+                    <p className="text-xs text-teal-950/60">
+                      All verified photos and videos of our 25 resident boys in Thurahalli, Bangalore. Click any item to preview or copy its public URL.
+                    </p>
+                  </div>
+                  <div className="w-full md:w-72">
+                    <input
+                      type="text"
+                      placeholder="Search by filename, title, kannada..."
+                      value={mediaSearchQuery}
+                      onChange={(e) => setMediaSearchQuery(e.target.value)}
+                      className="w-full rounded-xl border border-teal-900/20 bg-cream/30 px-3.5 py-2 text-xs font-medium text-teal-950 placeholder:text-teal-950/40 focus:outline-none focus:ring-2 focus:ring-teal-900"
+                    />
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 md:grid-cols-6">
+                {/* Category Filter Pills */}
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-2 no-scrollbar">
                   {[
-                    { name: "prayer-meals.jpg", type: "image", url: "/media/prayer-meals.jpg" },
-                    { name: "art-schooling.jpg", type: "image", url: "/media/art-schooling.jpg" },
-                    { name: "swimming-outing.jpg", type: "image", url: "/media/swimming-outing.jpg" },
-                    { name: "festival-pooja.jpg", type: "image", url: "/media/festival-pooja.jpg" },
-                    { name: "evening-circle.jpg", type: "image", url: "/media/evening-circle.jpg" },
-                    { name: "ashrama_video.mp4", type: "video", url: "/media/ashrama_video.mp4" },
-                    { name: "chapter1_dawn.mp4", type: "video", url: "/media/chapter1_dawn.mp4" },
-                    { name: "chapter2_breakfast.mp4", type: "video", url: "/media/chapter2_breakfast.mp4" },
-                    { name: "chapter3_vidya.mp4", type: "video", url: "/media/chapter3_vidya.mp4" },
-                    { name: "chapter4_play.mp4", type: "video", url: "/media/chapter4_play.mp4" },
-                    { name: "chapter5_night.mp4", type: "video", url: "/media/chapter5_night.mp4" },
-                    { name: "food.jpg", type: "image", url: "/media/food.jpg" },
-                    { name: "meals.jpg", type: "image", url: "/media/meals.jpg" },
-                    { name: "fruits.jpg", type: "image", url: "/media/fruits.jpg" },
-                    { name: "pantry.jpg", type: "image", url: "/media/pantry.jpg" },
-                    { name: "learning.jpg", type: "image", url: "/media/learning.jpg" },
-                    { name: "education.jpg", type: "image", url: "/media/education.jpg" },
-                  ].map((item, idx) => (
-                    <div
-                      key={idx}
-                      className="group relative rounded-xl border border-teal-900/10 p-2 text-center bg-cream/30 hover:bg-cream transition"
-                    >
-                      <div className="aspect-video w-full rounded-lg bg-teal-950/10 flex items-center justify-center overflow-hidden mb-1.5 relative">
-                        {item.type === "video" ? (
-                          <>
-                            <video src={item.url} preload="metadata" className="h-full w-full object-cover" />
-                            <div className="absolute inset-0 bg-black/25 flex items-center justify-center">
-                              <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-white/90 text-teal-950 shadow">
-                                <svg className="h-3 w-3 fill-current ml-0.5" viewBox="0 0 24 24">
-                                  <path d="M8 5v14l11-7z" />
-                                </svg>
-                              </span>
-                            </div>
-                          </>
-                        ) : (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={item.url} alt={item.name} className="h-full w-full object-cover" />
-                        )}
-                      </div>
-                      <p className="font-mono text-[10px] text-teal-950 truncate font-semibold">{item.name}</p>
+                    { id: "all", label: "🌟 All Assets" },
+                    { id: "Annadana & Meals", label: "🍲 Annadana" },
+                    { id: "Vidya & Education", label: "📚 Vidya" },
+                    { id: "Birthdays & Celebrations", label: "🎂 Birthdays" },
+                    { id: "Patriotic & National", label: "🇮🇳 Patriotic" },
+                    { id: "Festivals & Spiritual", label: "🪔 Festivals" },
+                    { id: "Yoga & Health", label: "🧘 Yoga & Health" },
+                    { id: "Sports & Play", label: "🏏 Sports" },
+                    { id: "Our 25 Boys", label: "👦 Our 25 Boys" },
+                    { id: "Live Videos", label: "▶ Live Videos" },
+                  ].map((cat) => {
+                    const isSelected = mediaCategoryFilter === cat.id;
+                    return (
                       <button
+                        key={cat.id}
                         type="button"
-                        onClick={() => {
-                          if (item.type === "video") setSelectedVideoPreview(item.url);
-                          else navigator.clipboard?.writeText(item.url);
-                          setNotification(`Copied/Playing: ${item.url}`);
-                        }}
-                        className="mt-1 text-[10px] text-saffron-dark font-bold hover:underline block w-full"
+                        onClick={() => setMediaCategoryFilter(cat.id)}
+                        className={`shrink-0 rounded-xl px-3 py-1.5 text-[11px] font-bold transition ${
+                          isSelected
+                            ? "bg-teal-900 text-white"
+                            : "bg-cream/40 text-teal-950/70 border border-teal-900/10 hover:bg-cream"
+                        }`}
                       >
-                        {item.type === "video" ? "Play Video" : "Copy Path"}
+                        {cat.label}
                       </button>
+                    );
+                  })}
+                </div>
+
+                {/* Grid */}
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+                  {CURATED_GALLERY.filter((item) => {
+                    const matchCat = mediaCategoryFilter === "all" || item.category === mediaCategoryFilter;
+                    const q = mediaSearchQuery.toLowerCase().trim();
+                    const matchSearch =
+                      !q ||
+                      item.semanticName.toLowerCase().includes(q) ||
+                      item.title.toLowerCase().includes(q) ||
+                      item.kannada.toLowerCase().includes(q) ||
+                      item.category.toLowerCase().includes(q);
+                    return matchCat && matchSearch;
+                  }).map((item) => (
+                    <div
+                      key={item.id}
+                      className="group relative rounded-xl border border-teal-900/10 p-2.5 text-center bg-cream/20 hover:bg-cream/60 transition flex flex-col justify-between"
+                    >
+                      <div>
+                        <div
+                          className="aspect-video w-full rounded-lg bg-teal-950/10 flex items-center justify-center overflow-hidden mb-1.5 relative cursor-pointer"
+                          onClick={() => {
+                            if (item.type === "video") setSelectedVideoPreview(item.url);
+                            else setSelectedImagePreview({ url: item.url, title: item.title, kannada: item.kannada, desc: item.description });
+                          }}
+                        >
+                          {item.type === "video" ? (
+                            <>
+                              <video src={item.url} preload="metadata" className="h-full w-full object-cover" />
+                              <div className="absolute inset-0 bg-black/25 flex items-center justify-center">
+                                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-saffron text-white shadow">
+                                  <svg className="h-3.5 w-3.5 fill-current ml-0.5" viewBox="0 0 24 24">
+                                    <path d="M8 5v14l11-7z" />
+                                  </svg>
+                                </span>
+                              </div>
+                            </>
+                          ) : (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={item.url} alt={item.semanticName} className="h-full w-full object-cover group-hover:scale-105 transition duration-200" />
+                          )}
+                          <span className="absolute bottom-1 right-1 rounded-sm bg-teal-950/80 px-1 py-0.2 text-[8px] font-bold text-white uppercase">
+                            {item.type === "video" ? "Video" : "Photo"}
+                          </span>
+                        </div>
+
+                        <p className="font-mono text-[10px] text-teal-950 truncate font-bold text-left" title={item.semanticName}>
+                          {item.semanticName}
+                        </p>
+                        <p className="text-[10px] text-teal-900/70 truncate text-left font-medium" title={item.title}>
+                          {item.title}
+                        </p>
+                      </div>
+
+                      <div className="mt-2 pt-2 border-t border-teal-900/10 flex flex-col gap-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard?.writeText(item.url);
+                            setNotification(`Copied path: ${item.url}`);
+                          }}
+                          className="rounded-lg bg-white border border-teal-900/15 py-1 text-[10px] text-teal-900 font-bold hover:bg-cream transition"
+                        >
+                          Copy Path
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (item.type === "video") setSelectedVideoPreview(item.url);
+                            else setSelectedImagePreview({ url: item.url, title: item.title, kannada: item.kannada, desc: item.description });
+                          }}
+                          className="rounded-lg bg-teal-900 text-white py-1 text-[10px] font-bold hover:bg-teal-950 transition"
+                        >
+                          {item.type === "video" ? "▶ Play Video" : "🔍 Preview"}
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -2868,6 +2942,58 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
                     autoPlay
                     className="h-full w-full object-contain"
                   />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Embedded Image Preview Modal */}
+          {selectedImagePreview && (
+            <div
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 backdrop-blur-xs"
+              onClick={() => setSelectedImagePreview(null)}
+            >
+              <div
+                className="w-full max-w-2xl overflow-hidden rounded-3xl bg-teal-950 p-4 shadow-2xl ring-1 ring-white/10"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-center justify-between pb-3 text-white border-b border-white/10">
+                  <div className="min-w-0 pr-2">
+                    <p className="font-display text-sm font-bold text-white truncate">
+                      {selectedImagePreview.title}
+                    </p>
+                    {selectedImagePreview.kannada && (
+                      <p className="text-xs text-gold truncate">{selectedImagePreview.kannada}</p>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedImagePreview(null)}
+                    className="rounded-lg bg-white/10 px-3 py-1 text-xs font-bold text-white hover:bg-white/20 shrink-0"
+                  >
+                    Close
+                  </button>
+                </div>
+                <div className="mt-3 max-h-[60vh] w-full overflow-hidden rounded-2xl bg-black/50 flex items-center justify-center">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={selectedImagePreview.url}
+                    alt={selectedImagePreview.title}
+                    className="max-h-[60vh] w-full object-contain"
+                  />
+                </div>
+                <div className="mt-3 pt-2 border-t border-white/10 flex items-center justify-between text-xs">
+                  <code className="text-white/70 font-mono text-[11px] truncate">{selectedImagePreview.url}</code>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard?.writeText(selectedImagePreview.url);
+                      setNotification(`Copied path: ${selectedImagePreview.url}`);
+                    }}
+                    className="rounded-lg bg-gold px-3 py-1 font-bold text-teal-950 hover:bg-gold/90 shrink-0"
+                  >
+                    Copy Path
+                  </button>
                 </div>
               </div>
             </div>

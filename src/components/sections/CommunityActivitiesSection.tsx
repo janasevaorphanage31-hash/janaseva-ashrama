@@ -40,7 +40,7 @@ const ACTIVITIES: NgoActivity[] = [
     title: "Free Medical Camps & Pediatric Care",
     subtitle: "Healthcare access for rural and urban underprivileged families",
     cadence: "Monthly Health Camp",
-    image: "/media/health.jpg",
+    image: "/media/yoga-day.jpg",
     metricBadge: "24+ Camps · 3,400+ Beneficiaries",
     description:
       "Regular medical checkup camps organized in partnership with volunteer doctors. Providing comprehensive general physician consultations, pediatric growth screenings, dental hygiene checkups, and vision tests for children, destitute elders, and daily-wage families.",
@@ -62,7 +62,7 @@ const ACTIVITIES: NgoActivity[] = [
     title: "Food Distribution & Hunger Relief Drives",
     subtitle: "Wholesome, dignified hot meals served directly to those in need",
     cadence: "Weekly Seva & Crisis Drives",
-    image: "/media/food.jpg",
+    image: "/media/banana-leaf-feast.jpg",
     metricBadge: "15,000+ Hot Meals · 450+ Ration Kits",
     description:
       "Beyond daily residential campus dining, our Annadana outreach drives distribute freshly prepared, hot nutritious meals (rice, aromatic sambar, lentils, and seasonal vegetables) to homeless elders, daily-wage laborers, and hospital patient bystanders across South Bengaluru.",
@@ -84,7 +84,7 @@ const ACTIVITIES: NgoActivity[] = [
     title: "City Cleaning & Swachh Seva Drives",
     subtitle: "Fostering civic pride, green public spaces, and clean surroundings",
     cadence: "Bi-Weekly Community Drive",
-    image: "/media/garden.jpg",
+    image: "/media/flag-hoisting-rangoli.jpg",
     metricBadge: "35+ Cleanliness Drives · 1,200+ kg Waste Cleared",
     description:
       "Volunteer-driven environmental cleanliness and civic hygiene drives. Our children, youth mentors, and citizen volunteers join hands with safety gear to clean public parks, government school grounds, lake surroundings, and neighborhood street corners.",
@@ -103,7 +103,7 @@ const ACTIVITIES: NgoActivity[] = [
     title: "Village Awareness & Social Rights Campaigns",
     subtitle: "Grassroots education, child safety, and empowerment in rural clusters",
     cadence: "Monthly Village Visits",
-    image: "/media/community.jpg",
+    image: "/media/constitution-day.jpg",
     metricBadge: "18+ Villages Reached · 1,500+ Families Guided",
     description:
       "Grassroots field campaigns in rural villages and peri-urban settlements surrounding Bengaluru. We conduct interactive street meetings with village panchayats and families to advocate for compulsory schooling, child protection rights, and safe sanitation.",
@@ -122,7 +122,7 @@ const ACTIVITIES: NgoActivity[] = [
     title: "Rural Government School Kit Distribution",
     subtitle: "Providing underprivileged students with essential learning tools",
     cadence: "Academic Term Drives",
-    image: "/media/school-kit.jpg",
+    image: "/media/art-drawings.jpg",
     metricBadge: "2,200+ School Kits Distributed",
     description:
       "To prevent school dropouts caused by financial hardship, we visit remote rural primary schools to equip deserving young students with brand-new, sturdy school bags, full sets of notebooks, geometry tools, pencil sets, and uniforms.",
@@ -144,7 +144,7 @@ const ACTIVITIES: NgoActivity[] = [
     title: "Rural Drinking Water & Sanitation Drives",
     subtitle: "Safe drinking water purification units & sanitation setups in rural clusters",
     cadence: "Quarterly Field Drives",
-    image: "/media/wellness.jpg",
+    image: "/media/lawn-cheer-circle.jpg",
     metricBadge: "12+ Water Points · 850+ Families",
     description:
       "Preventing waterborne illnesses among vulnerable rural children and elders by distributing community water filters, setting up clean water stations, and conducting hygiene workshops in unserved peri-urban pockets.",

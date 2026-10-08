@@ -1,0 +1,656 @@
+[
+  {
+    "name": "WhatsApp Image 2026-10-06 at 3.26.15 PM.jpeg",
+    "size": 230603,
+    "hash_prefix": "3ed4e15d",
+    "is_dup": false,
+    "dup_of": null,
+    "dims": [
+      960,
+      1280
+    ]
+  },
+  {
+    "name": "WhatsApp Image 2026-10-06 at 3.26.17 PM.jpeg",
+    "size": 232112,
+    "hash_prefix": "e4f7e77a",
+    "is_dup": false,
+    "dup_of": null,
+    "dims": [
+      1500,
+      843
+    ]
+  },
+  {
+    "name": "WhatsApp Image 2026-10-06 at 3.26.18 PM.jpeg",
+    "size": 240338,
+    "hash_prefix": "b8d0a665",
+    "is_dup": false,
+    "dup_of": null,
+    "dims": [
+      1600,
+      1200
+    ]
+  },
+  {
+    "name": "WhatsApp Image 2026-10-06 at 3.28.00 PM.jpeg",
+    "size": 284297,
+    "hash_prefix": "084174b3",
+    "is_dup": false,
+    "dup_of": null,
+    "dims": [
+      1200,
+      1600
+    ]
+  },
+  {
+    "name": "WhatsApp Image 2026-10-06 at 3.28.13 PM.jpeg",
+    "size": 239127,
+    "hash_prefix": "6f485481",
+    "is_dup": false,
+    "dup_of": null,
+    "dims": [
+      1200,
+      1600
+    ]
+  },
+  {
+    "name": "WhatsApp Image 2026-10-06 at 3.28.24 PM.jpeg",
+    "size": 79983,
+    "hash_prefix": "a8c55427",
+    "is_dup": false,
+    "dup_of": null,
+    "dims": [
+      1152,
+      864
+    ]
+  },
+  {
+    "name": "WhatsApp Image 2026-10-06 at 3.28.35 PM.jpeg",
+    "size": 182416,
+    "hash_prefix": "5c539a99",
+    "is_dup": false,
+    "dup_of": null,
+    "dims": [
+      960,
+      1280
+    ]
+  },
+  {
+    "name": "WhatsApp Image 2026-10-06 at 3.28.46 PM.jpeg",
+    "size": 167194,
+    "hash_prefix": "ffcb6faf",
+    "is_dup": false,
+    "dup_of": null,
+    "dims": [
+      1280,
+      576
+    ]
+  },
+  {
+    "name": "WhatsApp Image 2026-10-06 at 3.28.57 PM.jpeg",
+    "size": 87045,
+    "hash_prefix": "a41f4b5b",
+    "is_dup": false,
+    "dup_of": null,
+    "dims": [
+      1152,
+      864
+    ]
+  },
+  {
+    "name": "WhatsApp Image 2026-10-06 at 3.29.09 PM.jpeg",
+    "size": 154015,
+    "hash_prefix": "f9956af0",
+    "is_dup": false,
+    "dup_of": null,
+    "dims": [
+      1280,
+      720
+    ]
+  },
+  {
+    "name": "WhatsApp Image 2026-10-06 at 3.29.33 PM.jpeg",
+    "size": 159043,
+    "hash_prefix": "424defbc",
+    "is_dup": false,
+    "dup_of": null,
+    "dims": [
+      1280,
+      719
+    ]
+  },
+  {
+    "name": "WhatsApp Image 2026-10-06 at 3.29.45 PM.jpeg",
+    "size": 222971,
+    "hash_prefix": "1c9613f9",
+    "is_dup": false,
+    "dup_of": null,
+    "dims": [
+      1599,
+      1200
+    ]
+  },
+  {
+    "name": "WhatsApp Image 2026-10-06 at 3.29.55 PM.jpeg",
+    "size": 200426,
+    "hash_prefix": "92abb539",
+    "is_dup": false,
+    "dup_of": null,
+    "dims": [
+      1280,
+      576
+    ]
+  },
+  {
+    "name": "WhatsApp Image 2026-10-06 at 3.30.07 PM.jpeg",
+    "size": 110926,
+    "hash_prefix": "53ab3919",
+    "is_dup": false,
+    "dup_of": null,
+    "dims": [
+      1280,
+      680
+    ]
+  },
+  {
+    "name": "WhatsApp Image 2026-10-08 at 5.49.37 PM (1).jpeg",
+    "size": 288370,
+    "hash_prefix": "c6d91477",
+    "is_dup": false,
+    "dup_of": null,
+    "dims": [
+      1280,
+      960
+    ]
+  },
+  {
+    "name": "WhatsApp Image 2026-10-08 at 5.49.37 PM (2).jpeg",
+    "size": 288370,
+    "hash_prefix": "c6d91477",
+    "is_dup": true,
+    "dup_of": "WhatsApp Image 2026-10-08 at 5.49.37 PM (1).jpeg",
+    "dims": [
+      1280,
+      960
+    ]
+  },
+  {
+    "name": "WhatsApp Image 2026-10-08 at 5.49.37 PM.jpeg",
+    "size": 142067,
+    "hash_prefix": "dfe414d3",
+    "is_dup": false,
+    "dup_of": null,
+    "dims": [
+      1280,
+      960
+    ]
+  },
+  {
+    "name": "WhatsApp Image 2026-10-08 at 5.49.38 PM (1).jpeg",
+    "size": 71658,
+    "hash_prefix": "2d3e093d",
+    "is_dup": false,
+    "dup_of": null,
+    "dims": [
+      1040,
+      493
+    ]
+  },
+  {
+    "name": "WhatsApp Image 2026-10-08 at 5.49.38 PM.jpeg",
+    "size": 142100,
+    "hash_prefix": "27e9b8e5",
+    "is_dup": false,
+    "dup_of": null,
+    "dims": [
+      1280,
+      960
+    ]
+  },
+  {
+    "name": "WhatsApp Image 2026-10-08 at 5.49.39 PM (1).jpeg",
+    "size": 95331,
+    "hash_prefix": "e0f78b57",
+    "is_dup": false,
+    "dup_of": null,
+    "dims": [
+      1040,
+      780
+    ]
+  },
+  {
+    "name": "WhatsApp Image 2026-10-08 at 5.49.39 PM (2).jpeg",
+    "size": 95331,
+    "hash_prefix": "e0f78b57",
+    "is_dup": true,
+    "dup_of": "WhatsApp Image 2026-10-08 at 5.49.39 PM (1).jpeg",
+    "dims": [
+      1040,
+      780
+    ]
+  },
+  {
+    "name": "WhatsApp Image 2026-10-08 at 5.49.39 PM.jpeg",
+    "size": 63594,
+    "hash_prefix": "c8cb4b7c",
+    "is_dup": false,
+    "dup_of": null,
+    "dims": [
+      1040,
+      493
+    ]
+  },
+  {
+    "name": "WhatsApp Image 2026-10-08 at 5.49.40 PM (1).jpeg",
+    "size": 155497,
+    "hash_prefix": "4b407036",
+    "is_dup": false,
+    "dup_of": null,
+    "dims": [
+      903,
+      1600
+    ]
+  },
+  {
+    "name": "WhatsApp Image 2026-10-08 at 5.49.40 PM.jpeg",
+    "size": 74708,
+    "hash_prefix": "2f367624",
+    "is_dup": false,
+    "dup_of": null,
+    "dims": [
+      1040,
+      780
+    ]
+  },
+  {
+    "name": "WhatsApp Image 2026-10-08 at 5.49.41 PM.jpeg",
+    "size": 291214,
+    "hash_prefix": "ae397d5c",
+    "is_dup": false,
+    "dup_of": null,
+    "dims": [
+      1599,
+      1200
+    ]
+  },
+  {
+    "name": "WhatsApp Image 2026-10-08 at 5.49.46 PM.jpeg",
+    "size": 145409,
+    "hash_prefix": "8d45ac7f",
+    "is_dup": false,
+    "dup_of": null,
+    "dims": [
+      960,
+      1280
+    ]
+  },
+  {
+    "name": "WhatsApp Image 2026-10-08 at 5.49.47 PM.jpeg",
+    "size": 34375,
+    "hash_prefix": "0c7791fc",
+    "is_dup": false,
+    "dup_of": null,
+    "dims": [
+      606,
+      380
+    ]
+  },
+  {
+    "name": "WhatsApp Image 2026-10-08 at 5.49.48 PM.jpeg",
+    "size": 34375,
+    "hash_prefix": "0c7791fc",
+    "is_dup": true,
+    "dup_of": "WhatsApp Image 2026-10-08 at 5.49.47 PM.jpeg",
+    "dims": [
+      606,
+      380
+    ]
+  },
+  {
+    "name": "WhatsApp Image 2026-10-08 at 5.49.49 PM.jpeg",
+    "size": 346091,
+    "hash_prefix": "ea70ab79",
+    "is_dup": false,
+    "dup_of": null,
+    "dims": [
+      1600,
+      1200
+    ]
+  },
+  {
+    "name": "WhatsApp Image 2026-10-08 at 5.49.50 PM (1).jpeg",
+    "size": 142367,
+    "hash_prefix": "070dbe7e",
+    "is_dup": false,
+    "dup_of": null,
+    "dims": [
+      1599,
+      899
+    ]
+  },
+  {
+    "name": "WhatsApp Image 2026-10-08 at 5.49.50 PM.jpeg",
+    "size": 57105,
+    "hash_prefix": "33cffac2",
+    "is_dup": false,
+    "dup_of": null,
+    "dims": [
+      1040,
+      493
+    ]
+  },
+  {
+    "name": "WhatsApp Image 2026-10-08 at 5.49.51 PM (1).jpeg",
+    "size": 285545,
+    "hash_prefix": "ecc6c846",
+    "is_dup": false,
+    "dup_of": null,
+    "dims": [
+      1599,
+      1200
+    ]
+  },
+  {
+    "name": "WhatsApp Image 2026-10-08 at 5.49.51 PM.jpeg",
+    "size": 144214,
+    "hash_prefix": "71b0ab03",
+    "is_dup": false,
+    "dup_of": null,
+    "dims": [
+      1599,
+      899
+    ]
+  },
+  {
+    "name": "WhatsApp Image 2026-10-08 at 5.49.52 PM (1).jpeg",
+    "size": 471303,
+    "hash_prefix": "be829654",
+    "is_dup": false,
+    "dup_of": null,
+    "dims": [
+      1599,
+      1200
+    ]
+  },
+  {
+    "name": "WhatsApp Image 2026-10-08 at 5.49.52 PM.jpeg",
+    "size": 379992,
+    "hash_prefix": "c9d001f1",
+    "is_dup": false,
+    "dup_of": null,
+    "dims": [
+      1599,
+      1200
+    ]
+  },
+  {
+    "name": "WhatsApp Image 2026-10-08 at 5.49.53 PM (1).jpeg",
+    "size": 671872,
+    "hash_prefix": "0a0e6e00",
+    "is_dup": false,
+    "dup_of": null,
+    "dims": [
+      3683,
+      1957
+    ]
+  },
+  {
+    "name": "WhatsApp Image 2026-10-08 at 5.49.53 PM (2).jpeg",
+    "size": 329320,
+    "hash_prefix": "a3927216",
+    "is_dup": false,
+    "dup_of": null,
+    "dims": [
+      1600,
+      1200
+    ]
+  },
+  {
+    "name": "WhatsApp Image 2026-10-08 at 5.49.53 PM.jpeg",
+    "size": 268655,
+    "hash_prefix": "609abd1d",
+    "is_dup": false,
+    "dup_of": null,
+    "dims": [
+      1599,
+      1200
+    ]
+  },
+  {
+    "name": "WhatsApp Image 2026-10-08 at 5.49.54 PM (1).jpeg",
+    "size": 124885,
+    "hash_prefix": "05939a4b",
+    "is_dup": false,
+    "dup_of": null,
+    "dims": [
+      1280,
+      720
+    ]
+  },
+  {
+    "name": "WhatsApp Image 2026-10-08 at 5.49.54 PM.jpeg",
+    "size": 319556,
+    "hash_prefix": "952e303c",
+    "is_dup": false,
+    "dup_of": null,
+    "dims": [
+      1599,
+      1200
+    ]
+  },
+  {
+    "name": "WhatsApp Image 2026-10-08 at 5.49.55 PM (1).jpeg",
+    "size": 218832,
+    "hash_prefix": "a727acb1",
+    "is_dup": false,
+    "dup_of": null,
+    "dims": [
+      1599,
+      1200
+    ]
+  },
+  {
+    "name": "WhatsApp Image 2026-10-08 at 5.49.55 PM (2).jpeg",
+    "size": 243214,
+    "hash_prefix": "8c21bc09",
+    "is_dup": false,
+    "dup_of": null,
+    "dims": [
+      1599,
+      1200
+    ]
+  },
+  {
+    "name": "WhatsApp Image 2026-10-08 at 5.49.55 PM.jpeg",
+    "size": 322147,
+    "hash_prefix": "353b8ece",
+    "is_dup": false,
+    "dup_of": null,
+    "dims": [
+      1599,
+      1200
+    ]
+  },
+  {
+    "name": "WhatsApp Image 2026-10-08 at 5.49.56 PM (1).jpeg",
+    "size": 322794,
+    "hash_prefix": "8380736a",
+    "is_dup": false,
+    "dup_of": null,
+    "dims": [
+      1599,
+      1200
+    ]
+  },
+  {
+    "name": "WhatsApp Image 2026-10-08 at 5.49.56 PM.jpeg",
+    "size": 223266,
+    "hash_prefix": "52ecef27",
+    "is_dup": false,
+    "dup_of": null,
+    "dims": [
+      1599,
+      1200
+    ]
+  },
+  {
+    "name": "WhatsApp Image 2026-10-08 at 5.49.57 PM.jpeg",
+    "size": 259061,
+    "hash_prefix": "abd41935",
+    "is_dup": false,
+    "dup_of": null,
+    "dims": [
+      1599,
+      1200
+    ]
+  },
+  {
+    "name": "WhatsApp Image 2026-10-08 at 5.49.58 PM (1).jpeg",
+    "size": 424638,
+    "hash_prefix": "0343c019",
+    "is_dup": false,
+    "dup_of": null,
+    "dims": [
+      1200,
+      1599
+    ]
+  },
+  {
+    "name": "WhatsApp Image 2026-10-08 at 5.49.58 PM (2).jpeg",
+    "size": 295950,
+    "hash_prefix": "38e8e3bd",
+    "is_dup": false,
+    "dup_of": null,
+    "dims": [
+      1599,
+      1200
+    ]
+  },
+  {
+    "name": "WhatsApp Image 2026-10-08 at 5.49.58 PM.jpeg",
+    "size": 313887,
+    "hash_prefix": "18cd83b7",
+    "is_dup": false,
+    "dup_of": null,
+    "dims": [
+      1599,
+      1200
+    ]
+  },
+  {
+    "name": "WhatsApp Image 2026-10-08 at 5.49.59 PM.jpeg",
+    "size": 163188,
+    "hash_prefix": "e52794cb",
+    "is_dup": false,
+    "dup_of": null,
+    "dims": [
+      1599,
+      906
+    ]
+  },
+  {
+    "name": "WhatsApp Image 2026-10-08 at 5.50.00 PM (1).jpeg",
+    "size": 329901,
+    "hash_prefix": "0533323c",
+    "is_dup": false,
+    "dup_of": null,
+    "dims": [
+      1599,
+      1200
+    ]
+  },
+  {
+    "name": "WhatsApp Image 2026-10-08 at 5.50.00 PM.jpeg",
+    "size": 185515,
+    "hash_prefix": "b649e9e4",
+    "is_dup": false,
+    "dup_of": null,
+    "dims": [
+      1600,
+      1200
+    ]
+  },
+  {
+    "name": "WhatsApp Image 2026-10-08 at 5.50.01 PM (1).jpeg",
+    "size": 104042,
+    "hash_prefix": "5c9432c4",
+    "is_dup": false,
+    "dup_of": null,
+    "dims": [
+      1280,
+      580
+    ]
+  },
+  {
+    "name": "WhatsApp Image 2026-10-08 at 5.50.01 PM.jpeg",
+    "size": 324401,
+    "hash_prefix": "2c74b7fa",
+    "is_dup": false,
+    "dup_of": null,
+    "dims": [
+      1599,
+      1200
+    ]
+  },
+  {
+    "name": "WhatsApp Image 2026-10-08 at 5.50.02 PM (1).jpeg",
+    "size": 221045,
+    "hash_prefix": "c7d107cf",
+    "is_dup": false,
+    "dup_of": null,
+    "dims": [
+      1599,
+      1200
+    ]
+  },
+  {
+    "name": "WhatsApp Image 2026-10-08 at 5.50.02 PM (2).jpeg",
+    "size": 290213,
+    "hash_prefix": "ec366846",
+    "is_dup": false,
+    "dup_of": null,
+    "dims": [
+      1600,
+      900
+    ]
+  },
+  {
+    "name": "WhatsApp Image 2026-10-08 at 5.50.02 PM.jpeg",
+    "size": 144885,
+    "hash_prefix": "aec09cf2",
+    "is_dup": false,
+    "dup_of": null,
+    "dims": [
+      1599,
+      906
+    ]
+  },
+  {
+    "name": "WhatsApp Image 2026-10-08 at 5.50.03 PM.jpeg",
+    "size": 221974,
+    "hash_prefix": "58e61e25",
+    "is_dup": false,
+    "dup_of": null,
+    "dims": [
+      1599,
+      1200
+    ]
+  },
+  {
+    "name": "WhatsApp Video 2026-10-06 at 3.26.05 PM.mp4",
+    "size": 3499422,
+    "hash_prefix": "7664b76b",
+    "is_dup": false,
+    "dup_of": null,
+    "dims": null
+  },
+  {
+    "name": "WhatsApp Video 2026-10-06 at 3.26.12 PM.mp4",
+    "size": 1400151,
+    "hash_prefix": "9e0b6a96",
+    "is_dup": false,
+    "dup_of": null,
+    "dims": null
+  }
+]

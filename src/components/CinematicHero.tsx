@@ -24,9 +24,9 @@ export function CinematicHero({ content }: { content?: Partial<SiteContentMap> }
     setIsMuted(nextMuted);
   };
 
-  // Video source showing steaming hot kitchen Annadana and meals
-  const posterSrc = content?.heroPosterUrl || "/media/food.jpg";
-  const videoSrc = content?.heroVideoUrl || "/media/chapter2_breakfast.mp4";
+  // Video source showing authentic Ashrama prayer, Annadana and boys
+  const posterSrc = content?.heroPosterUrl || "/media/annadana-hall-hd.jpg";
+  const videoSrc = content?.heroVideoUrl || "/media/video-chant-prayer.mp4";
 
   return (
     <section
