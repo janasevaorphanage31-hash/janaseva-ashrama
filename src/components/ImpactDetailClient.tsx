@@ -588,9 +588,9 @@ function parseDonationSchemes(item: ImpactItem): SchemeTier[] {
     },
     {
       id: "scheme-ashrama",
-      title: `Full Ashrama Feast (48 Children)`,
-      qty: 48,
-      description: `Complete support for all 48+ resident children today (${formatINR(p * 48)})`,
+      title: `Full Ashrama Feast (25 Children)`,
+      qty: 25,
+      description: `Complete support for all 25 resident children today (${formatINR(p * 25)})`,
       popular: true,
     },
     {

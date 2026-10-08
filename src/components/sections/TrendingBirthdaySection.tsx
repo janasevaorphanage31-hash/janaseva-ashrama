@@ -36,8 +36,8 @@ const FEAST_OPTIONS: FeastOption[] = [
     slug: "meal",
     title: "Special Birthday Lunch with Payasam",
     cost: 3500,
-    description: "Hot rice, sambar, seasonal vegetable curry, pooris, and traditional festival sweet (payasam) served to all 48+ children.",
-    servings: "Feeds all 48+ children",
+    description: "Hot rice, sambar, seasonal vegetable curry, pooris, and traditional festival sweet (payasam) served to all 25 children.",
+    servings: "Feeds all 25 children",
     popular: true,
   },
   {
@@ -46,7 +46,7 @@ const FEAST_OPTIONS: FeastOption[] = [
     title: "Evening Snacks & Fresh Fruit Platter",
     cost: 2500,
     description: "Evening warm milk, healthy savouries, banana/apple fruit baskets, and joyful evening celebration time.",
-    servings: "Evening treat for 48+ children",
+    servings: "Evening treat for 25 children",
   },
   {
     id: "feast-breakfast",
@@ -54,7 +54,7 @@ const FEAST_OPTIONS: FeastOption[] = [
     title: "Wholesome Morning Breakfast",
     cost: 1500,
     description: "Nutritious steaming idlis or upma, chutney, and warm milk to start the children's school day with energy.",
-    servings: "Morning breakfast for all children",
+    servings: "Morning breakfast for all 25 children",
   },
   {
     id: "feast-full-day",
@@ -85,7 +85,7 @@ export function TrendingBirthdaySection({ wishVideos }: { wishVideos?: WishVideo
       packageCost: 3500,
       videoUrl: "/media/ashrama_video.mp4",
       thumbnailUrl: "/media/meals.jpg",
-      quote: "Happy Birthday Ananya Didi! Thank you for the sweet payasam and pooris! All 48 of us chanted your name and prayed for your happiness!",
+      quote: "Happy Birthday Ananya Didi! Thank you for the sweet payasam and pooris! All 25 of us chanted your name and prayed for your happiness!",
     },
     {
       id: "wish-2",
@@ -97,7 +97,7 @@ export function TrendingBirthdaySection({ wishVideos }: { wishVideos?: WishVideo
       packageCost: 7500,
       videoUrl: "/media/chapter2_breakfast.mp4",
       thumbnailUrl: "/media/fruits.jpg",
-      quote: "Happy 25th Anniversary Uncle & Aunty! All 48 children chanted your names during morning prayer and thanked you for the feast!",
+      quote: "Happy 25th Anniversary Uncle & Aunty! All 25 children chanted your names during morning prayer and thanked you for the feast!",
     },
     {
       id: "wish-3",
@@ -122,7 +122,7 @@ export function TrendingBirthdaySection({ wishVideos }: { wishVideos?: WishVideo
   };
 
   const handleCopyStory = () => {
-    const text = `This birthday, I am celebrating with 48+ children at Janaseva Ashrama in Bengaluru! Instead of material gifts, join me in sponsoring wholesome meals: https://janasevaorphanage.org/celebrate-birthday #JanasevaAshrama #BirthdayGiving #Bengaluru`;
+    const text = `This birthday, I am celebrating with 25 children at Janaseva Ashrama in Bengaluru! Instead of material gifts, join me in sponsoring wholesome meals: https://janasevaorphanage.org/celebrate-birthday #JanasevaAshrama #BirthdayGiving #Bengaluru`;
     if (typeof navigator !== "undefined" && navigator.clipboard) {
       navigator.clipboard.writeText(text);
       setCopiedStory(true);
@@ -143,7 +143,7 @@ export function TrendingBirthdaySection({ wishVideos }: { wishVideos?: WishVideo
 
         <Head
           eyebrow="Heartfelt Celebrations"
-          title="Celebrate Your Birthday with 48+ Children"
+          title="Celebrate Your Birthday with 25 Children"
           lead="Experience the profound joy of sharing your milestone with young souls. Sponsoring a birthday feast or visiting the Ashrama creates heartwarming memories that outlast any ordinary party."
         />
 
@@ -252,7 +252,7 @@ export function TrendingBirthdaySection({ wishVideos }: { wishVideos?: WishVideo
                 1. Sponsor a Birthday Feast
               </h3>
               <p className="mt-1 text-xs text-teal-950/70 leading-relaxed">
-                Choose a wholesome meal package freshly prepared in our Ashrama kitchen for all 48+ children in your name.
+                Choose a wholesome meal package freshly prepared in our Ashrama kitchen for all 25 children in your name.
               </p>
 
               {/* Feast Selection Radio Cards */}
@@ -390,7 +390,7 @@ export function TrendingBirthdaySection({ wishVideos }: { wishVideos?: WishVideo
                   <span>Trending on Instagram & Facebook Stories</span>
                 </div>
                 <p className="text-[11px] text-teal-950/75 italic leading-relaxed">
-                  &ldquo;This year, instead of expensive dinners, I chose to feed 48+ children at Janaseva Ashrama. Best birthday ever!&rdquo;
+                  &ldquo;This year, instead of expensive dinners, I chose to feed 25 children at Janaseva Ashrama. Best birthday ever!&rdquo;
                 </p>
                 <button
                   type="button"

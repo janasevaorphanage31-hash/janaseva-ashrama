@@ -46,7 +46,7 @@ export function CinematicHero({ content }: { content?: Partial<SiteContentMap> }
   const headline = content?.heroHeadline || "A HOME TODAY.\nA FUTURE WE BUILD TOGETHER.";
   const subheadline =
     content?.heroSubheadline ||
-    `Janaseva Ashrama is a registered children's home in Bengaluru providing daily nutritious meals (Annadana), school education, medical care, and safe shelter for 48 orphaned and vulnerable children. 100% direct allocation with Form 10AC 80G tax exemption.`;
+    `Janaseva Ashrama is a registered orphanage and children's home in Bengaluru providing daily nutritious meals (Annadana), school education, medical care, and safe shelter for 25 orphaned and vulnerable children. 100% direct allocation with Form 10AC 80G tax exemption.`;
 
   return (
     <section
@@ -213,7 +213,7 @@ export function CinematicHero({ content }: { content?: Partial<SiteContentMap> }
 
             <div className="grid grid-cols-3 gap-2.5 text-center">
               <div className="rounded-2xl bg-white/10 p-2.5 border border-white/10">
-                <span className="block font-display text-2xl font-black text-gold">48+</span>
+                <span className="block font-display text-2xl font-black text-gold">25</span>
                 <span className="text-[10px] text-white/70 font-semibold uppercase tracking-wider">Resident Children</span>
               </div>
               <div className="rounded-2xl bg-white/10 p-2.5 border border-white/10">
@@ -285,7 +285,7 @@ export function CinematicHero({ content }: { content?: Partial<SiteContentMap> }
         <div className="mx-auto flex max-w-7xl px-4 sm:px-6 lg:px-8 flex-wrap items-center justify-between gap-2 text-xs font-semibold text-white/80">
           <span className="flex items-center gap-2">
             <span className="h-2 w-2 rounded-full bg-emerald-400" />
-            <span>48 Children Sheltered &amp; Educated</span>
+            <span>25 Children Sheltered &amp; Educated</span>
           </span>
           <span className="hidden sm:inline">·</span>
           <span>100% Direct Allocation</span>

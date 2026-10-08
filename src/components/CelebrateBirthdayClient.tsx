@@ -48,7 +48,7 @@ const PACKAGES: FeastPackage[] = [
     name: "Morning Energy Breakfast",
     price: 1500,
     menu: ["Steaming Idlis or Khara Bath", "Fresh Coconut Chutney", "Hot Sambar", "Warm Milk for all children"],
-    servings: "All 48+ resident children",
+    servings: "All 25 resident children",
   },
   {
     id: "lunch-special",
@@ -56,21 +56,21 @@ const PACKAGES: FeastPackage[] = [
     price: 3500,
     highlight: true,
     menu: ["Hot Rice & Ghee", "Traditional South Indian Sambar & Rasam", "Crispy Pooris & Veg Sagu", "Traditional Sweet Payasam / Halwa", "Crisp Papads & Curd"],
-    servings: "Complete festive lunch for all 48+ children",
+    servings: "Complete festive lunch for all 25 children",
   },
   {
     id: "evening-snacks",
     name: "Evening Celebration & Fruit Basket",
     price: 2500,
     menu: ["Warm Badam Milk", "Healthy Evening Savouries", "Fresh Apples & Bananas Fruit Basket", "Special Birthday Biscuits"],
-    servings: "Joyful evening snack time for 48+ children",
+    servings: "Joyful evening snack time for 25 children",
   },
   {
     id: "grand-birthday",
     name: "Grand Birthday Feast & Cake Cutting",
     price: 5500,
     menu: ["Large Eggless Birthday Cake", "Special Festive Lunch with Sweets", "Fresh Fruit Basket & Payasam", "Evening Hot Milk & Snacks"],
-    servings: "Grand celebratory feast & cake distribution for 48+ children",
+    servings: "Grand celebratory feast & cake distribution for 25 children",
   },
   {
     id: "full-day",
@@ -106,7 +106,7 @@ export function CelebrateBirthdayClient({ wishVideos }: { wishVideos?: WishVideo
       packageCost: 3500,
       videoUrl: "/media/ashrama_video.mp4",
       thumbnailUrl: "/media/meals.jpg",
-      quote: "Happy Birthday Ananya Didi! Thank you for the sweet payasam and pooris! All 48 of us chanted your name and prayed for your happiness!",
+      quote: "Happy Birthday Ananya Didi! Thank you for the sweet payasam and pooris! All 25 of us chanted your name and prayed for your happiness!",
     },
     {
       id: "wish-2",
@@ -118,7 +118,7 @@ export function CelebrateBirthdayClient({ wishVideos }: { wishVideos?: WishVideo
       packageCost: 7500,
       videoUrl: "/media/chapter2_breakfast.mp4",
       thumbnailUrl: "/media/fruits.jpg",
-      quote: "Happy 25th Anniversary Uncle & Aunty! All 48 children chanted your names during morning prayer and thanked you for the feast!",
+      quote: "Happy 25th Anniversary Uncle & Aunty! All 25 children chanted your names during morning prayer and thanked you for the feast!",
     },
     {
       id: "wish-3",
@@ -290,7 +290,7 @@ export function CelebrateBirthdayClient({ wishVideos }: { wishVideos?: WishVideo
   };
 
   const copyInstagramStory = () => {
-    const text = `Celebrated my special day by feeding 48+ children at Janaseva Ashrama in Bengaluru! The purest smiles and sincere blessings. You can also celebrate your birthday or milestone here: https://janasevaorphanage.org/celebrate-birthday #JanasevaAshrama #BirthdayGiving #BengaluruNGO #Bangalore`;
+    const text = `Celebrated my special day by feeding 25 children at Janaseva Ashrama in Bengaluru! The purest smiles and sincere blessings. You can also celebrate your birthday or milestone here: https://janasevaorphanage.org/celebrate-birthday #JanasevaAshrama #BirthdayGiving #BengaluruNGO #Bangalore`;
     if (typeof navigator !== "undefined" && navigator.clipboard) {
       navigator.clipboard.writeText(text);
       setCopiedStory(true);
@@ -308,7 +308,7 @@ export function CelebrateBirthdayClient({ wishVideos }: { wishVideos?: WishVideo
             <span>Trending in Bengaluru</span>
           </span>
           <h2 className="mt-2 font-display text-2xl font-bold text-teal-900 sm:text-3xl">
-            Sponsor a Special Day Feast for 48+ Children
+            Sponsor a Special Day Feast for 25 Children
           </h2>
           <p className="mt-2 text-sm text-teal-950/70">
             Celebrate your Birthday, Wedding Anniversary, Memorial Day, or Family Milestone with the children of Janaseva Ashrama.
@@ -928,7 +928,7 @@ export function CelebrateBirthdayClient({ wishVideos }: { wishVideos?: WishVideo
 
               <a
                 href={`https://wa.me/?text=${encodeURIComponent(
-                  "Hey! For my birthday this year, I am celebrating with 48+ children at Janaseva Ashrama in Bengaluru. Join me or sponsor a wholesome meal here: https://janasevaorphanage.org/celebrate-birthday"
+                  "Hey! For my birthday this year, I am celebrating with 25 children at Janaseva Ashrama in Bengaluru. Join me or sponsor a wholesome meal here: https://janasevaorphanage.org/celebrate-birthday"
                 )}`}
                 target="_blank"
                 rel="noopener noreferrer"
@@ -947,7 +947,7 @@ export function CelebrateBirthdayClient({ wishVideos }: { wishVideos?: WishVideo
             </div>
             <div className="rounded-2xl bg-white p-5 shadow-sm border border-teal-900/10 text-xs sm:text-sm text-teal-950 space-y-3 font-sans">
               <p className="font-semibold text-teal-900">
-                &ldquo;A birthday party lasts an evening. Feeding 48 children creates warmth that lasts a lifetime.&rdquo;
+                &ldquo;A birthday party lasts an evening. Feeding 25 children creates warmth that lasts a lifetime.&rdquo;
               </p>
               <p className="text-teal-950/70 text-xs leading-relaxed">
                 Celebrating another year of life by sharing festive meals with the young souls at Janaseva Ashrama Bangalore. If you want to make your milestone truly count, visit them in Turahalli, Subramanyapura or sponsor a feast.

@@ -2139,7 +2139,7 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
                       className="w-full rounded-xl border border-teal-900/15 px-3 py-2 text-xs font-mono"
                     />
                     <p className="mt-0.5 text-[11px] text-teal-900/60">
-                      Link or uploaded video greeting recorded by the 48+ children for this celebrant.
+                      Link or uploaded video greeting recorded by the 25 children for this celebrant.
                     </p>
                   </div>
 
@@ -2164,7 +2164,7 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
                   <div className="pt-2 flex flex-wrap justify-between items-center gap-2">
                     <div className="flex flex-wrap gap-2">
                       <a
-                        href={`https://wa.me/91${proofModalCeleb.donorPhone.replace(/\D/g, "").slice(-10)}?text=${encodeURIComponent(`Namaste ${proofModalCeleb.donorName}! Here are the photos & video blessings from today's celebration for ${proofModalCeleb.celebrantName} at Janaseva Ashrama! Thank you for nourishing 48+ children.`)}`}
+                        href={`https://wa.me/91${proofModalCeleb.donorPhone.replace(/\D/g, "").slice(-10)}?text=${encodeURIComponent(`Namaste ${proofModalCeleb.donorName}! Here are the photos & video blessings from today's celebration for ${proofModalCeleb.celebrantName} at Janaseva Ashrama! Thank you for nourishing 25 children.`)}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="rounded-xl bg-emerald-600 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-700 transition"
@@ -3783,7 +3783,7 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
                   rows={3}
                   value={dailyPhotoBody}
                   onChange={(e) => setDailyPhotoBody(e.target.value)}
-                  placeholder="e.g. 48 children sat together for warm steaming rice, nutritious dal, and bananas before morning school bells."
+                  placeholder="e.g. 25 children sat together for warm steaming rice, nutritious dal, and bananas before morning school bells."
                   className="w-full rounded-xl border p-2.5 text-xs text-teal-900"
                 />
               </div>

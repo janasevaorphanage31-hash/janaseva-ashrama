@@ -66,7 +66,7 @@ const ONE_THINGS = [
     unit: "feast",
     image: "/media/food.jpg",
     badge: "Make a Day Matter",
-    description: "Sponsor a joyous hot feast with traditional sweets (Payasam) for all 48 Ashrama children on your special day.",
+    description: "Sponsor a joyous hot feast with traditional sweets (Payasam) for all 25 Ashrama children on your special day.",
   },
 ];
 

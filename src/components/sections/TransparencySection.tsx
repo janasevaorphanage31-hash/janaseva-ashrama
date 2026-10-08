@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Chip, Container, Head, Section } from "../ui";
-import { FORM_10AC, TAX_NOTE } from "@/lib/site";
+import { BANK_DETAILS, FORM_10AC, TAX_NOTE } from "@/lib/site";
 
 type Doc = {
   id: number;
@@ -70,6 +70,36 @@ export function TransparencySection({ docs, standalone = false }: { docs: Doc[];
             <p className="text-teal-950/75 leading-relaxed pt-1">
               {TAX_NOTE}
             </p>
+
+            {/* Official Charity Bank Details for Direct Audit & Transfers */}
+            <div className="mt-3 rounded-2xl bg-teal-950 text-white p-4 sm:p-5">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-teal-800 pb-2.5">
+                <span className="font-display font-bold text-sm text-gold">
+                  Official Charity Bank Account (Direct NEFT / IMPS / RTGS)
+                </span>
+                <span className="rounded bg-teal-800/80 px-2 py-0.5 text-[10px] font-bold text-teal-200">
+                  Axis Bank · Banashankari Branch
+                </span>
+              </div>
+              <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-white/60 block">A/c Holder Name</span>
+                  <span className="font-bold text-white leading-snug">{BANK_DETAILS.accountName}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-white/60 block">Bank &amp; Branch</span>
+                  <span className="font-bold text-white">{BANK_DETAILS.bankName} ({BANK_DETAILS.branch})</span>
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-gold block">Account Number</span>
+                  <span className="font-mono font-bold text-sm text-white">{BANK_DETAILS.accountNumber}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-gold block">IFSC Code</span>
+                  <span className="font-mono font-bold text-sm text-white">{BANK_DETAILS.ifscCode}</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
         <div className="space-y-6">

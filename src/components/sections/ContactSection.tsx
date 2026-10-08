@@ -144,6 +144,12 @@ export function ContactSection() {
                 <p>
                   <strong>Registered Society Office:</strong> {SITE.registeredOffice}
                 </p>
+                <div className="mt-3 pt-3 border-t border-white/10 rounded-xl bg-white/5 p-3 space-y-1">
+                  <p className="font-bold text-gold text-xs">Official Charity Bank Details (Direct Transfers):</p>
+                  <p><strong>A/c Name:</strong> {SITE.bankDetails.accountName}</p>
+                  <p><strong>Bank:</strong> {SITE.bankDetails.bankName} ({SITE.bankDetails.branch} Branch)</p>
+                  <p className="font-mono text-xs"><strong>A/c No:</strong> <span className="text-white font-bold">{SITE.bankDetails.accountNumber}</span> · <strong>IFSC:</strong> <span className="text-white font-bold">{SITE.bankDetails.ifscCode}</span></p>
+                </div>
               </div>
             </div>
 

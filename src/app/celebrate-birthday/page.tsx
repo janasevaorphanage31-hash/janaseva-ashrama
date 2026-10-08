@@ -7,7 +7,7 @@ import { SITE } from "@/lib/site";
 export const metadata: Metadata = {
   title: "Celebrate Birthday at Orphanage in Bangalore - Janaseva Ashrama",
   description:
-    "Make your birthday unforgettable. Sponsor a wholesome feast for 48+ children or visit Janaseva Ashrama in Turahalli, Subramanyapura, Bangalore to celebrate in person. Form 10AC 80G tax benefit.",
+    "Make your birthday unforgettable. Sponsor a wholesome feast for 25 children or visit Janaseva Ashrama orphanage in Turahalli, Subramanyapura, Bangalore to celebrate in person. Form 10AC 80G tax benefit.",
   keywords: [
     "celebrate birthday at orphanage bangalore",
     "birthday celebration with orphanage children near me",
@@ -22,9 +22,9 @@ export const metadata: Metadata = {
     canonical: `${SITE.url}/celebrate-birthday`,
   },
   openGraph: {
-    title: "Celebrate Birthday with 48+ Children at Janaseva Ashrama Bangalore",
+    title: "Celebrate Birthday with 25 Children at Janaseva Ashrama Bangalore",
     description:
-      "A birthday party lasts an evening. Feeding 48 children creates warmth that lasts a lifetime. Sponsor a feast or book an in-person visit slot today.",
+      "A birthday party lasts an evening. Feeding 25 children creates warmth that lasts a lifetime. Sponsor a feast or book an in-person visit slot today.",
     url: `${SITE.url}/celebrate-birthday`,
     siteName: SITE.name,
     locale: "en_IN",
@@ -43,7 +43,7 @@ const BIRTHDAY_FAQS = [
   },
   {
     q: "How many children live at Janaseva Ashrama?",
-    a: "Janaseva Ashrama is currently home to 48+ resident children who are provided with full-time shelter, nutritious daily meals, primary and secondary school education, healthcare, and emotional mentorship.",
+    a: "Janaseva Ashrama is an orphanage currently home to 25 resident children who are provided with full-time shelter, nutritious daily meals, primary and secondary school education, healthcare, and emotional mentorship.",
   },
   {
     q: "How much does it cost to sponsor a birthday meal for all children?",
@@ -101,7 +101,7 @@ export default async function CelebrateBirthdayPage() {
         name: "Birthday Feast Sponsorship & Celebration Visits",
         provider: { "@id": `${SITE.url}/#ngo` },
         description:
-          "Sponsor wholesome festive meals and organize heartwarming in-person birthday celebration visits for 48+ children at Janaseva Ashrama Bangalore.",
+          "Sponsor wholesome festive meals and organize heartwarming in-person birthday celebration visits for 25 children at Janaseva Ashrama Bangalore.",
         areaServed: {
           "@type": "City",
           name: "Bengaluru",
@@ -158,7 +158,7 @@ export default async function CelebrateBirthdayPage() {
       <PageHero
         eyebrow="Trending in Bengaluru"
         title="Celebrate Your Birthday with Purpose"
-        lead="Make your special day unforgettable by feeding 48+ resident children at Janaseva Ashrama. Sponsor a freshly cooked feast online or visit our Bengaluru campus in Turahalli, Subramanyapura to celebrate in person."
+        lead="Make your special day unforgettable by feeding 25 resident children at Janaseva Ashrama. Sponsor a freshly cooked feast online or visit our Bengaluru campus in Turahalli, Subramanyapura to celebrate in person."
       />
 
       <Section tone="cream" className="py-12 md:py-16">

@@ -116,7 +116,7 @@ export function InvolvedSection({ standalone = false }: { standalone?: boolean }
               </div>
               <div className="grid grid-cols-2 gap-2 text-[11px] text-teal-950/70 font-medium">
                 <div className="rounded-xl bg-white p-2.5 border border-teal-900/10 text-center">
-                  <strong className="block text-teal-900 text-sm">48+ Children</strong> Guided every weekend
+                  <strong className="block text-teal-900 text-sm">25 Children</strong> Guided every weekend
                 </div>
                 <div className="rounded-xl bg-white p-2.5 border border-teal-900/10 text-center">
                   <strong className="block text-teal-900 text-sm">Zero Fee</strong> Mentorship for all
@@ -240,7 +240,7 @@ export function InvolvedSection({ standalone = false }: { standalone?: boolean }
                   Are You a Creator or Influencer?
                 </h3>
                 <p className="mt-1 text-xs text-teal-950/70 leading-relaxed">
-                  Use your platform to mobilize daily meals, textbooks, and warmth for 48+ children. Visit our Bengaluru campus, create authentic content, and inspire your community to give.
+                  Use your platform to mobilize daily meals, textbooks, and warmth for 25 children in our orphanage. Visit our Bengaluru campus, create authentic content, and inspire your community to give.
                 </p>
               </div>
 

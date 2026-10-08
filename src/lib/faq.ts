@@ -10,7 +10,7 @@ export const FAQ_ITEMS: FAQItem[] = [
   {
     q: "What is Janaseva Ashrama?",
     category: "About & Mission",
-    a: "Janaseva Ashrama is a registered public charitable trust and residential children's home (orphanage) located in Bengaluru (Bangalore), Karnataka, India. The Ashrama provides complete residential care, 3 nutritious hot meals daily (Annadana), school education, healthcare, and loving family mentorship to 48+ orphaned, abandoned, and economically vulnerable children.",
+    a: "Janaseva Ashrama is a registered public charitable trust and residential orphanage located in Bengaluru (Bangalore), Karnataka, India. The Ashrama provides complete residential care, 3 nutritious hot meals daily (Annadana), school education, healthcare, and loving family mentorship to 25 orphaned, abandoned, and economically vulnerable children.",
   },
   {
     q: "Are donations to Janaseva Ashrama eligible for 80G tax deductions in India?",
@@ -25,7 +25,7 @@ export const FAQ_ITEMS: FAQItem[] = [
   {
     q: "Can I celebrate my birthday, anniversary, or a family milestone at the Ashrama?",
     category: "Occasions & Giving",
-    a: "Yes! Through our 'Make a Day Matter' initiative, you can sponsor a special celebratory feast with traditional sweets (Payasam / Laddoo) for all 48 children on your birthday, wedding anniversary, child's milestone, or in sacred memory of departed elders (Smrithi Seva). You can visit to serve the meal in person or receive verified photo/video updates on WhatsApp.",
+    a: "Yes! Through our 'Make a Day Matter' initiative, you can sponsor a special celebratory feast with traditional sweets (Payasam / Laddoo) for all 25 children on your birthday, wedding anniversary, child's milestone, or in sacred memory of departed elders (Smrithi Seva). You can visit to serve the meal in person or receive verified photo/video updates on WhatsApp.",
   },
   {
     q: "How does 100% verified allocation work? Is there administrative waste?",
@@ -41,6 +41,11 @@ export const FAQ_ITEMS: FAQItem[] = [
     q: "What payment methods are supported for donating?",
     category: "Payments",
     a: "We support all Indian payment methods via RBI-authorized Razorpay, including UPI (Google Pay, PhonePe, Paytm, BHIM, Cred), Debit & Credit Cards (Rupay, Visa, MasterCard), and Net Banking across all major Indian banks. All transactions are protected with 256-bit bank-grade encryption.",
+  },
+  {
+    q: "Can I donate directly via Bank Transfer (NEFT / IMPS / RTGS)?",
+    category: "Payments",
+    a: `Yes! You can transfer directly to our official charity bank account:\n• A/c Name: ${SITE.bankDetails.accountName}\n• Bank: ${SITE.bankDetails.bankName}\n• Branch: ${SITE.bankDetails.branch}\n• A/c No: ${SITE.bankDetails.accountNumber}\n• IFSC: ${SITE.bankDetails.ifscCode}\nAfter completing your transfer, please send the transaction reference or screenshot via WhatsApp to +91 ${SITE.phone} or email to ${SITE.email} to receive your official Form 10AC 80G tax exemption receipt.`,
   },
   {
     q: "How does Janaseva Ashrama protect child safety and dignity?",

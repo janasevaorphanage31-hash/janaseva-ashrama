@@ -5,7 +5,7 @@ import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useCart } from "./CartProvider";
-import { formatINR } from "@/lib/site";
+import { BANK_DETAILS, SITE, formatINR } from "@/lib/site";
 import { track } from "@/lib/track";
 import {
   validateName,
@@ -125,7 +125,7 @@ const POPULAR_QUICK_ITEMS = [
   {
     slug: "birthday-feast",
     name: "Grand Birthday Celebration Feast",
-    desc: "Festive sweet feast, dessert, and celebration meal for 48 children",
+    desc: "Festive sweet feast, dessert, and celebration meal for 25 children",
     unitPrice: 1500,
     image: "/media/food.jpg",
     icon: "🎂",
@@ -198,7 +198,16 @@ export function CheckoutClient() {
   const [showAddDrawer, setShowAddDrawer] = useState(false);
   const [customInputValue, setCustomInputValue] = useState("");
   const [emptyCategory, setEmptyCategory] = useState<string>("all");
+  const [copiedBankField, setCopiedBankField] = useState<string | null>(null);
   const attempt = useRef<{ sig: string; key: string } | null>(null);
+
+  const handleCopyBank = (text: string, field: string) => {
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      navigator.clipboard.writeText(text);
+      setCopiedBankField(field);
+      setTimeout(() => setCopiedBankField(null), 2500);
+    }
+  };
 
   // Check URL params for pre-set occasion (e.g. from Make a Day Matter)
   useEffect(() => {
@@ -1033,6 +1042,102 @@ export function CheckoutClient() {
               <strong>I confirm my details for official Form 10AC 80G tax receipt generation *</strong> and agree to receive transparent child outcome reports. (Zero marketing spam).
             </span>
           </label>
+        </div>
+
+        {/* ── CARD 5: DIRECT BANK TRANSFER (NEFT / IMPS / RTGS) ── */}
+        <div className="rounded-3xl bg-white p-5 sm:p-6 shadow-sm ring-1 ring-teal-900/10">
+          <div className="flex items-center justify-between gap-2 border-b border-teal-900/10 pb-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800">
+                  Direct Bank Transfer Available
+                </span>
+              </div>
+              <h3 className="mt-1 font-display text-base sm:text-lg font-bold text-teal-950">
+                Prefer Direct NEFT / IMPS / RTGS?
+              </h3>
+            </div>
+            <span className="rounded-lg bg-teal-50 px-2.5 py-1 text-xs font-bold text-teal-900 border border-teal-900/10">
+              Axis Bank
+            </span>
+          </div>
+
+          <p className="mt-2.5 text-xs text-teal-950/70 leading-relaxed">
+            You can also donate directly to our official orphanage bank account via your banking app or net banking. All transfers are eligible for Form 10AC 80G tax deductions.
+          </p>
+
+          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+            <div className="rounded-2xl bg-cream p-3.5 border border-teal-900/10">
+              <span className="block text-[10px] font-bold uppercase tracking-wider text-teal-900/60">
+                Account Holder Name
+              </span>
+              <p className="font-bold text-teal-950 mt-0.5 leading-snug">
+                {BANK_DETAILS.accountName}
+              </p>
+            </div>
+
+            <div className="rounded-2xl bg-cream p-3.5 border border-teal-900/10">
+              <span className="block text-[10px] font-bold uppercase tracking-wider text-teal-900/60">
+                Bank &amp; Branch
+              </span>
+              <p className="font-bold text-teal-950 mt-0.5">
+                {BANK_DETAILS.bankName} · {BANK_DETAILS.branch} Branch
+              </p>
+            </div>
+
+            <div className="rounded-2xl bg-teal-950 text-white p-3.5 shadow-xs flex items-center justify-between">
+              <div>
+                <span className="block text-[10px] font-bold uppercase tracking-wider text-gold">
+                  Account Number
+                </span>
+                <p className="font-mono text-base font-black tracking-wider text-white mt-0.5">
+                  {BANK_DETAILS.accountNumber}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleCopyBank(BANK_DETAILS.accountNumber, "acc")}
+                className="rounded-xl bg-white/15 px-3 py-1.5 text-xs font-bold text-white hover:bg-white/25 transition cursor-pointer"
+              >
+                {copiedBankField === "acc" ? "Copied!" : "Copy"}
+              </button>
+            </div>
+
+            <div className="rounded-2xl bg-teal-950 text-white p-3.5 shadow-xs flex items-center justify-between">
+              <div>
+                <span className="block text-[10px] font-bold uppercase tracking-wider text-gold">
+                  IFSC Code
+                </span>
+                <p className="font-mono text-base font-black tracking-wider text-white mt-0.5">
+                  {BANK_DETAILS.ifscCode}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleCopyBank(BANK_DETAILS.ifscCode, "ifsc")}
+                className="rounded-xl bg-white/15 px-3 py-1.5 text-xs font-bold text-white hover:bg-white/25 transition cursor-pointer"
+              >
+                {copiedBankField === "ifsc" ? "Copied!" : "Copy"}
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3 rounded-2xl bg-emerald-50 border border-emerald-600/20 text-xs">
+            <span className="text-emerald-950">
+              <strong>After transferring:</strong> Send transaction screenshot on WhatsApp to receive your 80G tax receipt immediately.
+            </span>
+            <a
+              href={`https://wa.me/${SITE.whatsapp}?text=${encodeURIComponent(
+                `Hello Janaseva Ashrama, I have completed a direct bank transfer of ₹${cart.total || "donation"} to Axis Bank A/c ${BANK_DETAILS.accountNumber}. Please find the screenshot attached for 80G receipt generation.`
+              )}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center gap-1.5 shrink-0 rounded-xl bg-emerald-700 px-4 py-2 font-bold text-white hover:bg-emerald-800 transition shadow-xs text-xs"
+            >
+              <span>Share on WhatsApp →</span>
+            </a>
+          </div>
         </div>
 
         {/* Failure / Error Alert with Reassurance */}

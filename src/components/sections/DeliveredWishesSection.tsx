@@ -44,7 +44,7 @@ const SAMPLE_DELIVERED_WISHES: DeliveredWish[] = [
     packageCost: 7500,
     videoUrl: "/media/chapter2_breakfast.mp4",
     thumbnailUrl: "/media/fruits.jpg",
-    quote: "Happy 25th Anniversary Uncle & Aunty! All 48 of us prayed for your health and happiness during morning prayer!",
+    quote: "Happy 25th Anniversary Uncle & Aunty! All 25 of us prayed for your health and happiness during morning prayer!",
     sharesCount: 89,
   },
   {
@@ -79,7 +79,7 @@ export function DeliveredWishesSection() {
         <Head
           eyebrow="Proof of Pure Joy"
           title="Personalized Wish Videos Sent to Donors"
-          lead="Every time you sponsor a birthday or family milestone, our 48+ children record a personalized greeting calling your celebrant by name. Here is real video proof of smiles delivered directly to donors on WhatsApp."
+          lead="Every time you sponsor a birthday or family milestone, our 25 children record a personalized greeting calling your celebrant by name. Here is real video proof of smiles delivered directly to donors on WhatsApp."
         />
 
         {/* Wish Video Cards Grid */}
@@ -177,7 +177,7 @@ export function DeliveredWishesSection() {
               <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-gold/20 text-gold text-xs font-bold">2</span>
               <h4 className="font-display text-sm font-bold text-white">2. Children Record Personalized Video</h4>
               <p className="text-xs text-teal-100/75 leading-relaxed">
-                On the celebration day, all 48+ children assemble with a festive board displaying the celebrant&apos;s name and sing a joyful greeting.
+                On the celebration day, all 25 children assemble with a festive board displaying the celebrant&apos;s name and sing a joyful greeting.
               </p>
             </div>
 

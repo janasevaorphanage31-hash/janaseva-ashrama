@@ -22,7 +22,7 @@ export const metadata: Metadata = {
     template: "%s · Janaseva Ashrama Bangalore",
   },
   description:
-    "Support Janaseva Ashrama, a registered public charitable children's home & orphanage in Bengaluru, Karnataka. Sponsor daily meals (Annadana), school kits, healthcare, and birthday feasts for 48+ children. 100% verified allocation with Form 10AC 80G tax exemption.",
+    "Support Janaseva Ashrama, a registered public charitable children's home & orphanage in Bengaluru, Karnataka. Sponsor daily meals (Annadana), school kits, healthcare, and birthday feasts for 25 children. 100% verified allocation with Form 10AC 80G tax exemption.",
   keywords: [
     "orphanage in bangalore",
     "children home bangalore",
@@ -62,7 +62,7 @@ export const metadata: Metadata = {
     siteName: SITE.name,
     title: "Janaseva Ashrama: Orphanage & Children's Home in Bangalore | 80G Tax Exemption",
     description:
-      "A Home Today. A Future We Build Together. Sponsor daily meals (Annadana), education, and healthcare for 48+ children in Bengaluru, Karnataka.",
+      "A Home Today. A Future We Build Together. Sponsor daily meals (Annadana), education, and healthcare for 25 children in Bengaluru, Karnataka.",
     images: [
       {
         url: "/media/poster-desktop.jpg",
@@ -76,7 +76,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Janaseva Ashrama: Bangalore Orphanage & Children's Home",
     description:
-      "Support 48+ vulnerable children with daily nutritious meals, schooling, and healthcare. 100% verified allocation & 80G tax benefit.",
+      "Support 25 vulnerable children in our orphanage with daily nutritious meals, schooling, and healthcare. 100% verified allocation & 80G tax benefit.",
     images: ["/media/poster-desktop.jpg"],
   },
   alternates: {

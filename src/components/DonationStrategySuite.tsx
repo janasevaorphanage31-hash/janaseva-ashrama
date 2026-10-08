@@ -269,7 +269,7 @@ export function DonationStrategySuite() {
                 Sacred Life Moments
               </span>
               <h4 className="mt-1 font-display text-lg sm:text-xl font-bold text-teal-950">
-                Celebrate or Remember Loved Ones with 48+ Children
+                Celebrate or Remember Loved Ones with 25 Children
               </h4>
               <p className="text-xs sm:text-sm text-teal-950/75 leading-relaxed">
                 Transform personal birthdays, anniversaries, or parents&apos; memorial days (Smrithi Seva) into an unforgettable celebration. Children sing and offer prayers in your family&apos;s honour, with full WhatsApp video proof delivered to you.
@@ -282,7 +282,7 @@ export function DonationStrategySuite() {
                   <span className="text-2xl">🎂</span>
                   <h5 className="font-bold text-teal-950 text-sm mt-1">Grand Birthday Feast</h5>
                   <p className="text-xs text-teal-950/65 mt-0.5">
-                    Festive lunch with sweet Payasam/Laddoo for all 48 children on your special day.
+                    Festive lunch with sweet Payasam/Laddoo for all 25 children on your special day.
                   </p>
                 </div>
                 <div className="mt-3 pt-2 border-t border-teal-900/5 flex items-center justify-between">
@@ -437,13 +437,13 @@ export function DonationStrategySuite() {
           </span>
           <div>
             <p className="text-xs font-bold text-amber-950">
-              Today&apos;s Annadana Goal: 38 of 48 Meals Sponsored (79%)
+              Today&apos;s Annadana Goal: 20 of 25 Meals Sponsored (80%)
             </p>
             <div className="mt-1.5 h-2 w-48 sm:w-64 rounded-full bg-amber-200/70 overflow-hidden">
-              <div className="h-full bg-amber-600 rounded-full" style={{ width: "79%" }} />
+              <div className="h-full bg-amber-600 rounded-full" style={{ width: "80%" }} />
             </div>
             <p className="mt-1 text-[10px] text-amber-900/70">
-              Only 10 meals needed to complete dinner coverage for all children tonight.
+              Only 5 meals needed to complete dinner coverage for all 25 children tonight.
             </p>
           </div>
         </div>
@@ -451,7 +451,7 @@ export function DonationStrategySuite() {
         <button
           type="button"
           onClick={() => {
-            setQty("meal", 10);
+            setQty("meal", 5);
             router.push("/checkout");
           }}
           className="focus-ring shrink-0 rounded-xl bg-amber-600 px-4 py-2 text-xs font-bold text-white hover:bg-amber-700 shadow-xs transition active:scale-95"

@@ -98,8 +98,8 @@ export const DEFAULT_SITE_CONTENT: SiteContentMap = {
   heroFallbackImageUrl: "/media/learning.jpg",
 
   aboutTitle: SITE.legalName,
-  aboutStory: "Dedicated to nurturing 48+ resident children with unconditional motherly love, hot wholesome meals, modern education, and joyful childhood dignity in Bengaluru.",
-  residentCount: "48+ Resident Children",
+  aboutStory: "Dedicated to nurturing 25 resident children in our orphanage with unconditional motherly love, hot wholesome meals, modern education, and joyful childhood dignity in Bengaluru.",
+  residentCount: "25 Resident Children",
   mealsCount: "3 Wholesome Hot Meals Daily",
 
   contactPhone: SITE.phoneIntl,
@@ -206,7 +206,7 @@ export const DEFAULT_SITE_CONTENT: SiteContentMap = {
     },
     {
       question: "Can I sponsor food (Annadana) for all children on a specific day?",
-      answer: "Yes. You can sponsor a special celebratory feast or daily meals for all 48 resident children through the Birthday Feast or Annadana package in our Impact Catalogue.",
+      answer: "Yes. You can sponsor a special celebratory feast or daily meals for all 25 resident children through the Birthday Feast or Annadana package in our Impact Catalogue.",
       category: "donation",
     },
     {
@@ -238,7 +238,7 @@ export const DEFAULT_SITE_CONTENT: SiteContentMap = {
       packageCost: 7500,
       videoUrl: "/media/chapter2_breakfast.mp4",
       thumbnailUrl: "/media/fruits.jpg",
-      quote: "Happy 25th Anniversary Uncle & Aunty! All 48 of us chanted your names during morning prayer and thanked you for the feast!",
+      quote: "Happy 25th Anniversary Uncle & Aunty! All 25 of us chanted your names during morning prayer and thanked you for the feast!",
     },
     {
       id: "wish-3",

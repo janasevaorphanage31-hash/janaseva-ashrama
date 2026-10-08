@@ -145,7 +145,7 @@ export const DEFAULT_ITEMS: ImpactItem[] = [
     unitLabel: "filter unit",
     imageUrl: "/media/wellness.jpg",
     accountingMeaning: "RO filter cartridge replacements, water quality testing lab kits, and hygiene sanitizers with audited GST invoices.",
-    operationalMeaning: "Prevents waterborne illnesses, ensuring 48+ children drink 100% safe, clean water every single day.",
+    operationalMeaning: "Prevents waterborne illnesses, ensuring 25 children drink 100% safe, clean water every single day.",
     financeApproval: "approved",
   },
   {
@@ -231,7 +231,7 @@ export const DEFAULT_ITEMS: ImpactItem[] = [
   {
     slug: "birthday-feast",
     name: "Grand Birthday Celebration Feast (Utsav)",
-    description: "Sponsor a joyous festive lunch with special sweets (Payasam / Laddoo) for all 48 Ashrama children on your birthday or anniversary.",
+    description: "Sponsor a joyous festive lunch with special sweets (Payasam / Laddoo) for all 25 Ashrama children on your birthday or anniversary.",
     unitPrice: 1500,
     icon: "birthday-feast",
     sortOrder: 12,

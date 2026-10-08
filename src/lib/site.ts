@@ -32,12 +32,22 @@ export const FORM_10AC = {
   // Operational Shelter Facility (Children's Home / Orphanage)
   operationalFacility: {
     name: "Janaseva Ashrama",
-    type: "Children's Residential Home & Orphanage",
+    type: "Children's Residential Home & Orphanage (25 Children)",
     address: "#27, Gundu Thopu Turahalli, Near Govt School, Jayanagar housing Society Layout, Subramanyapura, Bangalore - 560061",
     locality: "Turahalli, Subramanyapura",
     city: "Bangalore",
     pincode: "560061",
   },
+};
+
+export const BANK_DETAILS = {
+  accountName: "Janaseva Samruddi Education & Rural Development Society (R)",
+  bankName: "Axis Bank",
+  branch: "Banashankari",
+  accountNumber: "913020019616990",
+  ifscCode: "UTIB0000102",
+  accountType: "Current Account",
+  purpose: "Public Charitable Contributions & 80G Donations",
 };
 
 export const SITE = {
@@ -49,6 +59,8 @@ export const SITE = {
   din: FORM_10AC.din,
   applicationNumber: FORM_10AC.applicationNumber,
   entityType: "Registered Charitable Society & Children's Home (Orphanage)",
+  childrenCount: 25,
+  childrenCountLabel: "25 Resident Children",
   headline: "A HOME TODAY. A FUTURE WE BUILD TOGETHER.",
   tagline: "Service to children without families is the highest temple of devotion.",
   url: process.env.NEXT_PUBLIC_SITE_URL || "https://janasevaorphanage.org",
@@ -78,6 +90,7 @@ export const SITE = {
   mapsEmbedUrl: "https://www.google.com/maps?q=Turahalli+Subramanyapura+Bangalore+560061&output=embed",
   taxExemption: "Provisional 80G Approval (Form 10AC, URN: AABTJ7431MF20231) covering AY 2024-25 to AY 2026-27",
   registeredTrust: "Registered Charitable Society (Karnataka) under Section 12A/80G",
+  bankDetails: BANK_DETAILS,
 };
 
 export const EMOTIONAL_QUOTES = [

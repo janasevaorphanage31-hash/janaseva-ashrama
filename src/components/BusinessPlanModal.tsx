@@ -19,7 +19,8 @@ export function BusinessPlanModal({
 ## Comprehensive NGO Business Plan & Donation Strategy Playbook (2026–2028)
 **Entity**: JANA SEVA SAMRUDDI EDUCATION & RURAL DEVELOPMENT SOCIETY R  
 **PAN**: ${SITE.pan} | **Form 10AC URN**: ${SITE.urn} | **Location**: Bangalore, Karnataka  
-**Core Mission**: Providing loving residential shelter, wholesome daily Annadana, quality English-medium education (Vidya), and pediatric care (Arogya) for 48+ destitute and orphaned children.
+**Official Bank**: Axis Bank (Banashankari Branch) | **A/c No**: ${SITE.bankDetails.accountNumber} | **IFSC**: ${SITE.bankDetails.ifscCode}  
+**Core Mission**: Providing loving residential shelter, wholesome daily Annadana, quality English-medium education (Vidya), and pediatric care (Arogya) for 25 destitute and orphaned children in our residential orphanage.
 
 ---
 
@@ -70,7 +71,7 @@ Janaseva Ashrama operates as a grassroots sanctuary for orphaned, abandoned, and
 #### Strategy 3: Life Milestone & Sacred Remembrance (Utsav & Smrithi Giving)
 * **Psychology**: Giving tied to emotional life moments (Birthdays, Anniversaries, Parents' Death Anniversaries) carries 4.2x higher conversion rates and near-zero price sensitivity.
 * **Execution**:
-  - Grand Birthday Feast (₹1,500) for all 48 children with sweet Payasam/Laddoo.
+  - Grand Birthday Feast (₹1,500) for all 25 children with sweet Payasam/Laddoo.
   - Sacred Remembrance Meal (₹1,000) in memory of departed loved ones.
   - Custom dedication cards with recipient name, photo, and WhatsApp video delivery of children praying for the family.
 
@@ -90,7 +91,7 @@ Janaseva Ashrama operates as a grassroots sanctuary for orphaned, abandoned, and
 
 #### Strategy 6: Urgent Need Progress Gauge (Goal Gradient Effect)
 * **Psychology**: People give significantly more when an objective is close to completion.
-* **Execution**: Live counter showing "Daily Annadana Target: 38/48 Meals Sponsored — 10 Meals Needed Before Dinner Tonight".
+* **Execution**: Live counter showing "Daily Annadana Target: 20/25 Meals Sponsored — 5 Meals Needed Before Dinner Tonight".
 
 #### Strategy 7: 10-Digit Mobile Prefill & WhatsApp Evidence Loop
 * **Psychology**: Fear of charity fraud is the #1 drop-off reason in India.
@@ -218,10 +219,13 @@ Janaseva Ashrama operates as a grassroots sanctuary for orphaned, abandoned, and
               <div className="rounded-2xl bg-teal-50/70 p-4 border border-teal-900/10">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-teal-900">Core Mission</span>
                 <p className="mt-1 font-display text-base font-bold text-teal-950">
-                  Janaseva Ashrama operates on a 100% Direct Pass-Through Model for 48+ destitute and orphaned children in Bangalore.
+                  Janaseva Ashrama operates on a 100% Direct Pass-Through Model for 25 destitute and orphaned children in our residential orphanage in Bangalore.
                 </p>
                 <p className="mt-1 text-xs text-teal-950/70">
-                  Registered Society: JANA SEVA SAMRUDDI EDUCATION & RURAL DEVELOPMENT SOCIETY R · PAN: {SITE.pan} · Income Tax 80G URN: {SITE.urn}.
+                  Registered Society: JANA SEVA SAMRUDDI EDUCATION & RURAL DEVELOPMENT SOCIETY R · PAN: {SITE.pan} · Income Tax 80G URN: {SITE.urn}
+                </p>
+                <p className="mt-1 text-xs text-teal-900 font-semibold">
+                  Official Bank: Axis Bank (Banashankari Branch) · A/c No: {SITE.bankDetails.accountNumber} · IFSC: {SITE.bankDetails.ifscCode}
                 </p>
               </div>
 
@@ -229,7 +233,7 @@ Janaseva Ashrama operates as a grassroots sanctuary for orphaned, abandoned, and
                 <div className="rounded-2xl border border-teal-900/10 p-3.5 bg-white">
                   <span className="text-2xl">🍲</span>
                   <h4 className="font-bold text-teal-900 mt-1">Annadana Security</h4>
-                  <p className="text-[11px] text-teal-950/70 mt-0.5">3 balanced hot meals daily + fresh fruits for all 48 residential children.</p>
+                  <p className="text-[11px] text-teal-950/70 mt-0.5">3 balanced hot meals daily + fresh fruits for all 25 residential children.</p>
                 </div>
                 <div className="rounded-2xl border border-teal-900/10 p-3.5 bg-white">
                   <span className="text-2xl">📚</span>
@@ -298,7 +302,7 @@ Janaseva Ashrama operates as a grassroots sanctuary for orphaned, abandoned, and
                   <span className="text-xs font-bold text-saffron-dark uppercase">Strategy 6</span>
                   <h4 className="font-bold text-teal-950 text-sm mt-0.5">Goal Gradient Urgency Gauge</h4>
                   <p className="text-xs text-teal-950/70 mt-1">
-                    Visual tracker: &quot;38 of 48 meals funded today — 10 needed&quot; leverages human urgency to close incomplete goals.
+                    Visual tracker: &quot;20 of 25 meals funded today — 5 needed&quot; leverages human urgency to close incomplete goals.
                   </p>
                 </div>
                 <div className="rounded-2xl border border-teal-900/10 p-3.5 bg-white">
@@ -373,7 +377,7 @@ Janaseva Ashrama operates as a grassroots sanctuary for orphaned, abandoned, and
                       <th className="p-2.5">Quarter</th>
                       <th className="p-2.5">Monthly Donors</th>
                       <th className="p-2.5">Monthly Inflow</th>
-                      <th className="p-2.5">Operating Cost (48 Kids)</th>
+                      <th className="p-2.5">Operating Cost (25 Kids)</th>
                       <th className="p-2.5">Operating Reserve</th>
                     </tr>
                   </thead>
