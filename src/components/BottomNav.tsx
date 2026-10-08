@@ -7,25 +7,62 @@ import { useCart } from "./CartProvider";
 import { formatINR } from "@/lib/site";
 import { track } from "@/lib/track";
 
-const more = [
-  { href: "/celebrate-birthday", label: "Celebrate Birthday (Trending)" },
-  { href: "/make-a-day-matter", label: "Make a Day Matter" },
-  { href: "/impact-wall", label: "Live Impact Wall" },
-  { href: "/campaigns", label: "Create a Campaign" },
-  { href: "/gift-impact", label: "Gift an Impact" },
-  { href: "/janaseva-crew", label: "Janaseva Crew (Volunteer)" },
-  { href: "/skill-giving", label: "Give Your Skill" },
-  { href: "/team-impact", label: "Team Impact" },
-  { href: "/corporate", label: "Corporate / CSR" },
-  { href: "/ngo-network", label: "NGO Network" },
-  { href: "/my-impact", label: "My Impact / Receipt" },
-  { href: "/recurring-giving", label: "Regular Giving" },
-  { href: "/future", label: "Proposed Future Project" },
-  { href: "/transparency", label: "Transparency" },
+interface MoreItem {
+  href: string;
+  label: string;
+  sub?: string;
+  icon: string;
+  badge?: string;
+}
+
+interface MoreSection {
+  title: string;
+  items: MoreItem[];
+}
+
+const MORE_SECTIONS: MoreSection[] = [
+  {
+    title: "🌟 Direct Seva & Sponsorship",
+    items: [
+      { href: "/celebrate-birthday", label: "Celebrate Birthday", sub: "Feast with boys + WhatsApp video blessing", icon: "🎂", badge: "Trending" },
+      { href: "/make-a-day-matter", label: "Make a Day Matter", sub: "Sponsor 1 day meals for all 25 boys", icon: "🍲", badge: "Popular" },
+      { href: "/gift-impact", label: "Gift an Impact", sub: "Dedicate meals in honor of someone", icon: "🎁" },
+      { href: "/recurring-giving", label: "Regular Monthly Giving", sub: "Automated monthly recurring seva", icon: "🔄" },
+      { href: "/campaigns", label: "Start a Fundraiser", sub: "Create a community giving drive", icon: "📢" },
+    ],
+  },
+  {
+    title: "📸 Campus Life & Our 25 Boys",
+    items: [
+      { href: "/#boys-gallery", label: "Real Boys Visual Gallery", sub: "39 authentic Bangalore ground moments", icon: "👦", badge: "Photos & Videos" },
+      { href: "/impact-wall", label: "Live Impact Wall", sub: "Real-time donor wall & community wishes", icon: "🏆" },
+      { href: "/#documentary", label: "Documentary Video Chapters", sub: "Real daily life, prayer, school & play", icon: "🎥" },
+      { href: "/stories", label: "Stories & Caregiver Voices", sub: "Reflections from ashrama caretakers", icon: "📖" },
+    ],
+  },
+  {
+    title: "🛡️ Trust, Legal & Tax Exemption",
+    items: [
+      { href: "/transparency", label: "Govt Accreditations", sub: "Form 10AC 80G, Form 28, 12AA, CSR-1", icon: "📜", badge: "100% Tax Free" },
+      { href: "/my-impact", label: "My Impact / 80G Receipts", sub: "Instant 80G tax certificate download", icon: "🧾" },
+      { href: "/#trust", label: "Axis Bank Direct Wire", sub: "Official Banashankari account details", icon: "🏦" },
+      { href: "/future", label: "Proposed Future Campus", sub: "Blueprint for expanded boys facility", icon: "🏛️" },
+    ],
+  },
+  {
+    title: "🤝 Get Involved & Visit Us",
+    items: [
+      { href: "/janaseva-crew", label: "Janaseva Crew (Volunteer)", sub: "Weekend teaching, art & meals seva", icon: "🤝" },
+      { href: "/corporate", label: "Corporate CSR Partnerships", sub: "Organize employee drives with us", icon: "💼" },
+      { href: "/contact", label: "Visit Campus in Bangalore", sub: "#27 Gundu Thopu, Thurahalli, Bangalore", icon: "📍" },
+    ],
+  },
+];
+
+const LEGAL_LINKS = [
   { href: "/privacy-policy", label: "Privacy Policy" },
   { href: "/terms-and-conditions", label: "Terms & Conditions" },
   { href: "/refund-policy", label: "Refund Policy" },
-  { href: "/contact", label: "Contact & Location" },
 ];
 
 interface NavItem {
@@ -103,11 +140,13 @@ export function BottomNav() {
     };
   }, [open]);
 
-  if (path?.startsWith("/admin")) return null;
+  if (path?.startsWith("/admin") || path === "/checkout") return null;
 
   const active = (href: string) =>
     href === "/" ? path === "/" : path.startsWith(href);
-  const moreActive = more.some((m) => path.startsWith(m.href.split("#")[0]));
+  const moreActive = MORE_SECTIONS.some((sec) =>
+    sec.items.some((m) => path.startsWith(m.href.split("#")[0]))
+  );
 
   const navItems: NavItem[] = [
     { href: "/", label: "HOME", icon: <HomeIcon /> },
@@ -130,30 +169,89 @@ export function BottomNav() {
             className="absolute inset-0 bg-teal-950/65 backdrop-blur-sm fade-in"
             onClick={() => setOpen(false)}
           />
-          <div className="sheet-in absolute inset-x-0 bottom-0 rounded-t-3xl bg-cream shadow-2xl max-h-[82vh] flex flex-col">
+          <div className="sheet-in absolute inset-x-0 bottom-0 rounded-t-3xl bg-cream shadow-2xl max-h-[88vh] flex flex-col">
             {/* Pull handle */}
             <div className="flex justify-center pt-3 pb-1" aria-hidden="true">
-              <div className="h-1 w-10 rounded-full bg-teal-900/20" />
+              <div className="h-1.5 w-12 rounded-full bg-teal-900/20" />
             </div>
-            <h3 className="font-display text-base font-bold text-teal-900 px-5 pb-3">
-              Explore Janaseva Ashrama
-            </h3>
-            <ul className="grid grid-cols-2 gap-2.5 px-4 pb-8 overflow-y-auto no-scrollbar">
-              {more.map((m, i) => (
-                <li key={m.href} style={{ animationDelay: `${i * 20}ms` }} className="fade-up">
-                  <Link
-                    href={m.href}
-                    onClick={() => setOpen(false)}
-                    className="card focus-ring tap-scale flex items-center justify-between p-3.5 text-xs font-bold text-teal-900 min-h-[52px]"
-                  >
-                    <span className="leading-tight flex-1">{m.label}</span>
-                    <svg className="h-3 w-3 fill-none stroke-current stroke-2 opacity-40 ml-1 shrink-0" viewBox="0 0 24 24" aria-hidden="true">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 18l6-6-6-6" />
-                    </svg>
-                  </Link>
-                </li>
+
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 pb-3 pt-1 border-b border-teal-900/10">
+              <div>
+                <h3 className="font-display text-base font-bold text-teal-900">
+                  Explore Janaseva Ashrama
+                </h3>
+                <p className="text-[11px] text-teal-950/60 font-medium">
+                  25 Resident Boys · Thurahalli, South Bangalore
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                className="flex h-8 w-8 items-center justify-center rounded-xl bg-teal-900/10 text-teal-900 hover:bg-teal-900/20 transition text-sm font-bold cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Categorized List */}
+            <div className="p-4 space-y-5 overflow-y-auto no-scrollbar pb-10">
+              {MORE_SECTIONS.map((sec) => (
+                <div key={sec.title} className="space-y-2">
+                  <span className="block text-[11px] font-black uppercase tracking-wider text-teal-950/60 px-1">
+                    {sec.title}
+                  </span>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {sec.items.map((item) => (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        onClick={() => setOpen(false)}
+                        className="flex items-center justify-between p-3 rounded-2xl bg-white border border-teal-900/10 shadow-2xs hover:border-teal-900/30 transition tap-scale group"
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <span className="text-xl shrink-0 select-none">{item.icon}</span>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-xs font-bold text-teal-950 group-hover:text-teal-900 truncate">
+                                {item.label}
+                              </span>
+                              {item.badge && (
+                                <span className="rounded bg-saffron/15 text-saffron-dark px-1.5 py-0.2 text-[9px] font-black uppercase">
+                                  {item.badge}
+                                </span>
+                              )}
+                            </div>
+                            {item.sub && (
+                              <p className="text-[10px] text-teal-950/60 truncate mt-0.5">
+                                {item.sub}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <svg className="h-4 w-4 fill-none stroke-current stroke-2 text-teal-900/30 group-hover:text-teal-900 transition ml-2 shrink-0" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 18l6-6-6-6" />
+                        </svg>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
               ))}
-            </ul>
+
+              {/* Legal Links Footer */}
+              <div className="pt-4 border-t border-teal-900/10 flex flex-wrap items-center justify-center gap-4 text-[11px] font-medium text-teal-900/60">
+                {LEGAL_LINKS.map((l) => (
+                  <Link
+                    key={l.href}
+                    href={l.href}
+                    onClick={() => setOpen(false)}
+                    className="hover:underline"
+                  >
+                    {l.label}
+                  </Link>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       )}

@@ -17,6 +17,7 @@ export function RealBoysGallerySection() {
   const [selectedCategory, setSelectedCategory] = useState<GalleryCategory>("All Moments");
   const [activeItem, setActiveItem] = useState<GalleryItem | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [showAll, setShowAll] = useState(false);
   const { setQty, openBottomDonate } = useCart();
 
   // Filter items based on active category
@@ -83,7 +84,7 @@ export function RealBoysGallerySection() {
   };
 
   return (
-    <Section id="boys-gallery" tone="cream" className="py-14 md:py-24 border-y border-teal-900/10">
+    <Section id="boys-gallery" tone="cream" className="py-10 md:py-16 border-y border-teal-900/10">
       <Container>
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-8">
@@ -176,7 +177,7 @@ export function RealBoysGallerySection() {
 
         {/* Interactive Responsive Grid (2-col mobile, 3-col tablet, 4-col desktop) */}
         <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4">
-          {filteredItems.map((item) => (
+          {(showAll || selectedCategory !== "All Moments" ? filteredItems : filteredItems.slice(0, 8)).map((item) => (
             <div
               key={item.id}
               onClick={() => setActiveItem(item)}
@@ -252,6 +253,20 @@ export function RealBoysGallerySection() {
             </div>
           ))}
         </div>
+
+        {/* View All Expander */}
+        {selectedCategory === "All Moments" && !showAll && filteredItems.length > 8 && (
+          <div className="mt-6 text-center">
+            <button
+              type="button"
+              onClick={() => setShowAll(true)}
+              className="focus-ring inline-flex items-center gap-2 rounded-2xl bg-teal-900 px-6 py-3 text-xs font-bold text-white hover:bg-teal-950 transition shadow-sm active:scale-95 cursor-pointer"
+            >
+              <span>📷 View All 39 Ashrama Moments (+{filteredItems.length - 8} More)</span>
+              <span>↓</span>
+            </button>
+          </div>
+        )}
 
         {/* Bottom Banner */}
         <div className="mt-12 rounded-3xl bg-teal-900 p-6 md:p-8 text-white flex flex-col md:flex-row items-center justify-between gap-6">

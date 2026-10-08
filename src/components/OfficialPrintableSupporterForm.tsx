@@ -74,7 +74,7 @@ export function OfficialPrintableSupporterForm({ formData, isPrintOnly = false }
             PHONE: <span className="font-bold font-mono">9945223232, 9980359595</span>
           </p>
           <p className="text-[10px] sm:text-xs font-medium text-gray-700">
-            Email: <span className="font-mono">janasevaorphanage@gmail.com</span> | Website: <span className="font-mono font-bold">www.janasevaashrama.org</span>
+            Email: <span className="font-mono">janasevaorphanage@gmail.com</span> | Websites: <span className="font-mono font-bold">www.janasevaashrama.org</span> / <span className="font-mono font-bold">www.janasevaorphanage.org</span>
           </p>
         </div>
 

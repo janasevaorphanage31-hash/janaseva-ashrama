@@ -61,7 +61,7 @@ export function LiveDonationToast() {
   };
 
   return (
-    <div className="fixed bottom-20 left-3 z-40 md:bottom-6 md:left-6 no-print pointer-events-auto">
+    <div className="fixed bottom-[calc(4.8rem+env(safe-area-inset-bottom))] left-3 right-auto z-30 max-w-[calc(100vw-5.5rem)] sm:max-w-xs md:bottom-6 md:left-6 no-print pointer-events-auto">
       <div
         role="status"
         aria-live="polite"

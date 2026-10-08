@@ -100,11 +100,11 @@ export function OfficialSupportTiersSection() {
     <section
       id="official-tiers"
       aria-label="Official Support Tiers and Pricing"
-      className="scroll-mt-16 w-full max-w-full overflow-hidden bg-sand/35 py-12 md:py-20 border-b border-teal-900/10"
+      className="scroll-mt-16 w-full max-w-full overflow-hidden bg-sand/35 py-10 md:py-16 border-b border-teal-900/10"
     >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
-        <div className="text-center max-w-3xl mx-auto mb-10 md:mb-14">
+        <div className="text-center max-w-3xl mx-auto mb-6 md:mb-10">
           <div className="inline-flex items-center gap-2 rounded-full bg-saffron/15 border border-saffron/30 px-4 py-1.5 text-xs font-black uppercase tracking-wider text-saffron-dark mb-3">
             <span className="relative flex h-2 w-2">
               <span className="animate-beacon absolute inline-flex h-full w-full rounded-full bg-saffron opacity-80"></span>
@@ -147,8 +147,26 @@ export function OfficialSupportTiersSection() {
           )}
         </div>
 
-        {/* 5 Official Support Tiers Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-7 items-stretch">
+        {/* Mobile Tier Quick Jump Pills */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-2 mb-4 no-scrollbar md:hidden">
+          {SUPPORTER_CATEGORIES.map((cat, idx) => (
+            <button
+              key={cat.id}
+              type="button"
+              onClick={() => {
+                const el = document.getElementById(`tier-card-${cat.id}`);
+                el?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+              }}
+              className="shrink-0 rounded-xl bg-white border border-teal-900/15 px-3 py-1.5 text-[11px] font-bold text-teal-950 active:bg-sand transition flex items-center gap-1"
+            >
+              <span>{cat.icon}</span>
+              <span>Tier 0{idx + 1}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* 5 Official Support Tiers: Horizontal Snap Track on Mobile, Grid on Tablet/Desktop */}
+        <div className="flex overflow-x-auto snap-x snap-mandatory gap-4 pb-4 no-scrollbar md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-6 lg:gap-7 items-stretch">
           {SUPPORTER_CATEGORIES.map((cat) => {
             const currentOptionId = selectedOptions[cat.id] || cat.options[0].id;
             const currentOption = cat.options.find((o) => o.id === currentOptionId) || cat.options[0];
@@ -160,7 +178,8 @@ export function OfficialSupportTiersSection() {
             return (
               <div
                 key={cat.id}
-                className={`relative flex flex-col justify-between rounded-3xl p-5 sm:p-6 transition-all duration-300 hover:shadow-xl ${
+                id={`tier-card-${cat.id}`}
+                className={`snap-center shrink-0 w-[86vw] max-w-[340px] md:w-auto md:max-w-none relative flex flex-col justify-between rounded-3xl p-5 sm:p-6 transition-all duration-300 hover:shadow-xl ${
                   isFlagship
                     ? "bg-gradient-to-b from-white via-white to-amber-50/50 border-2 border-saffron shadow-lg ring-2 ring-saffron/20 lg:scale-[1.02]"
                     : "bg-white border border-teal-900/15 shadow-sm hover:border-teal-900/30"

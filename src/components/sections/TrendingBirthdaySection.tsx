@@ -122,7 +122,8 @@ export function TrendingBirthdaySection({ wishVideos }: { wishVideos?: WishVideo
   };
 
   const handleCopyStory = () => {
-    const text = `This birthday, I am celebrating with 25 boys at Janaseva Ashrama in Bengaluru! Instead of material gifts, join me in sponsoring wholesome meals: https://janasevaorphanage.org/celebrate-birthday #JanasevaAshrama #BirthdayGiving #Bengaluru`;
+    const origin = typeof window !== "undefined" ? window.location.origin : "https://www.janasevaashrama.org";
+    const text = `This birthday, I am celebrating with 25 boys at Janaseva Ashrama in Bengaluru! Instead of material gifts, join me in sponsoring wholesome meals: ${origin}/celebrate-birthday #JanasevaAshrama #BirthdayGiving #Bengaluru`;
     if (typeof navigator !== "undefined" && navigator.clipboard) {
       navigator.clipboard.writeText(text);
       setCopiedStory(true);
@@ -153,7 +154,7 @@ export function TrendingBirthdaySection({ wishVideos }: { wishVideos?: WishVideo
             <div className="flex items-center gap-2">
               <span className="flex h-2.5 w-2.5 rounded-full bg-emerald-400" />
               <span className="text-xs font-bold text-white uppercase tracking-wider">
-                WhatsApp Delivery Preview
+                Real Delivered WhatsApp Video Proof
               </span>
               <span className="rounded-md bg-emerald-500/20 px-2 py-0.5 text-[10px] font-bold text-emerald-300">
                 Delivered Within 2 Hours of Lunch
@@ -284,7 +285,7 @@ export function TrendingBirthdaySection({ wishVideos }: { wishVideos?: WishVideo
 
             <div className="mt-6 pt-4 border-t border-teal-900/10">
               <Link
-                href="/checkout"
+                href={`/checkout?amount=${activeFeast.cost}&occasion=Birthday`}
                 onClick={handleSponsorOnline}
                 className="focus-ring block w-full rounded-xl bg-saffron px-5 py-3 text-center text-xs font-bold uppercase tracking-wider text-white shadow-md transition hover:bg-saffron-dark active:scale-95"
               >

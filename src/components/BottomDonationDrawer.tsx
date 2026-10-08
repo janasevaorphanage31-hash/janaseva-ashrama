@@ -198,6 +198,15 @@ export function BottomDonationDrawer() {
           {/* TAB 1: QUICK IMPACT */}
           {activeTab === "quick" && (
             <div className="space-y-4">
+              {/* Urgent Need Banner */}
+              <div className="rounded-2xl bg-amber-500/15 border border-amber-500/30 p-3 flex items-center gap-2.5 text-xs shadow-2xs">
+                <span className="text-xl shrink-0">🔥</span>
+                <div className="text-[11px] leading-tight text-teal-950 font-medium">
+                  <strong className="text-saffron-dark font-black uppercase tracking-wider block text-[10px]">Live Urgent Need:</strong>
+                  6 unassigned evening meals for 25 boys in Bangalore · ₹100 feeds 1 child tonight
+                </div>
+              </div>
+
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-teal-950/70 mb-2">
                   Select Impact Tier or Preset:

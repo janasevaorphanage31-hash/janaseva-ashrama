@@ -92,7 +92,7 @@ export const OFFICIAL_FORM_META = {
   phones: ["9945223232", "9980359595"],
   phonesFormatted: "9945223232, 9980359595",
   emails: ["janasevaorphanage@gmail.com", "janasevaorphanage31@gmail.com"],
-  website: "www.janasevaashrama.org",
+  website: "www.janasevaashrama.org / www.janasevaorphanage.org",
   slogan: "JOIN WITH US TO EDUCATE THE WORLD",
   formTitle: "SUPPORTERS FORM",
   formSubtitle: "Yes / Would like to support for a",

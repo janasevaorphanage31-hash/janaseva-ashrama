@@ -194,6 +194,13 @@ export const SITE = {
   headline: "A HOME TODAY. A FUTURE WE BUILD TOGETHER.",
   tagline: "Service to children without families is the highest temple of devotion.",
   url: process.env.NEXT_PUBLIC_SITE_URL || "https://www.janasevaashrama.org",
+  secondaryUrl: "https://www.janasevaorphanage.org",
+  domains: [
+    "www.janasevaashrama.org",
+    "janasevaashrama.org",
+    "www.janasevaorphanage.org",
+    "janasevaorphanage.org",
+  ],
   phone: "9980359595",
   phoneIntl: "+919980359595",
   whatsapp: "919980359595",

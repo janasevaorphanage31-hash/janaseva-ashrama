@@ -32,8 +32,8 @@ const THEMES: ThemeItem[] = [
   },
   {
     id: "impact",
-    shortName: "Meals",
-    fullName: "Food & Nutrition",
+    shortName: "Needs",
+    fullName: "Food & Nutrition Needs",
     icon: (cls = "h-4 w-4") => (
       <svg className={cls} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
         <path d="M8.1 13.34l2.83-2.83L3.91 3.5a4.008 4.008 0 000 5.66l4.19 4.18zm6.78-1.81c1.53.71 3.68.21 5.27-1.38 1.91-1.91 2.28-4.65.81-6.12-1.46-1.46-4.2-1.1-6.12.81-1.59 1.59-2.09 3.74-1.38 5.27L3.7 19.87l1.41 1.41 9.77-9.75z" />
@@ -42,7 +42,7 @@ const THEMES: ThemeItem[] = [
   },
   {
     id: "celebrate",
-    shortName: "Celebrate",
+    shortName: "Birthday",
     fullName: "Birthday & Special Days",
     icon: (cls = "h-4 w-4") => (
       <svg className={cls} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -51,12 +51,22 @@ const THEMES: ThemeItem[] = [
     ),
   },
   {
-    id: "activities",
-    shortName: "Drives",
-    fullName: "NGO Drives & Camps",
+    id: "voices",
+    shortName: "Voices",
+    fullName: "Caregiver Reflections",
     icon: (cls = "h-4 w-4") => (
       <svg className={cls} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
         <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+      </svg>
+    ),
+  },
+  {
+    id: "boys-gallery",
+    shortName: "Gallery",
+    fullName: "Real Boys Moments",
+    icon: (cls = "h-4 w-4") => (
+      <svg className={cls} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z" />
       </svg>
     ),
   },
@@ -82,8 +92,8 @@ const THEMES: ThemeItem[] = [
   },
   {
     id: "trust",
-    shortName: "Tax Calc",
-    fullName: "Tax Benefits & Bank",
+    shortName: "Trust",
+    fullName: "Trust Pillars & Bank",
     icon: (cls = "h-4 w-4") => (
       <svg className={cls} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
         <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14h-2v-4H6v-2h4V7h2v4h4v2h-4v4z" />
@@ -97,6 +107,16 @@ const THEMES: ThemeItem[] = [
     icon: (cls = "h-4 w-4") => (
       <svg className={cls} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
         <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z" />
+      </svg>
+    ),
+  },
+  {
+    id: "activities",
+    shortName: "Drives",
+    fullName: "NGO Drives & Camps",
+    icon: (cls = "h-4 w-4") => (
+      <svg className={cls} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
       </svg>
     ),
   },
@@ -164,7 +184,7 @@ export function ThemeNavBar() {
   return (
     <nav
       aria-label="Quick Themes Navigation"
-      className="sticky top-12 sm:top-14 z-30 w-full border-b border-teal-900/10 bg-white/95 backdrop-blur-md shadow-xs no-print"
+      className="relative sm:sticky sm:top-14 z-30 w-full border-b border-teal-900/10 bg-white/95 backdrop-blur-md shadow-xs no-print"
     >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-2">
         <div className="flex items-center gap-1.5 md:gap-2 lg:gap-2.5 overflow-x-auto no-scrollbar scrollbar-none py-0.5 md:justify-center">

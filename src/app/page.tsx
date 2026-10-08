@@ -59,44 +59,44 @@ export default async function Home() {
       <Track event="need_view" onView />
       <ImpactCart />
 
-      {/* 7. Deep Emotional Voices & Caregiver Reflections (Donor Psychology & Empathy) */}
-      <EmotionalQuotesSection />
-
-      {/* 8. Celebrate Milestones with 25 Boys (Occasion, Birthday Feast & WhatsApp Video Delivery) */}
+      {/* 7. Celebrate Milestones with 25 Boys (Occasion, Birthday Feast & WhatsApp Video Delivery) */}
       <TrendingBirthdaySection wishVideos={siteContent?.wishVideos} />
 
-      {/* 9. On-Ground NGO Activities & Community Outreach Campaigns (2-col grid mobile) */}
-      <CommunityActivitiesSection />
+      {/* 8. Deep Emotional Voices & Caregiver Reflections (Donor Psychology & Empathy) */}
+      <EmotionalQuotesSection />
 
-      {/* 10. Real Boys Interactive Visual Gallery (39 Curated Ground Moments, Prayers, Classes & Sports) */}
+      {/* 9. Real Boys Interactive Visual Gallery (Curated Ground Moments, Prayers, Classes & Sports) */}
       <RealBoysGallerySection />
 
-      {/* 11. Life in Motion: Documentary Video Chapters (Unstaged Daily Boy Life) */}
+      {/* 10. Life in Motion: Documentary Video Chapters (Unstaged Daily Boy Life) */}
       <DocumentaryVideoSection />
 
-      {/* 8. Transparency Center & 5 Official Govt Accreditations (Form 28, Form 10AC, CSR-1, 12AA, PAN) */}
+      {/* 11. Transparency Center & 5 Official Govt Accreditations (Form 28, Form 10AC, CSR-1, 12AA, PAN) */}
       <TransparencySection docs={docs} />
 
-      {/* 9. Trust & Accountability Pillars, 256-Bit Security & Axis Bank Direct Transfer Details */}
+      {/* 12. Trust & Accountability Pillars, 256-Bit Security & Axis Bank Direct Transfer Details */}
       <TrustSection />
 
-      {/* 10. Verified Impact Platform Metrics */}
+      {/* 13. Verified Impact Platform Metrics (25 Resident Boys, 27,375 Annual Meals, 100% Schooling) */}
       <VerifiedImpactSection metrics={metrics} totals={totals} />
 
-      {/* 11. Give Your Time: Volunteers & Social Media Influencers */}
-      <InvolvedSection />
+      {/* 14. On-Ground NGO Activities & Community Outreach Campaigns (Health Camps, Food Relief, Drives) */}
+      <CommunityActivitiesSection />
 
-      {/* 12. Frequently Asked Questions (FAQ) */}
-      <section id="faq" className="scroll-mt-14 py-12 md:py-16 bg-sand/35 w-full max-w-full overflow-hidden">
+      {/* 15. Frequently Asked Questions (FAQ) - Direct Answers to Donor Doubts */}
+      <section id="faq" className="scroll-mt-14 py-10 md:py-16 bg-sand/35 w-full max-w-full overflow-hidden">
         <Container>
           <DonationFAQ />
         </Container>
       </section>
 
-      {/* 13. Our Future (Proposed Future Project) */}
+      {/* 16. Give Your Time: Volunteers & Corporate CSR Partnerships */}
+      <InvolvedSection />
+
+      {/* 17. Campus Expansion Vision (Future Project Blueprint) */}
       <FutureSection />
 
-      {/* 14. Bengaluru Location, Map & Direct Bank Details */}
+      {/* 18. Bengaluru Location, Map & Direct Bank Details */}
       <ContactSection />
     </>
   );

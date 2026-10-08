@@ -43,15 +43,23 @@ export function FutureSection({ standalone = false }: { standalone?: boolean }) 
                 </li>
               ))}
             </ol>
-            <div className="mt-6 rounded-2xl bg-white p-4">
-              <p className="text-sm font-bold text-teal-900">Funding progress</p>
-              <div className="mt-2 h-2.5 overflow-hidden rounded-xl bg-teal-100"><div className="h-full w-0 rounded-xl bg-saffron" /></div>
-              <p className="mt-2 text-xs text-teal-950/60">Not yet open. Funding progress will be shown here - verified - once the project plan and budget are published.</p>
+            <div className="mt-6 rounded-2xl bg-white p-4 border border-teal-900/10">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-wider text-teal-900/70">
+                  Campus Expansion Vision
+                </span>
+                <span className="rounded-md bg-amber-500/20 px-2 py-0.5 text-[10px] font-black uppercase text-amber-900">
+                  CSR &amp; Endowment Stage
+                </span>
+              </div>
+              <p className="mt-2 text-xs text-teal-950/75 leading-relaxed">
+                Janaseva Ashrama is actively consulting with responsible corporate CSR partners and philanthropic foundations for land acquisition and phase-wise construction of this permanent children&apos;s campus in South Bengaluru.
+              </p>
             </div>
-            <Link href="/get-involved?interest=csr#join" className="focus-ring mt-5 inline-block rounded-xl bg-teal-800 px-6 py-3 text-sm font-bold text-white hover:bg-teal-900">
-              Build With Us
+            <Link href="/get-involved?interest=csr#join" className="focus-ring mt-5 inline-block rounded-xl bg-teal-800 px-6 py-3 text-sm font-bold text-white hover:bg-teal-900 transition shadow-xs">
+              Partner With Us (CSR) →
             </Link>
-            {!standalone && <Link href="/future" className="ml-4 text-sm font-semibold text-teal-800 underline">Learn more</Link>}
+            {!standalone && <Link href="/future" className="ml-4 text-sm font-semibold text-teal-800 underline">View Full Blueprint</Link>}
           </div>
         </div>
       </Container>

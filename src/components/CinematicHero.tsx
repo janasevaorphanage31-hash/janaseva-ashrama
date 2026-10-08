@@ -95,146 +95,181 @@ export function CinematicHero({ content }: { content?: Partial<SiteContentMap> }
           </button>
         </div>
 
-        {/* ── Floating Video Action Trigger (Bottom Center) ── */}
-        <div className="absolute inset-x-0 bottom-4 sm:bottom-6 z-20 flex flex-col sm:flex-row items-center justify-center gap-3 px-4 pointer-events-auto">
-          <button
-            type="button"
-            onClick={() => cart.openBottomDonate(4500, "food_one_day")}
-            className="focus-ring tap-scale group flex items-center gap-2.5 rounded-2xl bg-gradient-to-r from-saffron to-amber-600 px-6 py-3.5 text-xs sm:text-sm font-black text-white shadow-[0_8px_30px_rgba(217,121,36,0.6)] ring-2 ring-white/60 border border-amber-300 hover:scale-105 transition-all cursor-pointer animate-heartbeat"
-          >
-            <span className="relative flex h-3 w-3">
-              <span className="animate-beacon absolute inline-flex h-full w-full rounded-full bg-white opacity-85"></span>
-              <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-200"></span>
-            </span>
-            <span className="uppercase tracking-wider">SPONSOR 25 BOYS (₹4,500 FULL DAY ANNADANA) 💝</span>
-          </button>
+        {/* ── Urgent Need & Quick Give Panel (Floating on Bottom of Video) ── */}
+        <div className="absolute inset-x-0 bottom-3 sm:bottom-6 z-20 mx-auto max-w-4xl px-3 sm:px-6 pointer-events-auto">
+          <div className="rounded-2xl sm:rounded-3xl bg-teal-950/85 backdrop-blur-md p-3.5 sm:p-5 border border-white/20 shadow-2xl space-y-3">
+            {/* Live Annadana Goal Meter */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5 sm:gap-4">
+              <div className="flex items-center gap-2">
+                <span className="flex h-2.5 w-2.5 relative">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
+                </span>
+                <span className="text-xs sm:text-sm font-black text-amber-300 uppercase tracking-wide">
+                  Today&apos;s Annadana Seva Status
+                </span>
+              </div>
+              <span className="text-[11px] sm:text-xs font-bold text-white/90">
+                19 of 25 Boys Sponsored · <span className="text-amber-400 font-extrabold">6 Meals Still Needed</span>
+              </span>
+            </div>
 
-          <button
-            type="button"
-            onClick={() => cart.openBottomDonate(100)}
-            className="focus-ring tap-scale flex items-center gap-1.5 rounded-2xl bg-white/20 hover:bg-white/30 backdrop-blur-md px-4 py-3 text-xs font-bold text-white border border-white/25 shadow-md transition cursor-pointer"
-          >
-            <span>⚡ Feed 1 Child (₹100)</span>
-          </button>
+            {/* Visual Progress Bar */}
+            <div className="w-full bg-white/15 h-2 sm:h-2.5 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-amber-500 via-saffron to-amber-400 rounded-full transition-all duration-1000 relative"
+                style={{ width: "76%" }}
+              >
+                <div className="absolute inset-0 bg-white/25 animate-pulse" />
+              </div>
+            </div>
+
+            {/* 1-Tap Tactile Quick Amount Chips */}
+            <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar pt-0.5">
+              {[
+                { amount: 100, label: "₹100", sub: "1 Boy Meal" },
+                { amount: 300, label: "₹300", sub: "3 Meals" },
+                { amount: 500, label: "₹500", sub: "5 Meals" },
+                { amount: 1500, label: "₹1,500", sub: "Breakfast" },
+                { amount: 4500, label: "₹4,500", sub: "Full Day (25 Boys)", popular: true },
+              ].map((chip) => (
+                <button
+                  key={chip.amount}
+                  type="button"
+                  onClick={() => cart.openBottomDonate(chip.amount, chip.amount === 4500 ? "food_one_day" : undefined)}
+                  className={`shrink-0 rounded-xl px-2.5 sm:px-3 py-1.5 text-left border transition active:scale-95 cursor-pointer ${
+                    chip.popular
+                      ? "bg-saffron text-white border-amber-300 shadow-md ring-1 ring-white/50"
+                      : "bg-white/12 text-white border-white/20 hover:bg-white/20"
+                  }`}
+                >
+                  <span className="block text-xs font-black leading-tight text-amber-300">{chip.label}</span>
+                  <span className="block text-[9px] sm:text-[10px] text-white/80 leading-tight truncate">{chip.sub}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* Primary Action Buttons */}
+            <div className="flex flex-col sm:flex-row items-center gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => cart.openBottomDonate(4500, "food_one_day")}
+                className="focus-ring w-full sm:flex-1 flex items-center justify-center gap-2 rounded-xl sm:rounded-2xl bg-gradient-to-r from-saffron via-amber-500 to-saffron px-5 py-3 text-xs sm:text-sm font-black text-white shadow-lg hover:brightness-110 active:scale-98 transition cursor-pointer"
+              >
+                <span>🍛 SPONSOR NOW (UPI / GPAY / CARDS)</span>
+                <span>&rarr;</span>
+              </button>
+
+              <Link
+                href="/celebrate-special-day"
+                className="w-full sm:w-auto text-center px-4 py-2.5 rounded-xl sm:rounded-2xl bg-white/15 hover:bg-white/25 text-white text-xs font-bold border border-white/25 transition active:scale-98"
+              >
+                🎂 Celebrate Birthday (₹3,500)
+              </Link>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* ── 2. GIVEA-STYLE 5 CATEGORY ICON DOCK (DIRECTLY UNDER VIDEO) ── */}
-      <div className="relative z-30 w-full bg-teal-950 border-t border-white/15 py-3 sm:py-5 px-3 sm:px-6 lg:px-8">
+      {/* ── 2. SLEEK HORIZONTAL CATEGORY DOCK (STREAMLINED FOR MOBILE) ── */}
+      <div className="relative z-30 w-full bg-teal-950 border-t border-white/15 py-3 sm:py-4 px-3 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-7xl">
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-4 items-stretch">
-            {/* Block 1: Support / Seva */}
+          <div className="flex overflow-x-auto gap-2 sm:gap-3 pb-1 no-scrollbar md:grid md:grid-cols-5 md:gap-3.5">
+            {/* Block 1: Support a Boy */}
             <button
               type="button"
               onClick={() => cart.openBottomDonate(100)}
-              className="focus-ring tap-scale group flex flex-col items-center justify-center text-center p-3 sm:p-4 rounded-2xl bg-white/10 hover:bg-white/18 border border-white/15 transition-all cursor-pointer hover:border-amber-400"
+              className="focus-ring tap-scale shrink-0 w-36 md:w-auto flex flex-col items-center justify-center text-center p-2.5 sm:p-3 rounded-2xl bg-white/10 hover:bg-white/18 border border-white/15 transition-all cursor-pointer group hover:border-amber-400"
             >
-              {/* Hand Holding Heart SVG Icon */}
-              <div className="flex h-11 w-11 sm:h-12 sm:w-12 items-center justify-center rounded-2xl bg-amber-500/20 text-amber-400 mb-2 group-hover:scale-110 transition-transform">
-                <svg className="h-6 w-6 sm:h-7 sm:w-7 fill-none stroke-current stroke-2" viewBox="0 0 24 24" aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
-                </svg>
+              <div className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-xl bg-amber-500/20 text-amber-400 mb-1.5 group-hover:scale-110 transition-transform">
+                <span className="text-lg">🤲</span>
               </div>
-              <span className="font-display text-xs sm:text-sm font-bold text-white group-hover:text-amber-300 transition-colors">
+              <span className="text-xs font-bold text-white group-hover:text-amber-300 truncate">
                 Support a Boy
               </span>
-              <span className="text-[10px] text-amber-200/80 font-medium">
+              <span className="text-[10px] text-amber-200/80 font-medium truncate">
                 ಒಬ್ಬ ಮಗುವಿಗೆ ಸೇವೆ
               </span>
-              <span className="mt-1 inline-block rounded-md bg-white/15 px-2 py-0.5 text-[10px] font-extrabold text-amber-300">
+              <span className="mt-1 rounded-md bg-white/15 px-1.5 py-0.2 text-[9px] font-extrabold text-amber-300">
                 ₹100 / ₹500
               </span>
             </button>
 
-            {/* Block 2: 25 Resident Boys (Family / 3 Children with Heart Icon) */}
+            {/* Block 2: 25 Resident Boys */}
             <button
               type="button"
               onClick={() => cart.openBottomDonate(4500, "food_one_day")}
-              className="focus-ring tap-scale group flex flex-col items-center justify-center text-center p-3 sm:p-4 rounded-2xl bg-white/10 hover:bg-white/18 border border-white/15 transition-all cursor-pointer hover:border-amber-400"
+              className="focus-ring tap-scale shrink-0 w-36 md:w-auto flex flex-col items-center justify-center text-center p-2.5 sm:p-3 rounded-2xl bg-white/10 hover:bg-white/18 border border-white/15 transition-all cursor-pointer group hover:border-amber-400"
             >
-              {/* 3 People / Group Icon */}
-              <div className="flex h-11 w-11 sm:h-12 sm:w-12 items-center justify-center rounded-2xl bg-amber-500/20 text-amber-400 mb-2 group-hover:scale-110 transition-transform">
-                <svg className="h-6 w-6 sm:h-7 sm:w-7 fill-none stroke-current stroke-2" viewBox="0 0 24 24" aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5c.83 0 1.5-.67 1.5-1.5S12.83 1.5 12 1.5s-1.5.67-1.5 1.5.67 1.5 1.5 1.5zm-5 4c.83 0 1.5-.67 1.5-1.5S7.83 5.5 7 5.5 5.5 6.17 5.5 7 6.17 8.5 7 8.5zm10 0c.83 0 1.5-.67 1.5-1.5S17.83 5.5 17 5.5s-1.5.67-1.5 1.5.67 1.5 1.5 1.5z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9c-2.21 0-4 1.79-4 4v5h8v-5c0-2.21-1.79-4-4-4zm-6 3c-1.66 0-3 1.34-3 3v3h3v-4c0-.73.26-1.4.7-1.93-.42-.05-.85-.07-1.7-.07zm12 0c-.85 0-1.28.02-1.7.07.44.53.7 1.2.7 1.93v4h3v-3c0-1.66-1.34-3-3-3z" />
-                </svg>
+              <div className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-xl bg-amber-500/20 text-amber-400 mb-1.5 group-hover:scale-110 transition-transform">
+                <span className="text-lg">👦</span>
               </div>
-              <span className="font-display text-xs sm:text-sm font-bold text-white group-hover:text-amber-300 transition-colors">
+              <span className="text-xs font-bold text-white group-hover:text-amber-300 truncate">
                 25 Resident Boys
               </span>
-              <span className="text-[10px] text-amber-200/80 font-medium">
+              <span className="text-[10px] text-amber-200/80 font-medium truncate">
                 ಮಕ್ಕಳ ಆಶ್ರಯ ಕೇಂದ್ರ
               </span>
-              <span className="mt-1 inline-block rounded-md bg-white/15 px-2 py-0.5 text-[10px] font-extrabold text-amber-300">
+              <span className="mt-1 rounded-md bg-white/15 px-1.5 py-0.2 text-[9px] font-extrabold text-amber-300">
                 Daily Care &amp; Shelter
               </span>
             </button>
 
-            {/* Block 3: Celebrate Birthday (Birthday Cake with Candle Icon) */}
+            {/* Block 3: Celebrate Birthday */}
             <Link
               href="/celebrate-special-day"
-              className="focus-ring tap-scale group flex flex-col items-center justify-center text-center p-3 sm:p-4 rounded-2xl bg-white/10 hover:bg-white/18 border border-white/15 transition-all cursor-pointer hover:border-amber-400"
+              className="focus-ring tap-scale shrink-0 w-36 md:w-auto flex flex-col items-center justify-center text-center p-2.5 sm:p-3 rounded-2xl bg-white/10 hover:bg-white/18 border border-white/15 transition-all cursor-pointer group hover:border-amber-400"
             >
-              {/* Birthday Cake SVG Icon */}
-              <div className="flex h-11 w-11 sm:h-12 sm:w-12 items-center justify-center rounded-2xl bg-amber-500/20 text-amber-400 mb-2 group-hover:scale-110 transition-transform">
-                <svg className="h-6 w-6 sm:h-7 sm:w-7 fill-none stroke-current stroke-2" viewBox="0 0 24 24" aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v3m-1-5.5a1 1 0 012 0c0 .55-.45 1.5-1 2.5-.55-1-1-1.95-1-2.5zM7 9h10a2 2 0 012 2v2H5v-2a2 2 0 012-2zm-3 6h16a1 1 0 011 1v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4a1 1 0 011-1z" />
-                </svg>
+              <div className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-xl bg-amber-500/20 text-amber-400 mb-1.5 group-hover:scale-110 transition-transform">
+                <span className="text-lg">🎂</span>
               </div>
-              <span className="font-display text-xs sm:text-sm font-bold text-white group-hover:text-amber-300 transition-colors">
+              <span className="text-xs font-bold text-white group-hover:text-amber-300 truncate">
                 Celebrate Birthday
               </span>
-              <span className="text-[10px] text-amber-200/80 font-medium">
+              <span className="text-[10px] text-amber-200/80 font-medium truncate">
                 ಹುಟ್ಟುಹಬ್ಬದ ಹಬ್ಬ
               </span>
-              <span className="mt-1 inline-block rounded-md bg-white/15 px-2 py-0.5 text-[10px] font-extrabold text-amber-300">
+              <span className="mt-1 rounded-md bg-white/15 px-1.5 py-0.2 text-[9px] font-extrabold text-amber-300">
                 Feast · ₹3,500
               </span>
             </Link>
 
-            {/* Block 4: Community / Education (Hands Holding Community Icon) */}
+            {/* Block 4: Child Education */}
             <button
               type="button"
               onClick={() => cart.openBottomDonate(9600, "education_one_year")}
-              className="focus-ring tap-scale group flex flex-col items-center justify-center text-center p-3 sm:p-4 rounded-2xl bg-white/10 hover:bg-white/18 border border-white/15 transition-all cursor-pointer hover:border-amber-400"
+              className="focus-ring tap-scale shrink-0 w-36 md:w-auto flex flex-col items-center justify-center text-center p-2.5 sm:p-3 rounded-2xl bg-white/10 hover:bg-white/18 border border-white/15 transition-all cursor-pointer group hover:border-amber-400"
             >
-              {/* Community Hands Embracing Icon */}
-              <div className="flex h-11 w-11 sm:h-12 sm:w-12 items-center justify-center rounded-2xl bg-amber-500/20 text-amber-400 mb-2 group-hover:scale-110 transition-transform">
-                <svg className="h-6 w-6 sm:h-7 sm:w-7 fill-none stroke-current stroke-2" viewBox="0 0 24 24" aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M16 11c1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3 1.34 3 3 3zm-8 0c1.66 0 3-1.34 3-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 17c1.5 2 4 3 9 3s7.5-1 9-3" />
-                </svg>
+              <div className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-xl bg-amber-500/20 text-amber-400 mb-1.5 group-hover:scale-110 transition-transform">
+                <span className="text-lg">📚</span>
               </div>
-              <span className="font-display text-xs sm:text-sm font-bold text-white group-hover:text-amber-300 transition-colors">
+              <span className="text-xs font-bold text-white group-hover:text-amber-300 truncate">
                 Child Education
               </span>
-              <span className="text-[10px] text-amber-200/80 font-medium">
+              <span className="text-[10px] text-amber-200/80 font-medium truncate">
                 ಶಾಲಾ ವಿದ್ಯಾಭ್ಯಾಸ
               </span>
-              <span className="mt-1 inline-block rounded-md bg-white/15 px-2 py-0.5 text-[10px] font-extrabold text-amber-300">
+              <span className="mt-1 rounded-md bg-white/15 px-1.5 py-0.2 text-[9px] font-extrabold text-amber-300">
                 Tuition &amp; Kits
               </span>
             </button>
 
-            {/* Block 5: Annadana Meals (Food Cloche on Platter Icon) */}
+            {/* Block 5: Full Day Annadana */}
             <button
               type="button"
               onClick={() => cart.openBottomDonate(4500, "food_one_day")}
-              className="focus-ring tap-scale group col-span-2 sm:col-span-1 flex flex-col items-center justify-center text-center p-3 sm:p-4 rounded-2xl bg-gradient-to-b from-amber-500/25 to-teal-900 border-2 border-amber-400/60 transition-all cursor-pointer hover:border-amber-300 shadow-md"
+              className="focus-ring tap-scale shrink-0 w-36 md:w-auto flex flex-col items-center justify-center text-center p-2.5 sm:p-3 rounded-2xl bg-gradient-to-b from-amber-500/25 to-teal-900 border border-amber-400/60 transition-all cursor-pointer group hover:border-amber-300 shadow-sm"
             >
-              {/* Food Cloche SVG Icon */}
-              <div className="flex h-11 w-11 sm:h-12 sm:w-12 items-center justify-center rounded-2xl bg-amber-400 text-teal-950 mb-2 group-hover:scale-110 transition-transform">
-                <svg className="h-6 w-6 sm:h-7 sm:w-7 fill-none stroke-current stroke-2" viewBox="0 0 24 24" aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v2m0 0a8 8 0 018 8H4a8 8 0 018-8zm-9 11h18a1 1 0 011 1v1a1 1 0 01-1 1H3a1 1 0 01-1-1v-1a1 1 0 011-1zm3 5h12" />
-                </svg>
+              <div className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-xl bg-amber-400 text-teal-950 mb-1.5 group-hover:scale-110 transition-transform">
+                <span className="text-lg">🍲</span>
               </div>
-              <span className="font-display text-xs sm:text-sm font-black text-amber-300 transition-colors">
+              <span className="text-xs font-black text-amber-300 truncate">
                 Annadana Meals
               </span>
-              <span className="text-[10px] text-white/90 font-bold">
+              <span className="text-[10px] text-white/90 font-bold truncate">
                 ಎಲ್ಲಾ ಮಕ್ಕಳಿಗೆ ಊಟ
               </span>
-              <span className="mt-1 inline-block rounded-md bg-amber-400 px-2 py-0.5 text-[10px] font-black text-teal-950">
+              <span className="mt-1 rounded-md bg-amber-400 px-1.5 py-0.2 text-[9px] font-black text-teal-950">
                 Full Day · ₹4,500
               </span>
             </button>

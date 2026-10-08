@@ -239,6 +239,7 @@ export function CheckoutClient() {
   const search = useSearchParams();
 
   const [form, setForm] = useState({ name: "", email: "", phone: "", pan: "", anonymous: false });
+  const [showPanField, setShowPanField] = useState(false);
   const [dedicationEnabled, setDedicationEnabled] = useState(false);
   const [dedication, setDedication] = useState({ occasion: "Birthday", name: "", message: "" });
   const [deliveryPreference, setDeliveryPreference] = useState<"email" | "whatsapp" | "both">("both");
@@ -279,8 +280,23 @@ export function CheckoutClient() {
     setValidationModalOpen(false);
   };
 
-  // Check URL params for pre-set occasion (e.g. from Make a Day Matter)
+  // Check URL params for pre-set amount and occasion
   useEffect(() => {
+    const amtParam = search.get("amount");
+    if (amtParam) {
+      const parsed = Number(amtParam);
+      if (!isNaN(parsed) && parsed >= 10 && parsed <= 500000) {
+        queueMicrotask(() => {
+          cart.setCustom(parsed);
+        });
+      }
+    } else if (cart.hydrated && cart.total === 0 && cart.lines.length === 0 && cart.custom === 0) {
+      // Default to popular starter amount of ₹500 so donor is immediately ready to pay
+      queueMicrotask(() => {
+        cart.setCustom(500);
+      });
+    }
+
     const occ = search.get("occasion");
     if (occ) {
       const match = OCCASION_CHOICES.find((o) => o.toLowerCase() === occ.toLowerCase());
@@ -289,7 +305,7 @@ export function CheckoutClient() {
         if (match) setDedication((prev) => ({ ...prev, occasion: match }));
       });
     }
-  }, [search]);
+  }, [search, cart.hydrated]);
 
   if (!cart.hydrated) {
     return (
@@ -778,8 +794,72 @@ export function CheckoutClient() {
   // ── ACTIVE BASKET STATE: FULL CONTROL, ALTERING & VERIFIED CHECKOUT ──────
   // ═════════════════════════════════════════════════════════════════════════
   return (
-    <form onSubmit={submit} className="mx-auto grid max-w-5xl gap-6 px-4 sm:px-6 py-6 lg:grid-cols-[1fr_390px]" noValidate>
+    <form onSubmit={submit} className="mx-auto grid max-w-5xl gap-6 px-4 sm:px-6 py-6 pb-28 lg:pb-8 lg:grid-cols-[1fr_390px]" noValidate>
       <div className="space-y-6">
+
+        {/* ── TOP URGENT GOAL & 1-TAP AMOUNT SELECTOR (FAST MOBILE GIVING) ── */}
+        <div className="rounded-3xl bg-gradient-to-r from-teal-950 via-teal-900 to-teal-950 p-4 sm:p-5 text-white shadow-lg border border-amber-400/30">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-white/10 pb-3">
+            <div className="flex items-center gap-2">
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
+              </span>
+              <span className="text-[11px] font-black uppercase tracking-wider text-amber-300">
+                🔥 Live Urgent Need: 6 Meals Still Needed for 25 Boys
+              </span>
+            </div>
+            <span className="rounded-lg bg-emerald-500/20 px-2.5 py-0.5 text-[11px] font-bold text-emerald-300 w-fit">
+              ✓ Form 10AC 80G Tax Exemption (50% Deduction)
+            </span>
+          </div>
+
+          <div className="mt-3">
+            <div className="flex items-center justify-between text-xs mb-2">
+              <span className="font-bold text-white/90">Select Contribution Amount:</span>
+              <span className="text-amber-300 font-mono font-bold">Selected: {formatINR(cart.total)}</span>
+            </div>
+
+            {/* 1-Tap Preset Amount Chips */}
+            <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+              {[
+                { amt: 100, label: "1 Meal", desc: "Feeds 1 boy" },
+                { amt: 300, label: "3 Meals", desc: "3 boys lunch" },
+                { amt: 500, label: "5 Meals", desc: "Most popular", isPopular: true },
+                { amt: 1500, label: "Breakfast", desc: "All 25 boys" },
+                { amt: 4500, label: "Full Day", desc: "All 25 boys" },
+              ].map((item) => {
+                const isMatch = cart.custom === item.amt && cart.lines.length === 0;
+                return (
+                  <button
+                    key={item.amt}
+                    type="button"
+                    onClick={() => {
+                      cart.clear();
+                      cart.setCustom(item.amt);
+                      track("checkout_quick_chip_select", { amount: item.amt });
+                    }}
+                    className={`p-2 sm:p-2.5 rounded-xl text-center transition cursor-pointer relative border ${
+                      isMatch
+                        ? "bg-amber-400 text-teal-950 font-black border-amber-300 shadow-md ring-2 ring-white/50"
+                        : "bg-white/10 text-white hover:bg-white/20 border-white/10"
+                    }`}
+                  >
+                    {item.isPopular && !isMatch && (
+                      <span className="absolute -top-2 right-1 rounded-full bg-saffron px-1.5 py-0.2 text-[8px] font-black uppercase text-white shadow">
+                        ★ Pop
+                      </span>
+                    )}
+                    <span className={`block font-display text-sm sm:text-base font-black ${isMatch ? "text-teal-950" : "text-amber-300"}`}>
+                      ₹{item.amt}
+                    </span>
+                    <span className="block text-[10px] font-bold leading-tight mt-0.5 truncate">{item.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
 
         {/* ── CARD 1: REVIEW & ALTER YOUR SELECTIONS (Donor Empowerment) ── */}
         <div className="rounded-3xl bg-white p-5 sm:p-6 shadow-sm ring-1 ring-teal-900/10">
@@ -1053,28 +1133,49 @@ export function CheckoutClient() {
               ) : null}
             </div>
 
-            {/* PAN Number (Optional) */}
-            <div>
-              <label className="block text-xs sm:text-sm font-bold text-teal-950">
-                PAN Number{" "}
-                <span className="font-normal text-teal-950/60">(Optional, required only for 50% 80G tax deduction)</span>
-                <input
-                  className={`${inputCls} mt-1 uppercase font-mono`}
-                  maxLength={10}
-                  placeholder="10-character PAN e.g. ABCDE1234F"
-                  value={form.pan}
-                  onChange={(e) => setForm({ ...form, pan: sanitizePan(e.target.value) })}
-                />
-              </label>
-              {form.pan.length === 10 && PAN_REGEX.test(form.pan) ? (
-                <p className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-emerald-700">
-                  <span className="font-bold">✓</span> Valid 80G tax exemption format confirmed
-                </p>
-              ) : form.pan.length > 0 && form.pan.length < 10 ? (
-                <p className="mt-1 text-[11px] text-amber-800">
-                  {10 - form.pan.length} more characters needed (e.g. ABCDE1234F)
-                </p>
-              ) : null}
+            {/* PAN Number (Optional with toggle for clean mobile UI) */}
+            <div className="rounded-2xl border border-teal-900/10 bg-cream/50 p-3.5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="block text-xs font-bold text-teal-950">
+                    Section 80G Tax Exemption (PAN)
+                  </span>
+                  <span className="block text-[11px] text-teal-950/60 mt-0.5">
+                    Optional · Required only for 50% tax deduction under Form 10AC
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowPanField(!showPanField)}
+                  className="rounded-xl px-2.5 py-1 text-xs font-bold text-teal-900 border border-teal-900/15 bg-white hover:bg-sand transition cursor-pointer shrink-0 ml-2"
+                >
+                  {showPanField || form.pan ? "Hide ✕" : "+ Add PAN"}
+                </button>
+              </div>
+
+              {(showPanField || Boolean(form.pan)) && (
+                <div className="mt-3 pt-3 border-t border-teal-900/10 animate-in fade-in">
+                  <label className="block text-xs font-bold text-teal-950">
+                    Donor PAN Card Number
+                    <input
+                      className={`${inputCls} mt-1 uppercase font-mono`}
+                      maxLength={10}
+                      placeholder="10-character PAN e.g. ABCDE1234F"
+                      value={form.pan}
+                      onChange={(e) => setForm({ ...form, pan: sanitizePan(e.target.value) })}
+                    />
+                  </label>
+                  {form.pan.length === 10 && PAN_REGEX.test(form.pan) ? (
+                    <p className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-emerald-700">
+                      <span className="font-bold">✓</span> Valid 80G tax exemption format confirmed
+                    </p>
+                  ) : form.pan.length > 0 && form.pan.length < 10 ? (
+                    <p className="mt-1 text-[11px] text-amber-800">
+                      {10 - form.pan.length} more characters needed (e.g. ABCDE1234F)
+                    </p>
+                  ) : null}
+                </div>
+              )}
             </div>
 
             {/* Anonymous preference */}
@@ -1455,14 +1556,20 @@ export function CheckoutClient() {
       </aside>
 
       {/* Mobile Sticky Payment Bar */}
-      <div className="fixed inset-x-3 bottom-[calc(4.8rem+env(safe-area-inset-bottom))] z-30 rounded-2xl bg-white/95 p-2.5 shadow-2xl ring-1 ring-teal-900/10 backdrop-blur lg:hidden no-print">
+      <div className="fixed inset-x-0 bottom-0 z-40 bg-white/95 backdrop-blur-md border-t border-teal-900/10 px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] shadow-2xl lg:hidden no-print">
         <button
           disabled={busy || cart.total === 0}
           type="submit"
-          className="focus-ring flex w-full items-center justify-between rounded-xl bg-saffron px-5 py-3.5 text-sm font-bold text-white disabled:opacity-60 shadow-md cursor-pointer"
+          className="focus-ring flex w-full items-center justify-between rounded-2xl bg-gradient-to-r from-saffron to-amber-500 px-5 py-3.5 text-sm font-extrabold text-white shadow-lg disabled:opacity-60 transition active:scale-95 cursor-pointer animate-heartbeat"
         >
-          <span>{busy ? "Please wait…" : "GIVE SECURELY"}</span>
-          <span>{formatINR(cart.total)}</span>
+          <span className="flex items-center gap-2">
+            <span className="relative flex h-2.5 w-2.5 shrink-0">
+              <span className="animate-beacon absolute inline-flex h-full w-full rounded-full bg-white opacity-85"></span>
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-200"></span>
+            </span>
+            <span>{busy ? "Connecting to UPI…" : "GIVE VIA UPI / GPAY / CARDS ⚡"}</span>
+          </span>
+          <span className="font-mono text-base font-black">{formatINR(cart.total)}</span>
         </button>
       </div>
 
