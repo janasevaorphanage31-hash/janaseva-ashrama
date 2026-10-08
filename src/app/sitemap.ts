@@ -4,18 +4,15 @@ import { and, eq, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { campaigns } from "@/db/schema";
 
+export const dynamic = "force-dynamic";
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  let baseUrl = process.env.NEXT_PUBLIC_SITE_URL;
-  if (!baseUrl) {
-    try {
-      const h = await headers();
-      const host = h.get("x-forwarded-host") || h.get("host") || "www.janasevaashrama.org";
-      const proto = h.get("x-forwarded-proto") || "https";
-      baseUrl = `${proto}://${host}`;
-    } catch {
-      baseUrl = "https://www.janasevaashrama.org";
-    }
-  }
+  let host = "www.janasevaashrama.org";
+  try {
+    const h = await headers();
+    host = h.get("x-forwarded-host") || h.get("host") || host;
+  } catch {}
+  const baseUrl = `https://${host}`;
 
   const staticRoutes = [
     { path: "", priority: 1.0, changeFrequency: "daily" as const },

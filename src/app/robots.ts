@@ -1,18 +1,15 @@
 import type { MetadataRoute } from "next";
 import { headers } from "next/headers";
 
+export const dynamic = "force-dynamic";
+
 export default async function robots(): Promise<MetadataRoute.Robots> {
-  let baseUrl = process.env.NEXT_PUBLIC_SITE_URL;
-  if (!baseUrl) {
-    try {
-      const h = await headers();
-      const host = h.get("x-forwarded-host") || h.get("host") || "www.janasevaashrama.org";
-      const proto = h.get("x-forwarded-proto") || "https";
-      baseUrl = `${proto}://${host}`;
-    } catch {
-      baseUrl = "https://www.janasevaashrama.org";
-    }
-  }
+  let host = "www.janasevaashrama.org";
+  try {
+    const h = await headers();
+    host = h.get("x-forwarded-host") || h.get("host") || host;
+  } catch {}
+  const baseUrl = `https://${host}`;
   return {
     rules: [
       {
