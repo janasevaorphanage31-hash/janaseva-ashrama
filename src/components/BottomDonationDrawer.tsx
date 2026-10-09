@@ -210,6 +210,21 @@ export function BottomDonationDrawer() {
                 </div>
               </div>
 
+              {/* Official 5 Tiers Quick Bridge */}
+              <div className="flex items-center justify-between rounded-2xl bg-teal-900/10 p-2.5 px-3 border border-teal-900/15 text-xs">
+                <span className="font-bold text-teal-950 flex items-center gap-1.5">
+                  <span>🏛️</span>
+                  <span>Sponsoring an Official Tier (₹4,500 - ₹9,600)?</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("tiers")}
+                  className="font-black text-saffron-dark hover:underline cursor-pointer text-xs"
+                >
+                  View 5 Tiers →
+                </button>
+              </div>
+
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-teal-950/70 mb-2">
                   Select Impact Tier or Preset:

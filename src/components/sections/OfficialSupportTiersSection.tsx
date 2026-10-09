@@ -123,16 +123,15 @@ export function OfficialSupportTiersSection({
               <span className="animate-beacon absolute inline-flex h-full w-full rounded-full bg-saffron opacity-80"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-saffron"></span>
             </span>
-            <span>Official Trust Sponsorship Program · ಅಧಿಕೃತ ಸೇವಾ ಯೋಜನೆಗಳು</span>
+            <span>Official 5 Sponsorship Tiers · ಪವಿತ್ರ ಸೇವೆ</span>
           </div>
 
           <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold text-teal-950 leading-tight">
-            Exact 5 Official Support Tiers &amp; Pricing
+            5 Ways to Protect Our 25 Boys
           </h2>
 
-          <p className="mt-3 text-sm sm:text-base text-teal-950/80 leading-relaxed max-w-2xl mx-auto">
-            Governed under Juvenile Justice Act Form 28 (Reg: <span className="font-bold text-teal-900">KA18CH0242</span>).
-            Select any official tier to support our 25 resident boys with daily meals, provisions, festive clothing, or schooling.
+          <p className="mt-2.5 text-sm sm:text-base text-teal-950/80 leading-relaxed max-w-xl mx-auto">
+            A hot plate, clean clothes, or a full year of school. Choose how you want to touch a child&apos;s life today. 100% direct allocation under JJ Act (Reg: <strong className="text-teal-900">KA18CH0242</strong>).
           </p>
 
           {/* Trust Pillars Ribbon */}

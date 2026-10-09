@@ -11,7 +11,6 @@ import { FloatingSocials } from "@/components/FloatingSocials";
 import { BottomDonationDrawer } from "@/components/BottomDonationDrawer";
 import { UrgentDonationBar } from "@/components/UrgentDonationBar";
 import { LiveDonationToast } from "@/components/LiveDonationToast";
-import { ChatWithUsButton } from "@/components/ChatWithUsButton";
 import { getImpactItems } from "@/lib/content";
 import { PWARegister } from "@/components/PWARegister";
 import { FAQ_ITEMS } from "@/lib/faq";
@@ -258,7 +257,6 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
           <ScrollToTopButton />
           <UrgentDonationBar />
           <LiveDonationToast />
-          <ChatWithUsButton />
           <BottomDonationDrawer />
           <BottomNav />
         </CartProvider>

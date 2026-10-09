@@ -148,8 +148,19 @@ export function UrgentDonationBar() {
 
             {/* Quick Presets & Pulsing Donate Button */}
             <div className="flex items-center justify-between sm:justify-end gap-1.5 sm:gap-2.5 w-full sm:w-auto shrink-0">
-              {/* Amount Presets */}
+              {/* Amount Presets with Official 5 Tiers */}
               <div className="flex items-center gap-1 shrink-0 overflow-x-auto no-scrollbar">
+                <button
+                  type="button"
+                  onClick={() => openBottomDonate(4500, "food_one_day")}
+                  className="focus-ring tap-scale rounded-xl px-2 sm:px-2.5 py-1.5 text-center transition cursor-pointer border bg-amber-500/20 text-amber-300 hover:bg-amber-500/35 border-amber-400/50 shadow-xs"
+                  title="Official 5 Support Tiers"
+                >
+                  <span className="block text-[11px] sm:text-xs leading-none font-black">🏛️ 5 Tiers</span>
+                  <span className="hidden sm:block text-[8px] opacity-90 leading-tight mt-0.5 text-amber-200">
+                    Official
+                  </span>
+                </button>
                 {URGENT_PRESETS.map((p) => {
                   const isSelected = activePreset === p.amount;
                   return (

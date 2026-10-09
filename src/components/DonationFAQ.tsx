@@ -38,13 +38,13 @@ export function DonationFAQ({
         <div className="lg:sticky lg:top-32 space-y-6 mb-8 lg:mb-0">
           <div>
             <p className="inline-block rounded-lg bg-saffron/15 px-3 py-1 text-xs font-bold uppercase tracking-wider text-saffron-dark mb-2">
-              Clear, Factual Answers (AEO / FAQ)
+              Transparent &amp; Verified · ಪ್ರಶ್ನೋತ್ತರ
             </p>
             <h2 className="font-display text-2xl sm:text-3xl lg:text-4xl font-bold text-teal-900 leading-tight">
-              Frequently Asked Questions About Janaseva Ashrama
+              Common Questions &amp; Clear Answers
             </h2>
-            <p className="mt-3 text-sm sm:text-base text-teal-950/75 leading-relaxed">
-              Everything you need to know about our Bangalore children&apos;s home, 80G tax deductions, visiting guidelines, and verified donation allocation.
+            <p className="mt-2 text-sm text-teal-950/75 leading-relaxed">
+              How meals are served, 80G tax receipts, visiting the boys in Bangalore, and how your donation is protected.
             </p>
           </div>
 

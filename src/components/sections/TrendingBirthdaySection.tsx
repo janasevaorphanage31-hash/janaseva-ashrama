@@ -151,9 +151,9 @@ export function TrendingBirthdaySection({ wishVideos }: { wishVideos?: WishVideo
         </div>
 
         <Head
-          eyebrow="Heartfelt Celebrations"
+          eyebrow="Heartfelt Celebrations · ಜನ್ಮದಿನದ ಸೇವೆ"
           title="Celebrate Your Birthday with 25 Boys"
-          lead="Experience the profound joy of sharing your milestone with our 25 young boys. Sponsoring a birthday feast or visiting the Ashrama creates heartwarming memories that outlast any ordinary celebration."
+          lead="Sweet payasam, pooris, cake cutting, and 25 cheerful voices chanting your name. Receive their personal singing blessing video delivered directly to your WhatsApp."
         />
 
         {/* ── 3 DISTINCT CELEBRATION SHOWCASES IN HORIZONTAL MOVEMENT ── */}

@@ -18,7 +18,6 @@ import { VerifiedImpactSection } from "./sections/VerifiedImpactSection";
 import { CommunityActivitiesSection } from "./sections/CommunityActivitiesSection";
 import { DonationFAQ } from "./DonationFAQ";
 import { InvolvedSection } from "./sections/InvolvedSection";
-import { FutureSection } from "./sections/FutureSection";
 import { ContactSection } from "./sections/ContactSection";
 import { Container } from "./ui";
 
@@ -462,41 +461,38 @@ export function HomeSectionsHub({
           {/* 4. Horizontal Moving Reel (Video Clips & Photos) */}
           <HorizontalMovingReel />
 
-          {/* 6. Real Boys Visual Gallery (Curated 60 Photos & Videos) */}
+          {/* 5. Real Boys Visual Gallery (Curated 60 Photos & Videos) */}
           <RealBoysGallerySection />
 
-          {/* 7. Documentary Video Chapters */}
-          <DocumentaryVideoSection chapters={siteContent?.docChapters} />
-
-          {/* 8. Emotional Voices & Reflections ("Every child deserves a warm plate..." in Horizontal Motion) */}
-          <EmotionalQuotesSection quotes={siteContent?.quotes} />
-
-          {/* 9. Transparency Center & 5 Official Govt Accreditations (Carousel / Grid) */}
-          <TransparencySection docs={docs} />
-
-          {/* 10. Trust & Axis Bank Direct Details (6 Trust Pillars in Horizontal Motion) */}
-          <TrustSection />
-
-          {/* 11. Verified Platform Impact Numbers */}
-          <VerifiedImpactSection metrics={metrics} totals={totals} />
-
-          {/* 12. On-Ground NGO Activities & Community Outreach (Full-Length Display) */}
+          {/* 6. On-Ground NGO Activities & Community Outreach (Field Initiatives) */}
           <CommunityActivitiesSection />
 
-          {/* 13. Give Your Time: Volunteers & Corporate CSR Partnerships (Full-Length Display) */}
+          {/* 7. Share Your Talent & Reach: Volunteers & Mentorship */}
           <InvolvedSection />
 
-          {/* 14. Campus Expansion Vision (Future Project Blueprint Full-Length Display) */}
-          <FutureSection />
+          {/* 8. Documentary Video Chapters */}
+          <DocumentaryVideoSection chapters={siteContent?.docChapters} />
 
-          {/* 15. Frequently Asked Questions (FAQ) */}
+          {/* 9. Emotional Voices & Reflections ("Every child deserves a warm plate...") */}
+          <EmotionalQuotesSection quotes={siteContent?.quotes} />
+
+          {/* 10. Transparency Center & 5 Official Govt Accreditations (Carousel / Grid) */}
+          <TransparencySection docs={docs} />
+
+          {/* 11. Trust & Axis Bank Direct Details (6 Trust Pillars in Horizontal Motion) */}
+          <TrustSection />
+
+          {/* 12. Verified Platform Impact Numbers */}
+          <VerifiedImpactSection metrics={metrics} totals={totals} />
+
+          {/* 13. Frequently Asked Questions (FAQ) */}
           <section id="faq" className="scroll-mt-14 py-10 md:py-16 bg-sand/35 w-full max-w-full overflow-hidden">
             <Container>
               <DonationFAQ faqs={siteContent?.faqs} />
             </Container>
           </section>
 
-          {/* 16. Bengaluru Location, Map & Contact */}
+          {/* 14. Bengaluru Location, Map & Contact */}
           <ContactSection />
         </div>
       )}

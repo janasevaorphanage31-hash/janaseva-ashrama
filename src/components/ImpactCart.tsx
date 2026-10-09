@@ -301,9 +301,9 @@ export function ImpactCart({
       <Container>
         {/* Header */}
         <Head
-          eyebrow="Categorized Daily Needs"
-          title="Explore Direct Impact Catalogs"
-          lead="Choose specific needs from verified Food, Education, Health, and Shelter pillars. Adjust quantities with complete transparency and receive 80G tax benefits."
+          eyebrow="Categorized Daily Needs · ಅನುದಿನದ ಅಗತ್ಯಗಳು"
+          title="Choose What to Give Today"
+          lead="From morning milk and school kits to groceries and doctor care. Add items directly to your Giving Basket with 100% direct allocation and instant 80G receipt."
         />
 
         {/* Category Pill Filters */}

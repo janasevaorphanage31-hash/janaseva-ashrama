@@ -210,6 +210,7 @@ export const SITE = {
   facebookUrl: "https://facebook.com/janasevaashrama",
   twitterUrl: "https://x.com/janasevaashrama",
   linkedinUrl: "https://linkedin.com/company/janaseva-ashrama",
+  youtubeUrl: "https://youtube.com/@janasevaashrama",
   // Operational Bangalore Ashrama Facility
   address: "#27, Gundu Thopu Turahalli, Near Govt School, Jayanagar housing Society Layout, Subramanyapura, Bangalore - 560061",
   registeredOffice: FORM_10AC.registeredAddress.full,
