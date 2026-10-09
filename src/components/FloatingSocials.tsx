@@ -52,7 +52,7 @@ export function FloatingSocials() {
       <aside
         ref={containerRef}
         aria-label="Quick Connect, Calling, Location and Social Channels"
-        className="fixed right-2.5 sm:right-5 bottom-[calc(9.2rem+env(safe-area-inset-bottom))] md:bottom-24 z-50 no-print"
+        className="fixed right-3 sm:right-5 bottom-[calc(4.85rem+env(safe-area-inset-bottom))] md:bottom-24 z-50 no-print"
       >
         {/* ── EXPANDED DONOR CONNECT CARD (MOBILE FIRST) ── */}
         {open && (
@@ -60,7 +60,7 @@ export function FloatingSocials() {
             role="dialog"
             aria-modal="true"
             aria-label="Ashrama Caretaker Desk, Location and Official Social Channels"
-            className="fixed inset-x-2.5 sm:inset-x-4 bottom-[calc(4.95rem+env(safe-area-inset-bottom))] md:bottom-14 md:right-0 md:left-auto md:w-[410px] max-h-[82vh] overflow-y-auto no-scrollbar rounded-3xl bg-teal-950/98 text-white p-4 sm:p-5 shadow-[0_20px_60px_rgba(0,0,0,0.65)] ring-1 ring-amber-400/50 border border-white/20 backdrop-blur-2xl animate-in fade-in slide-in-from-bottom-3 duration-200"
+            className="fixed inset-x-2.5 sm:inset-x-4 bottom-[calc(4.85rem+env(safe-area-inset-bottom))] md:bottom-14 md:right-0 md:left-auto md:w-[410px] max-h-[82vh] overflow-y-auto no-scrollbar rounded-3xl bg-teal-950/98 text-white p-4 sm:p-5 shadow-[0_20px_60px_rgba(0,0,0,0.65)] ring-1 ring-amber-400/50 border border-white/20 backdrop-blur-2xl animate-in fade-in slide-in-from-bottom-3 duration-200"
           >
             {/* Mobile Sheet Pull Handle */}
             <div className="flex justify-center pb-2 md:hidden" aria-hidden="true">
@@ -321,7 +321,7 @@ export function FloatingSocials() {
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
                     <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#0A66C2] text-white shrink-0 group-hover:scale-105 transition-transform">
-                      <svg className="h-4 w-4 fill-current" viewBox="0 0 24 24" aria-hidden="true">
+                      <svg className="h-3.5 w-3.5 fill-current" viewBox="0 0 24 24" aria-hidden="true">
                         <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.46 8.76a1.69 1.69 0 0 0 0-3.38 1.69 1.69 0 0 0 0 3.38m1.39 9.74v-8.37H5.07v8.37h2.78z" />
                       </svg>
                     </span>
@@ -378,87 +378,50 @@ export function FloatingSocials() {
           </div>
         )}
 
-        {/* ── COLLAPSED MULTI-ACTION FLOATING DOCK (MOBILE-FRIENDLY & DONOR-READY) ── */}
-        <div
-          className="flex items-center gap-1 sm:gap-1.5 p-1 sm:p-1.5 rounded-full bg-teal-950/98 text-white shadow-[0_12px_40px_rgba(0,0,0,0.55)] ring-1 ring-amber-400/60 backdrop-blur-xl border border-white/20"
+        {/* ── COMPACT FLOATING CONNECT TRIGGER (SLEEK & DONOR-FRIENDLY) ── */}
+        <button
+          type="button"
+          onClick={() => setOpen(!open)}
+          aria-expanded={open}
+          aria-label="Open connect menu: Call Caretaker, WhatsApp, Location, Socials"
+          className={`focus-ring tap-scale flex items-center gap-2 rounded-full px-3 sm:px-3.5 py-2 text-xs font-bold text-white shadow-[0_10px_35px_rgba(0,0,0,0.5)] ring-1 ring-amber-400/60 backdrop-blur-xl border border-white/20 transition-all cursor-pointer ${
+            open
+              ? "bg-amber-400 text-teal-950 ring-white"
+              : "bg-gradient-to-r from-teal-950 via-teal-900 to-teal-950 hover:scale-105 active:scale-95"
+          }`}
         >
-          {/* 1. Direct Call Action Button */}
-          <a
-            href={`tel:${SITE.phoneIntl}`}
-            onClick={() => track("floating_quick_call")}
-            aria-label="Call Ashrama Caretaker (+91 99803 59595)"
-            title="Call Caretaker (+91 99803 59595)"
-            className="focus-ring tap-scale flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full bg-emerald-600 hover:bg-emerald-500 text-white shadow-md transition-transform hover:scale-110 active:scale-95"
-          >
-            <svg className="h-4 sm:h-4.5 w-4 sm:w-4.5 fill-current" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M20 15.5c-1.2 0-2.4-.2-3.6-.6-.3-.1-.7 0-1 .2l-2.2 2.2c-2.8-1.4-5.1-3.8-6.6-6.6l2.2-2.2c.3-.3.4-.7.2-1-.4-1.1-.6-2.3-.6-3.5 0-.6-.4-1-1-1H4c-.6 0-1 .4-1 1 0 9.4 7.6 17 17 17 .6 0 1-.4 1-1v-3.5c0-.6-.4-1-1-1z" />
-            </svg>
-          </a>
+          {/* Live pulsing indicator */}
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-80" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+          </span>
 
-          {/* 2. Direct WhatsApp Action Button */}
-          <a
-            href={`https://wa.me/${SITE.whatsapp}?text=${encodeURIComponent("Hello Janaseva Ashrama, I would like to visit and support the 25 resident boys.")}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={() => track("floating_quick_whatsapp")}
-            aria-label="Chat on WhatsApp"
-            title="Chat on WhatsApp"
-            className="focus-ring tap-scale flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full bg-[#25D366] hover:bg-[#20ba59] text-white shadow-md transition-transform hover:scale-110 active:scale-95"
-          >
-            <svg className="h-4 sm:h-4.5 w-4 sm:w-4.5 fill-current" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.711 2.598 2.669-.699c.969.54 1.771.821 2.791.821 3.182 0 5.768-2.587 5.769-5.766.001-3.182-2.585-5.807-5.77-5.807zm3.364 8.205c-.14.398-.711.758-1.02.801-.309.041-.699.072-2.02-.452-1.631-.647-2.69-2.311-2.772-2.421-.08-.11-.659-.877-.659-1.673 0-.796.419-1.189.569-1.35.15-.16.329-.201.439-.201.11 0 .22.001.319.006.11.006.25-.041.389.299.15.361.509 1.24.559 1.341.05.101.08.22.01.361-.07.14-.11.23-.22.361-.11.13-.23.29-.329.39-.11.11-.22.23-.09.45.13.22.579.957 1.25 1.551.86.769 1.58.1.009 1.8.889.22.12.35.1.48-.05.13-.15.56-.65.71-.87.15-.22.3-.18.5-.11.2.07 1.27.6 1.49.71.22.11.37.16.42.25.05.1.05.58-.09.98z" />
-            </svg>
-          </a>
-
-          {/* 3. Direct Location Action Button */}
-          <a
-            href={SITE.mapsUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={() => track("floating_quick_maps")}
-            aria-label="Google Maps GPS Location"
-            title="Google Maps GPS Location"
-            className="focus-ring tap-scale flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full bg-amber-500 hover:bg-amber-400 text-teal-950 shadow-md transition-transform hover:scale-110 active:scale-95"
-          >
-            <svg className="h-4 sm:h-4.5 w-4 sm:w-4.5 fill-current" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
-            </svg>
-          </a>
-
-          {/* 4. Social Media & Full Hub Expand Button */}
-          <button
-            type="button"
-            onClick={() => setOpen(!open)}
-            aria-expanded={open}
-            aria-label="Open all social media channels, caretaker desk and visit info"
-            className={`focus-ring tap-scale flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${
-              open
-                ? "bg-amber-400 text-teal-950 shadow-inner"
-                : "bg-white/10 hover:bg-white/20 text-white"
-            }`}
-          >
-            {/* Social Avatars Mini Preview */}
-            <span className="flex -space-x-1.5 items-center">
-              <span className="h-4.5 w-4.5 rounded-full bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] flex items-center justify-center ring-1 ring-teal-950">
-                <svg className="h-2.5 w-2.5 fill-white" viewBox="0 0 24 24">
-                  <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4z" />
-                </svg>
-              </span>
-              <span className="h-4.5 w-4.5 rounded-full bg-[#FF0000] flex items-center justify-center ring-1 ring-teal-950">
-                <svg className="h-2.5 w-2.5 fill-white" viewBox="0 0 24 24">
-                  <path d="M10 15l5-3-5-3v6z" />
-                </svg>
-              </span>
+          {/* Quick Icons Trio */}
+          <span className="flex items-center gap-1">
+            <span className="h-5 w-5 rounded-full bg-emerald-500/30 text-emerald-300 flex items-center justify-center">
+              <svg className="h-3 w-3 fill-current" viewBox="0 0 24 24">
+                <path d="M20 15.5c-1.2 0-2.4-.2-3.6-.6-.3-.1-.7 0-1 .2l-2.2 2.2c-2.8-1.4-5.1-3.8-6.6-6.6l2.2-2.2c.3-.3.4-.7.2-1-.4-1.1-.6-2.3-.6-3.5 0-.6-.4-1-1-1H4c-.6 0-1 .4-1 1 0 9.4 7.6 17 17 17 .6 0 1-.4 1-1v-3.5c0-.6-.4-1-1-1z" />
+              </svg>
             </span>
+            <span className="h-5 w-5 rounded-full bg-[#25D366]/30 text-[#25D366] flex items-center justify-center">
+              <svg className="h-3 w-3 fill-current" viewBox="0 0 24 24">
+                <path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.711 2.598 2.669-.699c.969.54 1.771.821 2.791.821 3.182 0 5.768-2.587 5.769-5.766.001-3.182-2.585-5.807-5.77-5.807zm3.364 8.205c-.14.398-.711.758-1.02.801-.309.041-.699.072-2.02-.452-1.631-.647-2.69-2.311-2.772-2.421-.08-.11-.659-.877-.659-1.673 0-.796.419-1.189.569-1.35.15-.16.329-.201.439-.201.11 0 .22.001.319.006.11.006.25-.041.389.299.15.361.509 1.24.559 1.341.05.101.08.22.01.361-.07.14-.11.23-.22.361-.11.13-.23.29-.329.39-.11.11-.22.23-.09.45.13.22.579.957 1.25 1.551.86.769 1.58.1.009 1.8.889.22.12.35.1.48-.05.13-.15.56-.65.71-.87.15-.22.3-.18.5-.11.2.07 1.27.6 1.49.71.22.11.37.16.42.25.05.1.05.58-.09.98z" />
+              </svg>
+            </span>
+            <span className="h-5 w-5 rounded-full bg-amber-500/30 text-amber-300 flex items-center justify-center">
+              <svg className="h-3 w-3 fill-current" viewBox="0 0 24 24">
+                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
+              </svg>
+            </span>
+          </span>
 
-            <span className={`text-[11px] font-extrabold ${open ? "text-teal-950" : "text-amber-300"}`}>
-              Socials
-            </span>
-            <span className={`text-[9px] font-bold ${open ? "text-teal-950" : "text-white/70"}`}>
-              {open ? "▲" : "▼"}
-            </span>
-          </button>
-        </div>
+          <span className={`text-[11px] font-black tracking-wide ${open ? "text-teal-950" : "text-amber-300"}`}>
+            Connect & Visit
+          </span>
+          <span className={`text-[9px] font-bold ${open ? "text-teal-950" : "text-white/70"}`}>
+            {open ? "▲" : "▼"}
+          </span>
+        </button>
       </aside>
     </>
   );

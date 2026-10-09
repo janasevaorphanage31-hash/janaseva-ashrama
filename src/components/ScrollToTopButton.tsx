@@ -39,8 +39,8 @@ export function ScrollToTopButton() {
 
   if (!visible) return null;
 
-  // Position cleanly on the left side above urgent donation dock on mobile & desktop
-  const bottomCls = "bottom-[calc(9.2rem+env(safe-area-inset-bottom))] md:bottom-24";
+  // Position cleanly on the left side above BottomNav on mobile & desktop
+  const bottomCls = "bottom-[calc(4.85rem+env(safe-area-inset-bottom))] md:bottom-24";
 
   return (
     <div
