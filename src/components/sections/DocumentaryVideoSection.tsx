@@ -89,19 +89,24 @@ const CHAPTERS: VideoChapter[] = [
   },
 ];
 
-export function DocumentaryVideoSection() {
+export function DocumentaryVideoSection({
+  chapters,
+}: {
+  chapters?: VideoChapter[];
+} = {}) {
+  const activeChapters = chapters && chapters.length > 0 ? chapters : CHAPTERS;
   const [activeChapterIndex, setActiveChapterIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const cart = useCart();
 
-  const current = CHAPTERS[activeChapterIndex];
+  const current = activeChapters[activeChapterIndex] || activeChapters[0];
 
   const handleSelectChapter = (index: number) => {
     setActiveChapterIndex(index);
     setIsPlaying(true);
-    track("video_chapter_switch", { chapter: CHAPTERS[index].id });
+    track("video_chapter_switch", { chapter: activeChapters[index]?.id });
     if (videoRef.current) {
       videoRef.current.load();
       videoRef.current.play().catch(() => {});
@@ -251,7 +256,7 @@ export function DocumentaryVideoSection() {
               Daily Documentary Chapters
             </h3>
 
-            {CHAPTERS.map((ch, idx) => {
+            {activeChapters.map((ch, idx) => {
               const active = idx === activeChapterIndex;
               return (
                 <button

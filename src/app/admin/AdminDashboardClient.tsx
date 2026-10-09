@@ -16,8 +16,9 @@ import {
 import { ValidationErrorModal } from "@/components/ValidationErrorModal";
 import { BusinessPlanModal } from "@/components/BusinessPlanModal";
 import { CURATED_GALLERY, type GalleryItem } from "@/data/ashrama-curated-gallery";
+import type { TodayMealStatusItem } from "@/lib/site-content";
 
-type Tab = "analytics" | "crm" | "celebrations" | "content" | "media" | "catalogs" | "documents" | "community" | "team";
+type Tab = "analytics" | "crm" | "marketing" | "celebrations" | "content" | "media" | "catalogs" | "documents" | "community" | "team";
 
 interface AdminDashboardProps {
   initialSession: {
@@ -134,6 +135,26 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
   const [documents, setDocuments] = useState<any[]>([]);
   const [docsLoading, setDocsLoading] = useState(false);
   const [newDocOpen, setNewDocOpen] = useState(false);
+  const [editingDocument, setEditingDocument] = useState<any | null>(null);
+
+  // FinTech CRM payment mode filter
+  const [crmMode, setCrmMode] = useState("all");
+
+  // Marketing & Campaigns state
+  const [campaignsList, setCampaignsList] = useState<any[]>([]);
+  const [campaignsLoading, setCampaignsLoading] = useState(false);
+  const [newCampaignModalOpen, setNewCampaignModalOpen] = useState(false);
+  const [editingCampaign, setEditingCampaign] = useState<any | null>(null);
+  const [whatsappTemplate, setWhatsappTemplate] = useState("shagun");
+  const [whatsappCustomMsg, setWhatsappCustomMsg] = useState("");
+
+  // Today Updates list state
+  const [todayUpdatesList, setTodayUpdatesList] = useState<any[]>([]);
+  const [todayUpdatesLoading, setTodayUpdatesLoading] = useState(false);
+  const [editingTodayUpdate, setEditingTodayUpdate] = useState<any | null>(null);
+
+  // Content CMS subtab
+  const [contentSubtab, setContentSubtab] = useState<"hero" | "meals" | "tiers" | "quotes" | "faqs" | "about_contact">("hero");
 
   // Volunteers state
   const [volunteers, setVolunteers] = useState<any[]>([]);
@@ -250,11 +271,22 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
     try {
       const q = encodeURIComponent(crmSearch.trim());
       const s = encodeURIComponent(crmStatus);
-      const res = await fetch(`/api/admin/crm/donations?q=${q}&status=${s}`, { cache: "no-store" });
+      const m = encodeURIComponent(crmMode);
+      const res = await fetch(`/api/admin/crm/donations?q=${q}&status=${s}&mode=${m}`, { cache: "no-store" });
       const data = await res.json();
       if (res.ok) {
         setDonations(data.items || []);
-        setCrmTotals(data.totals || { totalRaised: 0, paidCount: 0, totalCount: 0 });
+        setCrmTotals(
+          data.totals || {
+            totalRaised: 0,
+            paidCount: 0,
+            totalCount: 0,
+            onlineRaised: 0,
+            wireRaised: 0,
+            offlineRaised: 0,
+            panClaimedCount: 0,
+          },
+        );
       } else {
         setNotification(data.error || "Failed to load donations.");
       }
@@ -262,6 +294,360 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
       setNotification("Network error loading CRM data.");
     }
     setCrmLoading(false);
+  }
+
+  // Delete CRM donation
+  async function handleDeleteDonation(id: number) {
+    if (!confirm("Are you sure you want to delete this donation transaction? This action cannot be undone.")) return;
+    try {
+      const res = await fetch(`/api/admin/crm/donations?id=${id}`, { method: "DELETE" });
+      const data = await res.json();
+      if (res.ok) {
+        setNotification("Donation transaction deleted successfully.");
+        await loadCrmData();
+      } else {
+        setNotification(data.error || "Failed to delete donation.");
+      }
+    } catch {
+      setNotification("Network error deleting donation.");
+    }
+  }
+
+  // Load Marketing Campaigns
+  async function loadCampaigns() {
+    setCampaignsLoading(true);
+    try {
+      const res = await fetch("/api/admin/campaigns", { cache: "no-store" });
+      const data = await res.json();
+      if (res.ok) setCampaignsList(data.campaigns || []);
+      else setNotification(data.error || "Failed to load campaigns.");
+    } catch {
+      setNotification("Network error loading campaigns.");
+    } finally {
+      setCampaignsLoading(false);
+    }
+  }
+
+  // Create Campaign
+  async function handleCreateCampaign(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const fd = new FormData(e.currentTarget);
+    const payload = {
+      title: fd.get("title"),
+      slug: fd.get("slug"),
+      occasion: fd.get("occasion"),
+      campaignType: fd.get("campaignType"),
+      story: fd.get("story"),
+      goalAmount: Number(fd.get("goalAmount")),
+      coverImage: fd.get("coverImage"),
+      endDate: fd.get("endDate"),
+      status: "approved",
+    };
+    try {
+      const res = await fetch("/api/admin/campaigns", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setNotification("✨ Campaign created and approved live!");
+        setNewCampaignModalOpen(false);
+        await loadCampaigns();
+      } else {
+        setNotification(data.error || "Failed to create campaign.");
+      }
+    } catch {
+      setNotification("Network error creating campaign.");
+    }
+  }
+
+  // Patch Campaign
+  async function handlePatchCampaign(id: number, patch: any) {
+    try {
+      const res = await fetch("/api/admin/campaigns", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, ...patch }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setNotification("Campaign updated successfully.");
+        setEditingCampaign(null);
+        await loadCampaigns();
+      } else {
+        setNotification(data.error || "Failed to update campaign.");
+      }
+    } catch {
+      setNotification("Network error updating campaign.");
+    }
+  }
+
+  // Delete Campaign
+  async function handleDeleteCampaign(id: number) {
+    if (!confirm("Are you sure you want to delete this fundraising campaign? This action cannot be undone.")) return;
+    try {
+      const res = await fetch(`/api/admin/campaigns?id=${id}`, { method: "DELETE" });
+      const data = await res.json();
+      if (res.ok) {
+        setNotification("Campaign deleted successfully.");
+        await loadCampaigns();
+      } else {
+        setNotification(data.error || "Failed to delete campaign.");
+      }
+    } catch {
+      setNotification("Network error deleting campaign.");
+    }
+  }
+
+  // Load Today Updates List
+  async function loadTodayUpdatesList() {
+    setTodayUpdatesLoading(true);
+    try {
+      const res = await fetch("/api/admin/today-updates", { cache: "no-store" });
+      const data = await res.json();
+      if (res.ok) setTodayUpdatesList(data.updates || []);
+    } catch {
+      // silent
+    } finally {
+      setTodayUpdatesLoading(false);
+    }
+  }
+
+  // Patch Today Update
+  async function handlePatchTodayUpdate(id: number, patch: any) {
+    try {
+      const res = await fetch("/api/admin/today-updates", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, ...patch }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setNotification("Today's moment updated successfully.");
+        setEditingTodayUpdate(null);
+        await loadTodayUpdatesList();
+      } else {
+        setNotification(data.error || "Failed to update moment.");
+      }
+    } catch {
+      setNotification("Network error updating moment.");
+    }
+  }
+
+  // Delete Today Update
+  async function handleDeleteTodayUpdate(id: number) {
+    if (!confirm("Are you sure you want to delete this daily moment from the website?")) return;
+    try {
+      const res = await fetch(`/api/admin/today-updates?id=${id}`, { method: "DELETE" });
+      const data = await res.json();
+      if (res.ok) {
+        setNotification("Moment deleted from live website.");
+        await loadTodayUpdatesList();
+      } else {
+        setNotification(data.error || "Failed to delete moment.");
+      }
+    } catch {
+      setNotification("Network error deleting moment.");
+    }
+  }
+
+  // Patch Legal Document
+  async function handlePatchDocument(id: number, patch: any) {
+    try {
+      const res = await fetch("/api/admin/documents", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, ...patch }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setNotification("Document updated successfully.");
+        setEditingDocument(null);
+        await loadDocuments();
+      } else {
+        setNotification(data.error || "Failed to update document.");
+      }
+    } catch {
+      setNotification("Network error updating document.");
+    }
+  }
+
+  // Delete Legal Document
+  async function handleDeleteDocument(id: number) {
+    if (!confirm("Are you sure you want to delete this document from the website?")) return;
+    try {
+      const res = await fetch(`/api/admin/documents?id=${id}`, { method: "DELETE" });
+      const data = await res.json();
+      if (res.ok) {
+        setNotification("Document deleted successfully.");
+        await loadDocuments();
+      } else {
+        setNotification(data.error || "Failed to delete document.");
+      }
+    } catch {
+      setNotification("Network error deleting document.");
+    }
+  }
+
+  // Documentary Chapter handlers
+  function handleAddChapter() {
+    const nextNum = (contentForm?.docChapters?.length || 0) + 1;
+    const newChap = {
+      id: `chapter_${Date.now()}`,
+      number: nextNum < 10 ? `0${nextNum}` : `${nextNum}`,
+      title: "New Video Chapter",
+      subtitle: "Authentic Life at Janaseva",
+      duration: "0:45",
+      videoSrc: "/media/ashrama_video.mp4",
+      posterSrc: "/media/poster.jpg",
+      associatedSlug: "meal",
+      associatedItemName: "Child Welfare Support",
+      associatedPrice: 100,
+      description: "Every boy receives love, care, nutritious food, and dignified opportunity.",
+    };
+    setContentForm({
+      ...contentForm,
+      docChapters: [...(contentForm?.docChapters || []), newChap],
+    });
+  }
+
+  function handleDeleteChapter(index: number) {
+    if (!confirm("Are you sure you want to remove this video chapter?")) return;
+    const updated = [...(contentForm?.docChapters || [])];
+    updated.splice(index, 1);
+    setContentForm({ ...contentForm, docChapters: updated });
+  }
+
+  // Today Live Meals Tracker handlers
+  function handleToggleMealStatus(index: number) {
+    const updated = [...(contentForm?.todayMealsStatus || [])];
+    const current = updated[index];
+    const nextStatus = current.status === "served" ? "open" : "served";
+    updated[index] = { ...current, status: nextStatus };
+    setContentForm({ ...contentForm, todayMealsStatus: updated });
+  }
+
+  function handleUpdateMeal(index: number, patch: Partial<TodayMealStatusItem>) {
+    const updated = [...(contentForm?.todayMealsStatus || [])];
+    updated[index] = { ...updated[index], ...patch };
+    setContentForm({ ...contentForm, todayMealsStatus: updated });
+  }
+
+  function handleAddMeal() {
+    const newMeal: TodayMealStatusItem = {
+      id: `meal_${Date.now()}`,
+      name: "Evening Milk & Fruit",
+      time: "5:30 PM",
+      menu: "Fresh Milk & Seasonal Fruits",
+      status: "open",
+      sponsorName: "",
+      amount: 1500,
+      ctaText: "Sponsor Seva",
+    };
+    setContentForm({
+      ...contentForm,
+      todayMealsStatus: [...(contentForm?.todayMealsStatus || []), newMeal],
+    });
+  }
+
+  function handleDeleteMeal(index: number) {
+    if (!confirm("Are you sure you want to remove this meal slot?")) return;
+    const updated = [...(contentForm?.todayMealsStatus || [])];
+    updated.splice(index, 1);
+    setContentForm({ ...contentForm, todayMealsStatus: updated });
+  }
+
+  // Caregiver Voices & Quotes handlers
+  function handleAddQuote() {
+    const newQuote = {
+      quote: "Every child deserves a warm plate and a tomorrow they can believe in.",
+      author: "Ashrama Caregiver",
+      role: "Staff Elder",
+      context: "Daily Seva Reflection",
+      tag: "Dignity",
+    };
+    setContentForm({
+      ...contentForm,
+      quotes: [...(contentForm?.quotes || []), newQuote],
+    });
+  }
+
+  function handleUpdateQuote(index: number, patch: any) {
+    const updated = [...(contentForm?.quotes || [])];
+    updated[index] = { ...updated[index], ...patch };
+    setContentForm({ ...contentForm, quotes: updated });
+  }
+
+  function handleDeleteQuote(index: number) {
+    if (!confirm("Are you sure you want to remove this quote?")) return;
+    const updated = [...(contentForm?.quotes || [])];
+    updated.splice(index, 1);
+    setContentForm({ ...contentForm, quotes: updated });
+  }
+
+  // FAQs handlers
+  function handleAddFaq() {
+    const newFaq = {
+      question: "New Frequently Asked Question?",
+      answer: "Detailed answer explaining Janaseva Ashrama's operations.",
+      category: "general",
+    };
+    setContentForm({
+      ...contentForm,
+      faqs: [...(contentForm?.faqs || []), newFaq],
+    });
+  }
+
+  function handleUpdateFaq(index: number, patch: any) {
+    const updated = [...(contentForm?.faqs || [])];
+    updated[index] = { ...updated[index], ...patch };
+    setContentForm({ ...contentForm, faqs: updated });
+  }
+
+  function handleDeleteFaq(index: number) {
+    if (!confirm("Are you sure you want to remove this FAQ?")) return;
+    const updated = [...(contentForm?.faqs || [])];
+    updated.splice(index, 1);
+    setContentForm({ ...contentForm, faqs: updated });
+  }
+
+  // Official Support Tiers handlers
+  function handleUpdateTier(tierIndex: number, patch: any) {
+    const updated = [...(contentForm?.supportTiers || [])];
+    updated[tierIndex] = { ...updated[tierIndex], ...patch };
+    setContentForm({ ...contentForm, supportTiers: updated });
+  }
+
+  function handleUpdateTierOption(tierIndex: number, optIndex: number, patch: any) {
+    const updated = [...(contentForm?.supportTiers || [])];
+    const options = [...(updated[tierIndex]?.options || [])];
+    options[optIndex] = { ...options[optIndex], ...patch };
+    updated[tierIndex] = { ...updated[tierIndex], options };
+    setContentForm({ ...contentForm, supportTiers: updated });
+  }
+
+  function handleAddTierOption(tierIndex: number) {
+    const updated = [...(contentForm?.supportTiers || [])];
+    const options = [...(updated[tierIndex]?.options || [])];
+    options.push({
+      id: `opt_${Date.now()}`,
+      label: "Custom Support Option",
+      subLabel: "Direct child care",
+      amount: 2500,
+      isPopular: false,
+    });
+    updated[tierIndex] = { ...updated[tierIndex], options };
+    setContentForm({ ...contentForm, supportTiers: updated });
+  }
+
+  function handleDeleteTierOption(tierIndex: number, optIndex: number) {
+    if (!confirm("Are you sure you want to remove this pricing option?")) return;
+    const updated = [...(contentForm?.supportTiers || [])];
+    const options = [...(updated[tierIndex]?.options || [])];
+    options.splice(optIndex, 1);
+    updated[tierIndex] = { ...updated[tierIndex], options };
+    setContentForm({ ...contentForm, supportTiers: updated });
   }
 
   // Load Analytics data
@@ -330,8 +716,8 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
   }
 
   // Save Site Content CMS data
-  async function handleSaveContent(e: FormEvent) {
-    e.preventDefault();
+  async function handleSaveContent(e?: FormEvent) {
+    if (e) e.preventDefault();
     if (!contentForm) return;
     setContentSaving(true);
     setNotification("");
@@ -890,9 +1276,13 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
   useEffect(() => {
     const t = setTimeout(() => {
       if (activeTab === "crm") void loadCrmData();
+      else if (activeTab === "marketing") void loadCampaigns();
       else if (activeTab === "celebrations") void loadCelebrations();
       else if (activeTab === "analytics") void loadAnalytics();
-      else if (activeTab === "content" || activeTab === "media") void loadSiteContent();
+      else if (activeTab === "content" || activeTab === "media") {
+        void loadSiteContent();
+        if (activeTab === "media") void loadTodayUpdatesList();
+      }
       else if (activeTab === "catalogs") void loadCatalogs();
       else if (activeTab === "documents") void loadDocuments();
       else if (activeTab === "community") void loadVolunteers();
@@ -965,14 +1355,15 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
       {/* Main Tab Controller */}
       <div className="flex flex-wrap gap-2 border-b border-teal-900/10 pb-2">
         {[
-          { id: "analytics", label: "Executive Analytics & KPIs" },
-          { id: "crm", label: "Donor CRM & Transactions" },
-          { id: "celebrations", label: "Special Day Celebrations" },
-          { id: "content", label: "Website Content & Text CMS" },
-          { id: "media", label: "Media & Video Manager" },
-          { id: "catalogs", label: "Impact Catalogs (E-Com)" },
-          { id: "documents", label: "Documents & 80G Audits" },
-          { id: "community", label: "Volunteers & Pipeline" },
+          { id: "analytics", label: "📊 Analytics & KPIs" },
+          { id: "crm", label: "💳 Donor CRM & FinTech" },
+          { id: "marketing", label: "📢 Marketing & Campaigns" },
+          { id: "celebrations", label: "🎂 Celebrations & Wishes" },
+          { id: "content", label: "📝 Website Content CMS" },
+          { id: "media", label: "🎥 Media & Today Updates" },
+          { id: "catalogs", label: "🛍️ Giving Basket Catalogs" },
+          { id: "documents", label: "📜 Legal 80G Documents" },
+          { id: "community", label: "🤝 Volunteers & Pipeline" },
           ...(initialSession.user.role === "SUPER_ADMIN"
             ? [{ id: "team", label: "👥 Team & Employee Roles" }]
             : []),
@@ -1206,34 +1597,57 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
       {/* ==================== 2. DONOR CRM & TRANSACTIONS TAB ==================== */}
       {activeTab === "crm" && (
         <div className="space-y-5">
-          {/* Summary Metric Counters */}
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {/* Summary Metric Counters (FinTech Reconciliation Ledger) */}
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
             <div className="rounded-2xl bg-white p-3.5 ring-1 ring-teal-900/10">
-              <p className="text-xs font-bold text-teal-900/60 uppercase">Verified Total</p>
-              <p className="mt-1 font-display text-2xl font-bold text-emerald-800">{formatINR(crmTotals.totalRaised)}</p>
+              <p className="text-[10px] font-bold text-teal-900/60 uppercase">Verified Total</p>
+              <p className="mt-1 font-display text-xl font-bold text-emerald-800">{formatINR(crmTotals.totalRaised)}</p>
+              <p className="text-[10px] text-teal-950/60 mt-0.5">{crmTotals.paidCount} paid donors</p>
             </div>
             <div className="rounded-2xl bg-white p-3.5 ring-1 ring-teal-900/10">
-              <p className="text-xs font-bold text-teal-900/60 uppercase">Paid Donors</p>
-              <p className="mt-1 font-display text-2xl font-bold text-teal-950">{crmTotals.paidCount}</p>
+              <p className="text-[10px] font-bold text-teal-900/60 uppercase">Gateway Online</p>
+              <p className="mt-1 font-display text-xl font-bold text-teal-950">{formatINR((crmTotals as any).onlineRaised || 0)}</p>
+              <p className="text-[10px] text-teal-950/60 mt-0.5">Razorpay instant</p>
             </div>
             <div className="rounded-2xl bg-white p-3.5 ring-1 ring-teal-900/10">
-              <p className="text-xs font-bold text-teal-900/60 uppercase">Total Orders</p>
-              <p className="mt-1 font-display text-2xl font-bold text-teal-950">{crmTotals.totalCount}</p>
+              <p className="text-[10px] font-bold text-teal-900/60 uppercase">Axis Bank Wire</p>
+              <p className="mt-1 font-display text-xl font-bold text-teal-950">{formatINR((crmTotals as any).wireRaised || 0)}</p>
+              <p className="text-[10px] text-teal-950/60 mt-0.5">NEFT / IMPS direct</p>
             </div>
-            <div className="rounded-2xl bg-white p-3.5 ring-1 ring-teal-900/10 flex flex-col justify-between">
-              <p className="text-xs font-bold text-teal-900/60 uppercase">Export Ledger</p>
-              <a
-                href="/api/admin/crm/export"
-                download
-                className="rounded-xl bg-teal-900 px-3 py-1.5 text-xs font-bold text-white hover:bg-teal-800 transition text-center inline-block"
-              >
-                Download CSV
-              </a>
+            <div className="rounded-2xl bg-white p-3.5 ring-1 ring-teal-900/10">
+              <p className="text-[10px] font-bold text-teal-900/60 uppercase">Cash / Walk-in</p>
+              <p className="mt-1 font-display text-xl font-bold text-teal-950">{formatINR((crmTotals as any).offlineRaised || 0)}</p>
+              <p className="text-[10px] text-teal-950/60 mt-0.5">Physical receipt</p>
+            </div>
+            <div className="rounded-2xl bg-white p-3.5 ring-1 ring-teal-900/10">
+              <p className="text-[10px] font-bold text-teal-900/60 uppercase">80G Tax Claims</p>
+              <p className="mt-1 font-display text-xl font-bold text-saffron-dark">{(crmTotals as any).panClaimedCount || 0}</p>
+              <p className="text-[10px] text-teal-950/60 mt-0.5">Valid PAN on file</p>
+            </div>
+            <div className="rounded-2xl bg-white p-3.5 ring-1 ring-teal-900/10 flex flex-col justify-between gap-1">
+              <p className="text-[10px] font-bold text-teal-900/60 uppercase">Tax Compliance</p>
+              <div className="flex flex-col gap-1">
+                <a
+                  href="/api/admin/crm/export?format=form10bd"
+                  download
+                  className="rounded-lg bg-emerald-800 px-2.5 py-1 text-[11px] font-bold text-white hover:bg-emerald-700 transition text-center"
+                  title="Indian CBDT Form 10BD Statement of Donation CSV"
+                >
+                  Form 10BD CSV
+                </a>
+                <a
+                  href="/api/admin/crm/export"
+                  download
+                  className="rounded-lg bg-teal-900/15 border border-teal-900/20 px-2.5 py-1 text-[11px] font-bold text-teal-900 hover:bg-teal-900/25 transition text-center"
+                >
+                  Full Ledger CSV
+                </a>
+              </div>
             </div>
           </div>
 
           {/* CRM Search & Filters */}
-          <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-teal-900/10 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+          <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-teal-900/10 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
             <div className="flex-1">
               <input
                 type="text"
@@ -1242,11 +1656,11 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
                 onKeyDown={(e) => {
                   if (e.key === "Enter") void loadCrmData();
                 }}
-                placeholder="Search donors by name, email, phone, or receipt number..."
+                placeholder="Search donors by name, email, phone, receipt number, or PAN card..."
                 className="w-full rounded-xl border border-teal-900/15 px-3.5 py-2 text-xs sm:text-sm text-teal-950 focus:border-teal-900 focus:outline-none"
               />
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <select
                 value={crmStatus}
                 onChange={(e) => {
@@ -1261,17 +1675,31 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
                 <option value="demo">Demo Test</option>
                 <option value="refunded">Refunded</option>
               </select>
+              <select
+                value={crmMode}
+                onChange={(e) => {
+                  setCrmMode(e.target.value);
+                  setTimeout(() => void loadCrmData(), 50);
+                }}
+                className="rounded-xl border border-teal-900/15 px-3 py-2 text-xs font-bold text-teal-950 bg-white"
+              >
+                <option value="all">All Payment Modes</option>
+                <option value="razorpay">Razorpay Online</option>
+                <option value="bank_wire">Axis Bank Wire</option>
+                <option value="cash">Cash / Walk-in</option>
+                <option value="upi">Direct UPI</option>
+              </select>
               <button
                 type="button"
                 onClick={() => void loadCrmData()}
-                className="rounded-xl bg-teal-950 px-4 py-2 text-xs font-bold text-white hover:bg-teal-900 transition"
+                className="rounded-xl bg-teal-950 px-4 py-2 text-xs font-bold text-white hover:bg-teal-900 transition cursor-pointer"
               >
                 Search
               </button>
               <button
                 type="button"
                 onClick={() => setOfflineDonationModalOpen(true)}
-                className="rounded-xl bg-saffron px-4 py-2 text-xs font-bold text-white hover:bg-saffron-dark transition shadow-sm whitespace-nowrap"
+                className="rounded-xl bg-saffron px-4 py-2 text-xs font-bold text-white hover:bg-saffron-dark transition shadow-sm whitespace-nowrap cursor-pointer"
               >
                 + Record Walk-In Donation
               </button>
@@ -1294,7 +1722,7 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
                       <th className="py-2.5">Receipt / Ref</th>
                       <th className="py-2.5">Donor Name</th>
                       <th className="py-2.5">Contact</th>
-                      <th className="py-2.5">Amount</th>
+                      <th className="py-2.5">Amount &amp; Mode</th>
                       <th className="py-2.5">Dedication</th>
                       <th className="py-2.5">Status</th>
                       <th className="py-2.5 text-right">Actions</th>
@@ -1315,7 +1743,7 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
                           <td className="py-3">
                             <span className="font-bold text-teal-950 block">{d.donorName}</span>
                             {meta.pan && (
-                              <span className="font-mono text-[10px] text-teal-800">PAN: {meta.pan}</span>
+                              <span className="font-mono text-[10px] text-teal-800 font-bold">PAN: {meta.pan}</span>
                             )}
                           </td>
                           <td className="py-3 text-teal-950/70">
@@ -1323,7 +1751,10 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
                             {d.donorPhone && <span className="text-[11px]">{d.donorPhone}</span>}
                           </td>
                           <td className="py-3 font-bold text-teal-900 text-sm">
-                            {formatINR(d.amount)}
+                            <div>{formatINR(d.amount)}</div>
+                            <span className="rounded bg-teal-900/10 px-1.5 py-0.2 text-[9px] font-mono text-teal-950 uppercase font-semibold">
+                              {d.mode || "razorpay"}
+                            </span>
                           </td>
                           <td className="py-3 text-teal-950/70 max-w-[140px] truncate">
                             {dedication.occasion || "Direct Seva"}
@@ -1332,20 +1763,20 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
                             <span
                               className={`rounded-lg px-2 py-0.5 font-mono text-[10px] font-bold ${
                                 d.status === "paid"
-                                  ? "bg-emerald-100 text-emerald-800"
-                                  : d.status === "demo"
-                                  ? "bg-amber-100 text-amber-800"
-                                  : "bg-gray-100 text-gray-700"
+                                    ? "bg-emerald-100 text-emerald-800"
+                                    : d.status === "demo"
+                                    ? "bg-amber-100 text-amber-800"
+                                    : "bg-gray-100 text-gray-700"
                               }`}
                             >
                               {d.status.toUpperCase()}
                             </span>
                           </td>
-                          <td className="py-3 text-right space-x-1">
+                          <td className="py-3 text-right space-x-1 whitespace-nowrap">
                             <button
                               type="button"
                               onClick={() => setSelectedDonation(d)}
-                              className="rounded-lg bg-teal-900 px-2.5 py-1 text-[11px] font-bold text-white hover:bg-teal-800 transition"
+                              className="rounded-lg bg-teal-900 px-2.5 py-1 text-[11px] font-bold text-white hover:bg-teal-800 transition cursor-pointer"
                             >
                               Details
                             </button>
@@ -1353,11 +1784,19 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
                               <button
                                 type="button"
                                 onClick={() => updateDonationStatus(d.id, "paid")}
-                                className="rounded-lg bg-emerald-700 px-2.5 py-1 text-[11px] font-bold text-white hover:bg-emerald-800 transition"
+                                className="rounded-lg bg-emerald-700 px-2.5 py-1 text-[11px] font-bold text-white hover:bg-emerald-800 transition cursor-pointer"
                               >
                                 Mark Paid
                               </button>
                             )}
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteDonation(d.id)}
+                              className="rounded-lg bg-red-600/15 border border-red-500/25 px-2 py-1 text-[11px] font-bold text-red-700 hover:bg-red-600/25 transition cursor-pointer"
+                              title="Delete record"
+                            >
+                              Delete
+                            </button>
                           </td>
                         </tr>
                       );
@@ -1623,6 +2062,524 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
                       className="rounded-xl bg-saffron px-5 py-2 text-xs font-bold text-white hover:bg-saffron-dark transition disabled:opacity-50"
                     >
                       {offlineSubmitting ? "Generating Receipt..." : "Record & Issue Official Receipt"}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ==================== MARKETING & CAMPAIGNS HUB TAB ==================== */}
+      {activeTab === "marketing" && (
+        <div className="space-y-6">
+          {/* Header Banner & KPIs */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <div className="inline-flex items-center gap-1.5 rounded-md bg-saffron/20 px-2.5 py-0.5 text-xs font-bold text-saffron-dark uppercase tracking-wider mb-1">
+                <span>Growth &amp; Fintech Marketing Suite</span>
+              </div>
+              <h3 className="font-display text-lg sm:text-xl font-bold text-teal-900">
+                Marketing Campaigns &amp; 1-Click WhatsApp Broadcast
+              </h3>
+              <p className="text-xs text-teal-950/65">
+                Launch targeted cause campaigns, track UTM performance, and generate psychological donor appeal broadcasts.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setNewCampaignModalOpen(true)}
+              className="rounded-xl bg-saffron px-4 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-saffron-dark transition flex items-center gap-2 cursor-pointer self-start sm:self-auto"
+            >
+              <span>+ Create New Campaign</span>
+            </button>
+          </div>
+
+          {/* Quick Metrics */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="rounded-2xl bg-white p-3.5 ring-1 ring-teal-900/10">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-teal-900/60">Total Campaigns</span>
+              <p className="mt-1 font-display text-xl font-bold text-teal-950">{campaignsList.length}</p>
+            </div>
+            <div className="rounded-2xl bg-white p-3.5 ring-1 ring-teal-900/10">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700">Live &amp; Active</span>
+              <p className="mt-1 font-display text-xl font-bold text-emerald-800">
+                {campaignsList.filter((c) => c.status === "approved").length}
+              </p>
+            </div>
+            <div className="rounded-2xl bg-white p-3.5 ring-1 ring-teal-900/10">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-teal-900/60">Total Goal Target</span>
+              <p className="mt-1 font-display text-xl font-bold text-teal-900">
+                {formatINR(campaignsList.reduce((acc, c) => acc + (c.goalAmount || 0), 0))}
+              </p>
+            </div>
+            <div className="rounded-2xl bg-white p-3.5 ring-1 ring-teal-900/10">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-saffron-dark">Avg Campaign Goal</span>
+              <p className="mt-1 font-display text-xl font-bold text-teal-950">
+                {campaignsList.length > 0
+                  ? formatINR(Math.round(campaignsList.reduce((acc, c) => acc + (c.goalAmount || 0), 0) / campaignsList.length))
+                  : "₹0"}
+              </p>
+            </div>
+          </div>
+
+          {/* 1-CLICK WHATSAPP BROADCAST GENERATOR */}
+          <div className="rounded-3xl bg-gradient-to-br from-emerald-950 via-teal-950 to-emerald-950 p-6 text-white shadow-lg border border-emerald-800 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-white/10 pb-3">
+              <div>
+                <span className="inline-block rounded-md bg-emerald-500/20 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-emerald-300 mb-1">
+                  Psychological FinTech Tool · 1-Click Viral Broadcast
+                </span>
+                <h4 className="font-display text-base sm:text-lg font-bold text-white">
+                  WhatsApp Blast Link &amp; Appeal Message Generator
+                </h4>
+              </div>
+              <span className="text-xs text-gold font-bold">
+                ✓ Auto UTM Tracking Tags Included
+              </span>
+            </div>
+
+            <div className="grid gap-4 lg:grid-cols-3">
+              <div>
+                <label className="block text-xs font-bold text-emerald-200 mb-1.5">
+                  Select Emotional Campaign Angle:
+                </label>
+                <div className="space-y-2">
+                  {[
+                    { id: "shagun", label: "🍛 Auspicious Shagun Annadana (₹11 / ₹51 / ₹101)" },
+                    { id: "birthday", label: "🎂 Birthday Feast with Video Song Blessing" },
+                    { id: "vidya", label: "📚 Vidya & Schooling Kits for 25 Boys" },
+                    { id: "tax80g", label: "🛡️ Section 80G Tax-Exempt Giving (50% Off)" },
+                  ].map((tpl) => (
+                    <button
+                      key={tpl.id}
+                      type="button"
+                      onClick={() => setWhatsappTemplate(tpl.id)}
+                      className={`w-full text-left rounded-xl px-3 py-2 text-xs font-semibold transition cursor-pointer ${
+                        whatsappTemplate === tpl.id
+                          ? "bg-white text-teal-950 font-bold shadow-xs"
+                          : "bg-white/10 text-white/80 hover:bg-white/15"
+                      }`}
+                    >
+                      {tpl.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="lg:col-span-2 space-y-3">
+                <label className="block text-xs font-bold text-emerald-200 mb-1">
+                  Generated WhatsApp Message (Ready to Copy or Send):
+                </label>
+                {(() => {
+                  let defaultCopy = "";
+                  let utmCampaign = "annadana_seva";
+                  if (whatsappTemplate === "shagun") {
+                    utmCampaign = "shagun_annadana";
+                    defaultCopy = `🙏 *Namaskara from Janaseva Ashrama, Bengaluru*\n\nToday, 25 young orphan boys are chanting morning shlokas and studying hard in our Turahalli home. You can sponsor hot wholesome meals with sacred Shagun giving starting from just *₹11, ₹51, or ₹101*.\n\n✨ Every rupee goes directly to fresh groceries & milk.\n🛡️ 100% Tax Deductible under Section 80G.\n\n👉 *Click here to give with 1 tap (Google Pay / PhonePe / Cards):*\nhttps://www.janasevaashrama.org/?utm_source=whatsapp&utm_medium=broadcast&utm_campaign=${utmCampaign}\n\nMay your kindness bring immense blessings to you and your family! 🌸`;
+                  } else if (whatsappTemplate === "birthday") {
+                    utmCampaign = "birthday_celebration";
+                    defaultCopy = `🎂 *Celebrate Your Birthday with 25 Radiant Boys!*\n\nTurn your special milestone into pure joy at Janaseva Ashrama. Sponsor a special sweet feast (Payasam & Pooris) and the 25 boys will record a heartfelt *Personalized Video Birthday Blessing Song* sent directly to your WhatsApp!\n\n✨ Direct booking on our verified website:\nhttps://www.janasevaashrama.org/?utm_source=whatsapp&utm_medium=broadcast&utm_campaign=${utmCampaign}#celebrate\n\nCelebrate with meaning and pure smiles! 🎉`;
+                  } else if (whatsappTemplate === "vidya") {
+                    utmCampaign = "vidya_education";
+                    defaultCopy = `📚 *Empower a Child's Tomorrow with Vidya*\n\n25 bright young boys at Janaseva Ashrama, Bengaluru dream of becoming engineers, teachers, and officers. Sponsor school uniforms, notebooks, textbooks, and tuition classes under our Juvenile Justice Act registered home.\n\n🎓 *Sponsor Schooling Kit:* https://www.janasevaashrama.org/?utm_source=whatsapp&utm_medium=broadcast&utm_campaign=${utmCampaign}#tiers\n\nThank you for educating the world! 🌟`;
+                  } else {
+                    utmCampaign = "tax_exemption_80g";
+                    defaultCopy = `🛡️ *Save 50% Income Tax with Meaningful Impact*\n\nJanaseva Ashrama holds official Form 10AC Provisional 80G Approval (PAN: AABTJ7431M, URN: AABTJ7431MF20231). All contributions are eligible for 50% deduction under Section 80G of the Indian Income Tax Act.\n\n📄 Instant verified 80G tax receipt generated immediately upon payment.\n👉 Donate online: https://www.janasevaashrama.org/?utm_source=whatsapp&utm_medium=broadcast&utm_campaign=${utmCampaign}\n\n100% direct allocation to child care!`;
+                  }
+
+                  const activeMsg = whatsappCustomMsg || defaultCopy;
+                  const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(activeMsg)}`;
+
+                  return (
+                    <div className="space-y-3">
+                      <textarea
+                        rows={6}
+                        value={activeMsg}
+                        onChange={(e) => setWhatsappCustomMsg(e.target.value)}
+                        className="w-full rounded-2xl bg-white/10 border border-white/20 p-3.5 text-xs text-white font-mono leading-relaxed focus:bg-white/15 focus:outline-none"
+                      />
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (typeof navigator !== "undefined" && navigator.clipboard) {
+                              navigator.clipboard.writeText(activeMsg);
+                              setNotification("✓ Copied WhatsApp message to clipboard!");
+                            }
+                          }}
+                          className="rounded-xl bg-gold text-teal-950 px-4 py-2 text-xs font-bold hover:bg-gold-light transition cursor-pointer shadow-xs"
+                        >
+                          📋 Copy Message &amp; Link
+                        </button>
+                        <a
+                          href={waUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="rounded-xl bg-emerald-600 text-white px-4 py-2 text-xs font-bold hover:bg-emerald-500 transition cursor-pointer flex items-center gap-1.5 shadow-xs"
+                        >
+                          <span>💬 Open in WhatsApp Broadcast</span>
+                        </a>
+                        <button
+                          type="button"
+                          onClick={() => setWhatsappCustomMsg("")}
+                          className="rounded-xl bg-white/10 text-white/70 px-3 py-2 text-xs font-semibold hover:bg-white/20 transition cursor-pointer"
+                        >
+                          Reset Template
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
+          </div>
+
+          {/* FUNDRAISING CAMPAIGNS DIRECTORY */}
+          <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-teal-900/10 space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="font-display text-base font-bold text-teal-900">
+                  Fundraising Campaigns Directory ({campaignsList.length})
+                </h4>
+                <p className="text-xs text-teal-950/60">
+                  Manage individual crowd-giving causes, birthday fundraisers, and festival appeals.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => void loadCampaigns()}
+                className="rounded-xl bg-teal-900/10 px-3 py-1.5 text-xs font-bold text-teal-900 hover:bg-teal-900/20 transition cursor-pointer"
+              >
+                Refresh
+              </button>
+            </div>
+
+            {campaignsLoading ? (
+              <p className="text-xs font-semibold text-teal-900/60 py-4">Loading fundraising campaigns...</p>
+            ) : campaignsList.length === 0 ? (
+              <div className="rounded-2xl bg-cream/40 p-8 text-center border border-teal-900/10 space-y-2">
+                <p className="text-sm font-bold text-teal-950">No crowd fundraising campaigns created yet.</p>
+                <p className="text-xs text-teal-950/60">
+                  Click &ldquo;+ Create New Campaign&rdquo; above to launch a festival or student support campaign.
+                </p>
+              </div>
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {campaignsList.map((c) => {
+                  const isApproved = c.status === "approved";
+                  return (
+                    <div
+                      key={c.id}
+                      className="rounded-2xl border border-teal-900/15 p-4 bg-white shadow-2xs hover:shadow-md transition flex flex-col justify-between"
+                    >
+                      <div>
+                        <div className="flex items-center justify-between text-xs mb-2">
+                          <span
+                            className={`rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
+                              isApproved
+                                ? "bg-emerald-100 text-emerald-800"
+                                : c.status === "paused"
+                                ? "bg-amber-100 text-amber-800"
+                                : "bg-gray-100 text-gray-700"
+                            }`}
+                          >
+                            {c.status}
+                          </span>
+                          <span className="font-mono text-[11px] font-bold text-teal-900">
+                            Goal: {formatINR(c.goalAmount)}
+                          </span>
+                        </div>
+
+                        <h5 className="font-display text-sm font-bold text-teal-950 line-clamp-1">
+                          {c.title}
+                        </h5>
+                        <p className="text-[11px] font-semibold text-saffron-dark mt-0.5">
+                          {c.occasion || "General Seva"} · {c.campaignType}
+                        </p>
+                        <p className="mt-2 text-xs text-teal-950/70 line-clamp-2 leading-relaxed">
+                          {c.story}
+                        </p>
+                      </div>
+
+                      <div className="mt-4 pt-3 border-t border-teal-900/10 flex flex-wrap items-center justify-between gap-2">
+                        <Link
+                          href={`/c/${c.slug}`}
+                          target="_blank"
+                          className="text-xs font-bold text-teal-900 hover:text-saffron-dark underline"
+                        >
+                          View Live Page →
+                        </Link>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handlePatchCampaign(c.id, {
+                                status: isApproved ? "paused" : "approved",
+                              })
+                            }
+                            className={`rounded-lg px-2 py-1 text-[11px] font-bold transition cursor-pointer ${
+                              isApproved
+                                ? "bg-amber-100 text-amber-800 hover:bg-amber-200"
+                                : "bg-emerald-100 text-emerald-800 hover:bg-emerald-200"
+                            }`}
+                          >
+                            {isApproved ? "Pause" : "Activate"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEditingCampaign(c)}
+                            className="rounded-lg bg-teal-900 px-2.5 py-1 text-[11px] font-bold text-white hover:bg-teal-800 transition cursor-pointer"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteCampaign(c.id)}
+                            className="rounded-lg bg-red-600/15 border border-red-500/25 px-2 py-1 text-[11px] font-bold text-red-700 hover:bg-red-600/25 transition cursor-pointer"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* CREATE CAMPAIGN MODAL */}
+          {newCampaignModalOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+              <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl ring-1 ring-teal-900/10">
+                <div className="flex items-center justify-between border-b pb-3 mb-4">
+                  <h4 className="font-display text-base font-bold text-teal-950">
+                    + Launch New Fundraising Campaign
+                  </h4>
+                  <button
+                    type="button"
+                    onClick={() => setNewCampaignModalOpen(false)}
+                    className="font-bold text-gray-500 hover:text-black cursor-pointer"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <form onSubmit={handleCreateCampaign} className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-bold text-teal-900/70 mb-1">
+                      Campaign Title *
+                    </label>
+                    <input
+                      name="title"
+                      required
+                      placeholder="e.g. Deepavali Sweets & New Clothes for 25 Boys"
+                      className="w-full rounded-xl border p-2.5 text-xs font-semibold text-teal-950"
+                    />
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <label className="block text-xs font-bold text-teal-900/70 mb-1">
+                        Occasion / Theme:
+                      </label>
+                      <input
+                        name="occasion"
+                        defaultValue="Festival Celebration"
+                        className="w-full rounded-xl border p-2 text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-teal-900/70 mb-1">
+                        Campaign Type:
+                      </label>
+                      <select name="campaignType" className="w-full rounded-xl border p-2 text-xs">
+                        <option value="annadana">Annadana (Food & Feasts)</option>
+                        <option value="education">Vidya (Education & Schooling)</option>
+                        <option value="clothes">Cloth Sets & Essentials</option>
+                        <option value="medical">Arogya (Healthcare)</option>
+                        <option value="birthday">Birthday Milestone</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <label className="block text-xs font-bold text-teal-900/70 mb-1">
+                        Goal Amount (₹) *
+                      </label>
+                      <input
+                        name="goalAmount"
+                        type="number"
+                        defaultValue={25000}
+                        required
+                        className="w-full rounded-xl border p-2 text-xs font-mono font-bold"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-teal-900/70 mb-1">
+                        Custom URL Slug (optional):
+                      </label>
+                      <input
+                        name="slug"
+                        placeholder="e.g. deepavali-sweets-2026"
+                        className="w-full rounded-xl border p-2 text-xs font-mono"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-teal-900/70 mb-1">
+                      Cover Image URL:
+                    </label>
+                    <input
+                      name="coverImage"
+                      defaultValue="/media/annadana-hall-hd.jpg"
+                      className="w-full rounded-xl border p-2 text-xs font-mono"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-teal-900/70 mb-1">
+                      Story &amp; Purpose Appeal *
+                    </label>
+                    <textarea
+                      name="story"
+                      rows={4}
+                      required
+                      placeholder="Explain why this support matters to our 25 resident boys..."
+                      className="w-full rounded-xl border p-2.5 text-xs text-teal-950"
+                    />
+                  </div>
+
+                  <div className="pt-2 flex justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setNewCampaignModalOpen(false)}
+                      className="rounded-xl px-4 py-2 text-xs font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="rounded-xl bg-saffron px-5 py-2 text-xs font-bold text-white hover:bg-saffron-dark cursor-pointer transition"
+                    >
+                      Publish Campaign Live
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* EDIT CAMPAIGN MODAL */}
+          {editingCampaign && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+              <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl ring-1 ring-teal-900/10">
+                <div className="flex items-center justify-between border-b pb-3 mb-4">
+                  <h4 className="font-display text-base font-bold text-teal-950">
+                    Edit: {editingCampaign.title}
+                  </h4>
+                  <button
+                    type="button"
+                    onClick={() => setEditingCampaign(null)}
+                    className="font-bold text-gray-500 hover:text-black cursor-pointer"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    const fd = new FormData(e.currentTarget);
+                    void handlePatchCampaign(editingCampaign.id, {
+                      title: fd.get("title"),
+                      occasion: fd.get("occasion"),
+                      goalAmount: Number(fd.get("goalAmount")),
+                      coverImage: fd.get("coverImage"),
+                      story: fd.get("story"),
+                      status: fd.get("status"),
+                    });
+                  }}
+                  className="space-y-3"
+                >
+                  <div>
+                    <label className="block text-xs font-bold text-teal-900/70 mb-1">Title:</label>
+                    <input
+                      name="title"
+                      defaultValue={editingCampaign.title}
+                      required
+                      className="w-full rounded-xl border p-2 text-xs font-bold text-teal-950"
+                    />
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <label className="block text-xs font-bold text-teal-900/70 mb-1">Occasion:</label>
+                      <input
+                        name="occasion"
+                        defaultValue={editingCampaign.occasion}
+                        className="w-full rounded-xl border p-2 text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-teal-900/70 mb-1">Goal Amount (₹):</label>
+                      <input
+                        name="goalAmount"
+                        type="number"
+                        defaultValue={editingCampaign.goalAmount}
+                        required
+                        className="w-full rounded-xl border p-2 text-xs font-mono font-bold"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <label className="block text-xs font-bold text-teal-900/70 mb-1">Status:</label>
+                      <select name="status" defaultValue={editingCampaign.status} className="w-full rounded-xl border p-2 text-xs">
+                        <option value="approved">Approved &amp; Live</option>
+                        <option value="paused">Paused</option>
+                        <option value="archived">Archived</option>
+                        <option value="pending">Pending Review</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-teal-900/70 mb-1">Cover Image URL:</label>
+                      <input
+                        name="coverImage"
+                        defaultValue={editingCampaign.coverImage}
+                        className="w-full rounded-xl border p-2 text-xs font-mono"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-teal-900/70 mb-1">Story / Content:</label>
+                    <textarea
+                      name="story"
+                      rows={4}
+                      defaultValue={editingCampaign.story}
+                      className="w-full rounded-xl border p-2 text-xs leading-relaxed"
+                    />
+                  </div>
+
+                  <div className="pt-2 flex justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setEditingCampaign(null)}
+                      className="rounded-xl px-4 py-2 text-xs font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="rounded-xl bg-saffron px-5 py-2 text-xs font-bold text-white hover:bg-saffron-dark cursor-pointer transition"
+                    >
+                      Save Changes
                     </button>
                   </div>
                 </form>
@@ -2225,263 +3182,711 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
       {/* ==================== 3. WEBSITE CONTENT & TEXT CMS TAB ==================== */}
       {activeTab === "content" && (
         <div className="space-y-6">
+          {/* Subtab Navigator */}
+          <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-3 rounded-2xl ring-1 ring-teal-900/10 shadow-2xs">
+            <div className="flex flex-wrap gap-1.5">
+              {[
+                { id: "hero", label: "🌟 Hero & Headlines" },
+                { id: "meals", label: "🍲 Today Live Meals Tracker" },
+                { id: "tiers", label: "🏷️ 5 Official Support Tiers" },
+                { id: "quotes", label: "💬 Caregiver Voices & Quotes" },
+                { id: "faqs", label: "❓ FAQs Manager" },
+                { id: "about_contact", label: "🏛️ Mission & Contact Info" },
+              ].map((st) => (
+                <button
+                  key={st.id}
+                  type="button"
+                  onClick={() => setContentSubtab(st.id as any)}
+                  className={`rounded-xl px-3 py-1.5 text-xs font-bold transition cursor-pointer ${
+                    contentSubtab === st.id
+                      ? "bg-teal-950 text-white shadow-xs"
+                      : "bg-cream/40 text-teal-950/70 hover:bg-cream border border-teal-900/10"
+                  }`}
+                >
+                  {st.label}
+                </button>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              disabled={contentSaving || !contentForm}
+              onClick={() => void handleSaveContent()}
+              className="rounded-xl bg-saffron px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-saffron-dark transition disabled:opacity-50 cursor-pointer"
+            >
+              {contentSaving ? "Saving Live..." : "💾 Quick Save Changes"}
+            </button>
+          </div>
+
           {contentLoading || !contentForm ? (
             <p className="text-sm font-semibold text-teal-900/70">Loading website content...</p>
           ) : (
             <form onSubmit={handleSaveContent} className="space-y-6">
-              {/* HERO SECTION TEXT */}
-              <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-teal-900/10 space-y-4">
-                <div>
-                  <h3 className="font-display text-base font-bold text-teal-900">
-                    Hero Section Copy & Calls-To-Action
-                  </h3>
-                  <p className="text-xs text-teal-950/60">
-                    Directly controls the main opening headline and buttons shown to all visitors.
-                  </p>
-                </div>
-
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="sm:col-span-2">
-                    <label className="block text-xs font-bold text-teal-900/70 mb-1">
-                      Main Hero Headline:
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={contentForm.heroHeadline || ""}
-                      onChange={(e) => setContentForm({ ...contentForm, heroHeadline: e.target.value })}
-                      className="w-full rounded-xl border border-teal-900/15 px-3.5 py-2.5 text-sm font-bold text-teal-950"
-                    />
-                  </div>
-
-                  <div className="sm:col-span-2">
-                    <label className="block text-xs font-bold text-teal-900/70 mb-1">
-                      Supporting Subtitle / Paragraph:
-                    </label>
-                    <textarea
-                      rows={2}
-                      value={contentForm.heroSubheadline || ""}
-                      onChange={(e) => setContentForm({ ...contentForm, heroSubheadline: e.target.value })}
-                      className="w-full rounded-xl border border-teal-900/15 px-3.5 py-2.5 text-xs text-teal-950"
-                    />
-                  </div>
-
+              {/* SUBTAB 1: HERO COPY */}
+              {contentSubtab === "hero" && (
+                <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-teal-900/10 space-y-4">
                   <div>
-                    <label className="block text-xs font-bold text-teal-900/70 mb-1">
-                      Primary Button Text (Make an Impact):
-                    </label>
-                    <input
-                      type="text"
-                      value={contentForm.heroPrimaryCta || ""}
-                      onChange={(e) => setContentForm({ ...contentForm, heroPrimaryCta: e.target.value })}
-                      className="w-full rounded-xl border border-teal-900/15 px-3 py-2 text-xs font-semibold text-teal-950"
-                    />
+                    <h3 className="font-display text-base font-bold text-teal-900">
+                      Hero Section Copy & Calls-To-Action
+                    </h3>
+                    <p className="text-xs text-teal-950/60">
+                      Directly controls the main opening headline and buttons shown to all visitors.
+                    </p>
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-bold text-teal-900/70 mb-1">
-                      Secondary Button Text (See Today):
-                    </label>
-                    <input
-                      type="text"
-                      value={contentForm.heroSecondaryCta || ""}
-                      onChange={(e) => setContentForm({ ...contentForm, heroSecondaryCta: e.target.value })}
-                      className="w-full rounded-xl border border-teal-900/15 px-3 py-2 text-xs font-semibold text-teal-950"
-                    />
-                  </div>
-                </div>
-              </div>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="sm:col-span-2">
+                      <label className="block text-xs font-bold text-teal-900/70 mb-1">
+                        Main Hero Headline:
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={contentForm.heroHeadline || ""}
+                        onChange={(e) => setContentForm({ ...contentForm, heroHeadline: e.target.value })}
+                        className="w-full rounded-xl border border-teal-900/15 px-3.5 py-2.5 text-sm font-bold text-teal-950"
+                      />
+                    </div>
 
-              {/* ASHRAMA STORY & MISSION */}
-              <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-teal-900/10 space-y-4">
-                <div>
-                  <h3 className="font-display text-base font-bold text-teal-900">
-                    Ashrama Organization & Mission Details
-                  </h3>
-                  <p className="text-xs text-teal-950/60">
-                    Verified legal entity and childhood protection metrics.
-                  </p>
-                </div>
+                    <div className="sm:col-span-2">
+                      <label className="block text-xs font-bold text-teal-900/70 mb-1">
+                        Supporting Subtitle / Paragraph:
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={contentForm.heroSubheadline || ""}
+                        onChange={(e) => setContentForm({ ...contentForm, heroSubheadline: e.target.value })}
+                        className="w-full rounded-xl border border-teal-900/15 px-3.5 py-2.5 text-xs text-teal-950"
+                      />
+                    </div>
 
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div>
-                    <label className="block text-xs font-bold text-teal-900/70 mb-1">
-                      Trust Legal Name:
-                    </label>
-                    <input
-                      type="text"
-                      value={contentForm.aboutTitle || ""}
-                      onChange={(e) => setContentForm({ ...contentForm, aboutTitle: e.target.value })}
-                      className="w-full rounded-xl border border-teal-900/15 px-3 py-2 text-xs text-teal-950 font-bold"
-                    />
-                  </div>
+                    <div>
+                      <label className="block text-xs font-bold text-teal-900/70 mb-1">
+                        Primary Button Text (Make an Impact):
+                      </label>
+                      <input
+                        type="text"
+                        value={contentForm.heroPrimaryCta || ""}
+                        onChange={(e) => setContentForm({ ...contentForm, heroPrimaryCta: e.target.value })}
+                        className="w-full rounded-xl border border-teal-900/15 px-3 py-2 text-xs font-semibold text-teal-950"
+                      />
+                    </div>
 
-                  <div>
-                    <label className="block text-xs font-bold text-teal-900/70 mb-1">
-                      Resident Children Metric:
-                    </label>
-                    <input
-                      type="text"
-                      value={contentForm.residentCount || ""}
-                      onChange={(e) => setContentForm({ ...contentForm, residentCount: e.target.value })}
-                      className="w-full rounded-xl border border-teal-900/15 px-3 py-2 text-xs text-teal-950 font-bold"
-                    />
-                  </div>
-
-                  <div className="sm:col-span-2">
-                    <label className="block text-xs font-bold text-teal-900/70 mb-1">
-                      About Story / Mission Statement:
-                    </label>
-                    <textarea
-                      rows={3}
-                      value={contentForm.aboutStory || ""}
-                      onChange={(e) => setContentForm({ ...contentForm, aboutStory: e.target.value })}
-                      className="w-full rounded-xl border border-teal-900/15 px-3.5 py-2.5 text-xs text-teal-950"
-                    />
+                    <div>
+                      <label className="block text-xs font-bold text-teal-900/70 mb-1">
+                        Secondary Button Text (See Today):
+                      </label>
+                      <input
+                        type="text"
+                        value={contentForm.heroSecondaryCta || ""}
+                        onChange={(e) => setContentForm({ ...contentForm, heroSecondaryCta: e.target.value })}
+                        className="w-full rounded-xl border border-teal-900/15 px-3 py-2 text-xs font-semibold text-teal-950"
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
 
-              {/* CONTACT DETAILS & ADDRESS */}
-              <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-teal-900/10 space-y-4">
-                <div>
-                  <h3 className="font-display text-base font-bold text-teal-900">
-                    Contact, Visiting & Location Information
-                  </h3>
-                  <p className="text-xs text-teal-950/60">
-                    Displayed in header, footer, contact section, and maps.
-                  </p>
-                </div>
-
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div>
-                    <label className="block text-xs font-bold text-teal-900/70 mb-1">
-                      Contact Phone Number:
-                    </label>
-                    <input
-                      type="text"
-                      value={contentForm.contactPhone || ""}
-                      onChange={(e) => setContentForm({ ...contentForm, contactPhone: e.target.value })}
-                      className="w-full rounded-xl border border-teal-900/15 px-3 py-2 text-xs text-teal-950 font-mono"
-                    />
+              {/* SUBTAB 2: LIVE MEALS STATUS TRACKER */}
+              {contentSubtab === "meals" && (
+                <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-teal-900/10 space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-teal-900/10 pb-3">
+                    <div>
+                      <h3 className="font-display text-base font-bold text-teal-900">
+                        Today Live Meals Status Tracker
+                      </h3>
+                      <p className="text-xs text-teal-950/60">
+                        Control real-time daily Annadana meal cards shown on homepage &amp; /today. Toggle between &ldquo;Served ✓&rdquo; and &ldquo;Open for Seva ⏳&rdquo;.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleAddMeal}
+                      className="rounded-xl bg-teal-900 px-3.5 py-1.5 text-xs font-bold text-white hover:bg-teal-800 transition cursor-pointer shrink-0"
+                    >
+                      + Add Meal Slot
+                    </button>
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-bold text-teal-900/70 mb-1">
-                      Official Ashrama Email:
-                    </label>
-                    <input
-                      type="email"
-                      value={contentForm.contactEmail || ""}
-                      onChange={(e) => setContentForm({ ...contentForm, contactEmail: e.target.value })}
-                      className="w-full rounded-xl border border-teal-900/15 px-3 py-2 text-xs text-teal-950 font-mono"
-                    />
-                  </div>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {(contentForm.todayMealsStatus || []).map((meal: TodayMealStatusItem, idx: number) => {
+                      const isServed = meal.status === "served";
+                      return (
+                        <div
+                          key={meal.id || idx}
+                          className={`rounded-2xl border p-4 transition space-y-3 ${
+                            isServed
+                              ? "bg-emerald-50/60 border-emerald-300 ring-1 ring-emerald-200"
+                              : "bg-amber-50/60 border-amber-300 ring-1 ring-amber-200"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="font-mono text-xs font-bold uppercase text-teal-900">
+                              Slot {idx + 1} &bull; {meal.time || "Scheduled"}
+                            </span>
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => handleToggleMealStatus(idx)}
+                                className={`rounded-full px-3 py-1 text-xs font-black uppercase transition cursor-pointer shadow-2xs ${
+                                  isServed
+                                    ? "bg-emerald-600 text-white hover:bg-emerald-700"
+                                    : "bg-saffron text-white hover:bg-saffron-dark animate-pulse"
+                                }`}
+                              >
+                                {isServed ? "Served ✓" : "Open for Seva ⏳"}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteMeal(idx)}
+                                className="rounded-lg bg-red-100 p-1 text-red-600 hover:bg-red-200 transition cursor-pointer"
+                                title="Delete meal slot"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          </div>
 
-                  <div className="sm:col-span-2">
-                    <label className="block text-xs font-bold text-teal-900/70 mb-1">
-                      Physical Address:
-                    </label>
-                    <input
-                      type="text"
-                      value={contentForm.contactAddress || ""}
-                      onChange={(e) => setContentForm({ ...contentForm, contactAddress: e.target.value })}
-                      className="w-full rounded-xl border border-teal-900/15 px-3 py-2 text-xs text-teal-950"
-                    />
-                  </div>
+                          <div className="grid gap-2 sm:grid-cols-2">
+                            <div>
+                              <label className="block text-[11px] font-bold text-teal-900/70 mb-0.5">Meal Name</label>
+                              <input
+                                type="text"
+                                value={meal.name || ""}
+                                onChange={(e) => handleUpdateMeal(idx, { name: e.target.value })}
+                                className="w-full rounded-xl border border-teal-900/15 bg-white px-2.5 py-1.5 text-xs font-bold text-teal-950"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[11px] font-bold text-teal-900/70 mb-0.5">Time</label>
+                              <input
+                                type="text"
+                                value={meal.time || ""}
+                                onChange={(e) => handleUpdateMeal(idx, { time: e.target.value })}
+                                className="w-full rounded-xl border border-teal-900/15 bg-white px-2.5 py-1.5 text-xs font-medium text-teal-950"
+                              />
+                            </div>
+                          </div>
 
-                  <div>
-                    <label className="block text-xs font-bold text-teal-900/70 mb-1">
-                      Visiting Hours:
-                    </label>
-                    <input
-                      type="text"
-                      value={contentForm.contactHours || ""}
-                      onChange={(e) => setContentForm({ ...contentForm, contactHours: e.target.value })}
-                      className="w-full rounded-xl border border-teal-900/15 px-3 py-2 text-xs text-teal-950"
-                    />
-                  </div>
+                          <div>
+                            <label className="block text-[11px] font-bold text-teal-900/70 mb-0.5">Today Menu</label>
+                            <input
+                              type="text"
+                              value={meal.menu || ""}
+                              onChange={(e) => handleUpdateMeal(idx, { menu: e.target.value })}
+                              placeholder="e.g. Idli, Sambar, Coconut Chutney & Hot Milk"
+                              className="w-full rounded-xl border border-teal-900/15 bg-white px-2.5 py-1.5 text-xs text-teal-950"
+                            />
+                          </div>
 
-                  <div>
-                    <label className="block text-xs font-bold text-teal-900/70 mb-1">
-                      Google Maps Link:
-                    </label>
-                    <input
-                      type="text"
-                      value={contentForm.googleMapsUrl || ""}
-                      onChange={(e) => setContentForm({ ...contentForm, googleMapsUrl: e.target.value })}
-                      className="w-full rounded-xl border border-teal-900/15 px-3 py-2 text-xs text-teal-950 font-mono"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* SOCIAL MEDIA LINKS */}
-              <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-teal-900/10 space-y-4">
-                <div>
-                  <h3 className="font-display text-base font-bold text-teal-900">
-                    Social Media Channels
-                  </h3>
-                  <p className="text-xs text-teal-950/60">
-                    Displayed in floating quick action buttons and footer.
-                  </p>
-                </div>
-
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div>
-                    <label className="block text-xs font-bold text-teal-900/70 mb-1">WhatsApp URL:</label>
-                    <input
-                      type="text"
-                      value={contentForm.socialWhatsapp || ""}
-                      onChange={(e) => setContentForm({ ...contentForm, socialWhatsapp: e.target.value })}
-                      className="w-full rounded-xl border border-teal-900/15 px-3 py-2 text-xs font-mono"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-teal-900/70 mb-1">Instagram URL:</label>
-                    <input
-                      type="text"
-                      value={contentForm.socialInstagram || ""}
-                      onChange={(e) => setContentForm({ ...contentForm, socialInstagram: e.target.value })}
-                      className="w-full rounded-xl border border-teal-900/15 px-3 py-2 text-xs font-mono"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-teal-900/70 mb-1">Facebook URL:</label>
-                    <input
-                      type="text"
-                      value={contentForm.socialFacebook || ""}
-                      onChange={(e) => setContentForm({ ...contentForm, socialFacebook: e.target.value })}
-                      className="w-full rounded-xl border border-teal-900/15 px-3 py-2 text-xs font-mono"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-teal-900/70 mb-1">X (Twitter) URL:</label>
-                    <input
-                      type="text"
-                      value={contentForm.socialX || ""}
-                      onChange={(e) => setContentForm({ ...contentForm, socialX: e.target.value })}
-                      className="w-full rounded-xl border border-teal-900/15 px-3 py-2 text-xs font-mono"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-teal-900/70 mb-1">LinkedIn URL:</label>
-                    <input
-                      type="text"
-                      value={contentForm.socialLinkedin || ""}
-                      onChange={(e) => setContentForm({ ...contentForm, socialLinkedin: e.target.value })}
-                      className="w-full rounded-xl border border-teal-900/15 px-3 py-2 text-xs font-mono"
-                    />
+                          <div className="grid gap-2 sm:grid-cols-2">
+                            <div>
+                              <label className="block text-[11px] font-bold text-teal-900/70 mb-0.5">
+                                Sponsor Name (if served)
+                              </label>
+                              <input
+                                type="text"
+                                value={meal.sponsorName || ""}
+                                onChange={(e) => handleUpdateMeal(idx, { sponsorName: e.target.value })}
+                                placeholder="e.g. Smt. Shailaja & Family"
+                                className="w-full rounded-xl border border-teal-900/15 bg-white px-2.5 py-1.5 text-xs text-teal-950"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[11px] font-bold text-teal-900/70 mb-0.5">
+                                Shagun Amount (₹)
+                              </label>
+                              <input
+                                type="number"
+                                value={meal.amount || 0}
+                                onChange={(e) => handleUpdateMeal(idx, { amount: Number(e.target.value) })}
+                                className="w-full rounded-xl border border-teal-900/15 bg-white px-2.5 py-1.5 text-xs font-bold font-mono text-teal-950"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
-              </div>
+              )}
 
-              {/* SAVE BUTTON */}
+              {/* SUBTAB 3: 5 OFFICIAL SUPPORT TIERS & PRICING */}
+              {contentSubtab === "tiers" && (
+                <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-teal-900/10 space-y-5">
+                  <div className="border-b border-teal-900/10 pb-3">
+                    <h3 className="font-display text-base font-bold text-teal-900">
+                      Exact 5 Official Support Tiers &amp; Pricing Schemes
+                    </h3>
+                    <p className="text-xs text-teal-950/60">
+                      Customize titles, Kannada subtitles, descriptions, and preset pricing options for Annadana, Vidya, Cloth, Health, and Shelter.
+                    </p>
+                  </div>
+
+                  <div className="space-y-5">
+                    {(contentForm.supportTiers || []).map((tier: any, tierIdx: number) => (
+                      <div
+                        key={tier.id || tierIdx}
+                        className="rounded-2xl border border-teal-900/15 bg-cream/30 p-4 space-y-4"
+                      >
+                        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-teal-900/10 pb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xl">{tier.icon || "🌟"}</span>
+                            <span className="font-display text-xs font-bold uppercase tracking-wider text-saffron-dark">
+                              Tier {tierIdx + 1}: {tier.title}
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleAddTierOption(tierIdx)}
+                            className="rounded-lg bg-teal-900/10 px-2.5 py-1 text-[11px] font-bold text-teal-900 hover:bg-teal-900/20 transition cursor-pointer"
+                          >
+                            + Add Option
+                          </button>
+                        </div>
+
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <div>
+                            <label className="block text-[11px] font-bold text-teal-900/70 mb-0.5">Tier Title (English)</label>
+                            <input
+                              type="text"
+                              value={tier.title || ""}
+                              onChange={(e) => handleUpdateTier(tierIdx, { title: e.target.value })}
+                              className="w-full rounded-xl border border-teal-900/15 bg-white px-2.5 py-1.5 text-xs font-bold text-teal-950"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-[11px] font-bold text-teal-900/70 mb-0.5">Kannada Title</label>
+                            <input
+                              type="text"
+                              value={tier.kannadaTitle || ""}
+                              onChange={(e) => handleUpdateTier(tierIdx, { kannadaTitle: e.target.value })}
+                              className="w-full rounded-xl border border-teal-900/15 bg-white px-2.5 py-1.5 text-xs font-bold text-teal-950 font-kannada"
+                            />
+                          </div>
+
+                          <div className="sm:col-span-2">
+                            <label className="block text-[11px] font-bold text-teal-900/70 mb-0.5">Impact Description</label>
+                            <textarea
+                              rows={2}
+                              value={tier.desc || ""}
+                              onChange={(e) => handleUpdateTier(tierIdx, { desc: e.target.value })}
+                              className="w-full rounded-xl border border-teal-900/15 bg-white px-2.5 py-1.5 text-xs text-teal-950"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Pricing Options */}
+                        <div className="space-y-2 pt-2 border-t border-teal-900/10">
+                          <span className="block text-[11px] font-bold uppercase tracking-wider text-teal-900/60">
+                            Preset Donation Options:
+                          </span>
+                          <div className="grid gap-2 sm:grid-cols-3">
+                            {(tier.options || []).map((opt: any, optIdx: number) => (
+                              <div
+                                key={opt.id || optIdx}
+                                className="rounded-xl border border-teal-900/10 bg-white p-2.5 space-y-1.5 text-xs shadow-2xs"
+                              >
+                                <div className="flex items-center justify-between">
+                                  <label className="flex items-center gap-1 text-[10px] font-bold text-teal-900">
+                                    <input
+                                      type="checkbox"
+                                      checked={!!opt.isPopular}
+                                      onChange={(e) => handleUpdateTierOption(tierIdx, optIdx, { isPopular: e.target.checked })}
+                                      className="rounded"
+                                    />
+                                    Popular
+                                  </label>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteTierOption(tierIdx, optIdx)}
+                                    className="text-red-500 hover:text-red-700 text-xs font-bold"
+                                    title="Delete option"
+                                  >
+                                    ✕
+                                  </button>
+                                </div>
+                                <input
+                                  type="text"
+                                  value={opt.label || ""}
+                                  placeholder="Option Label"
+                                  onChange={(e) => handleUpdateTierOption(tierIdx, optIdx, { label: e.target.value })}
+                                  className="w-full rounded-lg border px-2 py-1 text-xs font-semibold"
+                                />
+                                <input
+                                  type="text"
+                                  value={opt.subLabel || ""}
+                                  placeholder="Sub-label description"
+                                  onChange={(e) => handleUpdateTierOption(tierIdx, optIdx, { subLabel: e.target.value })}
+                                  className="w-full rounded-lg border px-2 py-1 text-[11px]"
+                                />
+                                <div className="flex items-center gap-1">
+                                  <span className="font-bold text-teal-900">₹</span>
+                                  <input
+                                    type="number"
+                                    value={opt.amount || 0}
+                                    onChange={(e) => handleUpdateTierOption(tierIdx, optIdx, { amount: Number(e.target.value) })}
+                                    className="w-full rounded-lg border px-2 py-1 font-mono font-bold text-xs"
+                                  />
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* SUBTAB 4: CAREGIVER VOICES & QUOTES */}
+              {contentSubtab === "quotes" && (
+                <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-teal-900/10 space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-teal-900/10 pb-3">
+                    <div>
+                      <h3 className="font-display text-base font-bold text-teal-900">
+                        Caregiver Voices &amp; Emotional Quotes
+                      </h3>
+                      <p className="text-xs text-teal-950/60">
+                        Quotes rendered in the horizontal marquee loop that move donors emotionally with authenticity.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleAddQuote}
+                      className="rounded-xl bg-teal-900 px-3.5 py-1.5 text-xs font-bold text-white hover:bg-teal-800 transition cursor-pointer shrink-0"
+                    >
+                      + Add New Quote
+                    </button>
+                  </div>
+
+                  <div className="space-y-3">
+                    {(contentForm.quotes || []).map((q: any, idx: number) => (
+                      <div
+                        key={idx}
+                        className="rounded-2xl border border-teal-900/10 bg-cream/40 p-4 space-y-2.5"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-mono text-xs font-bold uppercase text-saffron-dark">
+                            Quote #{idx + 1} &bull; Tag: {q.tag || "Care"}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteQuote(idx)}
+                            className="rounded-lg bg-red-100 px-2 py-0.5 text-xs font-bold text-red-600 hover:bg-red-200 transition cursor-pointer"
+                          >
+                            Delete Quote
+                          </button>
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] font-bold text-teal-900/70 mb-0.5">Quote Text (English)</label>
+                          <textarea
+                            rows={2}
+                            value={q.quote || ""}
+                            onChange={(e) => handleUpdateQuote(idx, { quote: e.target.value })}
+                            className="w-full rounded-xl border border-teal-900/15 bg-white px-2.5 py-1.5 text-xs text-teal-950 font-medium italic"
+                          />
+                        </div>
+
+                        <div className="grid gap-2 sm:grid-cols-3">
+                          <div>
+                            <label className="block text-[11px] font-bold text-teal-900/70 mb-0.5">Author</label>
+                            <input
+                              type="text"
+                              value={q.author || ""}
+                              onChange={(e) => handleUpdateQuote(idx, { author: e.target.value })}
+                              className="w-full rounded-xl border border-teal-900/15 bg-white px-2.5 py-1 text-xs font-semibold text-teal-950"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-[11px] font-bold text-teal-900/70 mb-0.5">Role / Title</label>
+                            <input
+                              type="text"
+                              value={q.role || ""}
+                              onChange={(e) => handleUpdateQuote(idx, { role: e.target.value })}
+                              className="w-full rounded-xl border border-teal-900/15 bg-white px-2.5 py-1 text-xs text-teal-950"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-[11px] font-bold text-teal-900/70 mb-0.5">Theme Tag</label>
+                            <input
+                              type="text"
+                              value={q.tag || ""}
+                              onChange={(e) => handleUpdateQuote(idx, { tag: e.target.value })}
+                              className="w-full rounded-xl border border-teal-900/15 bg-white px-2.5 py-1 text-xs text-teal-950"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* SUBTAB 5: FAQS MANAGER */}
+              {contentSubtab === "faqs" && (
+                <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-teal-900/10 space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-teal-900/10 pb-3">
+                    <div>
+                      <h3 className="font-display text-base font-bold text-teal-900">
+                        Frequently Asked Questions (FAQ) Manager
+                      </h3>
+                      <p className="text-xs text-teal-950/60">
+                        Address donor objections, explain 80G tax claims, visiting protocols, and accountability.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleAddFaq}
+                      className="rounded-xl bg-teal-900 px-3.5 py-1.5 text-xs font-bold text-white hover:bg-teal-800 transition cursor-pointer shrink-0"
+                    >
+                      + Add New FAQ
+                    </button>
+                  </div>
+
+                  <div className="space-y-3">
+                    {(contentForm.faqs || []).map((faq: any, idx: number) => (
+                      <div
+                        key={idx}
+                        className="rounded-2xl border border-teal-900/10 bg-cream/40 p-4 space-y-2.5"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-mono text-xs font-bold uppercase text-teal-900">
+                            FAQ #{idx + 1} &bull; Category: {faq.category || "general"}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteFaq(idx)}
+                            className="rounded-lg bg-red-100 px-2 py-0.5 text-xs font-bold text-red-600 hover:bg-red-200 transition cursor-pointer"
+                          >
+                            Delete FAQ
+                          </button>
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] font-bold text-teal-900/70 mb-0.5">Question</label>
+                          <input
+                            type="text"
+                            value={faq.question || ""}
+                            onChange={(e) => handleUpdateFaq(idx, { question: e.target.value })}
+                            className="w-full rounded-xl border border-teal-900/15 bg-white px-2.5 py-1.5 text-xs font-bold text-teal-950"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] font-bold text-teal-900/70 mb-0.5">Answer</label>
+                          <textarea
+                            rows={3}
+                            value={faq.answer || ""}
+                            onChange={(e) => handleUpdateFaq(idx, { answer: e.target.value })}
+                            className="w-full rounded-xl border border-teal-900/15 bg-white px-2.5 py-1.5 text-xs text-teal-950 leading-relaxed"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* SUBTAB 6: MISSION & CONTACT INFO */}
+              {contentSubtab === "about_contact" && (
+                <div className="space-y-6">
+                  {/* ASHRAMA STORY & MISSION */}
+                  <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-teal-900/10 space-y-4">
+                    <div>
+                      <h3 className="font-display text-base font-bold text-teal-900">
+                        Ashrama Organization & Mission Details
+                      </h3>
+                      <p className="text-xs text-teal-950/60">
+                        Verified legal entity and childhood protection metrics.
+                      </p>
+                    </div>
+
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div>
+                        <label className="block text-xs font-bold text-teal-900/70 mb-1">
+                          Trust Legal Name:
+                        </label>
+                        <input
+                          type="text"
+                          value={contentForm.aboutTitle || ""}
+                          onChange={(e) => setContentForm({ ...contentForm, aboutTitle: e.target.value })}
+                          className="w-full rounded-xl border border-teal-900/15 px-3 py-2 text-xs text-teal-950 font-bold"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-teal-900/70 mb-1">
+                          Resident Children Metric:
+                        </label>
+                        <input
+                          type="text"
+                          value={contentForm.residentCount || ""}
+                          onChange={(e) => setContentForm({ ...contentForm, residentCount: e.target.value })}
+                          className="w-full rounded-xl border border-teal-900/15 px-3 py-2 text-xs text-teal-950 font-bold"
+                        />
+                      </div>
+
+                      <div className="sm:col-span-2">
+                        <label className="block text-xs font-bold text-teal-900/70 mb-1">
+                          About Story / Mission Statement:
+                        </label>
+                        <textarea
+                          rows={3}
+                          value={contentForm.aboutStory || ""}
+                          onChange={(e) => setContentForm({ ...contentForm, aboutStory: e.target.value })}
+                          className="w-full rounded-xl border border-teal-900/15 px-3.5 py-2.5 text-xs text-teal-950"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* CONTACT DETAILS & ADDRESS */}
+                  <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-teal-900/10 space-y-4">
+                    <div>
+                      <h3 className="font-display text-base font-bold text-teal-900">
+                        Contact, Visiting & Location Information
+                      </h3>
+                      <p className="text-xs text-teal-950/60">
+                        Displayed in header, footer, contact section, and maps.
+                      </p>
+                    </div>
+
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div>
+                        <label className="block text-xs font-bold text-teal-900/70 mb-1">
+                          Contact Phone Number:
+                        </label>
+                        <input
+                          type="text"
+                          value={contentForm.contactPhone || ""}
+                          onChange={(e) => setContentForm({ ...contentForm, contactPhone: e.target.value })}
+                          className="w-full rounded-xl border border-teal-900/15 px-3 py-2 text-xs text-teal-950 font-mono"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-teal-900/70 mb-1">
+                          Official Ashrama Email:
+                        </label>
+                        <input
+                          type="email"
+                          value={contentForm.contactEmail || ""}
+                          onChange={(e) => setContentForm({ ...contentForm, contactEmail: e.target.value })}
+                          className="w-full rounded-xl border border-teal-900/15 px-3 py-2 text-xs text-teal-950 font-mono"
+                        />
+                      </div>
+
+                      <div className="sm:col-span-2">
+                        <label className="block text-xs font-bold text-teal-900/70 mb-1">
+                          Physical Address:
+                        </label>
+                        <input
+                          type="text"
+                          value={contentForm.contactAddress || ""}
+                          onChange={(e) => setContentForm({ ...contentForm, contactAddress: e.target.value })}
+                          className="w-full rounded-xl border border-teal-900/15 px-3 py-2 text-xs text-teal-950"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-teal-900/70 mb-1">
+                          Visiting Hours:
+                        </label>
+                        <input
+                          type="text"
+                          value={contentForm.contactHours || ""}
+                          onChange={(e) => setContentForm({ ...contentForm, contactHours: e.target.value })}
+                          className="w-full rounded-xl border border-teal-900/15 px-3 py-2 text-xs text-teal-950"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-teal-900/70 mb-1">
+                          Google Maps Link:
+                        </label>
+                        <input
+                          type="text"
+                          value={contentForm.googleMapsUrl || ""}
+                          onChange={(e) => setContentForm({ ...contentForm, googleMapsUrl: e.target.value })}
+                          className="w-full rounded-xl border border-teal-900/15 px-3 py-2 text-xs text-teal-950 font-mono"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* SOCIAL MEDIA LINKS */}
+                  <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-teal-900/10 space-y-4">
+                    <div>
+                      <h3 className="font-display text-base font-bold text-teal-900">
+                        Social Media Channels
+                      </h3>
+                      <p className="text-xs text-teal-950/60">
+                        Displayed in floating quick action buttons and footer.
+                      </p>
+                    </div>
+
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div>
+                        <label className="block text-xs font-bold text-teal-900/70 mb-1">WhatsApp URL:</label>
+                        <input
+                          type="text"
+                          value={contentForm.socialWhatsapp || ""}
+                          onChange={(e) => setContentForm({ ...contentForm, socialWhatsapp: e.target.value })}
+                          className="w-full rounded-xl border border-teal-900/15 px-3 py-2 text-xs font-mono"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-teal-900/70 mb-1">Instagram URL:</label>
+                        <input
+                          type="text"
+                          value={contentForm.socialInstagram || ""}
+                          onChange={(e) => setContentForm({ ...contentForm, socialInstagram: e.target.value })}
+                          className="w-full rounded-xl border border-teal-900/15 px-3 py-2 text-xs font-mono"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-teal-900/70 mb-1">Facebook URL:</label>
+                        <input
+                          type="text"
+                          value={contentForm.socialFacebook || ""}
+                          onChange={(e) => setContentForm({ ...contentForm, socialFacebook: e.target.value })}
+                          className="w-full rounded-xl border border-teal-900/15 px-3 py-2 text-xs font-mono"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-teal-900/70 mb-1">X (Twitter) URL:</label>
+                        <input
+                          type="text"
+                          value={contentForm.socialX || ""}
+                          onChange={(e) => setContentForm({ ...contentForm, socialX: e.target.value })}
+                          className="w-full rounded-xl border border-teal-900/15 px-3 py-2 text-xs font-mono"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-teal-900/70 mb-1">LinkedIn URL:</label>
+                        <input
+                          type="text"
+                          value={contentForm.socialLinkedin || ""}
+                          onChange={(e) => setContentForm({ ...contentForm, socialLinkedin: e.target.value })}
+                          className="w-full rounded-xl border border-teal-900/15 px-3 py-2 text-xs font-mono"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* SAVE BUTTON AT BOTTOM */}
               <div className="flex justify-end pt-2">
                 <button
                   type="submit"
                   disabled={contentSaving}
-                  className="rounded-xl bg-saffron px-6 py-3 font-bold text-white shadow-sm hover:bg-saffron-dark transition text-sm disabled:opacity-50"
+                  className="rounded-xl bg-saffron px-6 py-3 font-bold text-white shadow-sm hover:bg-saffron-dark transition text-sm disabled:opacity-50 cursor-pointer"
                 >
                   {contentSaving ? "Saving Live Changes..." : "Save All Site Content"}
                 </button>
@@ -2675,17 +4080,26 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
 
               {/* DOCUMENTARY VIDEO CHAPTERS */}
               <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-teal-900/10 space-y-4">
-                <div>
-                  <h3 className="font-display text-base font-bold text-teal-900">
-                    Documentary Video Chapters (Life in Motion)
-                  </h3>
-                  <p className="text-xs text-teal-950/60">
-                    Manage the 5 authentic video chapters shown on the homepage.
-                  </p>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-teal-900/10 pb-3">
+                  <div>
+                    <h3 className="font-display text-base font-bold text-teal-900">
+                      Documentary Video Chapters (Life in Motion)
+                    </h3>
+                    <p className="text-xs text-teal-950/60">
+                      Manage authentic video chapters shown in the documentary reel on the homepage.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleAddChapter}
+                    className="rounded-xl bg-teal-900 px-3.5 py-1.5 text-xs font-bold text-white hover:bg-teal-800 transition cursor-pointer shrink-0"
+                  >
+                    + Add New Chapter
+                  </button>
                 </div>
 
                 <div className="space-y-4">
-                  {contentForm.docChapters?.map((chap: any, idx: number) => (
+                  {(contentForm.docChapters || []).map((chap: any, idx: number) => (
                     <div
                       key={chap.id || idx}
                       className="rounded-2xl border border-teal-900/10 bg-cream/40 p-4 space-y-3"
@@ -2694,13 +4108,22 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
                         <span className="font-display text-xs font-bold text-saffron-dark uppercase">
                           Chapter {chap.number || `0${idx + 1}`}
                         </span>
-                        <button
-                          type="button"
-                          onClick={() => setSelectedVideoPreview(chap.videoSrc)}
-                          className="rounded-lg bg-teal-900/10 px-2.5 py-1 text-[11px] font-bold text-teal-900 hover:bg-teal-900/20"
-                        >
-                          Play Chapter Video
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedVideoPreview(chap.videoSrc)}
+                            className="rounded-lg bg-teal-900/10 px-2.5 py-1 text-[11px] font-bold text-teal-900 hover:bg-teal-900/20"
+                          >
+                            Play Video
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteChapter(idx)}
+                            className="rounded-lg bg-red-100 px-2.5 py-1 text-[11px] font-bold text-red-600 hover:bg-red-200 transition"
+                          >
+                            Delete
+                          </button>
+                        </div>
                       </div>
 
                       <div className="grid gap-3 sm:grid-cols-2">
@@ -2775,12 +4198,103 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
                 <div className="flex justify-end pt-2">
                   <button
                     type="button"
-                    onClick={handleSaveContent}
-                    className="rounded-xl bg-saffron px-6 py-2.5 font-bold text-white hover:bg-saffron-dark transition text-xs"
+                    onClick={() => void handleSaveContent()}
+                    className="rounded-xl bg-saffron px-6 py-2.5 font-bold text-white hover:bg-saffron-dark transition text-xs cursor-pointer shadow-xs"
                   >
                     Save All Video Changes
                   </button>
                 </div>
+              </div>
+
+              {/* TODAY AT JANASEVA UPDATES & MOMENTS MANAGER */}
+              <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-teal-900/10 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-teal-900/10 pb-3">
+                  <div>
+                    <h3 className="font-display text-base font-bold text-teal-900">
+                      Today at Janaseva Daily Moments ({todayUpdatesList.length} Published)
+                    </h3>
+                    <p className="text-xs text-teal-950/60">
+                      Manage all daily photos and updates published to the live &ldquo;Today&rdquo; section and home ticker.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => void loadTodayUpdatesList()}
+                      className="rounded-xl bg-cream px-3 py-1.5 text-xs font-bold text-teal-900 hover:bg-sand transition cursor-pointer"
+                    >
+                      Refresh List
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDailyPhotoModalOpen(true)}
+                      className="rounded-xl bg-saffron px-3.5 py-1.5 text-xs font-bold text-white hover:bg-saffron-dark transition cursor-pointer"
+                    >
+                      + Post Today&apos;s Photo
+                    </button>
+                  </div>
+                </div>
+
+                {todayUpdatesLoading ? (
+                  <p className="text-xs text-teal-900/60 py-4 font-semibold">Loading moments...</p>
+                ) : todayUpdatesList.length === 0 ? (
+                  <p className="text-xs text-teal-950/60 py-4 text-center">No daily moments published yet. Click &ldquo;+ Post Today&apos;s Photo&rdquo; to create the first one.</p>
+                ) : (
+                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {todayUpdatesList.map((u) => (
+                      <div
+                        key={u.id}
+                        className="rounded-2xl border border-teal-900/10 p-3.5 bg-cream/20 hover:bg-cream/50 transition flex flex-col justify-between space-y-3"
+                      >
+                        <div className="space-y-2">
+                          <div className="relative aspect-video w-full rounded-xl overflow-hidden bg-teal-900/10">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={u.imageUrl || "/media/poster.jpg"}
+                              alt={u.title}
+                              className="h-full w-full object-cover"
+                            />
+                            <span className="absolute top-2 left-2 rounded-md bg-teal-950/80 px-2 py-0.5 text-[9px] font-bold text-white uppercase tracking-wider">
+                              {u.category}
+                            </span>
+                            <span className={`absolute top-2 right-2 rounded-md px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${
+                              u.status === "published" ? "bg-emerald-600 text-white" : "bg-amber-600 text-white"
+                            }`}>
+                              {u.status}
+                            </span>
+                          </div>
+
+                          <h5 className="font-display text-xs font-bold text-teal-950 line-clamp-1">
+                            {u.title}
+                          </h5>
+                          <p className="text-[11px] text-teal-900/70 line-clamp-2 leading-relaxed">
+                            {u.body}
+                          </p>
+                          <p className="text-[10px] text-teal-900/50 font-mono">
+                            {u.publishedAt ? new Date(u.publishedAt).toLocaleString("en-IN") : ""}
+                          </p>
+                        </div>
+
+                        <div className="pt-2 border-t border-teal-900/10 flex items-center justify-between gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setEditingTodayUpdate(u)}
+                            className="rounded-xl bg-teal-900/10 px-3 py-1 text-xs font-bold text-teal-900 hover:bg-teal-900/20 transition cursor-pointer"
+                          >
+                            Edit Moment
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteTodayUpdate(u.id)}
+                            className="rounded-xl bg-red-100 px-3 py-1 text-xs font-bold text-red-600 hover:bg-red-200 transition cursor-pointer"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* LOCAL MEDIA REPOSITORY GALLERY */}
@@ -3338,16 +4852,115 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
                       {doc.category} · {doc.version} · <span className="font-mono">{doc.fileUrl}</span>
                     </p>
                   </div>
-                  <a
-                    href={doc.fileUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="rounded-xl border border-teal-900/20 bg-cream px-3 py-1.5 text-xs font-bold text-teal-900 hover:bg-sand transition"
-                  >
-                    View Document &rarr;
-                  </a>
+                  <div className="flex items-center gap-2">
+                    <a
+                      href={doc.fileUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="rounded-xl border border-teal-900/20 bg-cream px-3 py-1.5 text-xs font-bold text-teal-900 hover:bg-sand transition"
+                    >
+                      View &rarr;
+                    </a>
+                    <button
+                      type="button"
+                      onClick={() => setEditingDocument(doc)}
+                      className="rounded-xl bg-teal-900/10 px-3 py-1.5 text-xs font-bold text-teal-900 hover:bg-teal-900/20 transition cursor-pointer"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteDocument(doc.id)}
+                      className="rounded-xl bg-red-100 px-3 py-1.5 text-xs font-bold text-red-600 hover:bg-red-200 transition cursor-pointer"
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* Edit Document Modal */}
+          {editingDocument && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+              <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl ring-1 ring-teal-900/10 space-y-4">
+                <div className="flex items-center justify-between border-b border-teal-900/10 pb-3">
+                  <h4 className="font-display text-sm font-bold text-teal-950">
+                    Edit Audit / Legal Document #{editingDocument.id}
+                  </h4>
+                  <button
+                    type="button"
+                    onClick={() => setEditingDocument(null)}
+                    className="text-gray-400 hover:text-gray-600 font-bold cursor-pointer"
+                  >
+                    ✕
+                  </button>
+                </div>
+                <form
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    const fd = new FormData(e.currentTarget);
+                    await handlePatchDocument(editingDocument.id, {
+                      title: fd.get("title"),
+                      category: fd.get("category"),
+                      version: fd.get("version"),
+                      fileUrl: fd.get("fileUrl"),
+                    });
+                  }}
+                  className="space-y-3"
+                >
+                  <div>
+                    <label className="block text-xs font-bold text-teal-900/70 mb-1">Document Title:</label>
+                    <input
+                      name="title"
+                      defaultValue={editingDocument.title}
+                      required
+                      className="w-full rounded-xl border p-2 text-xs font-semibold"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-teal-900/70 mb-1">Category:</label>
+                    <input
+                      name="category"
+                      defaultValue={editingDocument.category || "Tax & Governance"}
+                      className="w-full rounded-xl border p-2 text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-teal-900/70 mb-1">File URL:</label>
+                    <input
+                      name="fileUrl"
+                      defaultValue={editingDocument.fileUrl}
+                      required
+                      className="w-full rounded-xl border p-2 text-xs font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-teal-900/70 mb-1">Version / Assessment Year:</label>
+                    <input
+                      name="version"
+                      defaultValue={editingDocument.version || ""}
+                      className="w-full rounded-xl border p-2 text-xs"
+                    />
+                  </div>
+                  <div className="pt-2 flex justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setEditingDocument(null)}
+                      className="rounded-xl px-4 py-2 text-xs font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 transition cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="rounded-xl bg-saffron px-5 py-2 text-xs font-bold text-white hover:bg-saffron-dark transition cursor-pointer"
+                    >
+                      Save Changes
+                    </button>
+                  </div>
+                </form>
+              </div>
             </div>
           )}
         </div>
@@ -3940,6 +5553,110 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
                   className="focus-ring rounded-xl bg-saffron px-5 py-2.5 text-xs font-bold text-white hover:bg-saffron-dark disabled:opacity-50 transition shadow-xs cursor-pointer"
                 >
                   {dailyPhotoUploading ? "Publishing Photo..." : "🚀 Publish Live to Website"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ==================== EDIT TODAY MOMENT MODAL ==================== */}
+      {editingTodayUpdate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl ring-1 ring-teal-900/10 space-y-4">
+            <div className="flex items-center justify-between border-b border-teal-900/10 pb-3">
+              <h4 className="font-display text-sm font-bold text-teal-950">
+                Edit Today Moment #{editingTodayUpdate.id}
+              </h4>
+              <button
+                type="button"
+                onClick={() => setEditingTodayUpdate(null)}
+                className="text-gray-400 hover:text-gray-600 font-bold cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                const fd = new FormData(e.currentTarget);
+                await handlePatchTodayUpdate(editingTodayUpdate.id, {
+                  title: fd.get("title"),
+                  body: fd.get("body"),
+                  category: fd.get("category"),
+                  imageUrl: fd.get("imageUrl"),
+                  status: fd.get("status"),
+                });
+              }}
+              className="space-y-3"
+            >
+              <div>
+                <label className="block text-xs font-bold text-teal-900/70 mb-1">Moment Title:</label>
+                <input
+                  name="title"
+                  defaultValue={editingTodayUpdate.title}
+                  required
+                  className="w-full rounded-xl border p-2 text-xs font-semibold"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-teal-900/70 mb-1">Category:</label>
+                <select
+                  name="category"
+                  defaultValue={editingTodayUpdate.category || "Daily Kitchen & Food"}
+                  className="w-full rounded-xl border p-2 text-xs bg-white"
+                >
+                  <option value="Daily Kitchen & Food">Daily Kitchen &amp; Food (Annadana)</option>
+                  <option value="Education & Study Hour">Education &amp; Study Hour (Vidya)</option>
+                  <option value="Outdoor Play & Childhood">Outdoor Play &amp; Childhood</option>
+                  <option value="Health Check & Wellness">Health Check &amp; Wellness (Arogya)</option>
+                  <option value="Volunteers at Work">Volunteers &amp; Seva Community</option>
+                  <option value="Ashrama Celebrations">Ashrama Celebrations &amp; Feasts</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-teal-900/70 mb-1">Image URL:</label>
+                <input
+                  name="imageUrl"
+                  defaultValue={editingTodayUpdate.imageUrl || ""}
+                  className="w-full rounded-xl border p-2 text-xs font-mono"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-teal-900/70 mb-1">Status:</label>
+                <select
+                  name="status"
+                  defaultValue={editingTodayUpdate.status || "published"}
+                  className="w-full rounded-xl border p-2 text-xs bg-white"
+                >
+                  <option value="published">Published (Live)</option>
+                  <option value="review">Review</option>
+                  <option value="draft">Draft</option>
+                  <option value="archived">Archived</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-teal-900/70 mb-1">Story / Description:</label>
+                <textarea
+                  name="body"
+                  defaultValue={editingTodayUpdate.body || ""}
+                  rows={3}
+                  className="w-full rounded-xl border p-2 text-xs"
+                />
+              </div>
+              <div className="pt-2 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingTodayUpdate(null)}
+                  className="rounded-xl px-4 py-2 text-xs font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="rounded-xl bg-saffron px-5 py-2 text-xs font-bold text-white hover:bg-saffron-dark transition cursor-pointer"
+                >
+                  Save Changes
                 </button>
               </div>
             </form>

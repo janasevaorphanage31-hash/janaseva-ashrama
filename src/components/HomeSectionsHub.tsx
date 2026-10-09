@@ -236,7 +236,7 @@ export function HomeSectionsHub({
           </div>
 
           {/* Today's Ground Updates & Real Meals Status */}
-          <TodaySection updates={updates} />
+          <TodaySection updates={updates} mealsStatus={siteContent?.todayMealsStatus} />
 
           {/* Giving Basket Catalogue */}
           <ImpactCart />
@@ -298,7 +298,7 @@ export function HomeSectionsHub({
             </Container>
           </div>
 
-          <OfficialSupportTiersSection />
+          <OfficialSupportTiersSection tiers={siteContent?.supportTiers} />
 
           {/* Quick Back Switcher */}
           <div className="py-6 text-center">
@@ -375,10 +375,10 @@ export function HomeSectionsHub({
           <RealBoysGallerySection />
 
           {/* Documentary Chapters */}
-          <DocumentaryVideoSection />
+          <DocumentaryVideoSection chapters={siteContent?.docChapters} />
 
           {/* Voices of Caregivers */}
-          <EmotionalQuotesSection />
+          <EmotionalQuotesSection quotes={siteContent?.quotes} />
 
           {/* Back Switcher */}
           <div className="py-6 text-center">
@@ -425,7 +425,7 @@ export function HomeSectionsHub({
           {/* Frequently Asked Questions */}
           <section id="faq" className="scroll-mt-14 py-8 bg-sand/35">
             <Container>
-              <DonationFAQ />
+              <DonationFAQ faqs={siteContent?.faqs} />
             </Container>
           </section>
 
@@ -451,13 +451,13 @@ export function HomeSectionsHub({
       {activeMode === "all" && (
         <div className="space-y-0 animate-fadeIn">
           {/* 1. Today at Janaseva (Real Kitchen updates, Today's Annadana status for 25 boys) */}
-          <TodaySection updates={updates} />
+          <TodaySection updates={updates} mealsStatus={siteContent?.todayMealsStatus} />
 
           {/* 2. Direct Giving Basket & ₹11+ Auspicious Vedic Shagun Giving */}
           <ImpactCart />
 
           {/* 3. Exact 5 Official Support Tiers & Pricing (Form 28 JJ Act Registered) */}
-          <OfficialSupportTiersSection />
+          <OfficialSupportTiersSection tiers={siteContent?.supportTiers} />
 
           {/* 4. Birthday & Milestone Feasts (3 Delivered Showcases in Horizontal Motion) */}
           <TrendingBirthdaySection wishVideos={siteContent?.wishVideos} />
@@ -469,10 +469,10 @@ export function HomeSectionsHub({
           <RealBoysGallerySection />
 
           {/* 7. Documentary Video Chapters */}
-          <DocumentaryVideoSection />
+          <DocumentaryVideoSection chapters={siteContent?.docChapters} />
 
           {/* 8. Emotional Voices & Reflections ("Every child deserves a warm plate..." in Horizontal Motion) */}
-          <EmotionalQuotesSection />
+          <EmotionalQuotesSection quotes={siteContent?.quotes} />
 
           {/* 9. Transparency Center & 5 Official Govt Accreditations (Carousel / Grid) */}
           <TransparencySection docs={docs} />
@@ -495,7 +495,7 @@ export function HomeSectionsHub({
           {/* 15. Frequently Asked Questions (FAQ) */}
           <section id="faq" className="scroll-mt-14 py-10 md:py-16 bg-sand/35 w-full max-w-full overflow-hidden">
             <Container>
-              <DonationFAQ />
+              <DonationFAQ faqs={siteContent?.faqs} />
             </Container>
           </section>
 

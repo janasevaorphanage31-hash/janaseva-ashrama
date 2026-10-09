@@ -2,6 +2,18 @@ import { and, desc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { contentEntries } from "@/db/schema";
 import { SITE, CINEMATIC, EMOTIONAL_QUOTES } from "./site";
+import { SUPPORTER_CATEGORIES, type SupporterCategory } from "./supporter-form";
+
+export type TodayMealStatusItem = {
+  id: string;
+  name: string;
+  time: string;
+  menu: string;
+  status: "served" | "open";
+  sponsorName: string;
+  amount: number;
+  ctaText?: string;
+};
 
 export type SiteContentMap = {
   // Hero section
@@ -72,6 +84,12 @@ export type SiteContentMap = {
 
   // Delivered Celebration WhatsApp Wish Videos
   wishVideos: WishVideoItem[];
+
+  // Live Daily Meals Status Tracker
+  todayMealsStatus: TodayMealStatusItem[];
+
+  // 5 Official Support Tiers & Pricing
+  supportTiers: SupporterCategory[];
 };
 
 export type WishVideoItem = {
@@ -253,6 +271,49 @@ export const DEFAULT_SITE_CONTENT: SiteContentMap = {
       quote: "Congratulations Vikram Bhaiya on your first job! May God bless you with immense success in your career!",
     },
   ],
+  todayMealsStatus: [
+    {
+      id: "breakfast",
+      name: "7:30 AM Breakfast",
+      time: "7:30 AM",
+      menu: "Steaming Idlis & Warm Milk",
+      status: "served",
+      sponsorName: "Sponsored by Bangalore Well-wisher",
+      amount: 51,
+      ctaText: "Sponsor Morning Milk (₹51)",
+    },
+    {
+      id: "lunch",
+      name: "1:00 PM Lunch",
+      time: "1:00 PM",
+      menu: "Hot Rice, Sambar & Palya",
+      status: "served",
+      sponsorName: "Sponsored by Devotee Family",
+      amount: 101,
+      ctaText: "Sponsor Warm Lunch (₹101)",
+    },
+    {
+      id: "snack",
+      name: "4:30 PM Snack",
+      time: "4:30 PM",
+      menu: "Fresh Fruit & Pure Milk",
+      status: "open",
+      sponsorName: "Open for Sponsorship",
+      amount: 51,
+      ctaText: "Sponsor Fruits & Milk (₹51) →",
+    },
+    {
+      id: "dinner",
+      name: "8:00 PM Dinner",
+      time: "8:00 PM",
+      menu: "Hot Wholesome Dinner",
+      status: "open",
+      sponsorName: "Open for Sponsorship",
+      amount: 101,
+      ctaText: "Sponsor Punya Meal (₹101) →",
+    },
+  ],
+  supportTiers: SUPPORTER_CATEGORIES,
 };
 
 const SITE_CONTENT_SLUG = "global-site-content";
@@ -283,6 +344,8 @@ export async function getSiteContentMap(): Promise<SiteContentMap> {
       quotes: parsed.quotes || DEFAULT_SITE_CONTENT.quotes,
       faqs: parsed.faqs || DEFAULT_SITE_CONTENT.faqs,
       wishVideos: parsed.wishVideos || DEFAULT_SITE_CONTENT.wishVideos,
+      todayMealsStatus: parsed.todayMealsStatus || DEFAULT_SITE_CONTENT.todayMealsStatus,
+      supportTiers: parsed.supportTiers || DEFAULT_SITE_CONTENT.supportTiers,
     };
   } catch (err) {
     console.error("Error reading site content settings:", err);

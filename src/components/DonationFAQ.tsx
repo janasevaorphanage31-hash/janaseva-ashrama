@@ -5,8 +5,27 @@ import Link from "next/link";
 import { SITE } from "@/lib/site";
 import { FAQ_ITEMS } from "@/lib/faq";
 
-export function DonationFAQ() {
+export function DonationFAQ({
+  faqs,
+}: {
+  faqs?: Array<{
+    question?: string;
+    answer?: string;
+    q?: string;
+    a?: string;
+    category?: string;
+  }>;
+} = {}) {
   const [openIndex, setOpenIndex] = useState<number | null>(0);
+
+  const activeFaqs =
+    faqs && faqs.length > 0
+      ? faqs.map((f) => ({
+          q: f.question || f.q || "",
+          a: f.answer || f.a || "",
+          category: f.category || "General",
+        }))
+      : FAQ_ITEMS;
 
   const toggle = (idx: number) => {
     setOpenIndex(openIndex === idx ? null : idx);
@@ -75,7 +94,7 @@ export function DonationFAQ() {
 
         {/* Right Column: Accordion List */}
         <div className="divide-y divide-teal-900/10">
-          {FAQ_ITEMS.map((item, idx) => {
+          {activeFaqs.map((item, idx) => {
             const isOpen = openIndex === idx;
             return (
               <div key={idx} className="py-4">

@@ -13,10 +13,14 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const q = (url.searchParams.get("q") || "").trim().toLowerCase();
   const status = (url.searchParams.get("status") || "all").trim().toLowerCase();
+  const mode = (url.searchParams.get("mode") || "all").trim().toLowerCase();
 
   let conditions: any[] = [];
   if (status && status !== "all") {
     conditions.push(eq(donations.status, status));
+  }
+  if (mode && mode !== "all") {
+    conditions.push(eq(donations.mode, mode));
   }
   if (q) {
     conditions.push(
@@ -26,6 +30,8 @@ export async function GET(req: Request) {
         ilike(donations.donorPhone, `%${q}%`),
         ilike(donations.receiptNo, `%${q}%`),
         ilike(donations.publicId, `%${q}%`),
+        sql`coalesce(${donations.meta}->>'pan', '') ilike ${'%' + q + '%'}`,
+        sql`coalesce(${donations.meta}->>'donorPan', '') ilike ${'%' + q + '%'}`,
       ),
     );
   }
@@ -60,12 +66,16 @@ export async function GET(req: Request) {
     lines: linesByDonation[d.id] || [],
   }));
 
-  // Summary counts
+  // Summary counts and FinTech mode breakdown
   const [totals] = await db
     .select({
       totalRaised: sql<number>`coalesce(sum(case when ${donations.status} = 'paid' then ${donations.amount} else 0 end), 0)::int`,
       paidCount: sql<number>`count(case when ${donations.status} = 'paid' then 1 else null end)::int`,
       totalCount: sql<number>`count(*)::int`,
+      onlineRaised: sql<number>`coalesce(sum(case when ${donations.status} = 'paid' and ${donations.mode} = 'razorpay' then ${donations.amount} else 0 end), 0)::int`,
+      wireRaised: sql<number>`coalesce(sum(case when ${donations.status} = 'paid' and ${donations.mode} in ('bank_wire', 'wire', 'transfer') then ${donations.amount} else 0 end), 0)::int`,
+      offlineRaised: sql<number>`coalesce(sum(case when ${donations.status} = 'paid' and ${donations.mode} not in ('razorpay', 'bank_wire', 'wire', 'transfer') then ${donations.amount} else 0 end), 0)::int`,
+      panClaimedCount: sql<number>`count(case when ${donations.status} = 'paid' and (${donations.meta}->>'pan' is not null or ${donations.meta}->>'donorPan' is not null) then 1 else null end)::int`,
     })
     .from(donations);
 
@@ -75,6 +85,10 @@ export async function GET(req: Request) {
       totalRaised: totals.totalRaised,
       paidCount: totals.paidCount,
       totalCount: totals.totalCount,
+      onlineRaised: totals.onlineRaised,
+      wireRaised: totals.wireRaised,
+      offlineRaised: totals.offlineRaised,
+      panClaimedCount: totals.panClaimedCount,
     },
   });
 }
@@ -187,4 +201,31 @@ export async function PATCH(req: Request) {
     .where(eq(donations.id, Number(body.id)));
 
   return NextResponse.json({ ok: true });
+}
+
+export async function DELETE(req: Request) {
+  const session = await requireAdminApi(["SUPER_ADMIN", "STAFF_ADMIN", "FINANCE"]);
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const url = new URL(req.url);
+  let id = Number(url.searchParams.get("id"));
+  if (!Number.isInteger(id)) {
+    const b = await req.json().catch(() => null);
+    id = Number(b?.id);
+  }
+
+  if (!Number.isInteger(id)) {
+    return NextResponse.json({ error: "Valid donation ID is required." }, { status: 400 });
+  }
+
+  const [before] = await db.select().from(donations).where(eq(donations.id, id)).limit(1);
+  if (!before) {
+    return NextResponse.json({ error: "Donation record not found." }, { status: 404 });
+  }
+
+  // Delete line items first then donation
+  await db.delete(donationLines).where(eq(donationLines.donationId, id));
+  await db.delete(donations).where(eq(donations.id, id));
+
+  return NextResponse.json({ ok: true, deletedId: id });
 }

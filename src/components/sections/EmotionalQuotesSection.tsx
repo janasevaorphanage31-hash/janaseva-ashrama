@@ -5,9 +5,20 @@ import { Container, Section, Chip } from "../ui";
 import { EMOTIONAL_QUOTES } from "@/lib/site";
 import { BlinkingDonateTrigger } from "../BlinkingDonationButton";
 
-export function EmotionalQuotesSection() {
+export function EmotionalQuotesSection({
+  quotes,
+}: {
+  quotes?: Array<{
+    quote: string;
+    author: string;
+    role: string;
+    context: string;
+    tag: string;
+  }>;
+} = {}) {
+  const activeQuotes = quotes && quotes.length > 0 ? quotes : EMOTIONAL_QUOTES;
   // Duplicate for seamless infinite horizontal marquee loop
-  const marqueeQuotes = [...EMOTIONAL_QUOTES, ...EMOTIONAL_QUOTES];
+  const marqueeQuotes = [...activeQuotes, ...activeQuotes];
 
   return (
     <Section id="voices" tone="sand" className="py-12 md:py-16 overflow-hidden">

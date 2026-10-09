@@ -15,12 +15,69 @@ type Update = {
 export function TodaySection({
   updates,
   standalone = false,
+  mealsStatus,
 }: {
   updates: Update[];
   standalone?: boolean;
+  mealsStatus?: Array<{
+    id: string;
+    name: string;
+    time: string;
+    menu: string;
+    status: "served" | "open";
+    sponsorName: string;
+    amount: number;
+    ctaText?: string;
+  }>;
 }) {
   const featured = updates[0];
   const rest = updates.slice(1, 7);
+
+  const meals =
+    mealsStatus && mealsStatus.length > 0
+      ? mealsStatus
+      : [
+          {
+            id: "breakfast",
+            name: "🌅 7:30 AM Breakfast",
+            time: "7:30 AM",
+            menu: "Steaming Idlis & Warm Milk",
+            status: "served" as const,
+            sponsorName: "✓ Sponsored by Bangalore Well-wisher",
+            amount: 51,
+            ctaText: "Sponsor Morning Milk (₹51)",
+          },
+          {
+            id: "lunch",
+            name: "☀️ 1:00 PM Lunch",
+            time: "1:00 PM",
+            menu: "Hot Rice, Sambar & Palya",
+            status: "served" as const,
+            sponsorName: "✓ Sponsored by Devotee Family",
+            amount: 101,
+            ctaText: "Sponsor Warm Lunch (₹101)",
+          },
+          {
+            id: "snack",
+            name: "🍎 4:30 PM Snack",
+            time: "4:30 PM",
+            menu: "Fresh Fruit & Pure Milk",
+            status: "open" as const,
+            sponsorName: "Open for Sponsorship",
+            amount: 51,
+            ctaText: "Sponsor Fruits & Milk (₹51) →",
+          },
+          {
+            id: "dinner",
+            name: "🌙 8:00 PM Dinner",
+            time: "8:00 PM",
+            menu: "Hot Wholesome Dinner",
+            status: "open" as const,
+            sponsorName: "Open for Sponsorship",
+            amount: 101,
+            ctaText: "Sponsor Punya Meal (₹101) →",
+          },
+        ];
 
   return (
     <Section id="today" tone="cream" className="py-10 md:py-16">
@@ -46,79 +103,56 @@ export function TodaySection({
           </div>
 
           <div className="mt-4 grid grid-cols-2 lg:grid-cols-4 gap-3">
-            {/* Breakfast */}
-            <div className="rounded-2xl bg-white/10 p-3.5 border border-white/10 flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between text-[11px] mb-1">
-                  <span className="font-bold text-white/80">🌅 7:30 AM Breakfast</span>
-                  <span className="rounded-md bg-emerald-500/20 px-1.5 py-0.5 text-[10px] font-bold text-emerald-300">
-                    Served ✓
-                  </span>
-                </div>
-                <p className="text-xs font-bold text-white mt-1">Steaming Idlis &amp; Warm Milk</p>
-                <p className="text-[10px] text-white/60 mt-0.5">Energy for morning school</p>
-              </div>
-              <span className="mt-3 text-[10px] text-emerald-400 font-semibold">
-                ✓ Sponsored by Bangalore Well-wisher
-              </span>
-            </div>
+            {meals.map((meal) => {
+              const isServed = meal.status === "served";
+              return (
+                <div
+                  key={meal.id}
+                  className={`rounded-2xl p-3.5 border flex flex-col justify-between ${
+                    isServed
+                      ? "bg-white/10 border-white/10"
+                      : "bg-amber-500/15 border-amber-500/30"
+                  }`}
+                >
+                  <div>
+                    <div className="flex items-center justify-between text-[11px] mb-1">
+                      <span className={`font-bold ${isServed ? "text-white/80" : "text-amber-200"}`}>
+                        {meal.name}
+                      </span>
+                      <span
+                        className={`rounded-md px-1.5 py-0.5 text-[10px] font-bold ${
+                          isServed
+                            ? "bg-emerald-500/20 text-emerald-300"
+                            : "bg-amber-500/30 text-amber-200"
+                        }`}
+                      >
+                        {isServed ? "Served ✓" : "Open ⏳"}
+                      </span>
+                    </div>
+                    <p className="text-xs font-bold text-white mt-1">{meal.menu}</p>
+                    <p className={`text-[10px] mt-0.5 ${isServed ? "text-white/60" : "text-white/70"}`}>
+                      Nourishing 25 boys
+                    </p>
+                  </div>
 
-            {/* Lunch */}
-            <div className="rounded-2xl bg-white/10 p-3.5 border border-white/10 flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between text-[11px] mb-1">
-                  <span className="font-bold text-white/80">☀️ 1:00 PM Lunch</span>
-                  <span className="rounded-md bg-emerald-500/20 px-1.5 py-0.5 text-[10px] font-bold text-emerald-300">
-                    Served ✓
-                  </span>
+                  {isServed ? (
+                    <span
+                      className="mt-3 text-[10px] text-emerald-400 font-semibold truncate block"
+                      title={meal.sponsorName}
+                    >
+                      {meal.sponsorName.startsWith("✓") ? meal.sponsorName : `✓ ${meal.sponsorName}`}
+                    </span>
+                  ) : (
+                    <Link
+                      href={`/checkout?amount=${meal.amount || 51}`}
+                      className="mt-3 inline-flex items-center justify-center rounded-xl bg-saffron px-3 py-1.5 text-xs font-bold text-white hover:bg-saffron-dark transition shadow-2xs text-center"
+                    >
+                      {meal.ctaText || `Sponsor (₹${meal.amount || 51}) →`}
+                    </Link>
+                  )}
                 </div>
-                <p className="text-xs font-bold text-white mt-1">Hot Rice, Sambar &amp; Palya</p>
-                <p className="text-[10px] text-white/60 mt-0.5">Wholesome midday nutrition</p>
-              </div>
-              <span className="mt-3 text-[10px] text-emerald-400 font-semibold">
-                ✓ Sponsored by Devotee Family
-              </span>
-            </div>
-
-            {/* Evening Snack */}
-            <div className="rounded-2xl bg-amber-500/15 p-3.5 border border-amber-500/30 flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between text-[11px] mb-1">
-                  <span className="font-bold text-amber-200">🍎 4:30 PM Snack</span>
-                  <span className="rounded-md bg-amber-500/30 px-1.5 py-0.5 text-[10px] font-bold text-amber-200">
-                    Open ⏳
-                  </span>
-                </div>
-                <p className="text-xs font-bold text-white mt-1">Fresh Fruit &amp; Pure Milk</p>
-                <p className="text-[10px] text-white/70 mt-0.5">Immunity for 25 boys</p>
-              </div>
-              <Link
-                href="/checkout?amount=51"
-                className="mt-3 inline-flex items-center justify-center rounded-xl bg-saffron px-3 py-1.5 text-xs font-bold text-white hover:bg-saffron-dark transition shadow-2xs"
-              >
-                Sponsor Fruits &amp; Milk (₹51) →
-              </Link>
-            </div>
-
-            {/* Dinner */}
-            <div className="rounded-2xl bg-amber-500/15 p-3.5 border border-amber-500/30 flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between text-[11px] mb-1">
-                  <span className="font-bold text-amber-200">🌙 8:00 PM Dinner</span>
-                  <span className="rounded-md bg-amber-500/30 px-1.5 py-0.5 text-[10px] font-bold text-amber-200">
-                    Open ⏳
-                  </span>
-                </div>
-                <p className="text-xs font-bold text-white mt-1">Hot Wholesome Dinner</p>
-                <p className="text-[10px] text-white/70 mt-0.5">Nourishing 25 boys</p>
-              </div>
-              <Link
-                href="/checkout?amount=101"
-                className="mt-3 inline-flex items-center justify-center rounded-xl bg-gold text-teal-950 px-3 py-1.5 text-xs font-extrabold hover:bg-gold-light transition shadow-2xs"
-              >
-                Sponsor Punya Meal (₹101) →
-              </Link>
-            </div>
+              );
+            })}
           </div>
         </div>
 

@@ -44,7 +44,12 @@ const TIER_SLUG_MAP: Record<string, Record<string, string>> = {
   },
 };
 
-export function OfficialSupportTiersSection() {
+export function OfficialSupportTiersSection({
+  tiers,
+}: {
+  tiers?: typeof SUPPORTER_CATEGORIES;
+} = {}) {
+  const activeCategories = tiers && tiers.length > 0 ? tiers : SUPPORTER_CATEGORIES;
   const { openBottomDonate, setQty, qty } = useCart();
 
   // State mapping each category ID to its currently selected option ID
@@ -65,7 +70,7 @@ export function OfficialSupportTiersSection() {
   };
 
   const handleSponsorTier = (categoryId: string) => {
-    const cat = SUPPORTER_CATEGORIES.find((c) => c.id === categoryId);
+    const cat = activeCategories.find((c) => c.id === categoryId);
     if (!cat) return;
     const currentOptionId = selectedOptions[categoryId] || cat.options[0].id;
     const option = cat.options.find((o) => o.id === currentOptionId) || cat.options[0];
@@ -87,7 +92,7 @@ export function OfficialSupportTiersSection() {
     const currentQty = qty[slug] || 0;
     setQty(slug, currentQty + 1);
 
-    const cat = SUPPORTER_CATEGORIES.find((c) => c.id === categoryId);
+    const cat = activeCategories.find((c) => c.id === categoryId);
     const option = cat?.options.find((o) => o.id === currentOptionId);
 
     setAddedNotification(`Added "${cat?.title} (${formatINR(option?.amount || 0)})" to Giving Basket!`);
@@ -157,7 +162,7 @@ export function OfficialSupportTiersSection() {
 
         {/* Mobile Tier Quick Jump Pills */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-2 mb-4 no-scrollbar md:hidden">
-          {SUPPORTER_CATEGORIES.map((cat, idx) => (
+          {activeCategories.map((cat, idx) => (
             <button
               key={cat.id}
               type="button"
@@ -175,7 +180,7 @@ export function OfficialSupportTiersSection() {
 
         {/* 5 Official Support Tiers: Horizontal Snap Track on Mobile, 3-Col Grid on Tablet/Desktop */}
         <div className="flex overflow-x-auto snap-x snap-mandatory gap-5 pb-4 no-scrollbar md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-6 lg:gap-7 items-stretch">
-          {SUPPORTER_CATEGORIES.map((cat) => {
+          {activeCategories.map((cat) => {
             const currentOptionId = selectedOptions[cat.id] || cat.options[0].id;
             const currentOption = cat.options.find((o) => o.id === currentOptionId) || cat.options[0];
             const isFlagship = cat.id === "food_one_day"; // Tier 1 Daily Annadana Flagship

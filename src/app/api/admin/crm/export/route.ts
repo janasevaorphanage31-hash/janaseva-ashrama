@@ -20,9 +20,12 @@ export async function GET(req: Request) {
   const session = await requireAdminApi(["SUPER_ADMIN", "STAFF_ADMIN", "FINANCE"]);
   if (!session) return new NextResponse("Unauthorized", { status: 401 });
 
+  const url = new URL(req.url);
+  const format = url.searchParams.get("format")?.toLowerCase();
+
   await writeAudit({
     actorAdminUserId: session.user.id,
-    action: "export_crm_donations",
+    action: format === "form10bd" ? "export_crm_form10bd" : "export_crm_donations",
     entity: "donations",
     ipAddress: clientIp(req),
   });
@@ -32,6 +35,59 @@ export async function GET(req: Request) {
     .from(donations)
     .orderBy(desc(donations.createdAt));
 
+  // If Form 10BD format requested (Indian Income Tax Act Statement of Donations under Section 80G)
+  if (format === "form10bd") {
+    const headers = [
+      "Sl No",
+      "Pre-acknowledgement Number",
+      "ID Type",
+      "Unique Identification Number (PAN)",
+      "Section Code",
+      "Name of Donor",
+      "Address of Donor",
+      "Donation Type",
+      "Mode of receipt",
+      "Amount of donation (INR)",
+    ];
+
+    const csvRows = [headers.join(",")];
+    let slNo = 1;
+
+    for (const d of rows) {
+      // Form 10BD is only for paid donations
+      if (d.status !== "paid") continue;
+
+      const meta = (d.meta as any) || {};
+      const pan = (meta.pan || meta.donorPan || "").toUpperCase();
+      const isElectronic = !["cash"].includes((d.mode || "").toLowerCase());
+
+      csvRows.push(
+        [
+          escapeCsv(slNo++),
+          escapeCsv(d.receiptNo || d.publicId),
+          escapeCsv(pan ? "Permanent Account Number (PAN)" : "Other"),
+          escapeCsv(pan || "NOT_PROVIDED"),
+          escapeCsv("Section 80G"),
+          escapeCsv(d.donorName),
+          escapeCsv(meta.address || meta.donorAddress || "Bengaluru, Karnataka"),
+          escapeCsv("Specific grant"),
+          escapeCsv(isElectronic ? "Electronic modes including account payee cheque/draft" : "Cash"),
+          escapeCsv(d.amount),
+        ].join(","),
+      );
+    }
+
+    const csvContent = csvRows.join("\r\n");
+    return new NextResponse(csvContent, {
+      status: 200,
+      headers: {
+        "Content-Type": "text/csv; charset=utf-8",
+        "Content-Disposition": `attachment; filename="janaseva_form10bd_compliance_${Date.now()}.csv"`,
+      },
+    });
+  }
+
+  // Default Full CRM Ledger Export
   const lines = await db.select().from(donationLines);
   const linesMap = lines.reduce<Record<number, string[]>>((acc, l) => {
     if (!l.donationId) return acc;
