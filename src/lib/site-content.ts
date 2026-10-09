@@ -268,9 +268,17 @@ export async function getSiteContentMap(): Promise<SiteContentMap> {
     if (!row || !row.body) return DEFAULT_SITE_CONTENT;
 
     const parsed = JSON.parse(row.body);
+
+    const sanitizedHeroVideo =
+      parsed.heroVideoUrl && parsed.heroVideoUrl !== "/media/master-mobile.mp4"
+        ? parsed.heroVideoUrl
+        : "/media/video-chant-prayer.mp4";
+
     return {
       ...DEFAULT_SITE_CONTENT,
       ...parsed,
+      heroVideoUrl: sanitizedHeroVideo,
+      heroPosterUrl: parsed.heroPosterUrl || "/media/poster-desktop.jpg",
       docChapters: parsed.docChapters || DEFAULT_SITE_CONTENT.docChapters,
       quotes: parsed.quotes || DEFAULT_SITE_CONTENT.quotes,
       faqs: parsed.faqs || DEFAULT_SITE_CONTENT.faqs,

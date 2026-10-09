@@ -119,8 +119,9 @@ export function CinematicHero({ content }: { content?: Partial<SiteContentMap> }
   };
 
   const activeTier = DIVINE_SHAGUN_TIERS.find((t) => t.amount === selectedShagun) || DIVINE_SHAGUN_TIERS[3];
-  const posterSrc = content?.heroPosterUrl || "/media/annadana-hall-hd.jpg";
+  const posterSrc = content?.heroPosterUrl || "/media/poster-desktop.jpg";
   const videoSrc = content?.heroVideoUrl || "/media/video-chant-prayer.mp4";
+  const [fitMode, setFitMode] = useState<"cover" | "contain">("cover");
 
   return (
     <section
@@ -128,17 +129,19 @@ export function CinematicHero({ content }: { content?: Partial<SiteContentMap> }
       className="relative w-full max-w-full overflow-hidden bg-teal-950 flex flex-col text-white"
     >
       {/* ── 1. FULL-WIDTH 100% UNOBSTRUCTED CINEMATIC VIDEO VIEWPORT ── */}
-      <div className="relative w-full h-[46svh] sm:h-[56svh] md:h-[66svh] lg:h-[72svh] max-h-[740px] overflow-hidden bg-black select-none">
-        {/* Background poster (LCP-critical) */}
+      <div className="relative w-full aspect-[16/10] sm:aspect-[16/9] md:h-[62svh] lg:h-[70svh] min-h-[260px] max-h-[760px] overflow-hidden bg-black select-none flex items-center justify-center">
+        {/* Background poster (LCP-critical, authentic Ashrama 25 boys in orange prayer) */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={posterSrc}
-          alt="Authentic Annadana food preparation and prayers for 25 boys at Janaseva Ashrama"
+          alt="Authentic Annadana food preparation and prayers for 25 boys at Janaseva Ashrama Bangalore"
           fetchPriority="high"
-          className="absolute inset-0 h-full w-full object-cover object-center"
+          className={`absolute inset-0 h-full w-full ${
+            fitMode === "contain" ? "object-contain" : "object-cover object-center"
+          }`}
         />
 
-        {/* Autoplay edge-to-edge looping video - 100% UNBLOCKED! */}
+        {/* Autoplay edge-to-edge looping video of real Janaseva Ashrama prayer hall */}
         <video
           ref={videoRef}
           src={videoSrc}
@@ -146,55 +149,71 @@ export function CinematicHero({ content }: { content?: Partial<SiteContentMap> }
           muted={isMuted}
           loop
           playsInline
-          preload="metadata"
+          preload="auto"
           aria-hidden
           onLoadedData={() => setVideoReady(true)}
-          className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-1000 ${
+          className={`absolute inset-0 h-full w-full ${
+            fitMode === "contain" ? "object-contain" : "object-cover object-center"
+          } transition-opacity duration-700 ${
             videoReady ? "opacity-100" : "opacity-0"
           }`}
-        />
+        >
+          <source src={videoSrc} type="video/mp4" />
+          <source src="/media/video-chant-prayer.mp4" type="video/mp4" />
+        </video>
 
         {/* Subtle, non-intrusive vignette for contrast */}
-        <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/60 to-transparent pointer-events-none" />
-        <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-teal-950 via-teal-950/60 to-transparent pointer-events-none" />
+        <div className="absolute inset-x-0 top-0 h-20 sm:h-24 bg-gradient-to-b from-black/70 via-black/30 to-transparent pointer-events-none" />
+        <div className="absolute inset-x-0 bottom-0 h-20 sm:h-24 bg-gradient-to-t from-teal-950 via-teal-950/60 to-transparent pointer-events-none" />
 
         {/* Top Floating Controls */}
-        <div className="absolute inset-x-0 top-3 sm:top-5 z-20 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 flex items-center justify-between pointer-events-auto">
+        <div className="absolute inset-x-0 top-2.5 sm:top-4 z-20 mx-auto max-w-7xl px-3 sm:px-6 lg:px-8 flex items-center justify-between pointer-events-auto">
           {/* Live Kitchen Beacon */}
-          <div className="flex items-center gap-2 rounded-full bg-black/60 px-3 sm:px-4 py-1.5 text-[11px] sm:text-xs font-bold text-white backdrop-blur border border-white/20 shadow-lg">
-            <span className="relative flex h-2.5 w-2.5">
+          <div className="flex items-center gap-2 rounded-full bg-black/65 px-3 sm:px-4 py-1.5 text-[10px] sm:text-xs font-bold text-white backdrop-blur border border-white/20 shadow-lg">
+            <span className="relative flex h-2 w-2 sm:h-2.5 sm:w-2.5">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-80"></span>
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 sm:h-2.5 sm:w-2.5 bg-red-500"></span>
             </span>
             <span className="uppercase tracking-wider">Live Ashrama Feed · 25 Resident Boys</span>
           </div>
 
-          {/* Sound Toggle */}
-          <button
-            type="button"
-            onClick={toggleSound}
-            aria-label={isMuted ? "Unmute video sound" : "Mute video sound"}
-            className="focus-ring tap-scale flex items-center gap-2 rounded-full border border-white/25 bg-black/60 px-3 sm:px-4 py-1.5 text-xs font-bold text-white backdrop-blur hover:bg-black/80 shadow-lg transition cursor-pointer"
-          >
-            {isMuted ? (
-              <svg className="h-4 w-4 fill-current text-white/80" viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27l4.73 4.73H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z" />
-              </svg>
-            ) : (
-              <svg className="h-4 w-4 fill-current text-amber-400" viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z" />
-              </svg>
-            )}
-            <span className="hidden sm:inline">{isMuted ? "Sound Off" : "Sound On"}</span>
-          </button>
+          {/* Action Controls: Fit Mode & Sound Toggle */}
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <button
+              type="button"
+              onClick={() => setFitMode((m) => (m === "cover" ? "contain" : "cover"))}
+              title={fitMode === "cover" ? "Fit entire hall without cropping" : "Fill screen"}
+              className="focus-ring tap-scale flex items-center gap-1.5 rounded-full border border-white/25 bg-black/65 px-2.5 sm:px-3.5 py-1.5 text-[11px] sm:text-xs font-bold text-white backdrop-blur hover:bg-black/85 shadow-lg transition cursor-pointer"
+            >
+              <span>{fitMode === "cover" ? "🔍 Fit View" : "⛶ Fill"}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={toggleSound}
+              aria-label={isMuted ? "Unmute video sound" : "Mute video sound"}
+              className="focus-ring tap-scale flex items-center gap-1.5 rounded-full border border-white/25 bg-black/65 px-3 sm:px-4 py-1.5 text-[11px] sm:text-xs font-bold text-white backdrop-blur hover:bg-black/85 shadow-lg transition cursor-pointer"
+            >
+              {isMuted ? (
+                <svg className="h-4 w-4 fill-current text-white/80" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27l4.73 4.73H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z" />
+                </svg>
+              ) : (
+                <svg className="h-4 w-4 fill-current text-amber-400" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z" />
+                </svg>
+              )}
+              <span className="hidden sm:inline">{isMuted ? "Sound Off" : "Sound On"}</span>
+            </button>
+          </div>
         </div>
 
         {/* Minimal Bottom Location Tag (Does NOT cover the video!) */}
-        <div className="absolute inset-x-0 bottom-3 z-20 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 flex items-center justify-between text-[11px] sm:text-xs text-white/80 pointer-events-none">
-          <span className="rounded-lg bg-black/50 px-2.5 py-1 backdrop-blur border border-white/10 font-medium">
+        <div className="absolute inset-x-0 bottom-2.5 sm:bottom-3 z-20 mx-auto max-w-7xl px-3 sm:px-6 lg:px-8 flex items-center justify-between text-[10px] sm:text-xs text-white/80 pointer-events-none">
+          <span className="rounded-lg bg-black/60 px-2.5 py-1 backdrop-blur border border-white/10 font-medium truncate max-w-[70%] sm:max-w-none">
             📍 Turahalli, Bangalore · Chanting, Prayer &amp; Pure Annadana
           </span>
-          <span className="hidden sm:inline-block rounded-lg bg-black/50 px-2.5 py-1 backdrop-blur border border-white/10 font-bold text-amber-300">
+          <span className="hidden sm:inline-block rounded-lg bg-black/60 px-2.5 py-1 backdrop-blur border border-white/10 font-bold text-amber-300">
             Form 10AC 80G Tax Deductible
           </span>
         </div>

@@ -267,8 +267,8 @@ export const EMOTIONAL_QUOTES = [
  * Poster is always shown first; if a video fails, the poster stays.
  */
 export const CINEMATIC = {
-  videoDesktop: "/media/master-mobile.mp4",
-  videoMobile: "/media/master-mobile.mp4",
+  videoDesktop: "/media/video-chant-prayer.mp4",
+  videoMobile: "/media/video-chant-prayer.mp4",
   posterDesktop: "/media/poster-desktop.jpg",
   posterMobile: "/media/poster.jpg",
 };
