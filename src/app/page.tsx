@@ -1,24 +1,6 @@
 import { CinematicHero } from "@/components/CinematicHero";
-import { HorizontalMovingReel } from "@/components/HorizontalMovingReel";
-import { OfficialSupportTiersSection } from "@/components/sections/OfficialSupportTiersSection";
-import { ThemeNavBar } from "@/components/ThemeNavBar";
-import { TodaySection } from "@/components/sections/TodaySection";
-import { ImpactCart } from "@/components/ImpactCart";
-import { TrendingBirthdaySection } from "@/components/sections/TrendingBirthdaySection";
-import { CommunityActivitiesSection } from "@/components/sections/CommunityActivitiesSection";
-import { RealBoysGallerySection } from "@/components/sections/RealBoysGallerySection";
-import { DocumentaryVideoSection } from "@/components/sections/DocumentaryVideoSection";
-import { EmotionalQuotesSection } from "@/components/sections/EmotionalQuotesSection";
-import { TransparencySection } from "@/components/sections/TransparencySection";
-import { TrustSection } from "@/components/sections/TrustSection";
-import { VerifiedImpactSection } from "@/components/sections/VerifiedImpactSection";
-import { InvolvedSection } from "@/components/sections/InvolvedSection";
-import { DonationFAQ } from "@/components/DonationFAQ";
-import { FutureSection } from "@/components/sections/FutureSection";
-import { ContactSection } from "@/components/sections/ContactSection";
-import { Container } from "@/components/ui";
+import { HomeSectionsHub } from "@/components/HomeSectionsHub";
 import { Track } from "@/components/Track";
-
 import {
   getDocuments,
   getMetrics,
@@ -26,6 +8,9 @@ import {
   getVerifiedPlatformTotals,
 } from "@/lib/content";
 import { getSiteContentMap } from "@/lib/site-content";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export default async function Home() {
   const [updates, docs, metrics, totals, siteContent] = await Promise.all([
@@ -43,61 +28,14 @@ export default async function Home() {
       {/* 1. Cinematic Opening (Awareness & Emotional Hook: 25 Boys Residential Orphanage) */}
       <CinematicHero content={siteContent} />
 
-      {/* 2. Top Theme Quick Navigation (Instant Anchor Jump with Icons & Short Names) */}
-      <ThemeNavBar />
-
-      {/* 3. Exact 5 Official Support Tiers & Pricing (Official Trust Sponsorship Section at Top) */}
-      <OfficialSupportTiersSection />
-
-      {/* 4. Horizontal Moving Reel (Video Clips & Photographs Moving Horizontally) */}
-      <HorizontalMovingReel />
-
-      {/* 5. Today at Janaseva (Real Daily Visual Moments, Kitchen Updates & Daily Annadana Status) */}
-      <TodaySection updates={updates} />
-
-      {/* 6. Verified Needs Catalogue & Direct Giving Basket (Categorized Food, Vidya, Health, Shelter) */}
-      <Track event="need_view" onView />
-      <ImpactCart />
-
-      {/* 7. Celebrate Milestones with 25 Boys (Occasion, Birthday Feast & WhatsApp Video Delivery) */}
-      <TrendingBirthdaySection wishVideos={siteContent?.wishVideos} />
-
-      {/* 8. Deep Emotional Voices & Caregiver Reflections (Donor Psychology & Empathy) */}
-      <EmotionalQuotesSection />
-
-      {/* 9. Real Boys Interactive Visual Gallery (Curated Ground Moments, Prayers, Classes & Sports) */}
-      <RealBoysGallerySection />
-
-      {/* 10. Life in Motion: Documentary Video Chapters (Unstaged Daily Boy Life) */}
-      <DocumentaryVideoSection />
-
-      {/* 11. Transparency Center & 5 Official Govt Accreditations (Form 28, Form 10AC, CSR-1, 12AA, PAN) */}
-      <TransparencySection docs={docs} />
-
-      {/* 12. Trust & Accountability Pillars, 256-Bit Security & Axis Bank Direct Transfer Details */}
-      <TrustSection />
-
-      {/* 13. Verified Impact Platform Metrics (25 Resident Boys, 27,375 Annual Meals, 100% Schooling) */}
-      <VerifiedImpactSection metrics={metrics} totals={totals} />
-
-      {/* 14. On-Ground NGO Activities & Community Outreach Campaigns (Health Camps, Food Relief, Drives) */}
-      <CommunityActivitiesSection />
-
-      {/* 15. Frequently Asked Questions (FAQ) - Direct Answers to Donor Doubts */}
-      <section id="faq" className="scroll-mt-14 py-10 md:py-16 bg-sand/35 w-full max-w-full overflow-hidden">
-        <Container>
-          <DonationFAQ />
-        </Container>
-      </section>
-
-      {/* 16. Give Your Time: Volunteers & Corporate CSR Partnerships */}
-      <InvolvedSection />
-
-      {/* 17. Campus Expansion Vision (Future Project Blueprint) */}
-      <FutureSection />
-
-      {/* 18. Bengaluru Location, Map & Direct Bank Details */}
-      <ContactSection />
+      {/* 2. Organized Vertical Sections Hub (Drastically Cuts Mobile Scrolling Time & Gives App-Like Multi-Section Navigation) */}
+      <HomeSectionsHub
+        updates={updates}
+        docs={docs}
+        metrics={metrics}
+        totals={totals}
+        siteContent={siteContent}
+      />
     </>
   );
 }

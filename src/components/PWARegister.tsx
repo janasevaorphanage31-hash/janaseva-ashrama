@@ -19,6 +19,17 @@ export function PWARegister() {
           }
         }).catch(() => {});
       }
+
+      // If browser previously had an active service worker, reload once to take new HTML immediately
+      const HAS_CLEARED = "js_v2_cache_cleared";
+      if (!sessionStorage.getItem(HAS_CLEARED)) {
+        sessionStorage.setItem(HAS_CLEARED, "true");
+        navigator.serviceWorker.getRegistrations().then((regs) => {
+          if (regs.length > 0) {
+            window.location.reload();
+          }
+        }).catch(() => {});
+      }
     }
   }, []);
 
