@@ -161,16 +161,19 @@ export function OfficialSupportTiersSection({
         </div>
 
         {/* Mobile Tier Quick Jump Pills */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-2 mb-4 no-scrollbar md:hidden">
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-2 mb-6 no-scrollbar md:hidden">
           {activeCategories.map((cat, idx) => (
             <button
               key={cat.id}
               type="button"
               onClick={() => {
                 const el = document.getElementById(`tier-card-${cat.id}`);
-                el?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+                if (el) {
+                  const y = el.getBoundingClientRect().top + window.pageYOffset - 80;
+                  window.scrollTo({ top: y, behavior: "smooth" });
+                }
               }}
-              className="shrink-0 rounded-xl bg-white border border-teal-900/15 px-3 py-1.5 text-[11px] font-bold text-teal-950 active:bg-sand transition flex items-center gap-1 cursor-pointer"
+              className="shrink-0 rounded-xl bg-white border border-teal-900/15 px-3 py-1.5 text-[11px] font-bold text-teal-950 active:bg-sand transition flex items-center gap-1.5 cursor-pointer shadow-xs"
             >
               <span>{cat.icon}</span>
               <span>Tier 0{idx + 1}</span>
@@ -178,8 +181,8 @@ export function OfficialSupportTiersSection({
           ))}
         </div>
 
-        {/* 5 Official Support Tiers: Horizontal Snap Track on Mobile, 3-Col Grid on Tablet/Desktop */}
-        <div className="flex overflow-x-auto snap-x snap-mandatory gap-5 pb-4 no-scrollbar md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-6 lg:gap-7 items-stretch">
+        {/* 5 Official Support Tiers: Vertical Scroll on Mobile, Responsive Multi-Col on Desktop */}
+        <div className="flex flex-col space-y-6 md:space-y-0 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-6 lg:gap-7 items-stretch">
           {activeCategories.map((cat) => {
             const currentOptionId = selectedOptions[cat.id] || cat.options[0].id;
             const currentOption = cat.options.find((o) => o.id === currentOptionId) || cat.options[0];
@@ -192,7 +195,7 @@ export function OfficialSupportTiersSection({
               <div
                 key={cat.id}
                 id={`tier-card-${cat.id}`}
-                className={`snap-center shrink-0 w-[88vw] max-w-[360px] md:w-auto md:max-w-none relative flex flex-col justify-between rounded-3xl p-5 sm:p-6 transition-all duration-300 hover:shadow-xl ${
+                className={`w-full relative flex flex-col justify-between rounded-3xl p-5 sm:p-6 transition-all duration-300 hover:shadow-xl ${
                   isFlagship
                     ? "bg-gradient-to-b from-white via-white to-amber-50/70 border-2 border-saffron shadow-lg ring-2 ring-saffron/20 lg:scale-[1.02]"
                     : "bg-white border border-teal-900/15 shadow-sm hover:border-teal-900/30"
@@ -352,7 +355,7 @@ export function OfficialSupportTiersSection({
           })}
 
           {/* 6th Card: Custom Giving & Official Axis Bank Transfer */}
-          <div className="snap-center shrink-0 w-[88vw] max-w-[360px] md:w-auto md:max-w-none flex flex-col justify-between rounded-3xl bg-teal-950 text-white p-5 sm:p-6 shadow-xl border border-amber-400/30">
+          <div className="w-full flex flex-col justify-between rounded-3xl bg-teal-950 text-white p-5 sm:p-6 shadow-xl border border-amber-400/30">
             <div>
               <div className="flex items-center justify-between pb-3 border-b border-white/15">
                 <span className="rounded-lg bg-amber-400/20 px-2.5 py-0.5 text-xs font-black text-amber-300">

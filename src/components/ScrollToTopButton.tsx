@@ -39,10 +39,8 @@ export function ScrollToTopButton() {
 
   if (!visible) return null;
 
-  // Position above bottom nav / giving basket on mobile
-  const bottomCls = total > 0 || count > 0
-    ? "bottom-[calc(9.5rem+env(safe-area-inset-bottom))] md:bottom-6"
-    : "bottom-[calc(4.75rem+env(safe-area-inset-bottom))] md:bottom-6";
+  // Position cleanly above floating urgent donation dock on mobile & desktop
+  const bottomCls = "bottom-[calc(8.75rem+env(safe-area-inset-bottom))] md:bottom-24";
 
   return (
     <div

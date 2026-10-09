@@ -41,13 +41,6 @@ const MODES: ModeItem[] = [
     description: "Complete full-length journey of Janaseva Ashrama",
   },
   {
-    id: "annadana",
-    label: "Annadana & Meals",
-    icon: "🍲",
-    badge: "₹11+ Shagun",
-    description: "Daily breakfast, lunch & dinner for 25 boys",
-  },
-  {
     id: "tiers",
     label: "5 Support Tiers",
     icon: "🏛️",
@@ -60,6 +53,13 @@ const MODES: ModeItem[] = [
     icon: "🎂",
     badge: "Video Song",
     description: "Sponsor cake, sweets & get a video song blessing",
+  },
+  {
+    id: "annadana",
+    label: "Daily Needs Basket",
+    icon: "🛒",
+    badge: "Giving Basket",
+    description: "Provisions & meals for 25 resident boys",
   },
   {
     id: "life",
@@ -450,19 +450,16 @@ export function HomeSectionsHub({
       {/* ============================================================== */}
       {activeMode === "all" && (
         <div className="space-y-0 animate-fadeIn">
-          {/* 1. Today at Janaseva (Real Kitchen updates, Today's Annadana status for 25 boys) */}
-          <TodaySection updates={updates} mealsStatus={siteContent?.todayMealsStatus} />
-
-          {/* 2. Direct Giving Basket & ₹11+ Auspicious Vedic Shagun Giving */}
-          <ImpactCart />
-
-          {/* 3. Exact 5 Official Support Tiers & Pricing (Form 28 JJ Act Registered) */}
+          {/* 1. Exact 5 Official Support Tiers & Pricing (Form 28 JJ Act Registered) */}
           <OfficialSupportTiersSection tiers={siteContent?.supportTiers} />
 
-          {/* 4. Birthday & Milestone Feasts (3 Delivered Showcases in Horizontal Motion) */}
+          {/* 2. Birthday & Milestone Feasts (Celebrate Birthday with 25 Boys) */}
           <TrendingBirthdaySection wishVideos={siteContent?.wishVideos} />
 
-          {/* 5. Horizontal Moving Reel (Video Clips & Photos) */}
+          {/* 3. Categorized Daily Needs & Direct Giving Basket */}
+          <ImpactCart />
+
+          {/* 4. Horizontal Moving Reel (Video Clips & Photos) */}
           <HorizontalMovingReel />
 
           {/* 6. Real Boys Visual Gallery (Curated 60 Photos & Videos) */}

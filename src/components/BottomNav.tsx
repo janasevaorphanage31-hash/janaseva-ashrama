@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useCart } from "./CartProvider";
-import { formatINR } from "@/lib/site";
 import { track } from "@/lib/track";
 
 interface MoreItem {
@@ -109,17 +108,9 @@ function MenuIcon() {
 
 export function BottomNav() {
   const path = usePathname();
-  const { total, count, openBottomDonate } = useCart();
+  const { count, openBottomDonate } = useCart();
   const [open, setOpen] = useState(false);
-  const [prevTotal, setPrevTotal] = useState(total);
   const [prevPath, setPrevPath] = useState(path);
-  const [cartAnimKey, setCartAnimKey] = useState(0);
-
-  // Sync animation key if total changed
-  if (total !== prevTotal) {
-    setPrevTotal(total);
-    setCartAnimKey((k) => k + 1);
-  }
 
   // Close drawer if path changed
   if (path !== prevPath) {
@@ -256,35 +247,7 @@ export function BottomNav() {
         </div>
       )}
 
-      {/* ── CART CHECKOUT FLOATING ISLAND (Single Global Source of Truth) ── */}
-      {total > 0 && path !== "/checkout" && (
-        <div
-          key={cartAnimKey}
-          className="fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] inset-x-3 z-40 md:hidden scale-in"
-        >
-          <Link
-            href="/checkout"
-            className="flex items-center justify-between rounded-2xl bg-teal-950 p-3.5 text-white shadow-[0_12px_40px_rgba(5,47,44,0.4)] ring-1 ring-gold/40 border border-teal-800 transition tap-scale"
-          >
-            <div className="flex items-center gap-3 min-w-0">
-              <span className="grid h-8 w-8 place-items-center rounded-xl bg-saffron text-xs font-black text-white shrink-0 shadow-md">
-                {count}
-              </span>
-              <div className="min-w-0">
-                <p className="text-xs font-bold text-gold truncate">
-                  Giving Basket: {formatINR(total)}
-                </p>
-                <p className="text-[10px] text-teal-200/80 truncate">
-                  100% Direct Allocation · Instant 80G
-                </p>
-              </div>
-            </div>
-            <span className="inline-flex items-center gap-1 text-xs font-extrabold text-white bg-saffron hover:bg-saffron-dark px-3.5 py-2 rounded-xl shadow-md shrink-0 ml-2">
-              Donate →
-            </span>
-          </Link>
-        </div>
-      )}
+
 
       {/* ── BOTTOM NAV BAR ── */}
       <nav
