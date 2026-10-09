@@ -39,12 +39,12 @@ export function ScrollToTopButton() {
 
   if (!visible) return null;
 
-  // Position cleanly above floating urgent donation dock on mobile & desktop
-  const bottomCls = "bottom-[calc(8.75rem+env(safe-area-inset-bottom))] md:bottom-24";
+  // Position cleanly on the left side above urgent donation dock on mobile & desktop
+  const bottomCls = "bottom-[calc(9.2rem+env(safe-area-inset-bottom))] md:bottom-24";
 
   return (
     <div
-      className={`fixed ${bottomCls} right-3 sm:right-5 z-40 no-print transition-all duration-300 ease-out animate-fadeIn`}
+      className={`fixed ${bottomCls} left-3 sm:left-5 z-40 no-print transition-all duration-300 ease-out animate-fadeIn`}
     >
       <button
         type="button"
