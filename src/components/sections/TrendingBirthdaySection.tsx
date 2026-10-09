@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useRef } from "react";
+import Image from "next/image";
 import { Container, Head, Section } from "../ui";
 import { useCart } from "../CartProvider";
 import { formatINR, SITE } from "@/lib/site";
@@ -9,15 +10,11 @@ import type { WishVideoItem } from "@/lib/site-content";
 import { track } from "@/lib/track";
 import {
   BirthdayCakeIcon,
-  BlessingsHeartIcon,
   FeastPlatterIcon,
   VisitAshramaIcon,
   TrendingSparkIcon,
   CalendarSlotIcon,
   MapPinIcon,
-  TaxShieldIcon,
-  WhatsAppStatusIcon,
-  InstagramStoryIcon,
 } from "../icons/CelebrationIcons";
 
 interface FeastOption {
@@ -66,179 +63,247 @@ const FEAST_OPTIONS: FeastOption[] = [
   },
 ];
 
+interface CelebrationShowcase {
+  id: string;
+  celebrantName: string;
+  occasion: string;
+  donorName: string;
+  deliveredDate: string;
+  packageTitle: string;
+  packageCost: number;
+  videoUrl: string;
+  thumbnailUrl: string;
+  quote: string;
+  highlights: string;
+}
+
+const CELEBRATION_SHOWCASES: CelebrationShowcase[] = [
+  {
+    id: "showcase-1",
+    celebrantName: "Little Ananya's 7th Birthday",
+    occasion: "7th Birthday Feast",
+    donorName: "Priya & Rajesh (Bengaluru)",
+    deliveredDate: "Delivered on WhatsApp • 28 Sep",
+    packageTitle: "Special Birthday Lunch with Payasam",
+    packageCost: 3501,
+    videoUrl: "/media/video-chant-prayer.mp4",
+    thumbnailUrl: "/media/birthday-cake-celebration.jpg",
+    quote: "Happy Birthday Ananya Didi! Thank you for the sweet payasam and celebration! All 25 of us chanted your name and prayed for your happiness!",
+    highlights: "Red rose petals · Sweet payasam feast · Personal WhatsApp song",
+  },
+  {
+    id: "showcase-2",
+    celebrantName: "Dr. & Mrs. Kulkarni's 25th Anniversary",
+    occasion: "Silver Jubilee Celebration",
+    donorName: "Siddharth Kulkarni (Indiranagar)",
+    deliveredDate: "Delivered on WhatsApp • 01 Oct",
+    packageTitle: "Complete Day Nourishment & Fruits",
+    packageCost: 7501,
+    videoUrl: "/media/video-chess-boys.mp4",
+    thumbnailUrl: "/media/birthday-donor-roses.jpg",
+    quote: "Happy 25th Anniversary Uncle & Aunty! All 25 boys chanted your names during morning prayer and thanked you for the wholesome feast!",
+    highlights: "Full day satvik meals · Shloka chanting blessing · 80G Tax receipt",
+  },
+  {
+    id: "showcase-3",
+    celebrantName: "Vikram's First Salary Milestone",
+    occasion: "First Salary Dedication",
+    donorName: "Vikram S. (Whitefield)",
+    deliveredDate: "Delivered on WhatsApp • 03 Oct",
+    packageTitle: "Evening Snacks & Fresh Fruit Platter",
+    packageCost: 2501,
+    videoUrl: "/media/video-chant-prayer.mp4",
+    thumbnailUrl: "/media/banana-leaf-feast.jpg",
+    quote: "Congratulations Vikram Bhaiya on your first job! May God bless you with immense success, health, and joy in your career!",
+    highlights: "Fresh banana & apple baskets · Warm evening milk · Brotherly joy",
+  },
+];
+
 export function TrendingBirthdaySection({ wishVideos }: { wishVideos?: WishVideoItem[] }) {
-  const { setCustom } = useCart();
+  const { setCustom, openBottomDonate } = useCart();
   const [selectedFeast, setSelectedFeast] = useState<string>("feast-lunch");
-  const [copiedStory, setCopiedStory] = useState(false);
-  const [activeWishIndex, setActiveWishIndex] = useState(0);
+  const [activeVideoId, setActiveVideoId] = useState<string | null>(null);
+  const trackRef = useRef<HTMLDivElement>(null);
 
   const activeFeast = FEAST_OPTIONS.find((f) => f.id === selectedFeast) || FEAST_OPTIONS[0];
 
-  const wishes = wishVideos && wishVideos.length > 0 ? wishVideos : [
-    {
-      id: "wish-1",
-      celebrantName: "Little Ananya's 7th Birthday",
-      occasion: "7th Birthday",
-      donorName: "Priya & Rajesh (Bengaluru)",
-      deliveredDate: "Delivered on WhatsApp • 28 Sep 2026",
-      packageTitle: "Special Birthday Lunch with Payasam",
-      packageCost: 3501,
-      videoUrl: "/media/video-chant-prayer.mp4",
-      thumbnailUrl: "/media/birthday-cake-celebration.jpg",
-      quote: "Happy Birthday Ananya Didi! Thank you for the sweet payasam and celebration! All 25 of us chanted your name and prayed for your happiness!",
-    },
-    {
-      id: "wish-2",
-      celebrantName: "Dr. & Mrs. Kulkarni's 25th Anniversary",
-      occasion: "Silver Jubilee Anniversary",
-      donorName: "Siddharth Kulkarni (Indiranagar)",
-      deliveredDate: "Delivered on WhatsApp • 01 Oct 2026",
-      packageTitle: "Complete Day Nourishment & Fruits",
-      packageCost: 7501,
-      videoUrl: "/media/video-chess-boys.mp4",
-      thumbnailUrl: "/media/birthday-donor-roses.jpg",
-      quote: "Happy 25th Anniversary Uncle & Aunty! All 25 boys chanted your names during morning prayer and thanked you for the feast!",
-    },
-    {
-      id: "wish-3",
-      celebrantName: "Vikram's First Salary Celebration",
-      occasion: "First Salary Milestone",
-      donorName: "Vikram S. (Whitefield)",
-      deliveredDate: "Delivered on WhatsApp • 03 Oct 2026",
-      packageTitle: "Evening Snacks & Fresh Fruit Platter",
-      packageCost: 2501,
-      videoUrl: "/media/video-chant-prayer.mp4",
-      thumbnailUrl: "/media/banana-leaf-feast.jpg",
-      quote: "Congratulations Vikram Bhaiya on your first job! May God bless you with immense success in your career!",
-    },
-  ];
-
-  const currentWish = wishes[activeWishIndex] || wishes[0];
-
-  const handleSponsorOnline = () => {
-    track("birthday_sponsor_click", { feast: activeFeast.id, amount: activeFeast.cost });
-    // Add custom amount equal to feast cost to the cart
-    setCustom(activeFeast.cost);
+  const handleSponsorOnline = (cost: number, occasionName: string) => {
+    track("birthday_sponsor_click", { occasion: occasionName, amount: cost });
+    openBottomDonate(cost, "birthday_feast");
   };
 
-  const handleCopyStory = () => {
-    const origin = typeof window !== "undefined" ? window.location.origin : (SITE.url || "https://www.janasevaashrama.org");
-    const text = `This birthday, I am celebrating with 25 boys at Janaseva Ashrama in Bengaluru! Instead of material gifts, join me in sponsoring wholesome meals: ${origin}/celebrate-birthday #JanasevaAshrama #BirthdayGiving #Bengaluru`;
-    if (typeof navigator !== "undefined" && navigator.clipboard) {
-      navigator.clipboard.writeText(text);
-      setCopiedStory(true);
-      setTimeout(() => setCopiedStory(false), 3000);
+  const scrollShowcase = (direction: "left" | "right") => {
+    if (trackRef.current) {
+      const scrollAmount = direction === "left" ? -340 : 340;
+      trackRef.current.scrollBy({ left: scrollAmount, behavior: "smooth" });
     }
   };
 
   return (
-    <Section id="celebrate" tone="cream" className="py-12 md:py-16">
+    <Section id="celebrate" tone="cream" className="py-12 md:py-16 overflow-hidden">
       <Container>
         {/* Trending Eyebrow Badge */}
         <div className="flex items-center justify-center mb-3">
           <div className="inline-flex items-center gap-2 rounded-xl bg-saffron/15 px-3.5 py-1.5 text-xs font-bold uppercase tracking-wider text-saffron-dark ring-1 ring-saffron/30">
             <TrendingSparkIcon className="h-4 w-4 text-saffron-dark" />
-            <span>Trending in Bengaluru: Birthday Giving</span>
+            <span>Trending in Bengaluru: Auspicious Birthday &amp; Milestone Giving</span>
           </div>
         </div>
 
         <Head
           eyebrow="Heartfelt Celebrations"
           title="Celebrate Your Birthday with 25 Boys"
-          lead="Experience the profound joy of sharing your milestone with young boys. Sponsoring a birthday feast or visiting the Ashrama creates heartwarming memories that outlast any ordinary party."
+          lead="Experience the profound joy of sharing your milestone with our 25 young boys. Sponsoring a birthday feast or visiting the Ashrama creates heartwarming memories that outlast any ordinary celebration."
         />
 
-        {/* Real Delivered WhatsApp Wish Video Showcase Card */}
-        <div className="mt-6 overflow-hidden rounded-3xl bg-teal-950 text-white shadow-xl border border-teal-800">
-          <div className="bg-teal-900/90 px-4 sm:px-6 py-3 border-b border-teal-800 flex flex-wrap items-center justify-between gap-2">
+        {/* ── 3 DISTINCT CELEBRATION SHOWCASES IN HORIZONTAL MOVEMENT ── */}
+        <div className="mt-8 relative w-full">
+          {/* Section sub-header with direction controls */}
+          <div className="flex items-center justify-between mb-4 px-1">
             <div className="flex items-center gap-2">
-              <span className="flex h-2.5 w-2.5 rounded-full bg-emerald-400" />
-              <span className="text-xs font-bold text-white uppercase tracking-wider">
-                Real Delivered WhatsApp Video Proof
-              </span>
-              <span className="rounded-md bg-emerald-500/20 px-2 py-0.5 text-[10px] font-bold text-emerald-300">
-                Delivered Within 2 Hours of Lunch
+              <span className="flex h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="text-xs sm:text-sm font-bold text-teal-950 uppercase tracking-wider">
+                3 Real Delivered Celebrations (WhatsApp Video Proof)
               </span>
             </div>
-            <span className="text-[11px] text-gold font-semibold">
-              Included Free With All Feast Bookings
-            </span>
-          </div>
 
-          <div className="p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] gap-6 items-center">
-            {/* Left: Video Player with Controls */}
-            <div className="relative aspect-video w-full rounded-2xl overflow-hidden bg-black ring-1 ring-white/10 shadow-lg">
-              <video
-                key={currentWish.videoUrl}
-                src={currentWish.videoUrl}
-                poster={currentWish.thumbnailUrl}
-                controls
-                playsInline
-                preload="metadata"
-                className="h-full w-full object-cover"
-              />
-            </div>
-
-            {/* Right: Delivered WhatsApp Chat Card */}
-            <div className="flex flex-col justify-between space-y-4">
-              <div>
-                <div className="flex items-center justify-between gap-2">
-                  <span className="rounded-lg bg-gold px-2.5 py-1 text-xs font-black text-teal-950 uppercase tracking-wide">
-                    {currentWish.occasion}
-                  </span>
-                  <span className="text-xs text-white/60">
-                    {currentWish.deliveredDate}
-                  </span>
-                </div>
-
-                <h4 className="mt-2.5 font-display text-lg sm:text-xl font-bold text-white">
-                  {currentWish.celebrantName}
-                </h4>
-                <p className="text-xs text-gold/90 font-medium">
-                  Sponsored by {currentWish.donorName}
-                </p>
-
-                {/* WhatsApp Chat Speech Bubble */}
-                <div className="mt-3 rounded-2xl bg-white/10 p-3.5 border border-white/10 text-xs text-white/90 leading-relaxed">
-                  <p className="italic">
-                    &ldquo;{currentWish.quote}&rdquo;
-                  </p>
-                  <p className="mt-2 text-[10px] text-emerald-300 font-semibold flex items-center gap-1">
-                    <span>✓✓ Delivered on WhatsApp with photos of food served &amp; 80G tax receipt</span>
-                  </p>
-                </div>
-              </div>
-
-              {/* Sample Selector Tabs */}
-              <div>
-                <p className="text-[11px] font-bold text-white/60 uppercase tracking-wider mb-2">
-                  Tap to Watch Other Wish Greetings:
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {wishes.map((w, idx) => (
-                    <button
-                      key={w.id}
-                      type="button"
-                      onClick={() => setActiveWishIndex(idx)}
-                      className={`rounded-xl px-3 py-1.5 text-xs font-bold transition cursor-pointer ${
-                        activeWishIndex === idx
-                          ? "bg-saffron text-white ring-2 ring-gold shadow-sm"
-                          : "bg-white/15 text-white/80 hover:bg-white/25"
-                      }`}
-                    >
-                      {w.celebrantName.split("'")[0] || w.occasion}
-                    </button>
-                  ))}
-                </div>
-              </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => scrollShowcase("left")}
+                aria-label="Scroll left"
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-white border border-teal-900/15 text-teal-900 hover:bg-teal-900 hover:text-white transition shadow-xs cursor-pointer"
+              >
+                ←
+              </button>
+              <button
+                type="button"
+                onClick={() => scrollShowcase("right")}
+                aria-label="Scroll right"
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-white border border-teal-900/15 text-teal-900 hover:bg-teal-900 hover:text-white transition shadow-xs cursor-pointer"
+              >
+                →
+              </button>
             </div>
           </div>
+
+          {/* Horizontal Moving Reel: Touch-scrollable + Snap track with kinetic movement */}
+          <div
+            ref={trackRef}
+            className="flex overflow-x-auto snap-x snap-mandatory gap-5 pb-4 no-scrollbar scrollbar-none items-stretch"
+          >
+            {CELEBRATION_SHOWCASES.map((showcase, idx) => (
+              <div
+                key={showcase.id}
+                className="snap-center shrink-0 w-[88vw] max-w-[380px] md:w-[380px] rounded-3xl bg-white border border-teal-900/15 shadow-md hover:shadow-xl transition-all duration-300 flex flex-col justify-between overflow-hidden group"
+              >
+                <div>
+                  {/* Media Header (Video player or poster) */}
+                  <div className="relative aspect-[16/10] w-full bg-teal-950 overflow-hidden">
+                    {activeVideoId === showcase.id ? (
+                      <video
+                        src={showcase.videoUrl}
+                        poster={showcase.thumbnailUrl}
+                        controls
+                        autoPlay
+                        playsInline
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <>
+                        <Image
+                          src={showcase.thumbnailUrl}
+                          alt={showcase.celebrantName}
+                          fill
+                          className="object-cover group-hover:scale-105 transition duration-500"
+                          sizes="(max-width: 640px) 90vw, 380px"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-teal-950/85 via-black/20 to-transparent" />
+                        
+                        {/* Play Video Overlay Button */}
+                        <button
+                          type="button"
+                          onClick={() => setActiveVideoId(showcase.id)}
+                          className="absolute inset-0 flex items-center justify-center group/btn cursor-pointer"
+                          aria-label={`Watch video of ${showcase.celebrantName}`}
+                        >
+                          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-saffron text-white shadow-xl ring-4 ring-white/30 group-hover/btn:scale-110 transition-transform">
+                            ▶
+                          </span>
+                        </button>
+                      </>
+                    )}
+
+                    {/* Occasion Badge */}
+                    <div className="absolute top-3 left-3 flex items-center gap-1.5 z-10">
+                      <span className="rounded-lg bg-teal-950/90 backdrop-blur-md px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-gold shadow-sm">
+                        Showcase 0{idx + 1}
+                      </span>
+                      <span className="rounded-lg bg-saffron px-2.5 py-1 text-[10px] font-bold text-white shadow-sm">
+                        {showcase.occasion}
+                      </span>
+                    </div>
+
+                    <span className="absolute bottom-2 left-3 text-[10px] text-white/90 font-medium z-10 flex items-center gap-1">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                      <span>{showcase.deliveredDate}</span>
+                    </span>
+                  </div>
+
+                  {/* Body Content */}
+                  <div className="p-5">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-display text-lg font-bold text-teal-950 leading-tight">
+                        {showcase.celebrantName}
+                      </h4>
+                      <span className="font-display font-extrabold text-base text-saffron-dark shrink-0 ml-2">
+                        {formatINR(showcase.packageCost)}
+                      </span>
+                    </div>
+
+                    <p className="text-xs text-teal-900/60 font-semibold mt-0.5">
+                      Dedicated by {showcase.donorName}
+                    </p>
+
+                    {/* Speech Bubble: Real Delivered WhatsApp Greeting */}
+                    <div className="mt-3 rounded-2xl bg-cream/70 p-3.5 border border-teal-900/10 text-xs text-teal-950/85 leading-relaxed">
+                      <p className="italic">
+                        &ldquo;{showcase.quote}&rdquo;
+                      </p>
+                      <p className="mt-2 text-[10px] text-emerald-800 font-bold flex items-center gap-1">
+                        <span>✓✓ Delivered on WhatsApp with food photos &amp; 80G tax receipt</span>
+                      </p>
+                    </div>
+
+                    <p className="mt-3 text-[11px] text-teal-900/70 font-medium">
+                      ★ {showcase.highlights}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Card CTA */}
+                <div className="p-5 pt-0">
+                  <button
+                    type="button"
+                    onClick={() => handleSponsorOnline(showcase.packageCost, showcase.occasion)}
+                    className="focus-ring tap-scale flex w-full items-center justify-center gap-2 rounded-2xl bg-saffron py-3 text-xs font-black uppercase tracking-wider text-white shadow-md hover:bg-saffron-dark transition cursor-pointer"
+                  >
+                    <span>Sponsor This Feast ({formatINR(showcase.packageCost)}) 💝</span>
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <p className="text-center text-[11px] text-teal-950/60 mt-1">
+            Swipe horizontally ↔ to explore all 3 delivered celebration memories
+          </p>
         </div>
 
-        {/* 3 Main Action Pillars */}
-        <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-3">
-          {/* Pillar 1: Sponsor a Birthday Feast (Interactive Selector) */}
-          <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-teal-900/10 flex flex-col justify-between">
+        {/* ── 2 ACTIONABLE PILLARS: CUSTOM SPONSOR & VISIT IN PERSON ── */}
+        <div className="mt-10 grid grid-cols-1 gap-6 lg:grid-cols-2">
+          {/* Pillar 1: Select & Customize a Feast Package */}
+          <div className="rounded-3xl bg-white p-6 sm:p-7 shadow-sm ring-1 ring-teal-900/10 flex flex-col justify-between">
             <div>
               <div className="flex items-center justify-between">
                 <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-teal-50 text-teal-800 ring-1 ring-teal-900/10">
@@ -250,20 +315,20 @@ export function TrendingBirthdaySection({ wishVideos }: { wishVideos?: WishVideo
               </div>
 
               <h3 className="mt-4 font-display text-xl font-bold text-teal-900">
-                1. Sponsor a Birthday Feast
+                Custom Birthday Feast Packages
               </h3>
               <p className="mt-1 text-xs text-teal-950/70 leading-relaxed">
-                Choose a wholesome meal package freshly prepared in our Ashrama kitchen for all 25 children in your name.
+                Choose any wholesome meal package freshly prepared in our Ashrama kitchen for all 25 children in your family&apos;s name.
               </p>
 
               {/* Feast Selection Radio Cards */}
-              <div className="mt-4 space-y-2.5">
+              <div className="mt-4 space-y-2">
                 {FEAST_OPTIONS.map((f) => (
                   <button
                     key={f.id}
                     type="button"
                     onClick={() => setSelectedFeast(f.id)}
-                    className={`focus-ring w-full rounded-2xl p-3 text-left transition border ${
+                    className={`focus-ring w-full rounded-2xl p-3 text-left transition border cursor-pointer ${
                       selectedFeast === f.id
                         ? "border-saffron bg-saffron/10 ring-1 ring-saffron"
                         : "border-teal-900/10 bg-cream/40 hover:bg-cream"
@@ -275,7 +340,7 @@ export function TrendingBirthdaySection({ wishVideos }: { wishVideos?: WishVideo
                         {formatINR(f.cost)}
                       </span>
                     </div>
-                    <p className="mt-1 text-[11px] text-teal-950/65 line-clamp-2 leading-relaxed">
+                    <p className="mt-0.5 text-[11px] text-teal-950/65 line-clamp-2 leading-relaxed">
                       {f.description}
                     </p>
                   </button>
@@ -284,36 +349,36 @@ export function TrendingBirthdaySection({ wishVideos }: { wishVideos?: WishVideo
             </div>
 
             <div className="mt-6 pt-4 border-t border-teal-900/10">
-              <Link
-                href={`/checkout?amount=${activeFeast.cost}&occasion=Birthday`}
-                onClick={handleSponsorOnline}
-                className="focus-ring block w-full rounded-xl bg-saffron px-5 py-3 text-center text-xs font-bold uppercase tracking-wider text-white shadow-md transition hover:bg-saffron-dark active:scale-95"
+              <button
+                type="button"
+                onClick={() => handleSponsorOnline(activeFeast.cost, activeFeast.title)}
+                className="focus-ring block w-full rounded-xl bg-saffron px-5 py-3 text-center text-xs font-bold uppercase tracking-wider text-white shadow-md transition hover:bg-saffron-dark active:scale-95 cursor-pointer"
               >
                 Sponsor {activeFeast.title.split(" ")[0]} ({formatINR(activeFeast.cost)}) →
-              </Link>
+              </button>
               <p className="mt-2 text-center text-[11px] text-teal-950/60">
-                Direct bank receipt issued instantly with 80G tax benefit.
+                WhatsApp singing video blessing included free with all feast bookings.
               </p>
             </div>
           </div>
 
-          {/* Pillar 2: Visit the Ashrama in Person */}
-          <div className="rounded-3xl bg-teal-950 p-6 text-white shadow-sm flex flex-col justify-between">
+          {/* Pillar 2: Visit & Celebrate in Person */}
+          <div className="rounded-3xl bg-teal-950 p-6 sm:p-7 text-white shadow-sm flex flex-col justify-between">
             <div>
               <div className="flex items-center justify-between">
                 <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/10 text-gold ring-1 ring-white/15">
                   <VisitAshramaIcon className="h-6 w-6 text-gold" />
                 </span>
                 <span className="rounded-md bg-white/15 px-2.5 py-1 text-[11px] font-bold text-white uppercase tracking-wider">
-                  In-Person Visit
+                  Turahalli Campus
                 </span>
               </div>
 
               <h3 className="mt-4 font-display text-xl font-bold text-white">
-                2. Visit &amp; Celebrate in Person
+                Visit &amp; Celebrate in Person
               </h3>
               <p className="mt-1 text-xs text-white/80 leading-relaxed">
-                Bring your family and children to Janaseva Ashrama in Turahalli, Subramanyapura. Cut a cake, share healthy treats, and receive unconditional blessings.
+                Bring your family and friends to Janaseva Ashrama in Turahalli, Bengaluru. Cut a cake, share sweets, and receive joyful blessings directly from the 25 boys.
               </p>
 
               {/* Slot Timings & Guidelines */}
@@ -324,7 +389,7 @@ export function TrendingBirthdaySection({ wishVideos }: { wishVideos?: WishVideo
                     <span>Recommended Celebration Slots:</span>
                   </div>
                   <ul className="text-xs text-white/85 space-y-1">
-                    <li>• <strong>Morning Slot:</strong> 10:30 AM to 1:00 PM (Lunch)</li>
+                    <li>• <strong>Morning Slot:</strong> 10:30 AM to 1:00 PM (Lunch Feast)</li>
                     <li>• <strong>Evening Slot:</strong> 4:30 PM to 6:30 PM (Cake &amp; Snacks)</li>
                   </ul>
                 </div>
@@ -335,7 +400,9 @@ export function TrendingBirthdaySection({ wishVideos }: { wishVideos?: WishVideo
                     <span>Location:</span>
                   </div>
                   <p>{SITE.address}</p>
-                  <p className="text-[11px] text-white/60 mt-1">Near Govt School, Jayanagar Housing Society Layout, accessible from Kanakapura Road, Banashankari, and South Bengaluru.</p>
+                  <p className="text-[11px] text-white/60 mt-1">
+                    Near Govt School, Jayanagar Housing Society Layout, Turahalli, Bengaluru.
+                  </p>
                 </div>
               </div>
             </div>
@@ -343,91 +410,17 @@ export function TrendingBirthdaySection({ wishVideos }: { wishVideos?: WishVideo
             <div className="mt-6 pt-4 border-t border-white/10 space-y-2">
               <a
                 href={`https://wa.me/${SITE.whatsapp}?text=${encodeURIComponent(
-                  "Hello Janaseva Ashrama, I would like to visit and celebrate my birthday with the children. Please guide me on booking a visiting slot."
+                  "Hello Janaseva Ashrama, I would like to visit and celebrate my birthday with the children. Please guide me on booking a celebration slot."
                 )}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="focus-ring flex items-center justify-center gap-2 w-full rounded-xl bg-emerald-600 px-5 py-3 text-center text-xs font-bold uppercase tracking-wider text-white shadow-md transition hover:bg-emerald-700 active:scale-95"
+                className="focus-ring flex items-center justify-center gap-2 w-full rounded-xl bg-emerald-600 px-5 py-3 text-center text-xs font-bold uppercase tracking-wider text-white shadow-md transition hover:bg-emerald-700 active:scale-95 cursor-pointer"
               >
-                <WhatsAppStatusIcon className="h-4 w-4" />
-                <span>Book Birthday Visit via WhatsApp</span>
+                <span>WhatsApp Visit Coordination (+91 {SITE.phone})</span>
               </a>
-
-              <a
-                href={SITE.mapsUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="focus-ring flex items-center justify-center gap-2 w-full rounded-xl border border-white/30 bg-white/10 px-4 py-2.5 text-center text-xs font-bold text-white transition hover:bg-white/20"
-              >
-                <MapPinIcon className="h-4 w-4 text-gold" />
-                <span>Open Google Maps Directions</span>
-              </a>
-            </div>
-          </div>
-
-          {/* Pillar 3: Viral Social & Friends Campaign */}
-          <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-teal-900/10 flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between">
-                <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-saffron/15 text-saffron-dark ring-1 ring-saffron/20">
-                  <BirthdayCakeIcon className="h-6 w-6 text-saffron-dark" />
-                </span>
-                <span className="rounded-md bg-gold/20 px-2.5 py-1 text-[11px] font-bold text-teal-900 uppercase tracking-wider">
-                  Community Impact
-                </span>
-              </div>
-
-              <h3 className="mt-4 font-display text-xl font-bold text-teal-900">
-                3. Ask Friends to Donate Meals
-              </h3>
-              <p className="mt-1 text-xs text-teal-950/70 leading-relaxed">
-                Create a dedicated Birthday Fundraiser. Invite your WhatsApp groups, Instagram followers, and colleagues to gift meals instead of material gifts.
+              <p className="text-center text-[10px] text-white/50">
+                Please confirm 24 hours in advance to respect boys&apos; school study timings.
               </p>
-
-              {/* Instagram / Social Share Box */}
-              <div className="mt-4 rounded-2xl bg-sand/60 p-4 border border-teal-900/10">
-                <div className="flex items-center gap-2 text-teal-900 font-bold text-xs mb-2">
-                  <InstagramStoryIcon className="h-4 w-4 text-rose-600" />
-                  <span>Trending on Instagram & Facebook Stories</span>
-                </div>
-                <p className="text-[11px] text-teal-950/75 italic leading-relaxed">
-                  &ldquo;This year, instead of expensive dinners, I chose to feed 25 children at Janaseva Ashrama. Best birthday ever!&rdquo;
-                </p>
-                <button
-                  type="button"
-                  onClick={handleCopyStory}
-                  className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-teal-900/20 bg-white px-3 py-1.5 text-[11px] font-bold text-teal-900 hover:bg-cream transition"
-                >
-                  <span>{copiedStory ? "Copied Story Text!" : "Copy Instagram Story Text"}</span>
-                </button>
-              </div>
-
-              {/* Why It Outlasts a Party */}
-              <div className="mt-4 space-y-2 text-xs text-teal-950/80">
-                <div className="flex items-start gap-2">
-                  <BlessingsHeartIcon className="h-4 w-4 text-saffron-dark shrink-0 mt-0.5" />
-                  <span><strong>Childhood Gratitude:</strong> Children sing, clap, and pray for your wellbeing and prosperity.</span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <TaxShieldIcon className="h-4 w-4 text-teal-800 shrink-0 mt-0.5" />
-                  <span><strong>Clean Safeguards:</strong> Child dignity strictly preserved; zero commercial filming or exploitation.</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-6 pt-4 border-t border-teal-900/10 space-y-2">
-              <Link
-                href="/celebrate-special-day"
-                className="focus-ring block w-full rounded-xl bg-teal-900 px-5 py-3 text-center text-xs font-bold uppercase tracking-wider text-white shadow transition hover:bg-teal-800 active:scale-95"
-              >
-                Book Special Day Celebration (Feast &amp; Visit) →
-              </Link>
-              <Link
-                href="/campaigns/new?occasion=Birthday&type=Individual"
-                className="focus-ring block w-full rounded-xl border border-teal-900/20 bg-cream py-2.5 text-center text-xs font-bold text-teal-900 transition hover:bg-sand"
-              >
-                Create a Birthday Campaign Page
-              </Link>
             </div>
           </div>
         </div>

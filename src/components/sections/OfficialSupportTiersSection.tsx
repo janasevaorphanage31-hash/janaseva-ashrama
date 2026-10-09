@@ -56,6 +56,7 @@ export function OfficialSupportTiersSection() {
     education_one_year: "1_child", // default ₹9,600
   });
 
+  const [copiedBank, setCopiedBank] = useState(false);
   const [addedNotification, setAddedNotification] = useState<string | null>(null);
 
   const handleSelectOption = (categoryId: string, optionId: string) => {
@@ -75,7 +76,6 @@ export function OfficialSupportTiersSection() {
       amount: option.amount,
     });
 
-    // Open bottom donation drawer with selected tier and amount
     openBottomDonate(option.amount, categoryId);
   };
 
@@ -96,15 +96,23 @@ export function OfficialSupportTiersSection() {
     track("tier_add_to_cart", { categoryId, optionId: currentOptionId, slug });
   };
 
+  const handleCopyBank = () => {
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      navigator.clipboard.writeText("A/c: 913020019616990 | IFSC: UTIB0000102 | Axis Bank Banashankari");
+      setCopiedBank(true);
+      setTimeout(() => setCopiedBank(false), 2500);
+    }
+  };
+
   return (
     <section
       id="official-tiers"
-      aria-label="Official Support Tiers and Pricing"
-      className="scroll-mt-16 w-full max-w-full overflow-hidden bg-sand/35 py-10 md:py-16 border-b border-teal-900/10"
+      aria-label="Exact 5 Official Support Tiers & Pricing"
+      className="scroll-mt-16 w-full max-w-full overflow-hidden bg-sand/35 py-12 md:py-16 border-b border-teal-900/10"
     >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
-        <div className="text-center max-w-3xl mx-auto mb-6 md:mb-10">
+        <div className="text-center max-w-3xl mx-auto mb-8 md:mb-12">
           <div className="inline-flex items-center gap-2 rounded-full bg-saffron/15 border border-saffron/30 px-4 py-1.5 text-xs font-black uppercase tracking-wider text-saffron-dark mb-3">
             <span className="relative flex h-2 w-2">
               <span className="animate-beacon absolute inline-flex h-full w-full rounded-full bg-saffron opacity-80"></span>
@@ -118,26 +126,26 @@ export function OfficialSupportTiersSection() {
           </h2>
 
           <p className="mt-3 text-sm sm:text-base text-teal-950/80 leading-relaxed max-w-2xl mx-auto">
-            Governed by <span className="font-bold text-teal-900">{OFFICIAL_FORM_META.societyName}</span> (Juvenile Justice Act Form 28: KA18CH0242).
-            Select any official sponsorship tier to sponsor meals, clothing sets, or schooling for our 25 resident boys.
+            Governed under Juvenile Justice Act Form 28 (Reg: <span className="font-bold text-teal-900">KA18CH0242</span>).
+            Select any official tier to support our 25 resident boys with daily meals, provisions, festive clothing, or schooling.
           </p>
 
           {/* Trust Pillars Ribbon */}
           <div className="mt-4 flex flex-wrap items-center justify-center gap-2 sm:gap-3 text-xs font-bold text-teal-900">
-            <span className="rounded-lg bg-white/80 px-3 py-1 border border-teal-900/10 shadow-2xs">
+            <span className="rounded-xl bg-white px-3 py-1.5 border border-teal-900/10 shadow-2xs">
               ✓ Form 10AC 80G Tax Exemption
             </span>
-            <span className="rounded-lg bg-white/80 px-3 py-1 border border-teal-900/10 shadow-2xs">
+            <span className="rounded-xl bg-white px-3 py-1.5 border border-teal-900/10 shadow-2xs">
               ✓ 100% Direct Allocation to 25 Boys
             </span>
-            <span className="rounded-lg bg-white/80 px-3 py-1 border border-teal-900/10 shadow-2xs">
-              ✓ Banashankari Axis Bank Direct Transfer
+            <span className="rounded-xl bg-white px-3 py-1.5 border border-teal-900/10 shadow-2xs">
+              ✓ Banashankari Axis Bank Direct Wire
             </span>
           </div>
 
           {/* Toast Notification for Adding to Basket */}
           {addedNotification && (
-            <div className="mt-4 inline-flex items-center gap-2 rounded-2xl bg-teal-900 text-white px-4 py-2 text-xs font-bold shadow-lg animate-fade-in">
+            <div className="mt-4 inline-flex items-center gap-2 rounded-2xl bg-teal-900 text-white px-4 py-2 text-xs font-bold shadow-lg animate-fadeIn">
               <span>🛒</span>
               <span>{addedNotification}</span>
               <Link href="/checkout" className="underline text-gold hover:text-white font-extrabold ml-1">
@@ -157,7 +165,7 @@ export function OfficialSupportTiersSection() {
                 const el = document.getElementById(`tier-card-${cat.id}`);
                 el?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
               }}
-              className="shrink-0 rounded-xl bg-white border border-teal-900/15 px-3 py-1.5 text-[11px] font-bold text-teal-950 active:bg-sand transition flex items-center gap-1"
+              className="shrink-0 rounded-xl bg-white border border-teal-900/15 px-3 py-1.5 text-[11px] font-bold text-teal-950 active:bg-sand transition flex items-center gap-1 cursor-pointer"
             >
               <span>{cat.icon}</span>
               <span>Tier 0{idx + 1}</span>
@@ -165,8 +173,8 @@ export function OfficialSupportTiersSection() {
           ))}
         </div>
 
-        {/* 5 Official Support Tiers: Horizontal Snap Track on Mobile, Grid on Tablet/Desktop */}
-        <div className="flex overflow-x-auto snap-x snap-mandatory gap-4 pb-4 no-scrollbar md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-6 lg:gap-7 items-stretch">
+        {/* 5 Official Support Tiers: Horizontal Snap Track on Mobile, 3-Col Grid on Tablet/Desktop */}
+        <div className="flex overflow-x-auto snap-x snap-mandatory gap-5 pb-4 no-scrollbar md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-6 lg:gap-7 items-stretch">
           {SUPPORTER_CATEGORIES.map((cat) => {
             const currentOptionId = selectedOptions[cat.id] || cat.options[0].id;
             const currentOption = cat.options.find((o) => o.id === currentOptionId) || cat.options[0];
@@ -179,16 +187,17 @@ export function OfficialSupportTiersSection() {
               <div
                 key={cat.id}
                 id={`tier-card-${cat.id}`}
-                className={`snap-center shrink-0 w-[86vw] max-w-[340px] md:w-auto md:max-w-none relative flex flex-col justify-between rounded-3xl p-5 sm:p-6 transition-all duration-300 hover:shadow-xl ${
+                className={`snap-center shrink-0 w-[88vw] max-w-[360px] md:w-auto md:max-w-none relative flex flex-col justify-between rounded-3xl p-5 sm:p-6 transition-all duration-300 hover:shadow-xl ${
                   isFlagship
-                    ? "bg-gradient-to-b from-white via-white to-amber-50/50 border-2 border-saffron shadow-lg ring-2 ring-saffron/20 lg:scale-[1.02]"
+                    ? "bg-gradient-to-b from-white via-white to-amber-50/70 border-2 border-saffron shadow-lg ring-2 ring-saffron/20 lg:scale-[1.02]"
                     : "bg-white border border-teal-900/15 shadow-sm hover:border-teal-900/30"
                 }`}
               >
                 {/* Popular Flagship Ribbon */}
                 {isFlagship && (
-                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 rounded-full bg-saffron px-4 py-1 text-[11px] font-black uppercase tracking-wider text-white shadow-md z-10">
-                    ★ Most Critical Daily Need
+                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 rounded-full bg-saffron px-4 py-1 text-[11px] font-black uppercase tracking-wider text-white shadow-md z-10 flex items-center gap-1">
+                    <span>★</span>
+                    <span>Most Critical Daily Need</span>
                   </div>
                 )}
 
@@ -202,16 +211,18 @@ export function OfficialSupportTiersSection() {
                       className="object-cover transition duration-300 hover:scale-105"
                       sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 380px"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-teal-950/80 via-transparent to-transparent" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-teal-950/85 via-transparent to-transparent" />
+                    
                     <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5">
-                      <span className="rounded-md bg-black/60 px-2 py-0.5 text-[10px] font-black text-white uppercase tracking-wider backdrop-blur">
+                      <span className="rounded-md bg-teal-950/90 backdrop-blur-md px-2 py-0.5 text-[10px] font-black text-white uppercase tracking-wider">
                         Tier 0{cat.index}
                       </span>
-                      <span className="rounded-md bg-saffron/90 px-2 py-0.5 text-[10px] font-bold text-white shadow-2xs">
-                        25 Boys
+                      <span className="rounded-md bg-saffron px-2 py-0.5 text-[10px] font-bold text-white shadow-2xs">
+                        25 Resident Boys
                       </span>
                     </div>
-                    <span className="absolute bottom-2 right-2.5 text-2xl" aria-hidden="true">
+
+                    <span className="absolute bottom-2 right-2.5 text-2xl select-none" aria-hidden="true">
                       {cat.icon}
                     </span>
                   </div>
@@ -234,7 +245,7 @@ export function OfficialSupportTiersSection() {
                   {/* Pricing Selector Tabs */}
                   <div className="mt-4 space-y-2">
                     <span className="block text-[11px] font-bold uppercase tracking-wider text-teal-950/60">
-                      Select Pricing Option:
+                      Select Sponsorship Option:
                     </span>
                     <div className="grid grid-cols-3 gap-1.5 p-1 rounded-2xl bg-sand/40 border border-teal-900/10">
                       {cat.options.map((opt) => {
@@ -246,7 +257,7 @@ export function OfficialSupportTiersSection() {
                             onClick={() => handleSelectOption(cat.id, opt.id)}
                             className={`py-2 px-1 rounded-xl text-center transition cursor-pointer ${
                               isSelected
-                                ? "bg-teal-900 text-white font-extrabold shadow-sm"
+                                ? "bg-teal-900 text-white font-extrabold shadow-sm scale-102"
                                 : "text-teal-950/80 hover:bg-white/80 font-bold"
                             }`}
                           >
@@ -263,7 +274,7 @@ export function OfficialSupportTiersSection() {
                   </div>
 
                   {/* Active Selected Option Breakdown */}
-                  <div className="mt-3.5 rounded-2xl bg-teal-50/70 p-3.5 border border-teal-900/10">
+                  <div className="mt-3.5 rounded-2xl bg-teal-50/80 p-3.5 border border-teal-900/10">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-bold text-teal-900">
                         {currentOption.label}
@@ -274,7 +285,7 @@ export function OfficialSupportTiersSection() {
                     </div>
                     {currentOption.subLabel && (
                       <p className="text-[11px] text-teal-950/70 mt-1">
-                        Coverage: <span className="font-semibold text-teal-900">{currentOption.subLabel}</span>
+                        Impact: <span className="font-semibold text-teal-900">{currentOption.subLabel}</span>
                       </p>
                     )}
                   </div>
@@ -286,7 +297,7 @@ export function OfficialSupportTiersSection() {
                   <button
                     type="button"
                     onClick={() => handleSponsorTier(cat.id)}
-                    className="focus-ring tap-scale group flex w-full items-center justify-center gap-2 rounded-2xl bg-saffron py-3 text-xs sm:text-sm font-black uppercase tracking-wider text-white shadow-md hover:bg-saffron-dark transition-all cursor-pointer animate-heartbeat"
+                    className="focus-ring tap-scale group flex w-full items-center justify-center gap-2 rounded-2xl bg-saffron py-3.5 text-xs sm:text-sm font-black uppercase tracking-wider text-white shadow-md hover:bg-saffron-dark transition-all cursor-pointer animate-heartbeat"
                   >
                     <span className="relative flex h-2.5 w-2.5">
                       <span className="animate-beacon absolute inline-flex h-full w-full rounded-full bg-white opacity-80"></span>
@@ -300,7 +311,7 @@ export function OfficialSupportTiersSection() {
                     <button
                       type="button"
                       onClick={() => handleAddToCart(cat.id)}
-                      className={`focus-ring tap-scale flex-1 flex items-center justify-center gap-1.5 rounded-xl py-2 px-3 text-xs font-bold transition border ${
+                      className={`focus-ring tap-scale flex-1 flex items-center justify-center gap-1.5 rounded-xl py-2 px-3 text-xs font-bold transition border cursor-pointer ${
                         inCartQty > 0
                           ? "bg-teal-900 text-white border-teal-900"
                           : "bg-white text-teal-900 border-teal-900/20 hover:bg-sand/60"
@@ -327,7 +338,7 @@ export function OfficialSupportTiersSection() {
                       href="/supporter-form"
                       className="font-bold text-teal-900 underline hover:text-saffron-dark"
                     >
-                      Supporter Form →
+                      Printable Form →
                     </Link>
                   </div>
                 </div>
@@ -335,45 +346,51 @@ export function OfficialSupportTiersSection() {
             );
           })}
 
-          {/* 6th Card: Custom Supporter Card & Direct Axis Bank Transfer */}
-          <div className="flex flex-col justify-between rounded-3xl bg-teal-950 text-white p-5 sm:p-6 shadow-xl border border-amber-400/30">
+          {/* 6th Card: Custom Giving & Official Axis Bank Transfer */}
+          <div className="snap-center shrink-0 w-[88vw] max-w-[360px] md:w-auto md:max-w-none flex flex-col justify-between rounded-3xl bg-teal-950 text-white p-5 sm:p-6 shadow-xl border border-amber-400/30">
             <div>
               <div className="flex items-center justify-between pb-3 border-b border-white/15">
                 <span className="rounded-lg bg-amber-400/20 px-2.5 py-0.5 text-xs font-black text-amber-300">
-                  Custom &amp; Bank Transfer
+                  Custom Seva · ನೇರ ಸೇವೆ
                 </span>
                 <span className="text-2xl" aria-hidden="true">🏦</span>
               </div>
 
               <h3 className="mt-3 font-display text-xl sm:text-2xl font-bold leading-tight">
-                Direct Axis Bank Annadana
+                Custom Donation &amp; Bank Transfer
               </h3>
               <p className="text-xs text-amber-300 font-medium mt-0.5">
-                ನೇರ ಬ್ಯಾಂಕ್ ವರ್ಗಾವಣೆ ವಿವರಗಳು
+                Direct NEFT / IMPS / RTGS / UPI Giving
               </p>
 
               <p className="mt-3 text-xs sm:text-sm text-white/80 leading-relaxed">
-                Prefer to donate directly without platform gateways? Transfer directly into our official Axis Bank society account with 0% intermediate fees.
+                Prefer to give a custom amount or transfer directly through your banking app? 100% of your contribution reaches our 25 resident boys with zero platform deductions.
               </p>
 
-              <div className="mt-4 rounded-2xl bg-white/10 p-4 border border-white/15 space-y-2 text-xs">
+              {/* Bank Account Details with 1-Tap Copy */}
+              <div className="mt-4 rounded-2xl bg-white/10 p-4 border border-white/15 space-y-2.5 text-xs">
                 <div>
                   <span className="text-[10px] text-white/60 uppercase block">Account Holder</span>
-                  <p className="font-bold text-white text-xs">{OFFICIAL_FORM_META.societyName}</p>
+                  <p className="font-bold text-white text-xs mt-0.5">{OFFICIAL_FORM_META.societyName}</p>
                 </div>
-                <div className="space-y-2 pt-1">
-                  <div className="rounded-xl bg-black/25 p-2.5 border border-white/10 flex flex-col">
-                    <span className="text-[10px] text-amber-300/80 uppercase tracking-wider block font-bold">Account Number (Axis Bank)</span>
-                    <p className="font-mono font-bold text-amber-300 text-sm tracking-wider select-all break-all mt-0.5">913020019616990</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                  <div className="rounded-xl bg-black/30 p-2.5 border border-white/10">
+                    <span className="text-[10px] text-amber-300 uppercase tracking-wider block font-bold">Axis Bank A/c No</span>
+                    <p className="font-mono font-bold text-amber-200 text-sm tracking-wider select-all mt-0.5">913020019616990</p>
                   </div>
-                  <div className="rounded-xl bg-black/25 p-2.5 border border-white/10 flex flex-col">
-                    <span className="text-[10px] text-amber-300/80 uppercase tracking-wider block font-bold">IFSC Code (Banashankari Branch)</span>
-                    <p className="font-mono font-bold text-amber-300 text-sm tracking-wider select-all mt-0.5">UTIB0000102</p>
+                  <div className="rounded-xl bg-black/30 p-2.5 border border-white/10">
+                    <span className="text-[10px] text-amber-300 uppercase tracking-wider block font-bold">IFSC (Banashankari)</span>
+                    <p className="font-mono font-bold text-amber-200 text-sm tracking-wider select-all mt-0.5">UTIB0000102</p>
                   </div>
                 </div>
-                <div className="pt-1 text-[11px] text-white/70">
-                  Bank: Axis Bank · Branch: Banashankari, Bengaluru
-                </div>
+
+                <button
+                  type="button"
+                  onClick={handleCopyBank}
+                  className="w-full text-center py-1.5 rounded-lg bg-white/15 hover:bg-white/25 text-[11px] font-bold text-amber-200 transition cursor-pointer"
+                >
+                  {copiedBank ? "✓ Bank Details Copied!" : "📋 Copy Bank Account Details"}
+                </button>
               </div>
             </div>
 

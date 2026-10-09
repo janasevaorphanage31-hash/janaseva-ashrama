@@ -9,7 +9,7 @@ const TRUST_PILLARS = [
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
       </svg>
     ),
-    badge: "Security",
+    badge: "Bank Security",
     title: "256-Bit Bank-Grade Encryption",
     desc: "Payments are processed securely via RBI-authorized Razorpay. Zero card numbers, UPI PINs, or banking credentials are ever stored on our servers.",
   },
@@ -30,8 +30,8 @@ const TRUST_PILLARS = [
       </svg>
     ),
     badge: "Official Record",
-    title: "Instant Digital Receipts",
-    desc: "Automated server-generated receipts with a unique public verification reference are issued immediately. Download anytime or receive via WhatsApp & email.",
+    title: "Instant Digital Receipts (80G)",
+    desc: "Automated server-generated receipts with a unique public verification reference are issued immediately. Download anytime or receive via WhatsApp.",
   },
   {
     icon: (
@@ -39,7 +39,7 @@ const TRUST_PILLARS = [
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
       </svg>
     ),
-    badge: "Privacy",
+    badge: "Privacy Guaranteed",
     title: "Anonymous Giving Respected",
     desc: "Support silently with a single checkbox. Your personal name and contact details remain strictly confidential and will never appear on public impact walls.",
   },
@@ -49,7 +49,7 @@ const TRUST_PILLARS = [
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
       </svg>
     ),
-    badge: "Ethics",
+    badge: "Child Ethics",
     title: "Child Safeguarding & Dignity",
     desc: "We strictly observe child safeguarding policies. Children are never used as emotional conversion tokens or promotional objects. Consent is paramount.",
   },
@@ -66,8 +66,10 @@ const TRUST_PILLARS = [
 ];
 
 export function TrustSection() {
+  const marqueePillars = [...TRUST_PILLARS, ...TRUST_PILLARS];
+
   return (
-    <Section id="trust" tone="white">
+    <Section id="trust" tone="white" className="overflow-hidden py-12 md:py-16">
       <Container>
         <div className="mb-3">
           <Chip tone="teal">Before You Give</Chip>
@@ -77,83 +79,98 @@ export function TrustSection() {
           title="Your contribution is protected, verified and spent with dignity"
           lead="Giving should be effortless, clear, and founded on genuine accountability. Here is how your generosity is safeguarded from checkout to real impact."
         />
+      </Container>
 
-        {/* 6 Trust Pillars Grid */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 w-full min-w-0">
-          {TRUST_PILLARS.map((pillar) => (
+      {/* ── 6 TRUST PILLARS IN CONTINUOUS HORIZONTAL MOVING MOVEMENT ── */}
+      <div className="relative w-full overflow-hidden py-4 mt-4">
+        {/* Subtle Edge Gradients */}
+        <div className="pointer-events-none absolute left-0 top-0 z-10 h-full w-12 sm:w-24 bg-gradient-to-r from-white to-transparent" />
+        <div className="pointer-events-none absolute right-0 top-0 z-10 h-full w-12 sm:w-24 bg-gradient-to-l from-white to-transparent" />
+
+        {/* Horizontal Marquee Track with Pause on Hover */}
+        <div className="animate-marquee-slow flex gap-5 w-max hover:cursor-grab active:cursor-grabbing">
+          {marqueePillars.map((pillar, idx) => (
             <div
-              key={pillar.title}
-              className="flex flex-col justify-between rounded-3xl border border-teal-900/10 bg-sand/30 p-6 transition-all hover:bg-sand/60 hover:shadow-sm"
+              key={`${pillar.title}-${idx}`}
+              className="w-[290px] sm:w-[350px] shrink-0 rounded-3xl border border-teal-900/10 bg-sand/30 p-6 transition-all duration-300 hover:bg-white hover:shadow-lg hover:border-teal-900/25 flex flex-col justify-between"
             >
               <div>
                 <div className="flex items-center justify-between">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-teal-800/10 text-teal-900">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-teal-800/10 text-teal-900 shadow-2xs">
                     {pillar.icon}
                   </div>
-                  <span className="rounded-md bg-white px-2.5 py-0.5 text-[11px] font-bold text-teal-900 ring-1 ring-teal-900/10">
+                  <span className="rounded-md bg-white px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-teal-900 ring-1 ring-teal-900/10">
                     {pillar.badge}
                   </span>
                 </div>
-                <h3 className="mt-4 font-display text-lg font-bold text-teal-900">
+                <h3 className="mt-4 font-display text-base sm:text-lg font-bold text-teal-900 leading-snug">
                   {pillar.title}
                 </h3>
-                <p className="mt-2 text-sm leading-relaxed text-teal-950/75">
+                <p className="mt-2 text-xs sm:text-sm leading-relaxed text-teal-950/75">
                   {pillar.desc}
                 </p>
+              </div>
+
+              <div className="mt-4 pt-3 border-t border-teal-900/10 flex items-center justify-between text-[11px] font-semibold text-emerald-800">
+                <span>✓ Verified Commitment</span>
+                <span>Janaseva Trust</span>
               </div>
             </div>
           ))}
         </div>
+      </div>
 
-        {/* Official Charity Bank Account for Direct Transfers */}
-        <div className="mt-8 rounded-3xl bg-teal-950 text-white p-5 sm:p-6 shadow-md border border-teal-800">
+      <Container>
+        {/* Official Charity Bank Account (Authoritative Single Source of Truth) */}
+        <div className="mt-10 rounded-3xl bg-teal-950 text-white p-6 sm:p-8 shadow-xl border border-teal-800">
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-teal-800 pb-3">
             <div>
-              <span className="font-display font-bold text-sm sm:text-base text-gold">
-                Official Charity Bank Account (Direct NEFT / IMPS / RTGS)
+              <span className="font-display font-bold text-base sm:text-lg text-gold">
+                Official Charity Bank Account (Direct NEFT / IMPS / RTGS / UPI)
               </span>
               <p className="text-xs text-teal-200 mt-0.5">
-                Transfer directly to our registered charity account with verified 80G tax exemption.
+                Transfer directly to our registered charity bank account with verified Form 10AC 80G tax exemption.
               </p>
             </div>
-            <span className="rounded bg-teal-800 px-2.5 py-1 text-[11px] font-bold text-teal-200">
+            <span className="rounded-lg bg-teal-800 px-3 py-1 text-xs font-bold text-teal-200">
               Axis Bank · Banashankari Branch
             </span>
           </div>
-          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
-            <div>
+
+          <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
+            <div className="rounded-2xl bg-white/5 p-3.5 border border-white/10">
               <span className="text-[10px] uppercase font-bold text-white/60 block">A/c Holder Name</span>
-              <span className="font-bold text-white leading-snug">{BANK_DETAILS.accountName}</span>
+              <span className="font-bold text-white leading-snug text-xs sm:text-sm mt-0.5 block">{BANK_DETAILS.accountName}</span>
             </div>
-            <div>
+            <div className="rounded-2xl bg-white/5 p-3.5 border border-white/10">
               <span className="text-[10px] uppercase font-bold text-white/60 block">Bank &amp; Branch</span>
-              <span className="font-bold text-white">{BANK_DETAILS.bankName} ({BANK_DETAILS.branch})</span>
+              <span className="font-bold text-white text-xs sm:text-sm mt-0.5 block">{BANK_DETAILS.bankName} ({BANK_DETAILS.branch})</span>
             </div>
-            <div>
+            <div className="rounded-2xl bg-black/30 p-3.5 border border-amber-400/30">
               <span className="text-[10px] uppercase font-bold text-gold block">Account Number</span>
-              <span className="font-mono font-bold text-sm text-white">{BANK_DETAILS.accountNumber}</span>
+              <span className="font-mono font-bold text-sm sm:text-base text-amber-300 mt-0.5 block select-all tracking-wider">{BANK_DETAILS.accountNumber}</span>
             </div>
-            <div>
+            <div className="rounded-2xl bg-black/30 p-3.5 border border-amber-400/30">
               <span className="text-[10px] uppercase font-bold text-gold block">IFSC Code</span>
-              <span className="font-mono font-bold text-sm text-white">{BANK_DETAILS.ifscCode}</span>
+              <span className="font-mono font-bold text-sm sm:text-base text-amber-300 mt-0.5 block select-all tracking-wider">{BANK_DETAILS.ifscCode}</span>
             </div>
           </div>
         </div>
 
         {/* Quick Question / Direct Contact Strip */}
-        <div className="mt-6 flex flex-col items-center justify-between gap-4 rounded-3xl bg-teal-900 p-6 text-white sm:flex-row sm:p-7">
+        <div className="mt-6 flex flex-col items-center justify-between gap-4 rounded-3xl bg-teal-900 p-6 text-white sm:flex-row sm:p-7 shadow-md">
           <div>
             <h4 className="font-display text-lg font-bold text-gold">
-              Have questions or want to verify our credentials?
+              Have questions or want to verify our credentials in person?
             </h4>
-            <p className="mt-1 text-sm text-white/80">
+            <p className="mt-1 text-xs sm:text-sm text-white/80">
               Speak directly with an Ashrama trustee or coordinator before making your contribution.
             </p>
           </div>
           <div className="flex shrink-0 flex-wrap items-center gap-3">
             <a
               href={`tel:${SITE.phone}`}
-              className="focus-ring inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-xs font-bold text-teal-900 hover:bg-gold transition"
+              className="focus-ring inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-xs font-bold text-teal-900 hover:bg-gold transition shadow-xs"
             >
               <svg className="h-3.5 w-3.5 fill-current" viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M20 15.5c-1.2 0-2.4-.2-3.6-.6-.3-.1-.7 0-1 .2l-2.2 2.2c-2.8-1.4-5.1-3.8-6.6-6.6l2.2-2.2c.3-.3.4-.7.2-1-.4-1.1-.6-2.3-.6-3.5 0-.6-.4-1-1-1H4c-.6 0-1 .4-1 1 0 9.4 7.6 17 17 17 .6 0 1-.4 1-1v-3.5c0-.6-.4-1-1-1z" />
@@ -164,7 +181,7 @@ export function TrustSection() {
               href={`https://wa.me/${SITE.whatsapp}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="focus-ring inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-emerald-700 transition"
+              className="focus-ring inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-emerald-700 transition shadow-xs"
             >
               <svg className="h-3.5 w-3.5 fill-current" viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.711 2.598 2.669-.699c.969.54 1.771.821 2.791.821 3.182 0 5.768-2.587 5.769-5.766.001-3.182-2.585-5.807-5.77-5.807zm3.364 8.205c-.14.398-.711.758-1.02.801-.309.041-.699.072-2.02-.452-1.631-.647-2.69-2.311-2.772-2.421-.08-.11-.659-.877-.659-1.673 0-.796.419-1.189.569-1.35.15-.16.329-.201.439-.201.11 0 .22.001.319.006.11.006.25-.041.389.299.15.361.509 1.24.559 1.341.05.101.08.22.01.361-.07.14-.11.23-.22.361-.11.13-.23.29-.329.39-.11.11-.22.23-.09.45.13.22.579.957 1.25 1.551.86.769 1.58.1.009 1.8.889.22.12.35.1.48-.05.13-.15.56-.65.71-.87.15-.22.3-.18.5-.11.2.07 1.27.6 1.49.71.22.11.37.16.42.25.05.1.05.58-.09.98z" />

@@ -180,13 +180,31 @@ h1, h2, h3, .font-display {
   animation: horizontal-marquee 42s linear infinite;
 }
 
+.animate-marquee-slow {
+  display: flex;
+  width: max-content;
+  animation: horizontal-marquee 58s linear infinite;
+}
+
+.animate-marquee-fast {
+  display: flex;
+  width: max-content;
+  animation: horizontal-marquee 28s linear infinite;
+}
+
 .animate-marquee:hover,
-.animate-marquee:focus-within {
+.animate-marquee:focus-within,
+.animate-marquee-slow:hover,
+.animate-marquee-slow:focus-within,
+.animate-marquee-fast:hover,
+.animate-marquee-fast:focus-within {
   animation-play-state: paused;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .animate-marquee {
+  .animate-marquee,
+  .animate-marquee-slow,
+  .animate-marquee-fast {
     animation: none;
     overflow-x: auto;
   }

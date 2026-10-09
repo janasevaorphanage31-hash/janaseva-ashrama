@@ -21,7 +21,6 @@ import { InvolvedSection } from "./sections/InvolvedSection";
 import { FutureSection } from "./sections/FutureSection";
 import { ContactSection } from "./sections/ContactSection";
 import { Container } from "./ui";
-import { BANK_DETAILS } from "@/lib/site";
 
 export type HomeMode = "all" | "annadana" | "tiers" | "celebrate" | "life" | "trust";
 
@@ -38,8 +37,8 @@ const MODES: ModeItem[] = [
     id: "all",
     label: "All Highlights",
     icon: "🌟",
-    badge: "Smart View",
-    description: "Compact complete overview of Janaseva Ashrama",
+    badge: "Full Story",
+    description: "Complete full-length journey of Janaseva Ashrama",
   },
   {
     id: "annadana",
@@ -94,7 +93,6 @@ export function HomeSectionsHub({
   siteContent,
 }: HomeSectionsHubProps) {
   const [activeMode, setActiveMode] = useState<HomeMode>("all");
-  const [showCommunityDrawer, setShowCommunityDrawer] = useState(false);
   const hubRef = useRef<HTMLDivElement>(null);
 
   // Sync mode with window location hash if user navigates with direct links
@@ -158,7 +156,7 @@ export function HomeSectionsHub({
 
       {/* ── STICKY TOP VERTICAL SECTION SWITCHER (Segmented Controller) ── */}
       <nav
-        aria-label="Home Vertical Section Modes"
+        aria-label="Home Section Switcher"
         className="sticky top-14 z-30 w-full border-b border-teal-900/10 bg-white/95 backdrop-blur-md shadow-xs no-print"
       >
         <div className="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8 py-2">
@@ -193,14 +191,14 @@ export function HomeSectionsHub({
             })}
           </div>
 
-          {/* Quick Helper Subtext on Mobile to reduce scrolling fatigue */}
+          {/* Quick Helper Subtext */}
           <div className="mt-1 flex items-center justify-between text-[10px] text-teal-950/60 font-semibold px-1">
             <span className="flex items-center gap-1">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
               <span>
                 {activeMode === "all"
-                  ? "Showing All Highlights (Tap any section above to filter & reduce scroll)"
-                  : `Viewing: ${MODES.find((m) => m.id === activeMode)?.label}`}
+                  ? "Full Length Ashrama Story · Tap any section above to focus"
+                  : `Focused Mode: ${MODES.find((m) => m.id === activeMode)?.label}`}
               </span>
             </span>
 
@@ -208,9 +206,9 @@ export function HomeSectionsHub({
               <button
                 type="button"
                 onClick={() => switchMode("all")}
-                className="text-saffron-dark font-extrabold hover:underline"
+                className="text-saffron-dark font-extrabold hover:underline cursor-pointer"
               >
-                ← Back to All Highlights
+                ← Back to Full Story
               </button>
             )}
           </div>
@@ -243,7 +241,7 @@ export function HomeSectionsHub({
           {/* Giving Basket Catalogue */}
           <ImpactCart />
 
-          {/* Axis Bank Direct UPI Seva Card for Annadana */}
+          {/* Direct Bank Seva Prompt (Clean, no duplicated raw account numbers) */}
           <section className="py-8 bg-sand/30 border-t border-teal-900/10">
             <Container>
               <div className="rounded-3xl bg-teal-950 p-6 sm:p-8 text-white shadow-xl flex flex-col md:flex-row items-center justify-between gap-6">
@@ -252,21 +250,28 @@ export function HomeSectionsHub({
                     Direct Bank Seva
                   </span>
                   <h3 className="font-display text-xl sm:text-2xl font-bold mt-2">
-                    Prefer Direct Bank / UPI Annadana?
+                    Prefer Direct Bank Transfer (NEFT / IMPS / UPI)?
                   </h3>
                   <p className="text-xs text-white/70 mt-1 max-w-xl">
-                    Transfer directly to Janaseva Ashrama Axis Bank Banashankari account:{" "}
-                    <span className="font-mono text-gold font-bold">{BANK_DETAILS.accountNumber}</span> (IFSC:{" "}
-                    <span className="font-mono text-gold font-bold">{BANK_DETAILS.ifscCode}</span>). Instant 80G receipt provided.
+                    Transfer directly to Janaseva Ashrama Axis Bank account with 100% verified 80G tax exemption and zero gateway deductions.
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => switchMode("all")}
-                  className="rounded-xl bg-saffron px-5 py-3 text-xs font-bold text-white hover:bg-saffron-dark transition shrink-0"
-                >
-                  Explore Other Ashrama Pillars →
-                </button>
+                <div className="flex items-center gap-3 shrink-0">
+                  <a
+                    href="#trust"
+                    onClick={() => switchMode("trust", "trust")}
+                    className="rounded-xl bg-gold px-5 py-3 text-xs font-bold text-teal-950 hover:bg-gold/90 transition"
+                  >
+                    View Official Bank Details →
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => switchMode("all")}
+                    className="rounded-xl bg-white/15 px-4 py-3 text-xs font-bold text-white hover:bg-white/25 transition"
+                  >
+                    Explore All Highlights →
+                  </button>
+                </div>
               </div>
             </Container>
           </section>
@@ -300,9 +305,9 @@ export function HomeSectionsHub({
             <button
               type="button"
               onClick={() => switchMode("all")}
-              className="inline-flex items-center gap-2 rounded-2xl bg-teal-900 px-6 py-3 text-xs font-bold text-white hover:bg-teal-950 transition shadow-sm"
+              className="inline-flex items-center gap-2 rounded-2xl bg-teal-900 px-6 py-3 text-xs font-bold text-white hover:bg-teal-950 transition shadow-sm cursor-pointer"
             >
-              ← Back to All Highlights
+              ← Back to Full Story
             </button>
           </div>
         </div>
@@ -335,9 +340,9 @@ export function HomeSectionsHub({
             <button
               type="button"
               onClick={() => switchMode("all")}
-              className="inline-flex items-center gap-2 rounded-2xl bg-teal-900 px-6 py-3 text-xs font-bold text-white hover:bg-teal-950 transition shadow-sm"
+              className="inline-flex items-center gap-2 rounded-2xl bg-teal-900 px-6 py-3 text-xs font-bold text-white hover:bg-teal-950 transition shadow-sm cursor-pointer"
             >
-              ← Back to All Highlights
+              ← Back to Full Story
             </button>
           </div>
         </div>
@@ -380,9 +385,9 @@ export function HomeSectionsHub({
             <button
               type="button"
               onClick={() => switchMode("all")}
-              className="inline-flex items-center gap-2 rounded-2xl bg-teal-900 px-6 py-3 text-xs font-bold text-white hover:bg-teal-950 transition shadow-sm"
+              className="inline-flex items-center gap-2 rounded-2xl bg-teal-900 px-6 py-3 text-xs font-bold text-white hover:bg-teal-950 transition shadow-sm cursor-pointer"
             >
-              ← Back to All Highlights
+              ← Back to Full Story
             </button>
           </div>
         </div>
@@ -432,38 +437,38 @@ export function HomeSectionsHub({
             <button
               type="button"
               onClick={() => switchMode("all")}
-              className="inline-flex items-center gap-2 rounded-2xl bg-teal-900 px-6 py-3 text-xs font-bold text-white hover:bg-teal-950 transition shadow-sm"
+              className="inline-flex items-center gap-2 rounded-2xl bg-teal-900 px-6 py-3 text-xs font-bold text-white hover:bg-teal-950 transition shadow-sm cursor-pointer"
             >
-              ← Back to All Highlights
+              ← Back to Full Story
             </button>
           </div>
         </div>
       )}
 
       {/* ============================================================== */}
-      {/* ── MODE 6: ALL HIGHLIGHTS (SMART COMPACT CONSOLIDATED VIEW) ── */}
+      {/* ── MODE 6: ALL HIGHLIGHTS (FULL-LENGTH COMPREHENSIVE STORY) ── */}
       {/* ============================================================== */}
       {activeMode === "all" && (
         <div className="space-y-0 animate-fadeIn">
           {/* 1. Exact 5 Official Support Tiers & Pricing */}
           <OfficialSupportTiersSection />
 
-          {/* 2. Horizontal Moving Reel */}
+          {/* 2. Horizontal Moving Reel (Video Clips & Photos) */}
           <HorizontalMovingReel />
 
-          {/* 3. Today at Janaseva */}
+          {/* 3. Today at Janaseva (Kitchen updates, Daily tracker) */}
           <TodaySection updates={updates} />
 
           {/* 4. Verified Needs Catalogue & Direct Giving Basket */}
           <ImpactCart />
 
-          {/* 5. Birthday & Milestone Feasts */}
+          {/* 5. Birthday & Milestone Feasts (3 Delivered Showcases in Horizontal Motion) */}
           <TrendingBirthdaySection wishVideos={siteContent?.wishVideos} />
 
-          {/* 6. Emotional Voices & Reflections */}
+          {/* 6. Emotional Voices & Reflections ("Every child deserves a warm plate..." in Horizontal Motion) */}
           <EmotionalQuotesSection />
 
-          {/* 7. Real Boys Visual Gallery */}
+          {/* 7. Real Boys Visual Gallery (Curated 60 Photos & Videos) */}
           <RealBoysGallerySection />
 
           {/* 8. Documentary Video Chapters */}
@@ -472,59 +477,29 @@ export function HomeSectionsHub({
           {/* 9. Transparency Center & 5 Official Govt Accreditations */}
           <TransparencySection docs={docs} />
 
-          {/* 10. Trust & Axis Bank Direct Details */}
+          {/* 10. Trust & Axis Bank Direct Details (6 Trust Pillars in Horizontal Motion) */}
           <TrustSection />
 
           {/* 11. Verified Platform Impact Numbers */}
           <VerifiedImpactSection metrics={metrics} totals={totals} />
 
-          {/* 12. SMART COLLAPSIBLE DRAWER FOR COMMUNITY, VOLUNTEERS & VISION */}
-          {/* This dramatically reduces scrolling fatigue by collapsing 4,000px of forms */}
-          <section className="py-8 bg-gradient-to-b from-cream to-sand/40 border-y border-teal-900/10">
-            <Container>
-              <div className="rounded-3xl bg-white p-6 sm:p-8 border border-teal-900/15 shadow-sm text-center">
-                <span className="text-3xl select-none" aria-hidden="true">🤝</span>
-                <h3 className="font-display text-xl sm:text-2xl font-bold text-teal-950 mt-2">
-                  Community Outreach, Volunteer Crew &amp; Campus Expansion Vision
-                </h3>
-                <p className="mt-2 text-xs sm:text-sm text-teal-950/75 max-w-2xl mx-auto leading-relaxed">
-                  Looking to teach children on weekends, participate in medical camps, or support our CSR campus blueprint? Explore our community programs below.
-                </p>
+          {/* 12. On-Ground NGO Activities & Community Outreach (Full-Length Display) */}
+          <CommunityActivitiesSection />
 
-                <div className="mt-5">
-                  <button
-                    type="button"
-                    onClick={() => setShowCommunityDrawer((prev) => !prev)}
-                    className="focus-ring inline-flex items-center gap-2 rounded-2xl bg-teal-900 px-6 py-3.5 text-xs font-bold text-white hover:bg-teal-950 transition shadow-md active:scale-95 cursor-pointer"
-                  >
-                    <span>
-                      {showCommunityDrawer
-                        ? "▲ Collapse Community & Campus Vision"
-                        : "▼ Explore Community Outreach & Campus Blueprint (Tap to Expand)"}
-                    </span>
-                  </button>
-                </div>
+          {/* 13. Give Your Time: Volunteers & Corporate CSR Partnerships (Full-Length Display) */}
+          <InvolvedSection />
 
-                {/* Expanded Content */}
-                {showCommunityDrawer && (
-                  <div className="mt-8 pt-8 border-t border-teal-900/10 text-left space-y-12 animate-fadeIn">
-                    <CommunityActivitiesSection />
-                    <InvolvedSection />
-                    <FutureSection />
-                  </div>
-                )}
-              </div>
-            </Container>
-          </section>
+          {/* 14. Campus Expansion Vision (Future Project Blueprint Full-Length Display) */}
+          <FutureSection />
 
-          {/* 13. Frequently Asked Questions */}
+          {/* 15. Frequently Asked Questions (FAQ) */}
           <section id="faq" className="scroll-mt-14 py-10 md:py-16 bg-sand/35 w-full max-w-full overflow-hidden">
             <Container>
               <DonationFAQ />
             </Container>
           </section>
 
-          {/* 14. Bengaluru Location, Map & Contact */}
+          {/* 16. Bengaluru Location, Map & Contact */}
           <ContactSection />
         </div>
       )}
