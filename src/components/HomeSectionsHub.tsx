@@ -450,31 +450,31 @@ export function HomeSectionsHub({
       {/* ============================================================== */}
       {activeMode === "all" && (
         <div className="space-y-0 animate-fadeIn">
-          {/* 1. Exact 5 Official Support Tiers & Pricing */}
-          <OfficialSupportTiersSection />
-
-          {/* 2. Horizontal Moving Reel (Video Clips & Photos) */}
-          <HorizontalMovingReel />
-
-          {/* 3. Today at Janaseva (Kitchen updates, Daily tracker) */}
+          {/* 1. Today at Janaseva (Real Kitchen updates, Today's Annadana status for 25 boys) */}
           <TodaySection updates={updates} />
 
-          {/* 4. Verified Needs Catalogue & Direct Giving Basket */}
+          {/* 2. Direct Giving Basket & ₹11+ Auspicious Vedic Shagun Giving */}
           <ImpactCart />
 
-          {/* 5. Birthday & Milestone Feasts (3 Delivered Showcases in Horizontal Motion) */}
+          {/* 3. Exact 5 Official Support Tiers & Pricing (Form 28 JJ Act Registered) */}
+          <OfficialSupportTiersSection />
+
+          {/* 4. Birthday & Milestone Feasts (3 Delivered Showcases in Horizontal Motion) */}
           <TrendingBirthdaySection wishVideos={siteContent?.wishVideos} />
 
-          {/* 6. Emotional Voices & Reflections ("Every child deserves a warm plate..." in Horizontal Motion) */}
-          <EmotionalQuotesSection />
+          {/* 5. Horizontal Moving Reel (Video Clips & Photos) */}
+          <HorizontalMovingReel />
 
-          {/* 7. Real Boys Visual Gallery (Curated 60 Photos & Videos) */}
+          {/* 6. Real Boys Visual Gallery (Curated 60 Photos & Videos) */}
           <RealBoysGallerySection />
 
-          {/* 8. Documentary Video Chapters */}
+          {/* 7. Documentary Video Chapters */}
           <DocumentaryVideoSection />
 
-          {/* 9. Transparency Center & 5 Official Govt Accreditations */}
+          {/* 8. Emotional Voices & Reflections ("Every child deserves a warm plate..." in Horizontal Motion) */}
+          <EmotionalQuotesSection />
+
+          {/* 9. Transparency Center & 5 Official Govt Accreditations (Carousel / Grid) */}
           <TransparencySection docs={docs} />
 
           {/* 10. Trust & Axis Bank Direct Details (6 Trust Pillars in Horizontal Motion) */}

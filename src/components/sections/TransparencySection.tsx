@@ -1,6 +1,9 @@
-import Link from "next/link";
+"use client";
+
+import { useRef, useState } from "react";
+import Image from "next/image";
 import { Chip, Container, Head, Section } from "../ui";
-import { BANK_DETAILS, FORM_10AC, TAX_NOTE } from "@/lib/site";
+import { FORM_10AC } from "@/lib/site";
 
 type Doc = {
   id: number;
@@ -13,292 +16,416 @@ type Doc = {
   status: string;
 };
 
-export function TransparencySection({ docs, standalone = false }: { docs: Doc[]; standalone?: boolean }) {
-  const categories = Array.from(new Set(docs.map((d) => d.category)));
+interface OfficialAccreditation {
+  id: string;
+  formName: string;
+  authority: string;
+  authorityBadge: string;
+  title: string;
+  previewImage: string;
+  regNumber: string;
+  regLabel: string;
+  validity: string;
+  benefit: string;
+  pdfUrl: string;
+  pdfBtnText: string;
+  colorScheme: string;
+}
+
+const OFFICIAL_ACCREDITATIONS: OfficialAccreditation[] = [
+  {
+    id: "form-28",
+    formName: "Form 28 (JJ Act)",
+    authority: "Directorate of Child Protection, Karnataka",
+    authorityBadge: "Govt of Karnataka",
+    title: "Child Care Institution Registration",
+    previewImage: "/media/excellence-certificates.jpg",
+    regLabel: "Registration No",
+    regNumber: "KA18CH0242",
+    validity: "5 Years (2025 to 2030) · Form 28 Verified",
+    benefit: "Legal residential home license for 25 boys",
+    pdfUrl: "/documents/jj-act-child-care-institution-registration-form-28.pdf",
+    pdfBtnText: "View Form 28 PDF (JJ Act)",
+    colorScheme: "border-emerald-600/30 text-emerald-800 bg-emerald-50/50",
+  },
+  {
+    id: "form-10ac",
+    formName: "Form 10AC (Section 80G)",
+    authority: "Principal Commissioner of Income Tax",
+    authorityBadge: "Income Tax Dept",
+    title: "Section 80G Tax Exemption Approval",
+    previewImage: "/media/documents-preview.jpg",
+    regLabel: "Provisional URN",
+    regNumber: FORM_10AC.urn,
+    validity: `AY 2024-25 to 2026-27 · DIN: ${FORM_10AC.din}`,
+    benefit: "50% Tax Deduction on all donor gifts",
+    pdfUrl: "/documents/form-10ac-80g-approval.pdf",
+    pdfBtnText: "View Form 10AC PDF (80G)",
+    colorScheme: "border-amber-500/40 text-amber-900 bg-amber-50/50",
+  },
+  {
+    id: "csr-1",
+    formName: "Form CSR-1 (MCA)",
+    authority: "Ministry of Corporate Affairs (ROC-Delhi)",
+    authorityBadge: "MCA Govt of India",
+    title: "Corporate CSR Registration Approval",
+    previewImage: "/media/poster.jpg",
+    regLabel: "CSR Reg Number",
+    regNumber: "CSR00078800",
+    validity: "Approved 17-09-2024 · SRN-F98737448",
+    benefit: "Eligible for Corporate CSR grants (Sec 135)",
+    pdfUrl: "/documents/mca-csr-1-registration-certificate.pdf",
+    pdfBtnText: "View MCA CSR-1 PDF",
+    colorScheme: "border-blue-600/30 text-blue-900 bg-blue-50/50",
+  },
+  {
+    id: "section-12aa",
+    formName: "Section 12AA",
+    authority: "CIT (Exemptions) Bangalore",
+    authorityBadge: "Ministry of Finance",
+    title: "12AA Income Tax Registration Order",
+    previewImage: "/media/learning.jpg",
+    regLabel: "Registration Order",
+    regNumber: "ITBA/EXM/S/12AA/2018-19",
+    validity: "Registered AY 2018-19 onwards (Permanent)",
+    benefit: "100% Tax-Exempt Charitable Trust Status",
+    pdfUrl: "/documents/section-12aa-registration-certificate.pdf",
+    pdfBtnText: "View Section 12AA PDF",
+    colorScheme: "border-purple-600/30 text-purple-900 bg-purple-50/50",
+  },
+  {
+    id: "pan-card",
+    formName: "Permanent A/c Number",
+    authority: "Income Tax PAN Services Unit, NSDL",
+    authorityBadge: "Govt of India",
+    title: "Income Tax PAN Card Registration",
+    previewImage: "/media/hero.jpg",
+    regLabel: "Society PAN",
+    regNumber: FORM_10AC.pan,
+    validity: "Constituted 02/04/2013 (13+ Years Active)",
+    benefit: "Verified Public Charitable Entity",
+    pdfUrl: "/documents/society-pan-card.pdf",
+    pdfBtnText: "View Society PAN Card",
+    colorScheme: "border-teal-700/30 text-teal-900 bg-teal-50/50",
+  },
+];
+
+export function TransparencySection({
+  docs,
+  standalone = false,
+}: {
+  docs: Doc[];
+  standalone?: boolean;
+}) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [viewMode, setViewMode] = useState<"carousel" | "grid">("carousel");
+  const [activeIdx, setActiveIdx] = useState(0);
+
+  const scroll = (direction: "left" | "right") => {
+    if (scrollRef.current) {
+      const cardWidth = scrollRef.current.firstElementChild?.clientWidth || 320;
+      const scrollAmount = direction === "left" ? -(cardWidth + 20) : (cardWidth + 20);
+      scrollRef.current.scrollBy({ left: scrollAmount, behavior: "smooth" });
+    }
+  };
+
+  const scrollToIndex = (idx: number) => {
+    if (scrollRef.current) {
+      const cardWidth = scrollRef.current.firstElementChild?.clientWidth || 320;
+      scrollRef.current.scrollTo({ left: idx * (cardWidth + 20), behavior: "smooth" });
+      setActiveIdx(idx);
+    }
+  };
+
+  const handleTrackScroll = () => {
+    if (scrollRef.current) {
+      const scrollLeft = scrollRef.current.scrollLeft;
+      const cardWidth = scrollRef.current.firstElementChild?.clientWidth || 320;
+      const newIdx = Math.round(scrollLeft / (cardWidth + 20));
+      setActiveIdx(Math.min(Math.max(newIdx, 0), OFFICIAL_ACCREDITATIONS.length - 1));
+    }
+  };
+
   return (
-    <Section id="transparency" tone="white">
+    <Section id="transparency" tone="white" className="py-12 md:py-16 overflow-hidden">
       <Container>
-        <Head
-          eyebrow="Transparency"
-          title="Trust should be visible"
-          lead="Registration, governance, policies and reports are listed clearly. Each document includes name, publication date and version."
-        />
-        
-        {/* 5-Pillar Government Registration & Credential Verification Hub */}
-        <div className="mb-10 space-y-6">
-          <div className="flex items-center justify-between border-b border-teal-900/10 pb-3">
-            <div>
-              <span className="text-xs font-bold uppercase tracking-widest text-teal-800">Verified Legal Framework</span>
-              <h3 className="font-display text-xl sm:text-2xl font-bold text-teal-950 mt-1">
-                Official Government Accreditations &amp; Registrations
-              </h3>
-            </div>
-            <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-800 ring-1 ring-emerald-600/20">
-              ✓ 100% Verified &amp; Active
-            </span>
+        {/* Section Header */}
+        <div className="flex items-center gap-2 mb-2">
+          <Chip tone="teal">Verified Legal Accreditations</Chip>
+        </div>
+
+        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-8">
+          <div className="max-w-2xl">
+            <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold text-teal-950 leading-tight">
+              Trust Should Be Visible
+            </h2>
+            <p className="mt-2 text-sm sm:text-base text-teal-950/75 leading-relaxed">
+              Every registration, government order, and tax exemption is open for public inspection. Inspect authentic government certificates below.
+            </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {/* 1. JJ Act Child Care Institution Registration */}
-            <div className="flex flex-col justify-between rounded-3xl border-2 border-emerald-700/20 bg-white p-5 shadow-sm ring-1 ring-teal-900/10">
-              <div>
-                <div className="flex items-center justify-between gap-2 mb-3">
-                  <span className="rounded-md bg-emerald-600/15 px-2.5 py-1 text-[11px] font-bold text-emerald-800 ring-1 ring-emerald-600/30">
-                    Govt of Karnataka
-                  </span>
-                  <span className="font-mono text-[11px] font-bold text-teal-900">Form 28</span>
-                </div>
-                <h4 className="font-display text-base font-bold text-teal-950 leading-snug">
-                  Child Care Institution Registration (JJ Act 2015)
-                </h4>
-                <p className="mt-1 text-xs text-teal-900/60 font-semibold">
-                  Directorate of Child Protection, Karnataka
-                </p>
-                <div className="mt-3 space-y-1.5 rounded-xl bg-cream p-3 text-xs">
-                  <p><strong>Reg No:</strong> <span className="font-mono font-bold text-teal-950">KA18CH0242</span></p>
-                  <p><strong>Capacity:</strong> <span className="font-bold text-emerald-800">25 Children</span> (Boys, Age 07-18)</p>
-                  <p><strong>Validity:</strong> 5 Years (From 27/03/2025 to 2030)</p>
-                  <p><strong>Facility:</strong> Children Home for Boys, Thurahalli, Bangalore South</p>
-                </div>
-              </div>
-              <a
-                href="/documents/jj-act-child-care-institution-registration-form-28.pdf"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="focus-ring mt-4 inline-flex items-center justify-center gap-1.5 rounded-xl bg-teal-900 px-4 py-2.5 text-xs font-bold text-white hover:bg-teal-950 transition shadow-sm"
+          {/* Navigation Controls & View Mode Toggle */}
+          <div className="flex flex-wrap items-center gap-2 self-start md:self-end shrink-0">
+            {/* View Switcher: Carousel vs Grid */}
+            <div className="inline-flex rounded-2xl bg-sand/60 p-1 border border-teal-900/10 text-xs font-bold">
+              <button
+                type="button"
+                onClick={() => setViewMode("carousel")}
+                className={`rounded-xl px-3 py-1.5 transition flex items-center gap-1.5 cursor-pointer ${
+                  viewMode === "carousel"
+                    ? "bg-teal-900 text-white shadow-xs"
+                    : "text-teal-950/70 hover:text-teal-950"
+                }`}
               >
-                <span>View Form 28 PDF (JJ Act)</span>
-                <span>↗</span>
-              </a>
+                <span>↔</span>
+                <span>Horizontal Swipe</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode("grid")}
+                className={`rounded-xl px-3 py-1.5 transition flex items-center gap-1.5 cursor-pointer ${
+                  viewMode === "grid"
+                    ? "bg-teal-900 text-white shadow-xs"
+                    : "text-teal-950/70 hover:text-teal-950"
+                }`}
+              >
+                <span>⊞</span>
+                <span>Grid View</span>
+              </button>
             </div>
 
-            {/* 2. Form 10AC Section 80G Approval */}
-            <div className="flex flex-col justify-between rounded-3xl border-2 border-gold/40 bg-white p-5 shadow-sm ring-1 ring-teal-900/10">
-              <div>
-                <div className="flex items-center justify-between gap-2 mb-3">
-                  <span className="rounded-md bg-gold/25 px-2.5 py-1 text-[11px] font-bold text-amber-900 ring-1 ring-amber-600/30">
-                    Income Tax Dept
-                  </span>
-                  <span className="font-mono text-[11px] font-bold text-teal-900">Form 10AC</span>
-                </div>
-                <h4 className="font-display text-base font-bold text-teal-950 leading-snug">
-                  Section 80G Tax Exemption Approval
-                </h4>
-                <p className="mt-1 text-xs text-teal-900/60 font-semibold">
-                  Principal Commissioner of Income Tax
-                </p>
-                <div className="mt-3 space-y-1.5 rounded-xl bg-cream p-3 text-xs">
-                  <p><strong>URN:</strong> <span className="font-mono font-bold text-teal-950 break-all">{FORM_10AC.urn}</span></p>
-                  <p><strong>DIN:</strong> <span className="font-mono text-[11px] text-teal-950 break-all">{FORM_10AC.din}</span></p>
-                  <p><strong>Valid Assessment Years:</strong> AY 2024-25 to 2026-27</p>
-                  <p><strong>Donor Benefit:</strong> <span className="font-bold text-emerald-800">50% Tax Deduction</span> on all contributions</p>
-                </div>
+            {/* Carousel Arrow Buttons */}
+            {viewMode === "carousel" && (
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => scroll("left")}
+                  aria-label="Scroll left"
+                  className="flex h-9 w-9 items-center justify-center rounded-full bg-sand/70 text-teal-950 hover:bg-teal-900 hover:text-white transition shadow-xs cursor-pointer"
+                >
+                  ←
+                </button>
+                <button
+                  type="button"
+                  onClick={() => scroll("right")}
+                  aria-label="Scroll right"
+                  className="flex h-9 w-9 items-center justify-center rounded-full bg-sand/70 text-teal-950 hover:bg-teal-900 hover:text-white transition shadow-xs cursor-pointer"
+                >
+                  →
+                </button>
               </div>
-              <a
-                href="/documents/form-10ac-80g-approval.pdf"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="focus-ring mt-4 inline-flex items-center justify-center gap-1.5 rounded-xl bg-teal-900 px-4 py-2.5 text-xs font-bold text-white hover:bg-teal-950 transition shadow-sm"
-              >
-                <span>View Form 10AC PDF (80G)</span>
-                <span>↗</span>
-              </a>
-            </div>
+            )}
+          </div>
+        </div>
 
-            {/* 3. Ministry of Corporate Affairs CSR-1 Approval */}
-            <div className="flex flex-col justify-between rounded-3xl border-2 border-teal-800/20 bg-white p-5 shadow-sm ring-1 ring-teal-900/10">
-              <div>
-                <div className="flex items-center justify-between gap-2 mb-3">
-                  <span className="rounded-md bg-blue-600/15 px-2.5 py-1 text-[11px] font-bold text-blue-900 ring-1 ring-blue-600/30">
-                    Ministry of Corporate Affairs
-                  </span>
-                  <span className="font-mono text-[11px] font-bold text-teal-900">Form CSR-1</span>
-                </div>
-                <h4 className="font-display text-base font-bold text-teal-950 leading-snug">
-                  CSR Registration Approval for Entities
-                </h4>
-                <p className="mt-1 text-xs text-teal-900/60 font-semibold">
-                  Office of Registrar of Companies (ROC-Delhi)
-                </p>
-                <div className="mt-3 space-y-1.5 rounded-xl bg-cream p-3 text-xs">
-                  <p><strong>CSR Reg No:</strong> <span className="font-mono font-bold text-teal-950">CSR00078800</span></p>
-                  <p><strong>Application Ref:</strong> <span className="font-mono text-[11px] text-teal-950">SRN-F98737448</span></p>
-                  <p><strong>Approval Date:</strong> 17-09-2024</p>
-                  <p><strong>Corporate Scope:</strong> Qualified under Section 135 Companies Act 2013</p>
-                </div>
-              </div>
-              <a
-                href="/documents/mca-csr-1-registration-certificate.pdf"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="focus-ring mt-4 inline-flex items-center justify-center gap-1.5 rounded-xl bg-teal-900 px-4 py-2.5 text-xs font-bold text-white hover:bg-teal-950 transition shadow-sm"
+        {/* ── USER-FRIENDLY ACCREDITATION DISPLAY (CAROUSEL OR GRID) ── */}
+        <div className="relative w-full">
+          {viewMode === "carousel" ? (
+            <>
+              {/* Horizontal Moving Track: Touch-friendly swipe with kinetic snap */}
+              <div
+                ref={scrollRef}
+                onScroll={handleTrackScroll}
+                className="flex overflow-x-auto snap-x snap-mandatory gap-5 pb-4 no-scrollbar scrollbar-none items-stretch"
               >
-                <span>View MCA CSR-1 PDF</span>
-                <span>↗</span>
-              </a>
-            </div>
+                {OFFICIAL_ACCREDITATIONS.map((doc, idx) => (
+                  <div
+                    key={doc.id}
+                    className="snap-center shrink-0 w-[86vw] max-w-[340px] md:w-[340px] rounded-3xl bg-white border border-teal-900/15 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between overflow-hidden group"
+                  >
+                    <div>
+                      {/* VISUAL AT TOP: Document Seal / Thumbnail Header */}
+                      <div className="relative aspect-[16/10] w-full bg-teal-950 overflow-hidden">
+                        <Image
+                          src={doc.previewImage}
+                          alt={doc.title}
+                          fill
+                          className="object-cover group-hover:scale-105 transition duration-500 opacity-90"
+                          sizes="(max-width: 640px) 85vw, 340px"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-teal-950/90 via-black/25 to-transparent" />
 
-            {/* 4. Section 12AA Registration Order */}
-            <div className="flex flex-col justify-between rounded-3xl border-2 border-teal-800/20 bg-white p-5 shadow-sm ring-1 ring-teal-900/10">
-              <div>
-                <div className="flex items-center justify-between gap-2 mb-3">
-                  <span className="rounded-md bg-purple-600/15 px-2.5 py-1 text-[11px] font-bold text-purple-900 ring-1 ring-purple-600/30">
-                    CIT (Exemptions) Bangalore
-                  </span>
-                  <span className="font-mono text-[11px] font-bold text-teal-900">Section 12AA</span>
-                </div>
-                <h4 className="font-display text-base font-bold text-teal-950 leading-snug">
-                  12AA Income Tax Registration Order
-                </h4>
-                <p className="mt-1 text-xs text-teal-900/60 font-semibold">
-                  Ministry of Finance, Govt of India
-                </p>
-                <div className="mt-3 space-y-1.5 rounded-xl bg-cream p-3 text-xs">
-                  <p><strong>Order No:</strong> <span className="font-mono text-[11px] text-teal-950 break-all">ITBA/EXM/S/12AA/2018-19/1012296034(1)</span></p>
-                  <p><strong>Reg No:</strong> <span className="font-mono text-[11px] text-teal-950">CIT(EXEMPTIONS) BANGALORE/12AA/2018-19/A/10403</span></p>
-                  <p><strong>Order Date:</strong> 18/09/2018 (AY 2018-19 onwards)</p>
-                  <p><strong>Status:</strong> 100% Tax-Exempt Charitable Trust u/s 11 &amp; 12</p>
-                </div>
-              </div>
-              <a
-                href="/documents/section-12aa-registration-certificate.pdf"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="focus-ring mt-4 inline-flex items-center justify-center gap-1.5 rounded-xl bg-teal-900 px-4 py-2.5 text-xs font-bold text-white hover:bg-teal-950 transition shadow-sm"
-              >
-                <span>View Section 12AA PDF</span>
-                <span>↗</span>
-              </a>
-            </div>
+                        {/* Government Seal Badge */}
+                        <div className="absolute top-3 left-3 flex items-center gap-1.5 z-10">
+                          <span className="rounded-lg bg-teal-950/90 backdrop-blur-md px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-gold shadow-xs">
+                            Doc 0{idx + 1}
+                          </span>
+                          <span className="rounded-lg bg-white/95 px-2.5 py-1 text-[10px] font-extrabold uppercase text-teal-900 shadow-xs">
+                            {doc.formName}
+                          </span>
+                        </div>
 
-            {/* 5. Income Tax Permanent Account Number (PAN Card) */}
-            <div className="flex flex-col justify-between rounded-3xl border-2 border-teal-800/20 bg-white p-5 shadow-sm ring-1 ring-teal-900/10">
-              <div>
-                <div className="flex items-center justify-between gap-2 mb-3">
-                  <span className="rounded-md bg-emerald-600/15 px-2.5 py-1 text-[11px] font-bold text-emerald-800 ring-1 ring-emerald-600/30">
-                    Govt of India
-                  </span>
-                  <span className="font-mono text-[11px] font-bold text-teal-900">PAN Card</span>
-                </div>
-                <h4 className="font-display text-base font-bold text-teal-950 leading-snug">
-                  Income Tax Permanent Account Number
-                </h4>
-                <p className="mt-1 text-xs text-teal-900/60 font-semibold">
-                  Income Tax PAN Services Unit, NSDL
-                </p>
-                <div className="mt-3 space-y-1.5 rounded-xl bg-cream p-3 text-xs">
-                  <p><strong>PAN:</strong> <span className="font-mono font-bold text-base text-teal-950">{FORM_10AC.pan}</span></p>
-                  <p><strong>Constituted:</strong> 02/04/2013 (Over 13 years active)</p>
-                  <p><strong>Entity:</strong> JANA SEVA SAMRUDDI EDUCATION &amp; RURAL DEV SOC R</p>
-                  <p><strong>Jurisdiction:</strong> Bangalore, Karnataka</p>
-                </div>
-              </div>
-              <a
-                href="/documents/society-pan-card.pdf"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="focus-ring mt-4 inline-flex items-center justify-center gap-1.5 rounded-xl bg-teal-900 px-4 py-2.5 text-xs font-bold text-white hover:bg-teal-950 transition shadow-sm"
-              >
-                <span>View PAN Card PDF</span>
-                <span>↗</span>
-              </a>
-            </div>
+                        <div className="absolute bottom-2.5 left-3 right-3 flex items-center justify-between text-[11px] text-white/90 z-10 font-bold">
+                          <span className="truncate">{doc.authorityBadge}</span>
+                          <span className="rounded bg-emerald-500/30 px-1.5 py-0.5 text-[9px] text-emerald-300">✓ Verified</span>
+                        </div>
+                      </div>
 
-            {/* 6. Official Society Bank Account (Direct Transfers) */}
-            <div className="flex flex-col justify-between rounded-3xl bg-teal-950 p-5 text-white shadow-sm ring-1 ring-teal-900/10">
-              <div>
-                <div className="flex items-center justify-between gap-2 mb-3">
-                  <span className="rounded-md bg-gold/25 px-2.5 py-1 text-[11px] font-bold text-gold ring-1 ring-gold/40">
-                    Axis Bank Verified
-                  </span>
-                  <span className="text-[11px] text-teal-300">Banashankari</span>
-                </div>
-                <h4 className="font-display text-base font-bold text-white leading-snug">
-                  Charity Bank Account (NEFT / IMPS / RTGS)
-                </h4>
-                <p className="mt-1 text-xs text-teal-200">
-                  Direct Bank Contributions &amp; CSR Allocations
-                </p>
-                <div className="mt-3 space-y-1.5 rounded-xl bg-white/10 p-3 text-xs backdrop-blur">
-                  <p><span className="text-white/60">A/c Name:</span> <span className="font-bold text-white">{BANK_DETAILS.accountName}</span></p>
-                  <p><span className="text-gold">A/c No:</span> <span className="font-mono font-bold text-sm text-white">{BANK_DETAILS.accountNumber}</span></p>
-                  <p><span className="text-gold">IFSC:</span> <span className="font-mono font-bold text-sm text-white">{BANK_DETAILS.ifscCode}</span></p>
-                  <p><span className="text-white/60">Branch:</span> <span className="text-white">{BANK_DETAILS.branch}, Bangalore</span></p>
-                </div>
+                      {/* TEXT DETAILS DOWN BELOW (Donor Psychology) */}
+                      <div className="p-5">
+                        <h3 className="font-display text-base sm:text-lg font-bold text-teal-950 leading-snug">
+                          {doc.title}
+                        </h3>
+                        <p className="text-xs text-teal-900/60 font-semibold mt-0.5">
+                          {doc.authority}
+                        </p>
+
+                        {/* Certificate Credentials Box */}
+                        <div className="mt-3.5 space-y-1.5 rounded-2xl bg-cream/70 p-3.5 border border-teal-900/10 text-xs">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-bold text-teal-950/60 uppercase">{doc.regLabel}:</span>
+                            <span className="font-mono font-bold text-teal-900 truncate max-w-[170px]">{doc.regNumber}</span>
+                          </div>
+                          <div className="text-[11px] text-teal-950/75">
+                            <strong>Validity:</strong> {doc.validity}
+                          </div>
+                          <div className="text-[11px] font-bold text-emerald-800 flex items-center gap-1 pt-1 border-t border-teal-900/5">
+                            <span>★</span>
+                            <span>{doc.benefit}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* PDF ACTION DOWN BELOW */}
+                    <div className="p-5 pt-0">
+                      <a
+                        href={doc.pdfUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="focus-ring tap-scale flex w-full items-center justify-center gap-1.5 rounded-2xl bg-teal-900 py-3 text-xs font-bold text-white shadow-sm hover:bg-teal-950 transition cursor-pointer"
+                      >
+                        <span>{doc.pdfBtnText}</span>
+                        <span>↗</span>
+                      </a>
+                    </div>
+                  </div>
+                ))}
               </div>
-              <p className="mt-3 text-[11px] text-white/70 leading-relaxed">
-                Direct transfers generate verified 80G tax receipts upon sharing receipt to WhatsApp or email.
+
+              {/* Interactive Pagination Dots for Horizontal Carousel */}
+              <div className="mt-3 flex items-center justify-center gap-2">
+                {OFFICIAL_ACCREDITATIONS.map((doc, idx) => (
+                  <button
+                    key={`dot-${doc.id}`}
+                    type="button"
+                    onClick={() => scrollToIndex(idx)}
+                    aria-label={`Jump to ${doc.formName}`}
+                    className={`h-2.5 rounded-full transition-all duration-200 cursor-pointer ${
+                      activeIdx === idx
+                        ? "w-7 bg-teal-900"
+                        : "w-2.5 bg-teal-900/20 hover:bg-teal-900/40"
+                    }`}
+                  />
+                ))}
+              </div>
+
+              <p className="text-center text-[11px] text-teal-950/60 mt-1.5">
+                Swipe horizontally ↔ or tap dots to inspect all 5 official government accreditations
+              </p>
+            </>
+          ) : (
+            /* Responsive Grid View */
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6 items-stretch animate-fadeIn">
+              {OFFICIAL_ACCREDITATIONS.map((doc, idx) => (
+                <div
+                  key={doc.id}
+                  className="rounded-3xl bg-white border border-teal-900/15 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between overflow-hidden group"
+                >
+                  <div>
+                    {/* VISUAL AT TOP: Document Seal / Thumbnail Header */}
+                    <div className="relative aspect-[16/10] w-full bg-teal-950 overflow-hidden">
+                      <Image
+                        src={doc.previewImage}
+                        alt={doc.title}
+                        fill
+                        className="object-cover group-hover:scale-105 transition duration-500 opacity-90"
+                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 380px"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-teal-950/90 via-black/25 to-transparent" />
+
+                      {/* Government Seal Badge */}
+                      <div className="absolute top-3 left-3 flex items-center gap-1.5 z-10">
+                        <span className="rounded-lg bg-teal-950/90 backdrop-blur-md px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-gold shadow-xs">
+                          Doc 0{idx + 1}
+                        </span>
+                        <span className="rounded-lg bg-white/95 px-2.5 py-1 text-[10px] font-extrabold uppercase text-teal-900 shadow-xs">
+                          {doc.formName}
+                        </span>
+                      </div>
+
+                      <div className="absolute bottom-2.5 left-3 right-3 flex items-center justify-between text-[11px] text-white/90 z-10 font-bold">
+                        <span className="truncate">{doc.authorityBadge}</span>
+                        <span className="rounded bg-emerald-500/30 px-1.5 py-0.5 text-[9px] text-emerald-300">✓ Verified</span>
+                      </div>
+                    </div>
+
+                    {/* TEXT DETAILS DOWN BELOW */}
+                    <div className="p-5">
+                      <h3 className="font-display text-base sm:text-lg font-bold text-teal-950 leading-snug">
+                        {doc.title}
+                      </h3>
+                      <p className="text-xs text-teal-900/60 font-semibold mt-0.5">
+                        {doc.authority}
+                      </p>
+
+                      {/* Certificate Credentials Box */}
+                      <div className="mt-3.5 space-y-1.5 rounded-2xl bg-cream/70 p-3.5 border border-teal-900/10 text-xs">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-bold text-teal-950/60 uppercase">{doc.regLabel}:</span>
+                          <span className="font-mono font-bold text-teal-900 truncate max-w-[170px]">{doc.regNumber}</span>
+                        </div>
+                        <div className="text-[11px] text-teal-950/75">
+                          <strong>Validity:</strong> {doc.validity}
+                        </div>
+                        <div className="text-[11px] font-bold text-emerald-800 flex items-center gap-1 pt-1 border-t border-teal-900/5">
+                          <span>★</span>
+                          <span>{doc.benefit}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* PDF ACTION DOWN BELOW */}
+                  <div className="p-5 pt-0">
+                    <a
+                      href={doc.pdfUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="focus-ring tap-scale flex w-full items-center justify-center gap-1.5 rounded-2xl bg-teal-900 py-3 text-xs font-bold text-white shadow-sm hover:bg-teal-950 transition cursor-pointer"
+                    >
+                      <span>{doc.pdfBtnText}</span>
+                      <span>↗</span>
+                    </a>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Trust Summary Banner */}
+        <div className="mt-8 rounded-3xl bg-teal-950 p-5 sm:p-6 text-white shadow-md border border-teal-800 flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <span className="text-2xl select-none" aria-hidden="true">📜</span>
+            <div>
+              <p className="font-display text-base font-bold text-gold">
+                100% Tax Deductible Under Section 80G
+              </p>
+              <p className="text-xs text-white/80">
+                All Indian taxpayers are eligible for a 50% deduction under Section 80G of the Income Tax Act. Instant receipt issued upon payment.
               </p>
             </div>
           </div>
+          <a
+            href="/documents/form-10ac-80g-approval.pdf"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded-xl bg-gold px-4 py-2.5 text-xs font-bold text-teal-950 hover:bg-gold/90 transition shrink-0"
+          >
+            Download 80G Certificate PDF →
+          </a>
         </div>
-        <div className="space-y-6">
-          {categories.map((cat) => (
-            <div key={cat}>
-              <h3 className="mb-2 font-display text-lg font-bold text-teal-900">{cat}</h3>
-              <ul className="divide-y divide-teal-900/10 overflow-hidden rounded-2xl bg-cream ring-1 ring-teal-900/10">
-                {docs.filter((d) => d.category === cat).map((d) => {
-                  const published = d.status === "published";
-                  return (
-                    <li key={d.id} className="flex flex-col gap-2 p-4 sm:flex-row sm:items-center sm:justify-between">
-                      <div>
-                        <p className="font-semibold text-teal-900">{d.title}</p>
-                        <p className="mt-0.5 text-xs text-teal-950/60">
-                          Published: {d.publishedOn ? new Date(d.publishedOn).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "date to be confirmed"}
-                          {" · "}Version: {d.version ?? "-"}
-                        </p>
-                        {d.note && !published && <p className="mt-1 text-xs text-teal-950/55">{d.note}</p>}
-                      </div>
-                      {published && d.fileUrl ? (
-                        <a href={d.fileUrl} className="focus-ring shrink-0 rounded-xl bg-teal-800 px-4 py-2 text-center text-xs font-bold text-white" target="_blank" rel="noopener">View PDF</a>
-                      ) : (
-                        <Chip tone="orange">Pending publication</Chip>
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          ))}
-        </div>
-        <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-3 w-full min-w-0">
-          {[
-            {
-              title: "Payments",
-              desc: "Verified on our server with the gateway, including amount. Duplicate payments are blocked.",
-              icon: (
-                <svg className="w-6 h-6 text-teal-800" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                </svg>
-              ),
-            },
-            {
-              title: "Donor privacy",
-              desc: "Donor details are never shown publicly. Campaigns show only supporter counts.",
-              icon: (
-                <svg className="w-6 h-6 text-teal-800" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                </svg>
-              ),
-            },
-            {
-              title: "Safeguarding",
-              desc: "Child media is published only with documented consent and review, and can be taken down.",
-              icon: (
-                <svg className="w-6 h-6 text-teal-800" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                </svg>
-              ),
-            },
-          ].map((item) => (
-            <div key={item.title} className="rounded-2xl bg-teal-100 p-4">
-              <div className="mb-2">{item.icon}</div>
-              <p className="font-display font-bold text-teal-900">{item.title}</p>
-              <p className="mt-1 text-xs text-teal-950/70">{item.desc}</p>
-            </div>
-          ))}
-        </div>
-        {!standalone && <Link href="/transparency" className="mt-5 inline-block text-sm font-semibold text-teal-800 underline">Full transparency page</Link>}
       </Container>
     </Section>
   );
