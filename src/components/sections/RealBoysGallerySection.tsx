@@ -13,18 +13,34 @@ import {
   type GalleryCategory,
 } from "@/data/ashrama-curated-gallery";
 
-export function RealBoysGallerySection() {
+export function RealBoysGallerySection({ customMedia }: { customMedia?: any[] } = {}) {
   const [selectedCategory, setSelectedCategory] = useState<GalleryCategory>("All Moments");
   const [activeItem, setActiveItem] = useState<GalleryItem | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [showAll, setShowAll] = useState(false);
   const { setQty, openBottomDonate } = useCart();
 
+  const allItems = useMemo(() => {
+    if (!customMedia || customMedia.length === 0) return CURATED_GALLERY;
+    const dbItems: GalleryItem[] = customMedia.map((m: any) => ({
+      id: `db-media-${m.id}`,
+      semanticName: m.key || `media-${m.id}`,
+      type: m.kind === "video" ? ("video" as const) : ("image" as const),
+      url: m.publicUrl || m.originalUrl || "/media/learning.jpg",
+      title: m.caption || m.altText || "Ashrama Life Moment",
+      kannada: "ಆಶ್ರಮದ ಜೀವನದ ಕ್ಷಣ",
+      description: m.altText || m.caption || "Authentic moment captured at Janaseva Ashrama, Bangalore.",
+      category: "Our 25 Boys",
+      featured: true,
+    }));
+    return [...dbItems, ...CURATED_GALLERY];
+  }, [customMedia]);
+
   // Filter items based on active category
   const filteredItems = useMemo(() => {
-    if (selectedCategory === "All Moments") return CURATED_GALLERY;
-    return CURATED_GALLERY.filter((item) => item.category === selectedCategory);
-  }, [selectedCategory]);
+    if (selectedCategory === "All Moments") return allItems;
+    return allItems.filter((item) => item.category === selectedCategory);
+  }, [selectedCategory, allItems]);
 
   // Keyboard navigation for Lightbox
   const handleNext = useCallback(() => {

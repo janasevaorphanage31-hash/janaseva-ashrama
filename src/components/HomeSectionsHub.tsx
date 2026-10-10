@@ -82,6 +82,7 @@ interface HomeSectionsHubProps {
   metrics: any[];
   totals: { total: number; donations: number };
   siteContent: any;
+  approvedMedia?: any[];
 }
 
 export function HomeSectionsHub({
@@ -90,6 +91,7 @@ export function HomeSectionsHub({
   metrics,
   totals,
   siteContent,
+  approvedMedia,
 }: HomeSectionsHubProps) {
   const [activeMode, setActiveMode] = useState<HomeMode>("all");
   const hubRef = useRef<HTMLDivElement>(null);
@@ -371,7 +373,7 @@ export function HomeSectionsHub({
           <HorizontalMovingReel />
 
           {/* Full Interactive 60 Photos Gallery */}
-          <RealBoysGallerySection />
+          <RealBoysGallerySection customMedia={approvedMedia} />
 
           {/* Documentary Chapters */}
           <DocumentaryVideoSection chapters={siteContent?.docChapters} />
@@ -462,7 +464,7 @@ export function HomeSectionsHub({
           <HorizontalMovingReel />
 
           {/* 5. Real Boys Visual Gallery (Curated 60 Photos & Videos) */}
-          <RealBoysGallerySection />
+          <RealBoysGallerySection customMedia={approvedMedia} />
 
           {/* 6. On-Ground NGO Activities & Community Outreach (Field Initiatives) */}
           <CommunityActivitiesSection />

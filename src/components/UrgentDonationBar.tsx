@@ -68,7 +68,7 @@ export function UrgentDonationBar() {
       aria-label="Floating Urgent Donation Bar"
       className={`fixed z-40 no-print transition-all duration-300 ${
         total > 0
-          ? "bottom-[calc(4.75rem+env(safe-area-inset-bottom))] md:bottom-5 inset-x-2 sm:inset-x-4 md:left-1/2 md:-translate-x-1/2 md:max-w-4xl md:w-full"
+          ? "bottom-[calc(5.25rem+env(safe-area-inset-bottom))] md:bottom-5 inset-x-2 sm:inset-x-4 md:left-1/2 md:-translate-x-1/2 md:max-w-4xl md:w-full"
           : "hidden md:block md:bottom-5 md:left-1/2 md:-translate-x-1/2 md:max-w-4xl md:w-full"
       }`}
     >

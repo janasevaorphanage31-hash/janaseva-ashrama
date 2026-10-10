@@ -117,6 +117,7 @@ export function CinematicHero({ content }: { content?: Partial<SiteContentMap> }
         {/* Background poster (LCP-critical, authentic Ashrama 25 boys in orange prayer) */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
+          key={posterSrc}
           src={posterSrc}
           alt="Authentic Annadana food preparation and prayers for 25 boys at Janaseva Ashrama Bangalore"
           fetchPriority="high"
@@ -127,6 +128,7 @@ export function CinematicHero({ content }: { content?: Partial<SiteContentMap> }
 
         {/* Autoplay edge-to-edge looping video of real Janaseva Ashrama prayer hall */}
         <video
+          key={videoSrc}
           ref={videoRef}
           src={videoSrc}
           autoPlay

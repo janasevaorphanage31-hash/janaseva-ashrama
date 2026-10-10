@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { asc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { documents } from "@/db/schema";
@@ -60,6 +61,13 @@ export async function POST(req: Request) {
     ipAddress: clientIp(req),
   });
 
+  try {
+    revalidatePath("/", "layout");
+    revalidatePath("/");
+    revalidatePath("/transparency");
+    revalidatePath("/admin/content");
+  } catch {}
+
   return NextResponse.json({ ok: true, document: row });
 }
 
@@ -98,6 +106,13 @@ export async function PATCH(req: Request) {
     ipAddress: clientIp(req),
   });
 
+  try {
+    revalidatePath("/", "layout");
+    revalidatePath("/");
+    revalidatePath("/transparency");
+    revalidatePath("/admin/content");
+  } catch {}
+
   return NextResponse.json({ ok: true, document: row });
 }
 
@@ -131,6 +146,13 @@ export async function DELETE(req: Request) {
     beforeState: before,
     ipAddress: clientIp(req),
   });
+
+  try {
+    revalidatePath("/", "layout");
+    revalidatePath("/");
+    revalidatePath("/transparency");
+    revalidatePath("/admin/content");
+  } catch {}
 
   return NextResponse.json({ ok: true, deletedId: id });
 }

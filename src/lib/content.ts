@@ -8,6 +8,7 @@ import {
   impactItems,
   impactMetrics,
   impactMissions,
+  mediaAssets,
   missionContributions,
   todayUpdates,
   volunteerApplications,
@@ -302,4 +303,18 @@ export const getImpactWall = () =>
       metrics: await db.select().from(impactMetrics).where(eq(impactMetrics.published, true)).orderBy(asc(impactMetrics.sortOrder)),
     };
   }, { totalAmount: 0, donationCount: 0, todayAmount: 0, todayDonations: 0, campaignCount: 0, volunteerCount: 0, latestSupporters: [], metrics: [] });
+
+export const getApprovedMedia = () =>
+  safe(
+    async () => {
+      const rows = await db
+        .select()
+        .from(mediaAssets)
+        .where(eq(mediaAssets.status, "PUBLISHED"))
+        .orderBy(desc(mediaAssets.createdAt))
+        .limit(60);
+      return rows;
+    },
+    [],
+  );
 

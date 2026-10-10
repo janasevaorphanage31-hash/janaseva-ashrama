@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { celebrationBookings } from "@/db/schema";
@@ -137,6 +138,14 @@ export async function POST(req: Request) {
     ipAddress: clientIp(req),
   });
 
+  try {
+    revalidatePath("/", "layout");
+    revalidatePath("/");
+    revalidatePath("/celebrate-birthday");
+    revalidatePath("/make-a-day-matter");
+    revalidatePath("/admin/content");
+  } catch {}
+
   return NextResponse.json({ ok: true, booking });
 }
 
@@ -178,6 +187,14 @@ export async function PATCH(req: Request) {
     ipAddress: clientIp(req),
   });
 
+  try {
+    revalidatePath("/", "layout");
+    revalidatePath("/");
+    revalidatePath("/celebrate-birthday");
+    revalidatePath("/make-a-day-matter");
+    revalidatePath("/admin/content");
+  } catch {}
+
   return NextResponse.json({ ok: true, booking: updated });
 }
 
@@ -202,6 +219,14 @@ export async function DELETE(req: Request) {
     beforeState: before,
     ipAddress: clientIp(req),
   });
+
+  try {
+    revalidatePath("/", "layout");
+    revalidatePath("/");
+    revalidatePath("/celebrate-birthday");
+    revalidatePath("/make-a-day-matter");
+    revalidatePath("/admin/content");
+  } catch {}
 
   return NextResponse.json({ ok: true });
 }

@@ -24,7 +24,7 @@ const MORE_SECTIONS: MoreSection[] = [
   {
     title: "🌟 Direct Seva & Sponsorship",
     items: [
-      { href: "/celebrate-birthday", label: "Celebrate Birthday", sub: "Feast with 25 boys + WhatsApp video blessing", icon: "🎂", badge: "Trending" },
+      { href: "/celebrate-birthday", label: "Celebrate Birthday", sub: "Feast with boys + WhatsApp video blessing", icon: "🎂", badge: "Trending" },
       { href: "/make-a-day-matter", label: "Make a Day Matter", sub: "Sponsor 1 day meals for all 25 boys", icon: "🍲", badge: "Popular" },
       { href: "/gift-impact", label: "Gift an Impact", sub: "Dedicate meals in honor of someone", icon: "🎁" },
       { href: "/recurring-giving", label: "Regular Monthly Giving", sub: "Automated monthly recurring seva", icon: "🔄" },
@@ -65,22 +65,33 @@ const LEGAL_LINKS = [
   { href: "/refund-policy", label: "Refund Policy" },
 ];
 
+interface NavItem {
+  href: string;
+  label: string;
+  icon: React.ReactNode;
+}
+
 function HomeIcon() {
   return (
-    <svg className="h-[21px] w-[21px] fill-current" viewBox="0 0 24 24" aria-hidden="true">
+    <svg className="h-[22px] w-[22px] fill-current" viewBox="0 0 24 24" aria-hidden="true">
       <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
     </svg>
   );
 }
-
-function BirthdayCakeIcon() {
+function StoriesIcon() {
   return (
-    <svg className="h-[21px] w-[21px] fill-current" viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M12 6a2 2 0 0 0 2-2c0-.38-.1-.73-.29-1.03l-1.42-2.26a.35.35 0 0 0-.58 0L10.29 2.97c-.19.3-.29.65-.29 1.03a2 2 0 0 0 2 2zm7 3h-1V8a1 1 0 0 0-1-1h-2a1 1 0 0 0-1 1v1h-4V8a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1v1H5a3 3 0 0 0-3 3v1a2 2 0 0 0 2 2h.08A4.98 4.98 0 0 0 8 18.83V20H4a1 1 0 0 0 0 2h16a1 1 0 0 0 0-2h-4v-1.17A4.98 4.98 0 0 0 19.92 15H20a2 2 0 0 0 2-2v-1a3 3 0 0 0-3-3zm1 4h-1.09A4.99 4.99 0 0 0 14 11.08V10h1v1h2v-1h1a1 1 0 0 1 1 1v1h1z" />
+    <svg className="h-[22px] w-[22px] fill-current" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M18 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 4h5v8l-2.5-1.5L6 12V4z" />
     </svg>
   );
 }
-
+function OccasionsIcon() {
+  return (
+    <svg className="h-[22px] w-[22px] fill-current" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M20 6h-2.18c.11-.31.18-.65.18-1 0-1.66-1.34-3-3-3-1.05 0-1.96.54-2.5 1.35l-.5.65-.5-.65C10.96 2.54 10.05 2 9 2 7.34 2 6 3.34 6 5c0 .35.07.69.18 1H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2z" />
+    </svg>
+  );
+}
 function ImpactHeartIcon() {
   return (
     <svg className="h-[26px] w-[26px] fill-current" viewBox="0 0 24 24" aria-hidden="true">
@@ -88,18 +99,9 @@ function ImpactHeartIcon() {
     </svg>
   );
 }
-
-function VisitPinIcon() {
-  return (
-    <svg className="h-[21px] w-[21px] fill-current" viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
-    </svg>
-  );
-}
-
 function MenuIcon() {
   return (
-    <svg className="h-[21px] w-[21px] fill-none stroke-current stroke-2" viewBox="0 0 24 24" aria-hidden="true">
+    <svg className="h-[22px] w-[22px] fill-none stroke-current stroke-2" viewBox="0 0 24 24" aria-hidden="true">
       <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
     </svg>
   );
@@ -132,16 +134,21 @@ export function BottomNav() {
 
   if (path?.startsWith("/admin") || path === "/checkout") return null;
 
-  const isHomeActive = path === "/";
-  const isBirthdayActive = path.startsWith("/celebrate-birthday") || path.startsWith("/celebrate-special-day");
-  const isContactActive = path.startsWith("/contact");
-  const isMoreActive = MORE_SECTIONS.some((sec) =>
+  const active = (href: string) =>
+    href === "/" ? path === "/" : path.startsWith(href);
+  const moreActive = MORE_SECTIONS.some((sec) =>
     sec.items.some((m) => path.startsWith(m.href.split("#")[0]))
   );
 
+  const navItems: NavItem[] = [
+    { href: "/", label: "HOME", icon: <HomeIcon /> },
+    { href: "/stories", label: "STORIES", icon: <StoriesIcon /> },
+    { href: "/make-a-day-matter", label: "OCCASIONS", icon: <OccasionsIcon /> },
+  ];
+
   return (
     <>
-      {/* ── MORE / EXPLORE SHEET ── */}
+      {/* ── MORE SHEET ── */}
       {open && (
         <div
           className="fixed inset-0 z-50 md:hidden no-print"
@@ -167,7 +174,7 @@ export function BottomNav() {
                   Explore Janaseva Ashrama
                 </h3>
                 <p className="text-[11px] text-teal-950/60 font-medium">
-                  25 Resident Boys · Turahalli, South Bangalore
+                  25 Resident Boys · Thurahalli, South Bangalore
                 </p>
               </div>
               <button
@@ -179,7 +186,7 @@ export function BottomNav() {
               </button>
             </div>
 
-            {/* Content List */}
+            {/* Categorized List */}
             <div className="p-4 space-y-4 overflow-y-auto no-scrollbar pb-10">
               {/* Caretaker & Social Channels Fast Banner */}
               <div className="p-3.5 rounded-2xl bg-teal-950 text-white border border-amber-400/30 shadow-sm">
@@ -215,7 +222,6 @@ export function BottomNav() {
                 </div>
               </div>
 
-              {/* Categorized Sections */}
               {MORE_SECTIONS.map((sec) => (
                 <div key={sec.title} className="space-y-2">
                   <span className="block text-[11px] font-black uppercase tracking-wider text-teal-950/60 px-1">
@@ -276,52 +282,46 @@ export function BottomNav() {
         </div>
       )}
 
-      {/* ── EXPORT-GRADE MOBILE BOTTOM NAVIGATION BAR ── */}
+      {/* ── BOTTOM NAV BAR ── */}
       <nav
         aria-label="Mobile Bottom Navigation"
-        className="fixed inset-x-0 bottom-0 z-40 border-t border-teal-900/10 bg-white/96 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_30px_rgba(6,49,47,0.08)] backdrop-blur-2xl md:hidden no-print"
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-teal-900/10 bg-white/97 pb-[env(safe-area-inset-bottom)] shadow-[0_-6px_24px_rgba(6,49,47,0.09)] backdrop-blur-xl md:hidden no-print"
       >
-        <ul className="mx-auto grid grid-cols-5 h-16 max-w-md items-center px-1">
-          {/* 1. HOME */}
-          <li className="text-center">
-            <Link
-              href="/"
-              aria-current={isHomeActive ? "page" : undefined}
-              className={`focus-ring tap-scale flex min-h-[52px] w-full flex-col items-center justify-center gap-0.5 py-1 transition-colors duration-200 ${
-                isHomeActive ? "text-teal-900" : "text-teal-950/45 hover:text-teal-950/70"
-              }`}
-            >
-              <span className={`transition-transform duration-200 ${isHomeActive ? "scale-110" : "scale-100"}`}>
-                <HomeIcon />
-              </span>
-              <span className={`text-[9px] font-bold tracking-tight ${isHomeActive ? "text-teal-900 font-extrabold" : ""}`}>
-                HOME
-              </span>
-              {isHomeActive && <span className="h-1 w-3 rounded-full bg-saffron mt-0.5" />}
-            </Link>
-          </li>
+        <ul className="mx-auto flex h-16 max-w-md items-center justify-around px-1">
 
-          {/* 2. BIRTHDAYS (Top emotional seva) */}
-          <li className="text-center">
-            <Link
-              href="/celebrate-birthday"
-              aria-current={isBirthdayActive ? "page" : undefined}
-              className={`focus-ring tap-scale flex min-h-[52px] w-full flex-col items-center justify-center gap-0.5 py-1 transition-colors duration-200 ${
-                isBirthdayActive ? "text-teal-900" : "text-teal-950/45 hover:text-teal-950/70"
-              }`}
-            >
-              <span className={`transition-transform duration-200 ${isBirthdayActive ? "scale-110" : "scale-100"}`}>
-                <BirthdayCakeIcon />
-              </span>
-              <span className={`text-[9px] font-bold tracking-tight ${isBirthdayActive ? "text-teal-900 font-extrabold" : ""}`}>
-                BIRTHDAY
-              </span>
-              {isBirthdayActive && <span className="h-1 w-3 rounded-full bg-saffron mt-0.5" />}
-            </Link>
-          </li>
+          {/* LEFT NAV ITEMS */}
+          {navItems.map((item) => {
+            const isActive =
+              item.href === "/"
+                ? path === "/"
+                : active(item.href);
+            return (
+              <li key={item.href} className="flex-1 text-center">
+                <Link
+                  href={item.href}
+                  aria-current={isActive ? "page" : undefined}
+                  className={`focus-ring tap-scale flex min-h-[52px] w-full flex-col items-center justify-center gap-0.5 py-1 transition-colors duration-200 ${
+                    isActive ? "text-teal-900" : "text-teal-950/45 hover:text-teal-950/70"
+                  }`}
+                >
+                  <span
+                    className={`transition-transform duration-200 ${
+                      isActive ? "scale-110" : "scale-100"
+                    }`}
+                  >
+                    {item.icon}
+                  </span>
+                  <span className={`text-[9px] font-bold tracking-wide ${isActive ? "text-teal-900" : ""}`}>
+                    {item.label}
+                  </span>
+                  {isActive && <span className="h-1 w-3 rounded-full bg-saffron mt-0.5" />}
+                </Link>
+              </li>
+            );
+          })}
 
-          {/* 3. TRUE CENTER HERO DONATE BUTTON */}
-          <li className="text-center">
+          {/* CENTER IMPACT BUTTON */}
+          <li className="flex-1 text-center">
             <button
               type="button"
               onClick={() => {
@@ -329,60 +329,43 @@ export function BottomNav() {
                 openBottomDonate(101, "meal");
               }}
               aria-label="Open donation options for 25 boys"
-              className="focus-ring -mt-5 relative flex flex-col items-center justify-center group tap-scale cursor-pointer mx-auto"
+              className="focus-ring -mt-5 relative flex flex-col items-center justify-center group tap-scale cursor-pointer"
             >
               <div
-                className="relative flex h-14 w-14 items-center justify-center rounded-2xl text-white shadow-[0_8px_25px_rgba(230,126,34,0.45)] ring-4 ring-white transition-transform duration-300 bg-gradient-to-tr from-saffron via-amber-500 to-amber-600 active:scale-95 animate-heartbeat"
+                className={`relative flex h-14 w-14 items-center justify-center rounded-2xl text-white shadow-lg ring-4 ring-white transition animate-heartbeat ${
+                  active("/impact")
+                    ? "bg-saffron-dark"
+                    : "bg-saffron hover:bg-saffron-dark"
+                }`}
               >
                 <ImpactHeartIcon />
                 {count > 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 grid h-5 min-w-5 place-items-center rounded-full bg-teal-950 px-1 text-[10px] font-extrabold text-amber-300 ring-2 ring-white shadow">
+                  <span className="absolute -top-1 -right-1 grid h-5 min-w-5 place-items-center rounded-md bg-teal-950 px-1 text-[10px] font-extrabold text-gold shadow">
                     {count}
                   </span>
                 )}
               </div>
-              <span className="mt-0.5 text-[9px] font-black tracking-wide text-saffron-dark">
+              <span className="mt-0.5 text-[9px] font-extrabold tracking-wide text-saffron-dark">
                 DONATE 💝
               </span>
             </button>
           </li>
 
-          {/* 4. VISIT & CAMPUS */}
-          <li className="text-center">
-            <Link
-              href="/contact"
-              aria-current={isContactActive ? "page" : undefined}
-              className={`focus-ring tap-scale flex min-h-[52px] w-full flex-col items-center justify-center gap-0.5 py-1 transition-colors duration-200 ${
-                isContactActive ? "text-teal-900" : "text-teal-950/45 hover:text-teal-950/70"
-              }`}
-            >
-              <span className={`transition-transform duration-200 ${isContactActive ? "scale-110" : "scale-100"}`}>
-                <VisitPinIcon />
-              </span>
-              <span className={`text-[9px] font-bold tracking-tight ${isContactActive ? "text-teal-900 font-extrabold" : ""}`}>
-                VISIT US
-              </span>
-              {isContactActive && <span className="h-1 w-3 rounded-full bg-saffron mt-0.5" />}
-            </Link>
-          </li>
-
-          {/* 5. EXPLORE / MORE */}
-          <li className="text-center">
+          {/* MORE */}
+          <li className="flex-1 text-center">
             <button
               onClick={() => setOpen(true)}
               aria-label="Open more navigation options"
               aria-expanded={open}
-              className={`focus-ring tap-scale flex min-h-[52px] w-full flex-col items-center justify-center gap-0.5 py-1 transition-colors duration-200 cursor-pointer ${
-                open || isMoreActive ? "text-teal-900" : "text-teal-950/45 hover:text-teal-950/70"
+              className={`focus-ring tap-scale flex min-h-[52px] w-full flex-col items-center justify-center gap-0.5 py-1 transition-colors duration-200 ${
+                open || moreActive ? "text-teal-900" : "text-teal-950/45 hover:text-teal-950/70"
               }`}
             >
-              <span className={`transition-transform duration-200 ${open || isMoreActive ? "scale-110" : "scale-100"}`}>
+              <span className={`transition-transform duration-200 ${open || moreActive ? "scale-110" : "scale-100"}`}>
                 <MenuIcon />
               </span>
-              <span className={`text-[9px] font-bold tracking-tight ${open || isMoreActive ? "text-teal-900 font-extrabold" : ""}`}>
-                EXPLORE
-              </span>
-              {(open || isMoreActive) && <span className="h-1 w-3 rounded-full bg-saffron mt-0.5" />}
+              <span className="text-[9px] font-bold tracking-wide">MORE</span>
+              {(open || moreActive) && <span className="nav-dot" />}
             </button>
           </li>
         </ul>

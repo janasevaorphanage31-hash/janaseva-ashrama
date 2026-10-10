@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { asc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { impactMetrics } from "@/db/schema";
@@ -60,6 +61,12 @@ export async function POST(req: Request) {
     ipAddress: clientIp(req),
   });
 
+  try {
+    revalidatePath("/", "layout");
+    revalidatePath("/");
+    revalidatePath("/admin/content");
+  } catch {}
+
   return NextResponse.json({ ok: true, metric: row });
 }
 
@@ -96,6 +103,12 @@ export async function PATCH(req: Request) {
     afterState: row,
     ipAddress: clientIp(req),
   });
+
+  try {
+    revalidatePath("/", "layout");
+    revalidatePath("/");
+    revalidatePath("/admin/content");
+  } catch {}
 
   return NextResponse.json({ ok: true, metric: row });
 }

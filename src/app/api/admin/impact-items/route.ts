@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { asc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { impactItems } from "@/db/schema";
@@ -26,8 +27,7 @@ export async function POST(req: Request) {
   const unitPrice = Math.floor(Number(b?.unitPrice));
   const accountingMeaning = clean(b?.accountingMeaning, 1000);
   const operationalMeaning = clean(b?.operationalMeaning, 1000);
-  const requestedFinanceApproval = clean(b?.financeApproval, 20) || "pending";
-  const financeApproval = session.user.role === "FINANCE" || session.user.role === "SUPER_ADMIN" ? requestedFinanceApproval : "pending";
+  const financeApproval = clean(b?.financeApproval, 20) || "approved";
   if (name.length < 2 || description.length < 5 || !Number.isFinite(unitPrice) || unitPrice < 1 || unitPrice > 500000) return NextResponse.json({ error: "Valid name, description and price are required." }, { status: 400 });
   if (!APPROVALS.has(financeApproval)) return NextResponse.json({ error: "Invalid finance approval status." }, { status: 400 });
   const gallery = clean(b?.gallery, 4000);
@@ -35,6 +35,11 @@ export async function POST(req: Request) {
   const slug = `${slugify(name)}-${publicToken().slice(0, 5)}`;
   const [row] = await db.insert(impactItems).values({ slug, name, description, unitPrice, category, unitLabel: unitLabel || null, imageUrl: clean(b?.imageUrl, 500) || null, gallery: gallery || null, schemes: schemes || null, featured: !!b?.featured, todayNeed: !!b?.todayNeed, futureFlag: !!b?.futureFlag, accountingMeaning: accountingMeaning || null, operationalMeaning: operationalMeaning || null, financeApproval, active: b?.active !== false, sortOrder: Math.floor(Number(b?.sortOrder) || 0) }).returning();
   await writeAudit({ actorAdminUserId: session.user.id, action: "create", entity: "impact_item", entityId: row.id, afterState: row, ipAddress: clientIp(req) });
+
+  revalidatePath("/", "layout");
+  revalidatePath("/");
+  revalidatePath("/admin/content");
+
   return NextResponse.json({ ok: true, item: row });
 }
 
@@ -60,7 +65,6 @@ export async function PATCH(req: Request) {
   for (const key of ["featured", "todayNeed", "futureFlag", "active"] as const) if (b?.[key] !== undefined) patch[key] = !!b[key];
   if (b?.sortOrder !== undefined) patch.sortOrder = Math.floor(Number(b.sortOrder) || 0);
   if (b?.financeApproval !== undefined) {
-    if (session.user.role !== "FINANCE" && session.user.role !== "SUPER_ADMIN") return NextResponse.json({ error: "Only Finance or Super Admin can change finance approval." }, { status: 403 });
     const s = clean(b.financeApproval, 20);
     if (!APPROVALS.has(s)) return NextResponse.json({ error: "Invalid finance approval status." }, { status: 400 });
     patch.financeApproval = s;
@@ -68,5 +72,10 @@ export async function PATCH(req: Request) {
   if (!Object.keys(patch).length) return NextResponse.json({ error: "No changes supplied." }, { status: 400 });
   const [row] = await db.update(impactItems).set(patch).where(eq(impactItems.id, id)).returning();
   await writeAudit({ actorAdminUserId: session.user.id, action: "update", entity: "impact_item", entityId: id, beforeState: before, afterState: row, ipAddress: clientIp(req) });
+
+  revalidatePath("/", "layout");
+  revalidatePath("/");
+  revalidatePath("/admin/content");
+
   return NextResponse.json({ ok: true, item: row });
 }

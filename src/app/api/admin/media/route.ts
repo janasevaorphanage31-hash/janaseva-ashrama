@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { desc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { mediaAssets, mediaConsents } from "@/db/schema";
@@ -81,7 +82,7 @@ export async function POST(req: Request) {
       altText,
       caption: caption || null,
       credit: credit || null,
-      status: initialStatus,
+      status: "PUBLISHED",
       reviewedBy: session.user.id,
       reviewedAt: new Date(),
     })
@@ -94,6 +95,12 @@ export async function POST(req: Request) {
     restrictions: restrictions || null,
     consentedAt: consentStatus === "CONSENTED" ? new Date() : null,
   });
+
+  try {
+    revalidatePath("/", "layout");
+    revalidatePath("/");
+    revalidatePath("/admin/content");
+  } catch {}
 
   await writeAudit({
     actorAdminUserId: session.user.id,
@@ -183,6 +190,12 @@ export async function PATCH(req: Request) {
     afterState: after,
     ipAddress: clientIp(req),
   });
+
+  try {
+    revalidatePath("/", "layout");
+    revalidatePath("/");
+    revalidatePath("/admin/content");
+  } catch {}
 
   return NextResponse.json({ ok: true, asset: after });
 }

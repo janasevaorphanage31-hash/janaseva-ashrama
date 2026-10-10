@@ -6,6 +6,7 @@ import {
   getMetrics,
   getTodayUpdates,
   getVerifiedPlatformTotals,
+  getApprovedMedia,
 } from "@/lib/content";
 import { getSiteContentMap } from "@/lib/site-content";
 
@@ -13,12 +14,13 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export default async function Home() {
-  const [updates, docs, metrics, totals, siteContent] = await Promise.all([
+  const [updates, docs, metrics, totals, siteContent, approvedMedia] = await Promise.all([
     getTodayUpdates(),
     getDocuments(),
     getMetrics(),
     getVerifiedPlatformTotals(),
     getSiteContentMap(),
+    getApprovedMedia(),
   ]);
 
   return (
@@ -35,6 +37,7 @@ export default async function Home() {
         metrics={metrics}
         totals={totals}
         siteContent={siteContent}
+        approvedMedia={approvedMedia}
       />
     </>
   );

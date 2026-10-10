@@ -3,8 +3,10 @@
 import { useEffect, useState, type FormEvent } from "react";
 import Image from "next/image";
 import { formatINR } from "@/lib/site";
+import { SiteContentManager } from "./SiteContentManager";
 
 type Tab =
+  | "siteContent"
   | "catalogs"
   | "celebrations"
   | "wishes"
@@ -26,7 +28,7 @@ const CATEGORIES = [
 ];
 
 export default function AdminContentClient() {
-  const [tab, setTab] = useState<Tab>("catalogs");
+  const [tab, setTab] = useState<Tab>("siteContent");
   const [rows, setRows] = useState<any[]>([]);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
@@ -35,6 +37,11 @@ export default function AdminContentClient() {
   async function load() {
     setLoading(true);
     setMessage("");
+
+    if (tab === "siteContent") {
+      setLoading(false);
+      return;
+    }
 
     if (tab === "wishes") {
       try {
@@ -58,7 +65,7 @@ export default function AdminContentClient() {
       campaigns: "/api/admin/campaigns",
       volunteers: "/api/admin/volunteers",
       media: "/api/admin/media",
-    }[tab as Exclude<Tab, "wishes">];
+    }[tab as Exclude<Tab, "siteContent" | "wishes">];
 
     try {
       const r = await fetch(endpoint, { cache: "no-store" });
@@ -134,6 +141,7 @@ export default function AdminContentClient() {
       {/* Tab Navigation */}
       <div className="flex flex-wrap gap-2">
         {[
+          { id: "siteContent", label: "🌐 Site Media & Content" },
           { id: "catalogs", label: "Impact Catalogs (E-Com)" },
           { id: "celebrations", label: "Special Day Celebrations" },
           { id: "wishes", label: "WhatsApp Wish Videos" },
@@ -176,30 +184,36 @@ export default function AdminContentClient() {
         />
       )}
 
-      {/* Creation Forms */}
-      <CreatePanel tab={tab} onSaved={load} onMessage={setMessage} />
-
-      {/* Record Listings */}
-      {loading ? (
-        <p className="text-sm font-semibold text-teal-900/70">Loading records…</p>
+      {tab === "siteContent" ? (
+        <SiteContentManager onMessage={setMessage} />
       ) : (
-        <div className="space-y-3">
-          {rows.map((row) => (
-            <RowCard
-              key={row.id || row.key || row.slug}
-              row={row}
-              tab={tab}
-              patch={patch}
-              onEdit={() => setEditingItem(row)}
-              onDeleteWish={handleDeleteWish}
-            />
-          ))}
-          {rows.length === 0 && (
-            <div className="rounded-2xl bg-white p-6 text-center text-sm text-teal-900/60 ring-1 ring-teal-900/10">
-              No records registered under {tab} yet. Use the form above to add one.
+        <>
+          {/* Creation Forms */}
+          <CreatePanel tab={tab} onSaved={load} onMessage={setMessage} />
+
+          {/* Record Listings */}
+          {loading ? (
+            <p className="text-sm font-semibold text-teal-900/70">Loading records…</p>
+          ) : (
+            <div className="space-y-3">
+              {rows.map((row) => (
+                <RowCard
+                  key={row.id || row.key || row.slug}
+                  row={row}
+                  tab={tab}
+                  patch={patch}
+                  onEdit={() => setEditingItem(row)}
+                  onDeleteWish={handleDeleteWish}
+                />
+              ))}
+              {rows.length === 0 && (
+                <div className="rounded-2xl bg-white p-6 text-center text-sm text-teal-900/60 ring-1 ring-teal-900/10">
+                  No records registered under {tab} yet. Use the form above to add one.
+                </div>
+              )}
             </div>
           )}
-        </div>
+        </>
       )}
     </div>
   );

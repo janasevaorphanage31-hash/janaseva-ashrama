@@ -50,8 +50,10 @@ export async function POST(req: Request) {
 
   // Revalidate public routes so the uploaded photo is immediately live
   try {
+    revalidatePath("/", "layout");
     revalidatePath("/");
     revalidatePath("/today");
+    revalidatePath("/admin/content");
   } catch {}
 
   return NextResponse.json({ ok: true, update: row });
@@ -93,8 +95,10 @@ export async function PATCH(req: Request) {
   });
 
   try {
+    revalidatePath("/", "layout");
     revalidatePath("/");
     revalidatePath("/today");
+    revalidatePath("/admin/content");
   } catch {}
 
   return NextResponse.json({ ok: true, update: row });
@@ -132,8 +136,10 @@ export async function DELETE(req: Request) {
   });
 
   try {
+    revalidatePath("/", "layout");
     revalidatePath("/");
     revalidatePath("/today");
+    revalidatePath("/admin/content");
   } catch {}
 
   return NextResponse.json({ ok: true, deletedId: id });
