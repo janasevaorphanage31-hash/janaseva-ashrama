@@ -18,7 +18,7 @@ export function ScrollToTopButton() {
       // Throttle scroll listener
       if (timeout) return;
       timeout = setTimeout(() => {
-        setVisible(window.scrollY > 350);
+        setVisible(window.scrollY > 600);
         timeout = null as unknown as NodeJS.Timeout;
       }, 80);
     };

@@ -30,7 +30,6 @@ export function VerticalSectionRail({
   onSelectMode?: (mode: string, targetId?: string) => void;
 }) {
   const [activeTarget, setActiveTarget] = useState<string>("official-tiers");
-  const [expandedMobile, setExpandedMobile] = useState(false);
 
   // Monitor active target on scroll
   useEffect(() => {
@@ -67,8 +66,6 @@ export function VerticalSectionRail({
     } else if (onSelectMode && target.mode) {
       onSelectMode(target.mode, target.id);
     }
-
-    setExpandedMobile(false);
   };
 
   return (
@@ -120,44 +117,6 @@ export function VerticalSectionRail({
           ▲
         </button>
       </aside>
-
-      {/* ── MOBILE VERTICAL QUICK-JUMP THUMB STRIP ── */}
-      <div className="fixed right-2 top-1/3 z-40 lg:hidden flex flex-col items-end">
-        {/* Toggleable Drawer Trigger Button */}
-        <button
-          type="button"
-          onClick={() => setExpandedMobile((prev) => !prev)}
-          aria-label="Toggle vertical sections fast navigation"
-          className="flex items-center gap-1 rounded-l-full bg-teal-950/90 text-white pl-2.5 pr-2 py-1.5 shadow-lg border-l border-y border-white/20 backdrop-blur-md text-[11px] font-black tracking-wider cursor-pointer active:scale-95 transition-all"
-        >
-          <span className="text-gold text-xs">⚡</span>
-          <span>{expandedMobile ? "✕" : "Jump"}</span>
-        </button>
-
-        {/* Expanded Vertical Section Menu for Mobile */}
-        {expandedMobile && (
-          <div className="mt-1.5 flex flex-col gap-1 rounded-2xl bg-teal-950/95 backdrop-blur-xl p-2 shadow-2xl border border-white/25 text-white animate-fadeIn max-h-[60vh] overflow-y-auto no-scrollbar">
-            <span className="text-[10px] font-black uppercase text-gold px-1 text-center tracking-wider border-b border-white/15 pb-1 mb-0.5">
-              Instant Jump
-            </span>
-            {VERTICAL_TARGETS.map((target) => (
-              <button
-                key={target.id}
-                type="button"
-                onClick={() => handleJump(target)}
-                className={`flex items-center gap-2 rounded-xl px-2.5 py-1.5 text-xs font-bold transition text-left active:scale-95 ${
-                  activeTarget === target.id
-                    ? "bg-saffron text-white shadow-sm"
-                    : "bg-white/10 text-white/90 hover:bg-white/20"
-                }`}
-              >
-                <span className="text-sm">{target.icon}</span>
-                <span className="text-[11px] whitespace-nowrap">{target.label}</span>
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
     </>
   );
 }

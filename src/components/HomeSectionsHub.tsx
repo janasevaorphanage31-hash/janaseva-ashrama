@@ -1,12 +1,10 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import Link from "next/link";
 import { track } from "@/lib/track";
 import { VerticalSectionRail } from "./VerticalSectionRail";
 import { OfficialSupportTiersSection } from "./sections/OfficialSupportTiersSection";
 import { HorizontalMovingReel } from "./HorizontalMovingReel";
-import { TodaySection } from "./sections/TodaySection";
 import { ImpactCart } from "./ImpactCart";
 import { TrendingBirthdaySection } from "./sections/TrendingBirthdaySection";
 import { EmotionalQuotesSection } from "./sections/EmotionalQuotesSection";
@@ -20,14 +18,16 @@ import { DonationFAQ } from "./DonationFAQ";
 import { InvolvedSection } from "./sections/InvolvedSection";
 import { ContactSection } from "./sections/ContactSection";
 import { Container } from "./ui";
+import type { SiteContentMap } from "@/lib/site-content";
 
-export type HomeMode = "all" | "annadana" | "tiers" | "celebrate" | "life" | "trust";
+export type HomeMode = "all" | "tiers" | "celebrate" | "annadana" | "life" | "trust";
 
 interface ModeItem {
   id: HomeMode;
   label: string;
   icon: string;
   badge: string;
+  targetId: string;
   description: string;
 }
 
@@ -37,13 +37,15 @@ const MODES: ModeItem[] = [
     label: "All Highlights",
     icon: "🌟",
     badge: "Full Story",
-    description: "Complete full-length journey of Janaseva Ashrama",
+    targetId: "hub-top",
+    description: "Complete continuous journey of Janaseva Ashrama",
   },
   {
     id: "tiers",
     label: "5 Support Tiers",
     icon: "🏛️",
     badge: "Official",
+    targetId: "official-tiers",
     description: "Form 28 JJ Act registered sponsorship tiers",
   },
   {
@@ -51,6 +53,7 @@ const MODES: ModeItem[] = [
     label: "Birthday & Feasts",
     icon: "🎂",
     badge: "Video Song",
+    targetId: "celebrate",
     description: "Sponsor cake, sweets & get a video song blessing",
   },
   {
@@ -58,6 +61,7 @@ const MODES: ModeItem[] = [
     label: "Daily Needs Basket",
     icon: "🛒",
     badge: "Giving Basket",
+    targetId: "impact",
     description: "Provisions & meals for 25 resident boys",
   },
   {
@@ -65,6 +69,7 @@ const MODES: ModeItem[] = [
     label: "Boys' Life & Gallery",
     icon: "📸",
     badge: "60 Moments",
+    targetId: "boys-gallery",
     description: "Documentary chapters, photos & daily prayers",
   },
   {
@@ -72,17 +77,35 @@ const MODES: ModeItem[] = [
     label: "Trust & 80G Tax",
     icon: "🛡️",
     badge: "100% Verified",
+    targetId: "transparency",
     description: "Form 10AC, CSR-1, Axis Bank wire & FAQs",
   },
 ];
 
-interface HomeSectionsHubProps {
-  updates: any[];
-  docs: any[];
-  metrics: any[];
-  totals: { total: number; donations: number };
-  siteContent: any;
-  approvedMedia?: any[];
+const MODE_TARGET_MAP: Record<HomeMode, string> = {
+  all: "hub-top",
+  tiers: "official-tiers",
+  celebrate: "celebrate",
+  annadana: "impact",
+  life: "boys-gallery",
+  trust: "transparency",
+};
+
+import type {
+  getDocuments,
+  getMetrics,
+  getTodayUpdates,
+  getVerifiedPlatformTotals,
+  getApprovedMedia,
+} from "@/lib/content";
+
+export interface HomeSectionsHubProps {
+  updates: Awaited<ReturnType<typeof getTodayUpdates>>;
+  docs: Awaited<ReturnType<typeof getDocuments>>;
+  metrics: Awaited<ReturnType<typeof getMetrics>>;
+  totals: Awaited<ReturnType<typeof getVerifiedPlatformTotals>>;
+  siteContent: Partial<SiteContentMap> & Record<string, any>;
+  approvedMedia?: Awaited<ReturnType<typeof getApprovedMedia>>;
 }
 
 export function HomeSectionsHub({
@@ -96,66 +119,71 @@ export function HomeSectionsHub({
   const [activeMode, setActiveMode] = useState<HomeMode>("all");
   const hubRef = useRef<HTMLDivElement>(null);
 
-  // Sync mode with window location hash if user navigates with direct links
-  useEffect(() => {
-    const handleHash = () => {
-      const hash = window.location.hash.replace("#", "");
-      if (hash === "annadana" || hash === "today" || hash === "impact") {
-        setActiveMode("annadana");
-      } else if (hash === "tiers" || hash === "official-tiers" || hash === "support") {
-        setActiveMode("tiers");
-      } else if (hash === "celebrate" || hash === "birthday") {
-        setActiveMode("celebrate");
-      } else if (hash === "life" || hash === "gallery" || hash === "boys-gallery" || hash === "videos") {
-        setActiveMode("life");
-      } else if (hash === "trust" || hash === "transparency" || hash === "faq" || hash === "contact") {
-        setActiveMode("trust");
-      }
-    };
-
-    handleHash();
-    window.addEventListener("hashchange", handleHash);
-    return () => window.removeEventListener("hashchange", handleHash);
-  }, []);
-
-  const switchMode = (mode: HomeMode, targetAnchor?: string) => {
+  // Smooth jump to section
+  const jumpToSection = (mode: HomeMode, targetAnchor?: string) => {
     setActiveMode(mode);
-    track("home_mode_switched", { mode, targetAnchor: targetAnchor || "" });
+    const targetId = targetAnchor || MODE_TARGET_MAP[mode] || "hub-top";
+    track("home_section_jump", { mode, targetId });
 
     if (mode !== "all") {
-      window.history.replaceState(null, "", `#${mode}`);
+      window.history.replaceState(null, "", `#${targetId}`);
     } else {
       window.history.replaceState(null, "", window.location.pathname);
     }
 
-    // Smooth scroll to hub top
-    if (hubRef.current) {
+    const el = document.getElementById(targetId);
+    if (el) {
+      const yOffset = -110;
+      const y = el.getBoundingClientRect().top + window.pageYOffset + yOffset;
+      window.scrollTo({ top: y, behavior: "smooth" });
+    } else if (hubRef.current && mode === "all") {
       const yOffset = -90;
       const y = hubRef.current.getBoundingClientRect().top + window.pageYOffset + yOffset;
       window.scrollTo({ top: y, behavior: "smooth" });
     }
-
-    if (targetAnchor) {
-      setTimeout(() => {
-        const el = document.getElementById(targetAnchor);
-        if (el) {
-          const yOffset = -110;
-          const y = el.getBoundingClientRect().top + window.pageYOffset + yOffset;
-          window.scrollTo({ top: y, behavior: "smooth" });
-        }
-      }, 150);
-    }
   };
+
+  // Sync activeMode with scroll position as user reads naturally down the page
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollPos = window.scrollY + 220;
+      const tierEl = document.getElementById("official-tiers");
+      const celEl = document.getElementById("celebrate");
+      const impEl = document.getElementById("impact");
+      const galEl = document.getElementById("boys-gallery");
+      const trEl = document.getElementById("transparency") || document.getElementById("trust");
+
+      if (trEl && trEl.offsetTop <= scrollPos) {
+        setActiveMode("trust");
+      } else if (galEl && galEl.offsetTop <= scrollPos) {
+        setActiveMode("life");
+      } else if (impEl && impEl.offsetTop <= scrollPos) {
+        setActiveMode("annadana");
+      } else if (celEl && celEl.offsetTop <= scrollPos) {
+        setActiveMode("celebrate");
+      } else if (tierEl && tierEl.offsetTop <= scrollPos) {
+        setActiveMode("tiers");
+      } else {
+        setActiveMode("all");
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   return (
     <div ref={hubRef} className="relative w-full">
-      {/* ── VERTICAL QUICK-JUMP FLOATING RAIL (Side Thumb Index) ── */}
+      {/* Target anchor for top of hub */}
+      <div id="hub-top" className="scroll-mt-28" />
+
+      {/* ── VERTICAL QUICK-JUMP FLOATING RAIL (Desktop Side Thumb Index) ── */}
       <VerticalSectionRail
         currentMode={activeMode}
-        onSelectMode={(mode, targetId) => switchMode(mode as HomeMode, targetId)}
+        onSelectMode={(mode, targetId) => jumpToSection(mode as HomeMode, targetId)}
       />
 
-      {/* ── STICKY TOP VERTICAL SECTION SWITCHER (Segmented Controller) ── */}
+      {/* ── STICKY TOP SECTION JUMP BAR (Segmented Controller) ── */}
       <nav
         aria-label="Home Section Switcher"
         className="sticky top-14 z-30 w-full border-b border-teal-900/10 bg-white/95 backdrop-blur-md shadow-xs no-print"
@@ -169,7 +197,7 @@ export function HomeSectionsHub({
                 <button
                   key={m.id}
                   type="button"
-                  onClick={() => switchMode(m.id)}
+                  onClick={() => jumpToSection(m.id, m.targetId)}
                   className={`focus-ring tap-scale inline-flex items-center gap-1.5 whitespace-nowrap rounded-xl px-3 sm:px-3.5 py-2 text-xs font-bold shrink-0 cursor-pointer transition-all duration-200 ${
                     isSelected
                       ? "bg-teal-900 text-white shadow-sm ring-1 ring-teal-800 scale-[1.02]"
@@ -194,310 +222,66 @@ export function HomeSectionsHub({
 
           {/* Quick Helper Subtext */}
           <div className="mt-1 flex items-center justify-between text-[10px] text-teal-950/60 font-semibold px-1">
-            <span className="flex items-center gap-1">
+            <span className="flex items-center gap-1.5">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              <span>
-                {activeMode === "all"
-                  ? "Full Length Ashrama Story · Tap any section above to focus"
-                  : `Focused Mode: ${MODES.find((m) => m.id === activeMode)?.label}`}
-              </span>
+              <span>Continuous Ashrama Story · Tap any section to jump directly</span>
             </span>
 
-            {activeMode !== "all" && (
-              <button
-                type="button"
-                onClick={() => switchMode("all")}
-                className="text-saffron-dark font-extrabold hover:underline cursor-pointer"
-              >
-                ← Back to Full Story
-              </button>
-            )}
+            <span className="text-[10px] text-teal-900 font-bold hidden sm:inline">
+              25 Resident Boys · Form 10AC 80G Certified
+            </span>
           </div>
         </div>
       </nav>
 
-      {/* ============================================================== */}
-      {/* ── MODE 1: ANNADANA & DAILY MEALS HUB ── */}
-      {/* ============================================================== */}
-      {activeMode === "annadana" && (
-        <div className="space-y-8 animate-fadeIn">
-          {/* Section Breadcrumb & Header Banner */}
-          <div className="bg-gradient-to-r from-amber-50 via-cream to-amber-50/50 border-b border-amber-200/60 py-6 px-4 text-center">
-            <Container>
-              <span className="inline-block rounded-full bg-saffron/15 text-saffron-dark px-3 py-1 text-xs font-black uppercase tracking-wider mb-2">
-                🍛 Daily Kitchen &amp; Auspicious Shagun Annadana
-              </span>
-              <h2 className="font-display text-2xl sm:text-3xl md:text-4xl font-bold text-teal-950">
-                Feed 25 Resident Boys Today
-              </h2>
-              <p className="mt-2 text-xs sm:text-sm text-teal-950/75 max-w-2xl mx-auto">
-                Select Shagun amounts (₹11, ₹21, ₹51, ₹101, ₹251, ₹501) for 1-tap direct giving. Every rupee provides hot, nutritious, satvik meals prepared before dawn.
-              </p>
-            </Container>
-          </div>
+      {/* ── UNIFIED FULL-LENGTH COMPREHENSIVE STORY (NEVER UNMOUNTS) ── */}
+      <div className="space-y-0">
+        {/* 1. Exact 5 Official Support Tiers & Pricing (Form 28 JJ Act Registered) */}
+        <OfficialSupportTiersSection tiers={siteContent?.supportTiers} />
 
-          {/* Today's Ground Updates & Real Meals Status */}
-          <TodaySection updates={updates} mealsStatus={siteContent?.todayMealsStatus} />
+        {/* 2. Birthday & Milestone Feasts (Celebrate Birthday with 25 Boys) */}
+        <TrendingBirthdaySection wishVideos={siteContent?.wishVideos} />
 
-          {/* Giving Basket Catalogue */}
-          <ImpactCart />
+        {/* 3. Categorized Daily Needs & Direct Giving Basket */}
+        <ImpactCart />
 
-          {/* Direct Bank Seva Prompt (Clean, no duplicated raw account numbers) */}
-          <section className="py-8 bg-sand/30 border-t border-teal-900/10">
-            <Container>
-              <div className="rounded-3xl bg-teal-950 p-6 sm:p-8 text-white shadow-xl flex flex-col md:flex-row items-center justify-between gap-6">
-                <div>
-                  <span className="rounded-md bg-gold/20 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-gold">
-                    Direct Bank Seva
-                  </span>
-                  <h3 className="font-display text-xl sm:text-2xl font-bold mt-2">
-                    Prefer Direct Bank Transfer (NEFT / IMPS / UPI)?
-                  </h3>
-                  <p className="text-xs text-white/70 mt-1 max-w-xl">
-                    Transfer directly to Janaseva Ashrama Axis Bank account with 100% verified 80G tax exemption and zero gateway deductions.
-                  </p>
-                </div>
-                <div className="flex items-center gap-3 shrink-0">
-                  <a
-                    href="#trust"
-                    onClick={() => switchMode("trust", "trust")}
-                    className="rounded-xl bg-gold px-5 py-3 text-xs font-bold text-teal-950 hover:bg-gold/90 transition"
-                  >
-                    View Official Bank Details →
-                  </a>
-                  <button
-                    type="button"
-                    onClick={() => switchMode("all")}
-                    className="rounded-xl bg-white/15 px-4 py-3 text-xs font-bold text-white hover:bg-white/25 transition"
-                  >
-                    Explore All Highlights →
-                  </button>
-                </div>
-              </div>
-            </Container>
-          </section>
-        </div>
-      )}
+        {/* 4. Horizontal Moving Reel (Video Clips & Photos) */}
+        <HorizontalMovingReel />
 
-      {/* ============================================================== */}
-      {/* ── MODE 2: 5 OFFICIAL SUPPORT TIERS HUB ── */}
-      {/* ============================================================== */}
-      {activeMode === "tiers" && (
-        <div className="space-y-8 animate-fadeIn">
-          {/* Header Banner */}
-          <div className="bg-gradient-to-r from-teal-900 via-teal-950 to-teal-900 text-white py-8 px-4 text-center">
-            <Container>
-              <span className="inline-block rounded-full bg-gold/20 text-gold px-3.5 py-1 text-xs font-black uppercase tracking-wider mb-2">
-                🏛️ Official Trust Sponsorship Program
-              </span>
-              <h2 className="font-display text-2xl sm:text-3xl md:text-4xl font-bold text-white">
-                5 Official Support Tiers &amp; Pricing
-              </h2>
-              <p className="mt-2 text-xs sm:text-sm text-white/80 max-w-2xl mx-auto">
-                Governed under Juvenile Justice Act Form 28 (KA18CH0242). Choose from full-day Annadana, monthly nutrition, clothing sets, or schooling for 25 boys.
-              </p>
-            </Container>
-          </div>
+        {/* 5. Real Boys Visual Gallery (Curated 60 Photos & Videos) */}
+        <RealBoysGallerySection customMedia={approvedMedia} />
 
-          <OfficialSupportTiersSection tiers={siteContent?.supportTiers} />
+        {/* 6. On-Ground NGO Activities & Community Outreach (Field Initiatives) */}
+        <CommunityActivitiesSection />
 
-          {/* Quick Back Switcher */}
-          <div className="py-6 text-center">
-            <button
-              type="button"
-              onClick={() => switchMode("all")}
-              className="inline-flex items-center gap-2 rounded-2xl bg-teal-900 px-6 py-3 text-xs font-bold text-white hover:bg-teal-950 transition shadow-sm cursor-pointer"
-            >
-              ← Back to Full Story
-            </button>
-          </div>
-        </div>
-      )}
+        {/* 7. Share Your Talent & Reach: Volunteers & Mentorship */}
+        <InvolvedSection />
 
-      {/* ============================================================== */}
-      {/* ── MODE 3: CELEBRATION & BIRTHDAY HUB ── */}
-      {/* ============================================================== */}
-      {activeMode === "celebrate" && (
-        <div className="space-y-8 animate-fadeIn">
-          {/* Header Banner */}
-          <div className="bg-gradient-to-r from-rose-50 via-amber-50 to-rose-50 border-b border-rose-200/50 py-8 px-4 text-center">
-            <Container>
-              <span className="inline-block rounded-full bg-rose-500/15 text-rose-800 px-3.5 py-1 text-xs font-black uppercase tracking-wider mb-2">
-                🎂 Auspicious Milestones &amp; Birthday Feasts
-              </span>
-              <h2 className="font-display text-2xl sm:text-3xl md:text-4xl font-bold text-teal-950">
-                Celebrate Your Special Day with 25 Boys
-              </h2>
-              <p className="mt-2 text-xs sm:text-sm text-teal-950/75 max-w-2xl mx-auto">
-                Sponsor a joyous birthday sweet feast with payasam, pooris, and cake cutting. The 25 boys will record a personalized singing video blessing delivered to your WhatsApp.
-              </p>
-            </Container>
-          </div>
+        {/* 8. Documentary Video Chapters */}
+        <DocumentaryVideoSection chapters={siteContent?.docChapters} />
 
-          <TrendingBirthdaySection wishVideos={siteContent?.wishVideos} />
+        {/* 9. Emotional Voices & Reflections ("Every child deserves a warm plate...") */}
+        <EmotionalQuotesSection quotes={siteContent?.quotes} />
 
-          {/* Back Switcher */}
-          <div className="py-6 text-center">
-            <button
-              type="button"
-              onClick={() => switchMode("all")}
-              className="inline-flex items-center gap-2 rounded-2xl bg-teal-900 px-6 py-3 text-xs font-bold text-white hover:bg-teal-950 transition shadow-sm cursor-pointer"
-            >
-              ← Back to Full Story
-            </button>
-          </div>
-        </div>
-      )}
+        {/* 10. Transparency Center & 5 Official Govt Accreditations (Carousel / Grid) */}
+        <TransparencySection docs={docs} />
 
-      {/* ============================================================== */}
-      {/* ── MODE 4: REAL BOYS & ASHRAMA LIFE HUB ── */}
-      {/* ============================================================== */}
-      {activeMode === "life" && (
-        <div className="space-y-8 animate-fadeIn">
-          {/* Header Banner */}
-          <div className="bg-teal-950 text-white py-8 px-4 text-center">
-            <Container>
-              <span className="inline-block rounded-full bg-gold/20 text-gold px-3.5 py-1 text-xs font-black uppercase tracking-wider mb-2">
-                📸 Authentic Visual Moments &amp; Documentary
-              </span>
-              <h2 className="font-display text-2xl sm:text-3xl md:text-4xl font-bold text-white">
-                Life Inside Janaseva Ashrama
-              </h2>
-              <p className="mt-2 text-xs sm:text-sm text-white/80 max-w-2xl mx-auto">
-                Explore 60 authentic photographs, daily prayer videos, abacus classes, courtyard games, and reflections from the caretakers who guide our 25 boys.
-              </p>
-            </Container>
-          </div>
+        {/* 11. Trust & Axis Bank Direct Details (6 Trust Pillars in Horizontal Motion) */}
+        <TrustSection />
 
-          {/* Moving Reel */}
-          <HorizontalMovingReel />
+        {/* 12. Verified Platform Impact Numbers */}
+        <VerifiedImpactSection metrics={metrics} totals={totals} />
 
-          {/* Full Interactive 60 Photos Gallery */}
-          <RealBoysGallerySection customMedia={approvedMedia} />
+        {/* 13. Frequently Asked Questions (FAQ) */}
+        <section id="faq" className="scroll-mt-14 py-10 md:py-16 bg-sand/35 w-full max-w-full overflow-hidden">
+          <Container>
+            <DonationFAQ faqs={siteContent?.faqs} />
+          </Container>
+        </section>
 
-          {/* Documentary Chapters */}
-          <DocumentaryVideoSection chapters={siteContent?.docChapters} />
-
-          {/* Voices of Caregivers */}
-          <EmotionalQuotesSection quotes={siteContent?.quotes} />
-
-          {/* Back Switcher */}
-          <div className="py-6 text-center">
-            <button
-              type="button"
-              onClick={() => switchMode("all")}
-              className="inline-flex items-center gap-2 rounded-2xl bg-teal-900 px-6 py-3 text-xs font-bold text-white hover:bg-teal-950 transition shadow-sm cursor-pointer"
-            >
-              ← Back to Full Story
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ============================================================== */}
-      {/* ── MODE 5: TRUST, 80G TAX EXEMPTION & BANK HUB ── */}
-      {/* ============================================================== */}
-      {activeMode === "trust" && (
-        <div className="space-y-8 animate-fadeIn">
-          {/* Header Banner */}
-          <div className="bg-emerald-950 text-white py-8 px-4 text-center">
-            <Container>
-              <span className="inline-block rounded-full bg-emerald-500/20 text-emerald-300 px-3.5 py-1 text-xs font-black uppercase tracking-wider mb-2">
-                🛡️ Verified Legal Accreditations &amp; 80G Tax Exemption
-              </span>
-              <h2 className="font-display text-2xl sm:text-3xl md:text-4xl font-bold text-white">
-                Complete Transparency &amp; Official Banking
-              </h2>
-              <p className="mt-2 text-xs sm:text-sm text-emerald-100/80 max-w-2xl mx-auto">
-                Inspect official Form 10AC, Form 28 (JJ Act), MCA CSR-1, 12AA certificate, and Banashankari Axis Bank transfer details. 100% direct allocation.
-              </p>
-            </Container>
-          </div>
-
-          {/* 5 Legal Documents */}
-          <TransparencySection docs={docs} />
-
-          {/* Trust Pillars & Bank */}
-          <TrustSection />
-
-          {/* Platform Verified Counters */}
-          <VerifiedImpactSection metrics={metrics} totals={totals} />
-
-          {/* Frequently Asked Questions */}
-          <section id="faq" className="scroll-mt-14 py-8 bg-sand/35">
-            <Container>
-              <DonationFAQ faqs={siteContent?.faqs} />
-            </Container>
-          </section>
-
-          {/* Location & Directions */}
-          <ContactSection />
-
-          {/* Back Switcher */}
-          <div className="py-6 text-center">
-            <button
-              type="button"
-              onClick={() => switchMode("all")}
-              className="inline-flex items-center gap-2 rounded-2xl bg-teal-900 px-6 py-3 text-xs font-bold text-white hover:bg-teal-950 transition shadow-sm cursor-pointer"
-            >
-              ← Back to Full Story
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ============================================================== */}
-      {/* ── MODE 6: ALL HIGHLIGHTS (FULL-LENGTH COMPREHENSIVE STORY) ── */}
-      {/* ============================================================== */}
-      {activeMode === "all" && (
-        <div className="space-y-0 animate-fadeIn">
-          {/* 1. Exact 5 Official Support Tiers & Pricing (Form 28 JJ Act Registered) */}
-          <OfficialSupportTiersSection tiers={siteContent?.supportTiers} />
-
-          {/* 2. Birthday & Milestone Feasts (Celebrate Birthday with 25 Boys) */}
-          <TrendingBirthdaySection wishVideos={siteContent?.wishVideos} />
-
-          {/* 3. Categorized Daily Needs & Direct Giving Basket */}
-          <ImpactCart />
-
-          {/* 4. Horizontal Moving Reel (Video Clips & Photos) */}
-          <HorizontalMovingReel />
-
-          {/* 5. Real Boys Visual Gallery (Curated 60 Photos & Videos) */}
-          <RealBoysGallerySection customMedia={approvedMedia} />
-
-          {/* 6. On-Ground NGO Activities & Community Outreach (Field Initiatives) */}
-          <CommunityActivitiesSection />
-
-          {/* 7. Share Your Talent & Reach: Volunteers & Mentorship */}
-          <InvolvedSection />
-
-          {/* 8. Documentary Video Chapters */}
-          <DocumentaryVideoSection chapters={siteContent?.docChapters} />
-
-          {/* 9. Emotional Voices & Reflections ("Every child deserves a warm plate...") */}
-          <EmotionalQuotesSection quotes={siteContent?.quotes} />
-
-          {/* 10. Transparency Center & 5 Official Govt Accreditations (Carousel / Grid) */}
-          <TransparencySection docs={docs} />
-
-          {/* 11. Trust & Axis Bank Direct Details (6 Trust Pillars in Horizontal Motion) */}
-          <TrustSection />
-
-          {/* 12. Verified Platform Impact Numbers */}
-          <VerifiedImpactSection metrics={metrics} totals={totals} />
-
-          {/* 13. Frequently Asked Questions (FAQ) */}
-          <section id="faq" className="scroll-mt-14 py-10 md:py-16 bg-sand/35 w-full max-w-full overflow-hidden">
-            <Container>
-              <DonationFAQ faqs={siteContent?.faqs} />
-            </Container>
-          </section>
-
-          {/* 14. Bengaluru Location, Map & Contact */}
-          <ContactSection />
-        </div>
-      )}
+        {/* 14. Bengaluru Location, Map & Contact */}
+        <ContactSection />
+      </div>
     </div>
   );
 }

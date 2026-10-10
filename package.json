@@ -1,6 +1,7 @@
 {
   "name": "janaseva-ashrama",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
