@@ -28,7 +28,7 @@ export async function POST(req: Request) {
   const campaignType = clean(b?.campaignType, 60) || "annadana";
   const story = clean(b?.story, 10000) || title;
   const goalAmount = Math.max(100, Math.floor(Number(b?.goalAmount) || 10000));
-  const coverImage = clean(b?.coverImage, 500) || "/media/annadana-hall-hd.jpg";
+  const coverImage = clean(b?.coverImage, 5000000) || "/media/annadana-hall-hd.jpg";
   const organizerName = clean(b?.organizerName, 120) || session.user.displayName;
   const organizerEmail = clean(b?.organizerEmail, 120) || session.user.email;
   const organizerPhone = clean(b?.organizerPhone, 40) || null;
@@ -100,7 +100,7 @@ export async function PATCH(req: Request) {
   if (b?.goalAmount !== undefined) updates.goalAmount = Math.max(100, Math.floor(Number(b.goalAmount) || 0));
   if (b?.status && STATUSES.has(clean(b.status, 20))) updates.status = clean(b.status, 20);
   if (b?.moderationNote !== undefined) updates.moderationNote = clean(b.moderationNote, 2000);
-  if (b?.coverImage !== undefined) updates.coverImage = clean(b.coverImage, 500);
+  if (b?.coverImage !== undefined) updates.coverImage = clean(b.coverImage, 5000000);
   if (b?.endDate !== undefined) updates.endDate = b.endDate ? new Date(b.endDate) : null;
   updates.updatedAt = new Date();
 

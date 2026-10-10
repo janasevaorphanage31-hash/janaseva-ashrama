@@ -118,6 +118,7 @@ export function ImpactDetailClient({
                       priority
                       className="object-cover opacity-90 transition duration-300"
                       sizes="(max-width: 1024px) 100vw, 600px"
+                      unoptimized={Boolean(activeMedia.url?.startsWith("data:") || activeMedia.url?.startsWith("http"))}
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-teal-950/90 via-transparent to-transparent pointer-events-none" />
                   </>
@@ -174,6 +175,7 @@ export function ImpactDetailClient({
                             fill
                             className="object-cover"
                             sizes="80px"
+                            unoptimized={Boolean(m.url?.startsWith("data:") || m.url?.startsWith("http"))}
                           />
                         )}
                         {m.type === "video" && (
@@ -451,11 +453,12 @@ export function ImpactDetailClient({
                   <div>
                     <div className="relative h-40 w-full overflow-hidden rounded-2xl bg-teal-950 mb-3">
                       <Image
-                        src={rel.imageUrl || "/media/poster.jpg"}
+                        src={rel.imageUrl || "/media/annadana-hall-hd.jpg"}
                         alt={rel.name}
                         fill
                         className="object-cover"
                         sizes="(max-width: 768px) 100vw, 300px"
+                        unoptimized={Boolean(rel.imageUrl?.startsWith("data:") || rel.imageUrl?.startsWith("http"))}
                       />
                     </div>
                     <span className="text-[10px] font-bold uppercase tracking-wider text-teal-900/60">

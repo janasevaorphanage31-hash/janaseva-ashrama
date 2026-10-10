@@ -54,7 +54,6 @@ export async function GET(
         "Content-Length": fileStat.size.toString(),
         "Cache-Control": "public, max-age=31536000, immutable",
         "X-Content-Type-Options": "nosniff",
-        "Content-Security-Policy": "default-src 'none'; sandbox",
       },
     });
   } catch {

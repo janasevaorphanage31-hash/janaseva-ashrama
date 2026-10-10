@@ -78,7 +78,6 @@ export async function POST(req: Request) {
       : "general";
 
     const uploadDir = join(process.cwd(), "public", "uploads", safeCategory);
-    await mkdir(uploadDir, { recursive: true });
 
     // Sanitize filename
     const cleanBaseName = originalName
@@ -95,12 +94,12 @@ export async function POST(req: Request) {
     try {
       await mkdir(uploadDir, { recursive: true });
       await writeFile(filePath, buffer);
-    } catch (fsErr) {
+    } catch {
       // In serverless environments like Vercel (read-only filesystem), encode image directly as base64 Data URI
-      if (isImage || file.size < 6 * 1024 * 1024) {
+      if (isImage || file.size < 10 * 1024 * 1024) {
         publicUrl = `data:${mimeType};base64,${buffer.toString("base64")}`;
       } else {
-        throw fsErr;
+        throw new Error("File could not be saved to disk on serverless platform.");
       }
     }
 

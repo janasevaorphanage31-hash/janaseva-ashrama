@@ -30,10 +30,10 @@ export async function POST(req: Request) {
   const financeApproval = clean(b?.financeApproval, 20) || "approved";
   if (name.length < 2 || description.length < 5 || !Number.isFinite(unitPrice) || unitPrice < 1 || unitPrice > 500000) return NextResponse.json({ error: "Valid name, description and price are required." }, { status: 400 });
   if (!APPROVALS.has(financeApproval)) return NextResponse.json({ error: "Invalid finance approval status." }, { status: 400 });
-  const gallery = clean(b?.gallery, 4000);
+  const gallery = clean(b?.gallery, 5000000);
   const schemes = clean(b?.schemes, 4000);
   const slug = `${slugify(name)}-${publicToken().slice(0, 5)}`;
-  const [row] = await db.insert(impactItems).values({ slug, name, description, unitPrice, category, unitLabel: unitLabel || null, imageUrl: clean(b?.imageUrl, 500) || null, gallery: gallery || null, schemes: schemes || null, featured: !!b?.featured, todayNeed: !!b?.todayNeed, futureFlag: !!b?.futureFlag, accountingMeaning: accountingMeaning || null, operationalMeaning: operationalMeaning || null, financeApproval, active: b?.active !== false, sortOrder: Math.floor(Number(b?.sortOrder) || 0) }).returning();
+  const [row] = await db.insert(impactItems).values({ slug, name, description, unitPrice, category, unitLabel: unitLabel || null, imageUrl: clean(b?.imageUrl, 5000000) || null, gallery: gallery || null, schemes: schemes || null, featured: !!b?.featured, todayNeed: !!b?.todayNeed, futureFlag: !!b?.futureFlag, accountingMeaning: accountingMeaning || null, operationalMeaning: operationalMeaning || null, financeApproval, active: b?.active !== false, sortOrder: Math.floor(Number(b?.sortOrder) || 0) }).returning();
   await writeAudit({ actorAdminUserId: session.user.id, action: "create", entity: "impact_item", entityId: row.id, afterState: row, ipAddress: clientIp(req) });
 
   revalidatePath("/", "layout");
@@ -56,8 +56,8 @@ export async function PATCH(req: Request) {
   if (b?.description !== undefined) patch.description = clean(b.description, 1000);
   if (b?.category !== undefined) patch.category = clean(b.category, 60) || "general";
   if (b?.unitLabel !== undefined) patch.unitLabel = clean(b.unitLabel, 80) || null;
-  if (b?.imageUrl !== undefined) patch.imageUrl = clean(b.imageUrl, 500) || null;
-  if (b?.gallery !== undefined) patch.gallery = clean(b.gallery, 4000) || null;
+  if (b?.imageUrl !== undefined) patch.imageUrl = clean(b.imageUrl, 5000000) || null;
+  if (b?.gallery !== undefined) patch.gallery = clean(b.gallery, 5000000) || null;
   if (b?.schemes !== undefined) patch.schemes = clean(b.schemes, 4000) || null;
   if (b?.accountingMeaning !== undefined) patch.accountingMeaning = clean(b.accountingMeaning, 1000) || null;
   if (b?.operationalMeaning !== undefined) patch.operationalMeaning = clean(b.operationalMeaning, 1000) || null;
@@ -78,4 +78,22 @@ export async function PATCH(req: Request) {
   revalidatePath("/admin/content");
 
   return NextResponse.json({ ok: true, item: row });
+}
+
+export async function DELETE(req: Request) {
+  const session = await requireAdminApi([...ROLES]);
+  if (!session) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+  const url = new URL(req.url);
+  const id = Number(url.searchParams.get("id"));
+  if (!Number.isInteger(id)) return NextResponse.json({ error: "Invalid item id." }, { status: 400 });
+  const [before] = await db.select().from(impactItems).where(eq(impactItems.id, id)).limit(1);
+  if (!before) return NextResponse.json({ error: "Impact item not found." }, { status: 404 });
+  await db.delete(impactItems).where(eq(impactItems.id, id));
+  await writeAudit({ actorAdminUserId: session.user.id, action: "delete", entity: "impact_item", entityId: id, beforeState: before, ipAddress: clientIp(req) });
+
+  revalidatePath("/", "layout");
+  revalidatePath("/");
+  revalidatePath("/admin/content");
+
+  return NextResponse.json({ ok: true, deletedId: id });
 }

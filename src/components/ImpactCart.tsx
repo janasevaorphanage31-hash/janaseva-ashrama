@@ -354,11 +354,12 @@ export function ImpactCart({
                       {/* Product Card Image Header */}
                       <div className="relative aspect-[4/3] xs:aspect-[16/11] sm:aspect-[16/10] overflow-hidden rounded-xl sm:rounded-2xl bg-teal-900 mb-2 sm:mb-3">
                         <Image
-                          src={item.imageUrl || "/media/poster.jpg"}
+                          src={item.imageUrl || "/media/annadana-hall-hd.jpg"}
                           alt={item.name}
                           fill
                           className="object-cover transition duration-300 hover:scale-105"
                           sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 350px"
+                          unoptimized={Boolean(item.imageUrl?.startsWith("data:") || item.imageUrl?.startsWith("http"))}
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-teal-950/85 via-transparent to-transparent" />
                         <div className="absolute top-1.5 left-1.5 sm:top-2.5 sm:left-2.5 flex flex-wrap items-center gap-1">

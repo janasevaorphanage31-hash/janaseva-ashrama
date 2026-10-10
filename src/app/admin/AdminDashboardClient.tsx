@@ -47,6 +47,25 @@ const CATEGORIES = [
   "Infrastructure & Care",
 ];
 
+const ASHRAMA_PRESET_PHOTOS = [
+  { label: "🍲 Annadana Hall", url: "/media/annadana-hall-hd.jpg" },
+  { label: "🍌 Banana Leaf Feast", url: "/media/banana-leaf-feast.jpg" },
+  { label: "🙏 Morning Satsang Altar", url: "/media/boys-group-altar.jpg" },
+  { label: "🎨 Art & Drawings Class", url: "/media/art-drawings.jpg" },
+  { label: "🎯 Carrom & Play", url: "/media/carrom-play.jpg" },
+  { label: "🛏️ Evening Satsang Dorm", url: "/media/evening-satsang.jpg" },
+  { label: "🧮 Abacus & Mathematics", url: "/media/abacus-math-class.jpg" },
+  { label: "👕 School Uniform Assembly", url: "/media/boys-group-red-assembly.jpg" },
+  { label: "🧘 Yoga & Healthcare", url: "/media/yoga-day.jpg" },
+  { label: "🍎 Fresh Fruits & Milk", url: "/media/fruits.jpg" },
+  { label: "🎂 Birthday Celebration", url: "/media/birthday-cake-celebration.jpg" },
+  { label: "💻 Mentorship & Lab", url: "/media/mentorship-story-circle.jpg" },
+  { label: "🇮🇳 Flag Assembly", url: "/media/flag-assembly.jpg" },
+  { label: "🏡 Ashrama Campus", url: "/media/janaseva-ashrama-original.jpg" },
+  { label: "🥛 Hot Morning Milk", url: "/media/food.jpg" },
+  { label: "📜 Certificates & Honors", url: "/media/excellence-certificates.jpg" },
+];
+
 const ROLES_INFO: { role: string; label: string; desc: string }[] = [
   { role: "SUPER_ADMIN", label: "Super Admin", desc: "Full root access — manage employee accounts, database, and all settings." },
   { role: "STAFF_ADMIN", label: "Staff Admin", desc: "Operations manager — access CRM, Celebrations, Content, and Volunteers." },
@@ -135,6 +154,7 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
   const [catalogsLoading, setCatalogsLoading] = useState(false);
   const [editingCatalog, setEditingCatalog] = useState<any | null>(null);
   const [newCatalogOpen, setNewCatalogOpen] = useState(false);
+  const [newCatalogImageUrl, setNewCatalogImageUrl] = useState("");
 
   // Documents state
   const [documents, setDocuments] = useState<any[]>([]);
@@ -1003,17 +1023,37 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
     }
   }
 
+  // Delete catalog item
+  async function deleteCatalogItem(id: number, name: string) {
+    if (!window.confirm(`Are you sure you want to permanently delete "${name}" from the Impact Needs?`)) return;
+    try {
+      const res = await fetch(`/api/admin/impact-items?id=${id}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        setNotification(`Impact need "${name}" deleted successfully.`);
+        await loadCatalogs();
+      } else {
+        const data = await res.json();
+        setNotification(data.error || "Failed to delete item.");
+      }
+    } catch {
+      setNotification("Failed to delete item.");
+    }
+  }
+
   // Create new catalog item
   async function createCatalogItem(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
+    const finalImage = (fd.get("imageUrl") as string) || newCatalogImageUrl || "/media/annadana-hall-hd.jpg";
     const payload = {
       name: fd.get("name"),
       description: fd.get("description"),
       category: fd.get("category"),
       unitPrice: Number(fd.get("unitPrice")),
       unitLabel: fd.get("unitLabel"),
-      imageUrl: fd.get("imageUrl") || "/media/food.jpg",
+      imageUrl: finalImage,
       gallery: fd.get("gallery") || null,
       schemes: fd.get("schemes") || null,
       todayNeed: fd.get("todayNeed") === "on",
@@ -1030,6 +1070,7 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
       if (res.ok) {
         setNotification("New impact need created successfully.");
         setNewCatalogOpen(false);
+        setNewCatalogImageUrl("");
         await loadCatalogs();
       }
     } catch {
@@ -6314,29 +6355,70 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
                   <label className="block text-xs font-bold text-teal-900/70 mb-1">Description:</label>
                   <textarea name="description" rows={2} required placeholder="Detailed emotional and operational description..." className="w-full rounded-xl border p-2 text-xs" />
                 </div>
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="text-xs font-bold text-teal-900/70">Primary Image:</label>
-                    <label className="cursor-pointer text-[11px] font-bold text-teal-800 hover:text-saffron transition underline">
-                      <span>📁 Upload Image</span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={async (e) => {
-                          const f = e.target.files?.[0];
-                          if (f) {
-                            const url = await handleFileUpload(f, "images");
-                            if (url) {
-                              const input = document.getElementById("newCatalogImageUrl") as HTMLInputElement;
-                              if (input) input.value = url;
-                            }
-                          }
-                        }}
-                      />
-                    </label>
+                <div className="sm:col-span-2 rounded-2xl bg-cream/40 p-3.5 border border-teal-900/10 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-teal-900">Featured Image &amp; Photo Selector:</label>
+                    {newCatalogImageUrl && (
+                      <button
+                        type="button"
+                        onClick={() => setNewCatalogImageUrl("")}
+                        className="text-[11px] font-bold text-red-600 hover:underline"
+                      >
+                        ✕ Clear Selection
+                      </button>
+                    )}
                   </div>
-                  <input id="newCatalogImageUrl" name="imageUrl" placeholder="/uploads/images/food.jpg" className="w-full rounded-xl border p-2 text-xs font-mono" />
+                  <div className="flex items-center gap-3">
+                    <div className="relative h-20 w-28 shrink-0 overflow-hidden rounded-xl bg-teal-950 border border-teal-900/15">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={newCatalogImageUrl || "/media/annadana-hall-hd.jpg"}
+                        alt="Preview"
+                        className="h-full w-full object-cover"
+                        onError={(e) => { e.currentTarget.src = "/media/annadana-hall-hd.jpg"; }}
+                      />
+                    </div>
+                    <div className="space-y-2 flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <label className="cursor-pointer inline-flex items-center gap-1.5 rounded-xl bg-teal-900 px-3 py-1.5 text-xs font-bold text-white hover:bg-teal-800 transition">
+                          <span>📁 Upload Image</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={async (e) => {
+                              const f = e.target.files?.[0];
+                              if (f) {
+                                const url = await handleFileUpload(f, "images");
+                                if (url) setNewCatalogImageUrl(url);
+                              }
+                            }}
+                          />
+                        </label>
+                        <span className="text-[11px] text-teal-900/60 font-semibold">or select verified Ashrama photo:</span>
+                      </div>
+                      <select
+                        value={newCatalogImageUrl}
+                        onChange={(e) => setNewCatalogImageUrl(e.target.value)}
+                        className="w-full rounded-xl border bg-white p-2 text-xs font-semibold text-teal-950"
+                      >
+                        <option value="">-- Choose from Ashrama Verified Photo Library --</option>
+                        {ASHRAMA_PRESET_PHOTOS.map((p) => (
+                          <option key={p.url} value={p.url}>{p.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-teal-900/70 mb-0.5">Custom Image URL / Path:</label>
+                    <input
+                      name="imageUrl"
+                      value={newCatalogImageUrl}
+                      onChange={(e) => setNewCatalogImageUrl(e.target.value)}
+                      placeholder="/media/annadana-hall-hd.jpg or https://..."
+                      className="w-full rounded-xl border p-2 text-xs font-mono"
+                    />
+                  </div>
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-teal-900/70 mb-1">Gallery Media URLs (comma-separated):</label>
@@ -6365,9 +6447,16 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
               {catalogs.map((item) => (
                 <div key={item.id} className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-teal-900/10 flex flex-wrap items-center justify-between gap-4">
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl bg-teal-900">
+                    <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl bg-teal-900 border border-teal-900/15">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={item.imageUrl || "/media/poster.jpg"} alt={item.name} className="h-full w-full object-cover" />
+                      <img
+                        src={item.imageUrl || "/media/annadana-hall-hd.jpg"}
+                        alt={item.name}
+                        className="h-full w-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.src = "/media/annadana-hall-hd.jpg";
+                        }}
+                      />
                     </div>
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
@@ -6387,25 +6476,33 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
                     <button
                       type="button"
                       onClick={() => setEditingCatalog(item)}
-                      className="rounded-xl border border-teal-900/20 bg-cream px-3 py-1.5 text-xs font-bold text-teal-900 hover:bg-sand transition"
+                      className="rounded-xl border border-teal-900/20 bg-cream px-3 py-1.5 text-xs font-bold text-teal-900 hover:bg-sand transition cursor-pointer"
                     >
                       Edit Details &amp; Schemes
                     </button>
                     <button
                       type="button"
                       onClick={() => patchCatalogItem(item.id, { todayNeed: !item.todayNeed })}
-                      className="rounded-xl bg-saffron px-3 py-1.5 text-xs font-bold text-white hover:bg-saffron-dark transition"
+                      className="rounded-xl bg-saffron px-3 py-1.5 text-xs font-bold text-white hover:bg-saffron-dark transition cursor-pointer"
                     >
                       {item.todayNeed ? "Unmark Need" : "Mark Today"}
                     </button>
                     <button
                       type="button"
                       onClick={() => patchCatalogItem(item.id, { active: !item.active })}
-                      className={`rounded-xl px-3 py-1.5 text-xs font-bold text-white transition ${
+                      className={`rounded-xl px-3 py-1.5 text-xs font-bold text-white transition cursor-pointer ${
                         item.active ? "bg-teal-950 hover:bg-teal-900" : "bg-emerald-700 hover:bg-emerald-800"
                       }`}
                     >
                       {item.active ? "Deactivate" : "Activate"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void deleteCatalogItem(item.id, item.name)}
+                      className="rounded-xl border border-red-200 bg-red-50 hover:bg-red-600 px-3 py-1.5 text-xs font-bold text-red-700 hover:text-white transition cursor-pointer"
+                      title="Permanently delete this impact need"
+                    >
+                      🗑️ Delete
                     </button>
                   </div>
                 </div>
@@ -6466,31 +6563,72 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
                       <label className="block text-xs font-bold text-teal-900/70 mb-1">Description:</label>
                       <textarea name="description" rows={3} defaultValue={editingCatalog.description} className="w-full rounded-xl border p-2 text-xs" />
                     </div>
-                    <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <label className="text-xs font-bold text-teal-900/70">Main Image URL:</label>
-                        <label className="cursor-pointer text-[11px] font-bold text-teal-800 hover:text-saffron transition underline">
-                          <span>📁 Upload Image</span>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            className="hidden"
-                            onChange={async (e) => {
-                              const f = e.target.files?.[0];
-                              if (f) {
-                                const url = await handleFileUpload(f, "images");
-                                if (url) setEditingCatalog({ ...editingCatalog, imageUrl: url });
-                              }
+                    <div className="sm:col-span-2 rounded-2xl bg-cream/40 p-3.5 border border-teal-900/10 space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-bold text-teal-900">Featured Photo &amp; Media Selector:</label>
+                        {editingCatalog.imageUrl && (
+                          <button
+                            type="button"
+                            onClick={() => setEditingCatalog({ ...editingCatalog, imageUrl: "" })}
+                            className="text-[11px] font-bold text-red-600 hover:underline cursor-pointer"
+                          >
+                            ✕ Remove Photo
+                          </button>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="relative h-20 w-28 shrink-0 overflow-hidden rounded-xl bg-teal-950 border border-teal-900/15">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={editingCatalog.imageUrl || "/media/annadana-hall-hd.jpg"}
+                            alt={editingCatalog.name}
+                            className="h-full w-full object-cover"
+                            onError={(e) => {
+                              e.currentTarget.src = "/media/annadana-hall-hd.jpg";
                             }}
                           />
-                        </label>
+                        </div>
+                        <div className="space-y-2 flex-1 min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <label className="cursor-pointer inline-flex items-center gap-1.5 rounded-xl bg-teal-900 px-3 py-1.5 text-xs font-bold text-white hover:bg-teal-800 transition">
+                              <span>📁 Upload New Image</span>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={async (e) => {
+                                  const f = e.target.files?.[0];
+                                  if (f) {
+                                    const url = await handleFileUpload(f, "images");
+                                    if (url) setEditingCatalog({ ...editingCatalog, imageUrl: url });
+                                  }
+                                }}
+                              />
+                            </label>
+                            <span className="text-[11px] text-teal-900/60 font-semibold">or choose verified Ashrama photo:</span>
+                          </div>
+                          <select
+                            value={editingCatalog.imageUrl || ""}
+                            onChange={(e) => setEditingCatalog({ ...editingCatalog, imageUrl: e.target.value })}
+                            className="w-full rounded-xl border bg-white p-2 text-xs font-semibold text-teal-950"
+                          >
+                            <option value="">-- Choose from Ashrama Verified Photo Library --</option>
+                            {ASHRAMA_PRESET_PHOTOS.map((p) => (
+                              <option key={p.url} value={p.url}>{p.label}</option>
+                            ))}
+                          </select>
+                        </div>
                       </div>
-                      <input
-                        name="imageUrl"
-                        value={editingCatalog.imageUrl || ""}
-                        onChange={(e) => setEditingCatalog({ ...editingCatalog, imageUrl: e.target.value })}
-                        className="w-full rounded-xl border p-2 text-xs font-mono"
-                      />
+                      <div>
+                        <label className="block text-[11px] font-bold text-teal-900/70 mb-0.5">Image URL / Path:</label>
+                        <input
+                          name="imageUrl"
+                          value={editingCatalog.imageUrl || ""}
+                          onChange={(e) => setEditingCatalog({ ...editingCatalog, imageUrl: e.target.value })}
+                          placeholder="/media/annadana-hall-hd.jpg or https://..."
+                          className="w-full rounded-xl border p-2 text-xs font-mono"
+                        />
+                      </div>
                     </div>
                     <div>
                       <label className="block text-xs font-bold text-teal-900/70 mb-1">Gallery Media URLs:</label>
