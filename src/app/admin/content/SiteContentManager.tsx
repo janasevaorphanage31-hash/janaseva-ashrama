@@ -582,13 +582,26 @@ export function SiteContentManager({
 
             <div>
               <label className="block text-xs font-bold text-teal-900/80 mb-1">
-                📍 Google Maps GPS URL:
+                📍 Google Maps Direct Place URL:
               </label>
               <input
                 type="text"
                 value={content.googleMapsUrl || ""}
                 onChange={(e) => setContent({ ...content, googleMapsUrl: e.target.value })}
-                placeholder="https://maps.google.com/..."
+                placeholder="https://www.google.com/maps/place/jana+seva+ashrama/..."
+                className="w-full rounded-xl border border-teal-900/20 p-2.5 text-xs font-mono text-teal-900"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-teal-900/80 mb-1">
+                🗺️ Google Maps Embed Iframe URL:
+              </label>
+              <input
+                type="text"
+                value={content.googleMapsEmbedUrl || ""}
+                onChange={(e) => setContent({ ...content, googleMapsEmbedUrl: e.target.value })}
+                placeholder="https://www.google.com/maps/embed?pb=..."
                 className="w-full rounded-xl border border-teal-900/20 p-2.5 text-xs font-mono text-teal-900"
               />
             </div>
@@ -613,7 +626,7 @@ export function SiteContentManager({
                 type="text"
                 value={content.socialInstagram || ""}
                 onChange={(e) => setContent({ ...content, socialInstagram: e.target.value })}
-                placeholder="https://www.instagram.com/janasevaashrama"
+                placeholder="https://www.instagram.com/janaseva_ashrama?cplk=MWQxOXF6bWxoaXd3eA=="
                 className="w-full rounded-xl border border-teal-900/20 p-2.5 text-xs font-mono text-teal-900"
               />
             </div>
@@ -626,7 +639,7 @@ export function SiteContentManager({
                 type="text"
                 value={content.socialFacebook || ""}
                 onChange={(e) => setContent({ ...content, socialFacebook: e.target.value })}
-                placeholder="https://facebook.com/janasevaashrama"
+                placeholder="https://www.facebook.com/share/19joh5EZuQ/"
                 className="w-full rounded-xl border border-teal-900/20 p-2.5 text-xs font-mono text-teal-900"
               />
             </div>

@@ -37,10 +37,11 @@ export function SmartMap({ embedUrl, mapsUrl }: { embedUrl: string; mapsUrl: str
     <div ref={ref} className="h-64 w-full bg-sand">
       {ready ? (
         <iframe
-          title="Janaseva location map"
+          title="Jana Seva Ashrama Google Map Location"
           src={embedUrl}
           loading="lazy"
-          referrerPolicy="no-referrer-when-downgrade"
+          allowFullScreen
+          referrerPolicy="strict-origin-when-cross-origin"
           className="h-full w-full border-0"
         />
       ) : (

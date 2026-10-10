@@ -38,6 +38,7 @@ export type SiteContentMap = {
   contactAddress: string;
   contactHours: string;
   googleMapsUrl: string;
+  googleMapsEmbedUrl: string;
 
   // Social channels
   socialWhatsapp: string;
@@ -125,6 +126,7 @@ export const DEFAULT_SITE_CONTENT: SiteContentMap = {
   contactAddress: SITE.address,
   contactHours: SITE.visitingHours,
   googleMapsUrl: SITE.mapsUrl,
+  googleMapsEmbedUrl: SITE.mapsEmbedUrl,
 
   socialWhatsapp: `https://wa.me/${SITE.whatsapp}`,
   socialInstagram: SITE.instagramUrl,

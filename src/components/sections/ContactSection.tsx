@@ -189,6 +189,52 @@ export function ContactSection() {
             </div>
           </div>
         </div>
+
+        {/* ── GOOGLE MAPS INTERACTIVE LOCATION ── */}
+        <div className="mt-8 overflow-hidden rounded-3xl bg-white shadow-md ring-1 ring-teal-900/10 border border-teal-900/10">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 sm:p-5 bg-teal-950 text-white gap-3">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#EA4335] text-white shadow-md">
+                <svg className="h-5 w-5 fill-current" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
+                </svg>
+              </div>
+              <div>
+                <h4 className="font-display text-base font-bold text-white">
+                  Jana Seva Ashrama · Official Campus Map &amp; Location
+                </h4>
+                <p className="text-[11px] text-teal-200/80">
+                  #27 Gundu Thopu, Near Govt School, Jayanagar Housing Society Layout, Turahalli, Subramanyapura, Bengaluru
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <a
+                href={SITE.mapsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="focus-ring inline-flex items-center gap-1.5 rounded-xl bg-gold px-4 py-2 text-xs font-bold text-teal-950 hover:bg-gold/90 transition shadow-sm"
+              >
+                <span>Open in Google Maps App →</span>
+              </a>
+            </div>
+          </div>
+
+          <div className="relative w-full h-[360px] md:h-[450px] bg-sand/30">
+            <iframe
+              src={SITE.mapsEmbedUrl}
+              width="100%"
+              height="100%"
+              style={{ border: 0 }}
+              allowFullScreen
+              loading="lazy"
+              referrerPolicy="strict-origin-when-cross-origin"
+              title="Jana Seva Ashrama Google Maps Location"
+              className="w-full h-full border-0"
+            />
+          </div>
+        </div>
       </Container>
     </Section>
   );
