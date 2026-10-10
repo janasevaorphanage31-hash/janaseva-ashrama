@@ -199,3 +199,45 @@ export async function PATCH(req: Request) {
 
   return NextResponse.json({ ok: true, asset: after });
 }
+
+export async function DELETE(req: Request) {
+  const session = await requireAdminApi([...ROLES]);
+  if (!session) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+
+  const url = new URL(req.url);
+  let id = Number(url.searchParams.get("id"));
+  if (!Number.isInteger(id)) {
+    const b = await req.json().catch(() => null);
+    id = Number(b?.id);
+  }
+
+  if (!Number.isInteger(id)) {
+    return NextResponse.json({ error: "Valid media ID is required." }, { status: 400 });
+  }
+
+  const [before] = await db.select().from(mediaAssets).where(eq(mediaAssets.id, id)).limit(1);
+  if (!before) {
+    return NextResponse.json({ error: "Media asset not found." }, { status: 404 });
+  }
+
+  await db.delete(mediaConsents).where(eq(mediaConsents.mediaId, id));
+  await db.delete(mediaAssets).where(eq(mediaAssets.id, id));
+
+  await writeAudit({
+    actorAdminUserId: session.user.id,
+    action: "delete",
+    entity: "media_asset",
+    entityId: id,
+    beforeState: before,
+    ipAddress: clientIp(req),
+  });
+
+  try {
+    revalidatePath("/", "layout");
+    revalidatePath("/");
+    revalidatePath("/admin/content");
+  } catch {}
+
+  return NextResponse.json({ ok: true, deletedId: id });
+}
+

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { PageHero } from "@/components/ui";
 import { ContactSection } from "@/components/sections/ContactSection";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
+import { getSiteContentMap } from "@/lib/site-content";
 import { SITE } from "@/lib/site";
 
 export const metadata: Metadata = {
@@ -13,12 +14,13 @@ export const metadata: Metadata = {
   },
 };
 
-export default function ContactPage() {
+export default async function ContactPage() {
+  const siteContent = await getSiteContentMap();
   return (
     <>
       <Breadcrumbs items={[{ label: "Contact Us" }]} />
       <PageHero eyebrow="Contact" title="Reach Janaseva" lead="Call, message or write - we will get back to you." />
-      <ContactSection />
+      <ContactSection content={siteContent} />
     </>
   );
 }

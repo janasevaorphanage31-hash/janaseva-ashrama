@@ -16,6 +16,7 @@ import { VerifiedImpactSection } from "./sections/VerifiedImpactSection";
 import { CommunityActivitiesSection } from "./sections/CommunityActivitiesSection";
 import { DonationFAQ } from "./DonationFAQ";
 import { InvolvedSection } from "./sections/InvolvedSection";
+import { TodaySection } from "./sections/TodaySection";
 import { ContactSection } from "./sections/ContactSection";
 import { Container } from "./ui";
 import type { SiteContentMap } from "@/lib/site-content";
@@ -241,45 +242,48 @@ export function HomeSectionsHub({
         {/* 2. Birthday & Milestone Feasts (Celebrate Birthday with 25 Boys) */}
         <TrendingBirthdaySection wishVideos={siteContent?.wishVideos} />
 
-        {/* 3. Categorized Daily Needs & Direct Giving Basket */}
+        {/* 3. Real-Time Daily Updates & Live Meals Tracker (Kitchen Feed) */}
+        <TodaySection updates={updates} mealsStatus={siteContent?.todayMealsStatus} />
+
+        {/* 4. Categorized Daily Needs & Direct Giving Basket */}
         <ImpactCart />
 
-        {/* 4. Horizontal Moving Reel (Video Clips & Photos) */}
+        {/* 5. Horizontal Moving Reel (Video Clips & Photos) */}
         <HorizontalMovingReel />
 
-        {/* 5. Real Boys Visual Gallery (Curated 60 Photos & Videos) */}
+        {/* 6. Real Boys Visual Gallery (Curated 60 Photos & Videos) */}
         <RealBoysGallerySection customMedia={approvedMedia} />
 
-        {/* 6. On-Ground NGO Activities & Community Outreach (Field Initiatives) */}
+        {/* 7. On-Ground NGO Activities & Community Outreach (Field Initiatives) */}
         <CommunityActivitiesSection />
 
-        {/* 7. Share Your Talent & Reach: Volunteers & Mentorship */}
+        {/* 8. Share Your Talent & Reach: Volunteers & Mentorship */}
         <InvolvedSection />
 
-        {/* 8. Documentary Video Chapters */}
+        {/* 9. Documentary Video Chapters */}
         <DocumentaryVideoSection chapters={siteContent?.docChapters} />
 
-        {/* 9. Emotional Voices & Reflections ("Every child deserves a warm plate...") */}
+        {/* 10. Emotional Voices & Reflections ("Every child deserves a warm plate...") */}
         <EmotionalQuotesSection quotes={siteContent?.quotes} />
 
-        {/* 10. Transparency Center & 5 Official Govt Accreditations (Carousel / Grid) */}
+        {/* 11. Transparency Center & 5 Official Govt Accreditations (Carousel / Grid) */}
         <TransparencySection docs={docs} />
 
-        {/* 11. Trust & Axis Bank Direct Details (6 Trust Pillars in Horizontal Motion) */}
+        {/* 12. Trust & Axis Bank Direct Details (6 Trust Pillars in Horizontal Motion) */}
         <TrustSection />
 
-        {/* 12. Verified Platform Impact Numbers */}
+        {/* 13. Verified Platform Impact Numbers */}
         <VerifiedImpactSection metrics={metrics} totals={totals} />
 
-        {/* 13. Frequently Asked Questions (FAQ) */}
+        {/* 14. Frequently Asked Questions (FAQ) */}
         <section id="faq" className="scroll-mt-14 py-10 md:py-16 bg-sand/35 w-full max-w-full overflow-hidden">
           <Container>
             <DonationFAQ faqs={siteContent?.faqs} />
           </Container>
         </section>
 
-        {/* 14. Bengaluru Location, Map & Contact */}
-        <ContactSection />
+        {/* 15. Bengaluru Location, Map & Contact */}
+        <ContactSection content={siteContent} />
       </div>
     </div>
   );

@@ -12,6 +12,7 @@ import {
   missionContributions,
   todayUpdates,
   volunteerApplications,
+  contentEntries,
 } from "@/db/schema";
 import {
   CAMPAIGN_SEED,
@@ -21,6 +22,7 @@ import {
   TODAY_SEED,
   type ImpactItem,
 } from "./seed-data";
+import { DEFAULT_SITE_CONTENT } from "./site-content";
 
 let seeding: Promise<void> | null = null;
 
@@ -57,6 +59,22 @@ export function ensureSeed(): Promise<void> {
       if (d === 0) await db.insert(documents).values(DOCS_SEED);
       const [{ m }] = await db.select({ m: count() }).from(impactMetrics);
       if (m === 0) await db.insert(impactMetrics).values(METRIC_SEED).onConflictDoNothing();
+      const [{ cnt }] = await db
+        .select({ cnt: count() })
+        .from(contentEntries)
+        .where(eq(contentEntries.slug, "global-site-content"));
+      if (cnt === 0) {
+        await db
+          .insert(contentEntries)
+          .values({
+            type: "settings",
+            slug: "global-site-content",
+            title: "Global Website Settings and Copy",
+            body: JSON.stringify(DEFAULT_SITE_CONTENT),
+            status: "published",
+          })
+          .onConflictDoNothing();
+      }
     })().catch((e) => {
       seeding = null;
       throw e;

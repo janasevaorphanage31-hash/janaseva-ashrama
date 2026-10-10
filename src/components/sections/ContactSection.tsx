@@ -1,7 +1,16 @@
 import { Container, Head, Section } from "../ui";
 import { SITE } from "@/lib/site";
+import type { SiteContentMap } from "@/lib/site-content";
 
-export function ContactSection() {
+export function ContactSection({ content }: { content?: Partial<SiteContentMap> } = {}) {
+  const phone = content?.contactPhone || `+91 ${SITE.phone}`;
+  const rawPhone = phone.replace(/[^0-9]/g, "").slice(-10) || SITE.phone;
+  const whatsappUrl = content?.socialWhatsapp || `https://wa.me/${SITE.whatsapp}`;
+  const email = content?.contactEmail || SITE.email;
+  const address = content?.contactAddress || SITE.address;
+  const hours = content?.contactHours || SITE.visitingHours;
+  const mapsUrl = content?.googleMapsUrl || SITE.mapsUrl;
+
   return (
     <Section id="contact" tone="cream" className="py-12 md:py-16">
       <Container>
@@ -15,7 +24,7 @@ export function ContactSection() {
         <ul className="grid grid-cols-1 gap-4 sm:grid-cols-3 w-full min-w-0 mt-8">
           <li className="min-w-0">
             <a
-              href={`tel:${SITE.phoneIntl}`}
+              href={`tel:${phone.replace(/[^0-9+]/g, "")}`}
               className="focus-ring flex h-full flex-col justify-between rounded-2xl bg-white p-5 shadow-sm ring-1 ring-teal-900/10 transition hover:-translate-y-0.5 hover:shadow-md hover:ring-saffron"
             >
               <div>
@@ -30,7 +39,7 @@ export function ContactSection() {
                       Direct Telephone
                     </span>
                     <span className="block font-display text-base font-bold text-teal-900">
-                      +91 {SITE.phone}
+                      {phone}
                     </span>
                   </div>
                 </div>
@@ -48,7 +57,7 @@ export function ContactSection() {
 
           <li className="min-w-0">
             <a
-              href={`https://wa.me/${SITE.whatsapp}?text=${encodeURIComponent("Hello Janaseva Ashrama, I would like to visit or understand more about supporting the children.")}`}
+              href={whatsappUrl.startsWith("http") ? whatsappUrl : `https://wa.me/${whatsappUrl}`}
               target="_blank"
               rel="noopener noreferrer"
               className="focus-ring flex h-full flex-col justify-between rounded-2xl bg-white p-5 shadow-sm ring-1 ring-teal-900/10 transition hover:-translate-y-0.5 hover:shadow-md hover:ring-saffron"
@@ -65,7 +74,7 @@ export function ContactSection() {
                       WhatsApp Seva
                     </span>
                     <span className="block font-display text-base font-bold text-teal-900">
-                      +91 9980359595
+                      +91 {rawPhone}
                     </span>
                   </div>
                 </div>
@@ -83,7 +92,7 @@ export function ContactSection() {
 
           <li className="min-w-0">
             <a
-              href={`mailto:${SITE.email}`}
+              href={`mailto:${email}`}
               className="focus-ring flex h-full flex-col justify-between rounded-2xl bg-white p-5 shadow-sm ring-1 ring-teal-900/10 transition hover:-translate-y-0.5 hover:shadow-md hover:ring-saffron"
             >
               <div>
@@ -98,7 +107,7 @@ export function ContactSection() {
                       Official Email
                     </span>
                     <span className="block font-display text-base font-bold text-teal-900 break-all">
-                      {SITE.email}
+                      {email}
                     </span>
                   </div>
                 </div>
@@ -130,12 +139,12 @@ export function ContactSection() {
 
               <p className="mt-3 text-sm text-white/90 leading-relaxed">
                 <strong>Campus Address:</strong><br />
-                {SITE.address}
+                {address}
               </p>
 
               <div className="mt-3 space-y-1.5 text-xs text-white/75">
                 <p>
-                  <strong>Visiting Hours:</strong> {SITE.visitingHours}
+                  <strong>Visiting Hours:</strong> {hours}
                 </p>
                 <p>
                   <strong>Landmarks:</strong> Near Govt School, Jayanagar Housing Society Layout, Turahalli, Subramanyapura, South Bengaluru.
@@ -164,7 +173,7 @@ export function ContactSection() {
 
               <div className="flex flex-wrap items-center gap-3 pt-3 border-t border-white/15">
                 <a
-                  href={SITE.mapsUrl}
+                  href={mapsUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="focus-ring inline-flex items-center gap-2 rounded-xl bg-gold px-5 py-2.5 text-xs font-bold text-teal-950 transition hover:bg-gold/90 shadow cursor-pointer font-bold"
@@ -176,7 +185,7 @@ export function ContactSection() {
                 </a>
 
                 <a
-                  href={`https://wa.me/${SITE.whatsapp}?text=${encodeURIComponent("Hello, I would like to schedule a visit to Janaseva Ashrama to meet the children.")}`}
+                  href={whatsappUrl.startsWith("http") ? `${whatsappUrl}?text=${encodeURIComponent("Hello, I would like to schedule a visit to Janaseva Ashrama to meet the children.")}` : `https://wa.me/${whatsappUrl}?text=${encodeURIComponent("Hello, I would like to schedule a visit to Janaseva Ashrama to meet the children.")}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="focus-ring inline-flex items-center gap-2 rounded-xl border border-white/30 bg-white/10 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-white/20"

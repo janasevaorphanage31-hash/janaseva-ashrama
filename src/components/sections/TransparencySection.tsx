@@ -127,6 +127,25 @@ export function TransparencySection({
   const [activeIdx, setActiveIdx] = useState(0);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
+  const dynamicAccreditations = OFFICIAL_ACCREDITATIONS.map((acc) => {
+    const matchingDoc = docs?.find((d) => {
+      const t = (d.title || "").toLowerCase();
+      if (acc.id === "form-10ac" && (t.includes("10ac") || t.includes("80g"))) return true;
+      if (acc.id === "form-28" && (t.includes("form 28") || t.includes("jj act") || t.includes("child care"))) return true;
+      if (acc.id === "csr-1" && (t.includes("csr-1") || t.includes("csr"))) return true;
+      if (acc.id === "section-12aa" && t.includes("12aa")) return true;
+      if (acc.id === "pan-card" && (t.includes("pan") || t.includes("account number"))) return true;
+      return false;
+    });
+    if (matchingDoc && matchingDoc.fileUrl) {
+      return {
+        ...acc,
+        pdfUrl: matchingDoc.fileUrl,
+      };
+    }
+    return acc;
+  });
+
   const scroll = (direction: "left" | "right") => {
     if (scrollRef.current) {
       const cardWidth = scrollRef.current.firstElementChild?.clientWidth || 320;
@@ -242,7 +261,7 @@ export function TransparencySection({
                 onScroll={handleTrackScroll}
                 className="flex overflow-x-auto snap-x snap-mandatory gap-5 pb-4 no-scrollbar scrollbar-none items-stretch"
               >
-                {OFFICIAL_ACCREDITATIONS.map((doc, idx) => (
+                {dynamicAccreditations.map((doc, idx) => (
                   <div
                     key={doc.id}
                     className="snap-center shrink-0 w-[88vw] max-w-[360px] md:w-[350px] rounded-3xl bg-white border border-teal-900/15 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between overflow-hidden group"
@@ -353,7 +372,7 @@ export function TransparencySection({
           ) : (
             /* Responsive Grid View */
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6 items-stretch animate-fadeIn">
-              {OFFICIAL_ACCREDITATIONS.map((doc) => (
+              {dynamicAccreditations.map((doc) => (
                 <div
                   key={doc.id}
                   className="rounded-3xl bg-white border border-teal-900/15 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between overflow-hidden group"
@@ -441,6 +460,76 @@ export function TransparencySection({
             </div>
           )}
         </div>
+
+        {/* ── ALL PUBLISHED AUDIT & POLICY DOCUMENTS FROM DATABASE ── */}
+        {docs && docs.length > 0 && (
+          <div className="mt-10 rounded-3xl bg-sand/35 border border-teal-900/10 p-6 sm:p-8 space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-teal-900/10 pb-4">
+              <div>
+                <span className="inline-block rounded-md bg-teal-900/10 px-2.5 py-0.5 text-[10px] font-black uppercase text-teal-900 tracking-wider">
+                  Live Public Registry
+                </span>
+                <h3 className="font-display text-xl font-bold text-teal-950 mt-1">
+                  Official Documents, Policies &amp; Audit Records ({docs.length})
+                </h3>
+                <p className="text-xs text-teal-950/70">
+                  Direct official copies filed with regulatory authorities and registered under the Public Trusts Act.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+              {docs.map((d) => (
+                <div
+                  key={d.id}
+                  className="rounded-2xl bg-white p-4 border border-teal-900/10 shadow-xs flex flex-col justify-between hover:shadow-md transition gap-3"
+                >
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="rounded-md bg-cream px-2 py-0.5 text-[10px] font-bold text-teal-900 uppercase">
+                        {d.category || "Governance"}
+                      </span>
+                      {d.version && (
+                        <span className="text-[10px] text-teal-900/60 font-mono">
+                          {d.version}
+                        </span>
+                      )}
+                    </div>
+                    <h4 className="font-display text-sm font-bold text-teal-950 leading-snug">
+                      {d.title}
+                    </h4>
+                    {d.note && (
+                      <p className="text-xs text-teal-900/70 leading-relaxed">
+                        {d.note}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="pt-2 border-t border-teal-900/5 flex items-center justify-between">
+                    <span className="text-[10px] text-teal-900/50">
+                      {d.publishedOn ? `Date: ${d.publishedOn}` : "Verified Document"}
+                    </span>
+                    {d.fileUrl ? (
+                      <a
+                        href={d.fileUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 rounded-xl bg-teal-900 px-3.5 py-1.5 text-xs font-bold text-white hover:bg-teal-950 transition shadow-xs"
+                      >
+                        <span>View Document PDF</span>
+                        <span>↗</span>
+                      </a>
+                    ) : (
+                      <span className="text-[11px] font-semibold text-teal-900/60">
+                        Available on Campus
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Trust Summary Banner */}
         <div className="mt-8 rounded-3xl bg-teal-950 p-5 sm:p-6 text-white shadow-md border border-teal-800 flex flex-col md:flex-row items-center justify-between gap-4">

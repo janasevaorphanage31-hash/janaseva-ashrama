@@ -139,6 +139,23 @@ export function TrendingBirthdaySection({ wishVideos }: { wishVideos?: WishVideo
     }
   };
 
+  const activeShowcases: CelebrationShowcase[] =
+    wishVideos && wishVideos.length > 0
+      ? wishVideos.map((w, idx) => ({
+          id: w.id || `wish-${idx}`,
+          celebrantName: w.celebrantName,
+          occasion: w.occasion,
+          donorName: w.donorName,
+          deliveredDate: w.deliveredDate,
+          packageTitle: w.packageTitle,
+          packageCost: w.packageCost,
+          videoUrl: w.videoUrl,
+          thumbnailUrl: w.thumbnailUrl || "/media/birthday-cake-celebration.jpg",
+          quote: w.quote,
+          highlights: "Delivered on WhatsApp · Chanted prayers & sweet feast",
+        }))
+      : CELEBRATION_SHOWCASES;
+
   return (
     <Section id="celebrate" tone="cream" className="py-12 md:py-16 overflow-hidden">
       <Container>
@@ -163,7 +180,7 @@ export function TrendingBirthdaySection({ wishVideos }: { wishVideos?: WishVideo
             <div className="flex items-center gap-2">
               <span className="flex h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
               <span className="text-xs sm:text-sm font-bold text-teal-950 uppercase tracking-wider">
-                3 Real Delivered Celebrations (WhatsApp Video Proof)
+                {activeShowcases.length} Real Delivered Celebrations (WhatsApp Video Proof)
               </span>
             </div>
 
@@ -192,7 +209,7 @@ export function TrendingBirthdaySection({ wishVideos }: { wishVideos?: WishVideo
             ref={trackRef}
             className="flex overflow-x-auto snap-x snap-mandatory gap-5 pb-4 no-scrollbar scrollbar-none items-stretch"
           >
-            {CELEBRATION_SHOWCASES.map((showcase, idx) => (
+            {activeShowcases.map((showcase, idx) => (
               <div
                 key={showcase.id}
                 className="snap-center shrink-0 w-[88vw] max-w-[380px] md:w-[380px] rounded-3xl bg-white border border-teal-900/15 shadow-md hover:shadow-xl transition-all duration-300 flex flex-col justify-between overflow-hidden group"

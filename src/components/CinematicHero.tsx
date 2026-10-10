@@ -204,6 +204,18 @@ export function CinematicHero({ content }: { content?: Partial<SiteContentMap> }
           </span>
         </div>
       </div>
+
+      {/* ── 2. DYNAMIC MISSION HEADLINE & AWARENESS STRIP ── */}
+      <div className="w-full bg-gradient-to-r from-teal-950 via-teal-900 to-teal-950 border-b border-teal-800/60 py-3.5 px-4 text-center">
+        <div className="mx-auto max-w-5xl">
+          <h1 className="font-display text-base sm:text-lg md:text-xl font-black tracking-tight text-white leading-snug">
+            {content?.heroHeadline || "Pure Love, Wholesome Food & Education for 25 Boys"}
+          </h1>
+          <p className="mt-1 text-xs sm:text-sm text-teal-100/85 max-w-3xl mx-auto leading-relaxed">
+            {content?.heroSubheadline || "See what today looks like at Janaseva Ashrama — and choose how you want to be part of tomorrow."}
+          </p>
+        </div>
+      </div>
     </section>
   );
 }

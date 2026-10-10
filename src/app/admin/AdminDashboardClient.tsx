@@ -124,6 +124,11 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
   } | null>(null);
   const [mediaSearchQuery, setMediaSearchQuery] = useState("");
   const [mediaCategoryFilter, setMediaCategoryFilter] = useState("all");
+  const [dbMediaList, setDbMediaList] = useState<any[]>([]);
+  const [dbMediaLoading, setDbMediaLoading] = useState(false);
+  const [publishGalleryModalOpen, setPublishGalleryModalOpen] = useState(false);
+  const [galleryTitle, setGalleryTitle] = useState("");
+  const [galleryCategory, setGalleryCategory] = useState("Our 25 Boys");
 
   // Catalogs state
   const [catalogs, setCatalogs] = useState<any[]>([]);
@@ -517,6 +522,70 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
     const updated = [...(contentForm?.docChapters || [])];
     updated.splice(index, 1);
     setContentForm({ ...contentForm, docChapters: updated });
+  }
+
+  // Live Database Media Assets handlers
+  async function loadMediaAssets() {
+    setDbMediaLoading(true);
+    try {
+      const res = await fetch("/api/admin/media", { cache: "no-store" });
+      const data = await res.json();
+      if (res.ok && data.media) {
+        setDbMediaList(data.media);
+      }
+    } catch {
+      // silent
+    }
+    setDbMediaLoading(false);
+  }
+
+  async function handlePublishToGallery(e?: FormEvent) {
+    if (e) e.preventDefault();
+    if (!uploadedUrl || !galleryTitle.trim()) {
+      setNotification("Please enter a title or caption for the photo.");
+      return;
+    }
+    try {
+      const isVideo = /\.(mp4|webm|mov)$/i.test(uploadedUrl);
+      const res = await fetch("/api/admin/media", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          kind: isVideo ? "video" : "image",
+          publicUrl: uploadedUrl,
+          altText: galleryTitle.trim(),
+          caption: galleryTitle.trim(),
+          credit: galleryCategory,
+          consentStatus: "CONSENTED",
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setNotification("Published directly to live website Ashrama Gallery!");
+        setPublishGalleryModalOpen(false);
+        setGalleryTitle("");
+        await loadMediaAssets();
+      } else {
+        setNotification(data.error || "Failed to publish media.");
+      }
+    } catch {
+      setNotification("Network error publishing media.");
+    }
+  }
+
+  async function handleDeleteMediaAsset(id: number) {
+    if (!confirm("Are you sure you want to remove this photo/video from the public website gallery?")) return;
+    try {
+      const res = await fetch(`/api/admin/media?id=${id}`, { method: "DELETE" });
+      if (res.ok) {
+        setNotification("Removed from website gallery.");
+        await loadMediaAssets();
+      } else {
+        setNotification("Failed to delete media asset.");
+      }
+    } catch {
+      setNotification("Network error deleting media.");
+    }
   }
 
   // Today Live Meals Tracker handlers
@@ -1281,7 +1350,10 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
       else if (activeTab === "analytics") void loadAnalytics();
       else if (activeTab === "content" || activeTab === "media") {
         void loadSiteContent();
-        if (activeTab === "media") void loadTodayUpdatesList();
+        if (activeTab === "media") {
+          void loadTodayUpdatesList();
+          void loadMediaAssets();
+        }
       }
       else if (activeTab === "catalogs") void loadCatalogs();
       else if (activeTab === "documents") void loadDocuments();
@@ -3991,6 +4063,53 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
                           <video src={uploadedUrl} controls className="h-full w-full object-cover" />
                         </div>
                       )}
+                      <div className="pt-2 border-t border-white/10 flex flex-wrap gap-2 text-[11px]">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setGalleryTitle("");
+                            setPublishGalleryModalOpen(true);
+                          }}
+                          className="rounded-lg bg-saffron px-2.5 py-1 font-bold text-white hover:bg-saffron-dark transition shadow-sm"
+                        >
+                          🌟 + Publish to Live Gallery
+                        </button>
+                        {uploadedUrl.match(/\.(jpg|jpeg|png|webp|svg|gif)$/i) && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setContentForm({ ...contentForm, heroPosterUrl: uploadedUrl });
+                              setNotification("Set uploaded image as Hero Fallback Poster! Click 'Save All Changes' to commit.");
+                            }}
+                            className="rounded-lg bg-teal-800 px-2.5 py-1 font-bold text-teal-100 hover:bg-teal-700 transition"
+                          >
+                            🖼️ Set as Hero Poster
+                          </button>
+                        )}
+                        {uploadedUrl.match(/\.(mp4|webm|mov)$/i) && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setContentForm({ ...contentForm, heroVideoUrl: uploadedUrl });
+                              setNotification("Set uploaded video as Hero Cinematic Video! Click 'Save All Changes' to commit.");
+                            }}
+                            className="rounded-lg bg-teal-800 px-2.5 py-1 font-bold text-teal-100 hover:bg-teal-700 transition"
+                          >
+                            🎬 Set as Hero Video
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDailyPhotoPreview(uploadedUrl);
+                            setDailyPhotoModalOpen(true);
+                            setNotification("Image attached to Today's Moment! Fill title and publish.");
+                          }}
+                          className="rounded-lg bg-white/20 px-2.5 py-1 font-bold text-white hover:bg-white/30 transition"
+                        >
+                          📸 Use in Today's Moment
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -4288,6 +4407,108 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
                             type="button"
                             onClick={() => handleDeleteTodayUpdate(u.id)}
                             className="rounded-xl bg-red-100 px-3 py-1 text-xs font-bold text-red-600 hover:bg-red-200 transition cursor-pointer"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* LIVE DATABASE MEDIA ASSETS (POSTGRESQL) */}
+              <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-teal-900/10 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                      <h3 className="font-display text-base font-bold text-teal-900">
+                        Live Database Media Assets ({dbMediaList.length} stored in DB)
+                      </h3>
+                    </div>
+                    <p className="text-xs text-teal-950/60 mt-0.5">
+                      Dynamically stored in PostgreSQL database. Any photo or video published here is instantly available on the website gallery.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => void loadMediaAssets()}
+                    disabled={dbMediaLoading}
+                    className="self-start sm:self-auto rounded-xl bg-teal-900/10 px-3 py-1.5 text-xs font-bold text-teal-900 hover:bg-teal-900/20 transition cursor-pointer"
+                  >
+                    {dbMediaLoading ? "Refreshing..." : "↻ Refresh DB Assets"}
+                  </button>
+                </div>
+
+                {dbMediaLoading && dbMediaList.length === 0 ? (
+                  <div className="rounded-2xl border border-dashed border-teal-900/20 p-8 text-center text-xs text-teal-900/60">
+                    Loading media assets from database...
+                  </div>
+                ) : dbMediaList.length === 0 ? (
+                  <div className="rounded-2xl border border-dashed border-teal-900/20 p-6 text-center text-xs text-teal-900/60">
+                    No custom media uploaded to the database yet. Use the Universal Media Uploader above and click <span className="font-bold text-saffron">🌟 + Publish to Live Gallery</span>.
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3.5">
+                    {dbMediaList.map((asset) => (
+                      <div
+                        key={asset.id}
+                        className="group rounded-2xl border border-teal-900/10 bg-cream/30 p-2.5 flex flex-col justify-between hover:shadow-md transition"
+                      >
+                        <div className="space-y-2">
+                          <div className="relative aspect-video w-full rounded-xl overflow-hidden bg-teal-950/5">
+                            {asset.kind === "video" || asset.publicUrl?.match(/\.(mp4|webm|mov)$/i) ? (
+                              <video
+                                src={asset.publicUrl}
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={asset.publicUrl}
+                                alt={asset.altText || "Ashrama media"}
+                                className="h-full w-full object-cover"
+                              />
+                            )}
+                            <span className="absolute top-1.5 left-1.5 rounded-md bg-teal-950/80 px-1.5 py-0.5 text-[9px] font-bold text-white uppercase tracking-wider">
+                              {asset.kind || "image"}
+                            </span>
+                            <span className="absolute top-1.5 right-1.5 rounded-md bg-emerald-600/90 px-1.5 py-0.5 text-[9px] font-bold text-white">
+                              {asset.status || "LIVE"}
+                            </span>
+                          </div>
+
+                          <div>
+                            <p className="text-xs font-bold text-teal-900 line-clamp-1" title={asset.altText || asset.caption}>
+                              {asset.caption || asset.altText || "Untitled Asset"}
+                            </p>
+                            <p className="text-[10px] text-teal-900/60">
+                              {asset.credit || "Ashrama Resident"}
+                            </p>
+                            <p className="text-[9px] font-mono text-teal-900/40">
+                              {asset.createdAt ? new Date(asset.createdAt).toLocaleDateString("en-IN") : ""}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="pt-2 mt-2 border-t border-teal-900/10 flex items-center justify-between gap-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (typeof navigator !== "undefined" && navigator.clipboard) {
+                                navigator.clipboard.writeText(asset.publicUrl);
+                                setNotification("Copied media URL to clipboard!");
+                              }
+                            }}
+                            className="rounded-lg bg-teal-900/10 px-2 py-1 text-[10px] font-bold text-teal-900 hover:bg-teal-900/20 transition"
+                          >
+                            Copy URL
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteMediaAsset(asset.id)}
+                            className="rounded-lg bg-red-100 px-2 py-1 text-[10px] font-bold text-red-600 hover:bg-red-200 transition"
                           >
                             Delete
                           </button>
@@ -5658,6 +5879,89 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
                   className="rounded-xl bg-saffron px-5 py-2 text-xs font-bold text-white hover:bg-saffron-dark transition cursor-pointer"
                 >
                   Save Changes
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ==================== PUBLISH TO LIVE GALLERY MODAL ==================== */}
+      {publishGalleryModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b pb-3">
+              <h3 className="font-display text-base font-bold text-teal-900">
+                Publish to Live Ashrama Gallery
+              </h3>
+              <button
+                type="button"
+                onClick={() => setPublishGalleryModalOpen(false)}
+                className="rounded-lg p-1 text-gray-400 hover:text-gray-600"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handlePublishToGallery} className="space-y-3">
+              {uploadedUrl && (
+                <div className="aspect-video w-full rounded-2xl overflow-hidden bg-teal-950/5 border border-teal-900/10">
+                  {uploadedUrl.match(/\.(mp4|webm|mov)$/i) ? (
+                    <video src={uploadedUrl} controls className="h-full w-full object-cover" />
+                  ) : (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={uploadedUrl} alt="Preview" className="h-full w-full object-cover" />
+                  )}
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-bold text-teal-900/70 mb-1">
+                  Title / Caption (Required):
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Morning Yoga Session with 25 Children"
+                  value={galleryTitle}
+                  onChange={(e) => setGalleryTitle(e.target.value)}
+                  required
+                  className="w-full rounded-xl border border-teal-900/20 p-2.5 text-xs text-teal-950 focus:outline-none focus:ring-2 focus:ring-teal-900"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-teal-900/70 mb-1">
+                  Category:
+                </label>
+                <select
+                  value={galleryCategory}
+                  onChange={(e) => setGalleryCategory(e.target.value)}
+                  className="w-full rounded-xl border border-teal-900/20 p-2.5 text-xs text-teal-950 focus:outline-none focus:ring-2 focus:ring-teal-900 bg-white"
+                >
+                  <option value="Our 25 Boys">👦 Our 25 Resident Boys</option>
+                  <option value="Annadana & Meals">🍲 Annadana &amp; Pure Satvik Meals</option>
+                  <option value="Vidya & Education">📚 Vidya &amp; Gurukula Education</option>
+                  <option value="Birthdays & Celebrations">🎂 Birthday Seva &amp; Anniversaries</option>
+                  <option value="Festivals & Spiritual">🪔 Festivals &amp; Sandhyavandana</option>
+                  <option value="Yoga & Health">🧘 Morning Yoga &amp; Arogya</option>
+                  <option value="Sports & Play">🏏 Sports, Ground &amp; Childhood</option>
+                  <option value="Patriotic & National">🇮🇳 Independence Day &amp; National</option>
+                </select>
+              </div>
+
+              <div className="pt-2 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPublishGalleryModalOpen(false)}
+                  className="rounded-xl px-4 py-2 text-xs font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="rounded-xl bg-saffron px-5 py-2 text-xs font-bold text-white hover:bg-saffron-dark transition shadow-sm cursor-pointer"
+                >
+                  Publish to Website Gallery
                 </button>
               </div>
             </form>
