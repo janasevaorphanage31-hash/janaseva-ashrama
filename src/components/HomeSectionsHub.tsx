@@ -240,7 +240,11 @@ export function HomeSectionsHub({
         <OfficialSupportTiersSection tiers={siteContent?.supportTiers} />
 
         {/* 2. Birthday & Milestone Feasts (Celebrate Birthday with 25 Boys) */}
-        <TrendingBirthdaySection wishVideos={siteContent?.wishVideos} />
+        <TrendingBirthdaySection
+          packages={siteContent?.celebrationPackages}
+          wishVideos={siteContent?.wishVideos}
+          content={siteContent}
+        />
 
         {/* 3. Real-Time Daily Updates & Live Meals Tracker (Kitchen Feed) */}
         <TodaySection updates={updates} mealsStatus={siteContent?.todayMealsStatus} />
@@ -255,7 +259,7 @@ export function HomeSectionsHub({
         <RealBoysGallerySection customMedia={approvedMedia} />
 
         {/* 7. On-Ground NGO Activities & Community Outreach (Field Initiatives) */}
-        <CommunityActivitiesSection />
+        <CommunityActivitiesSection activities={siteContent?.ngoActivities} />
 
         {/* 8. Share Your Talent & Reach: Volunteers & Mentorship */}
         <InvolvedSection content={siteContent} />

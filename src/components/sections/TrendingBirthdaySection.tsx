@@ -6,7 +6,7 @@ import Image from "next/image";
 import { Container, Head, Section } from "../ui";
 import { useCart } from "../CartProvider";
 import { formatINR, SITE } from "@/lib/site";
-import type { WishVideoItem } from "@/lib/site-content";
+import type { WishVideoItem, CelebrationPackageItem, SiteContentMap } from "@/lib/site-content";
 import { track } from "@/lib/track";
 import {
   BirthdayCakeIcon,
@@ -119,13 +119,35 @@ const CELEBRATION_SHOWCASES: CelebrationShowcase[] = [
   },
 ];
 
-export function TrendingBirthdaySection({ wishVideos }: { wishVideos?: WishVideoItem[] }) {
+export function TrendingBirthdaySection({
+  packages,
+  wishVideos,
+  content,
+}: {
+  packages?: CelebrationPackageItem[];
+  wishVideos?: WishVideoItem[];
+  content?: Partial<SiteContentMap>;
+}) {
   const { setCustom, openBottomDonate } = useCart();
-  const [selectedFeast, setSelectedFeast] = useState<string>("feast-lunch");
+  const rawPackages = content?.celebrationPackages || packages;
+  const feastOptions: FeastOption[] =
+    rawPackages && rawPackages.length > 0
+      ? rawPackages.map((p) => ({
+          id: p.id,
+          slug: "meal",
+          title: p.name,
+          cost: p.price,
+          description: p.menu.join(", "),
+          servings: p.servings,
+          popular: p.highlight,
+        }))
+      : FEAST_OPTIONS;
+
+  const [selectedFeast, setSelectedFeast] = useState<string>(feastOptions[0]?.id || "feast-lunch");
   const [activeVideoId, setActiveVideoId] = useState<string | null>(null);
   const trackRef = useRef<HTMLDivElement>(null);
 
-  const activeFeast = FEAST_OPTIONS.find((f) => f.id === selectedFeast) || FEAST_OPTIONS[0];
+  const activeFeast = feastOptions.find((f) => f.id === selectedFeast) || feastOptions[0];
 
   const handleSponsorOnline = (cost: number, occasionName: string) => {
     track("birthday_sponsor_click", { occasion: occasionName, amount: cost });
@@ -139,9 +161,10 @@ export function TrendingBirthdaySection({ wishVideos }: { wishVideos?: WishVideo
     }
   };
 
+  const activeWishList = content?.wishVideos || wishVideos;
   const activeShowcases: CelebrationShowcase[] =
-    wishVideos && wishVideos.length > 0
-      ? wishVideos.map((w, idx) => ({
+    activeWishList && activeWishList.length > 0
+      ? activeWishList.map((w, idx) => ({
           id: w.id || `wish-${idx}`,
           celebrantName: w.celebrantName,
           occasion: w.occasion,
@@ -374,7 +397,9 @@ export function TrendingBirthdaySection({ wishVideos }: { wishVideos?: WishVideo
                 Sponsor {activeFeast.title.split(" ")[0]} ({formatINR(activeFeast.cost)}) →
               </button>
               <p className="mt-2 text-center text-[11px] text-teal-950/60">
-                WhatsApp singing video blessing included free with all feast bookings.
+                {content?.celebrationVideoCost === 0 || !content?.celebrationVideoCost
+                  ? "WhatsApp singing video blessing included free with all feast bookings."
+                  : `${content?.celebrationVideoHeading || "WhatsApp video blessing"} available for ${formatINR(content.celebrationVideoCost)}.`}
               </p>
             </div>
           </div>

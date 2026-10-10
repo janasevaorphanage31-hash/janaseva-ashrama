@@ -145,14 +145,15 @@ const METRICS_SUMMARY = [
   { label: "Villages Reached", value: "18+", icon: "🌾", sub: "Rural child protection" },
 ];
 
-export function CommunityActivitiesSection() {
+export function CommunityActivitiesSection({ activities }: { activities?: NgoActivity[] | any[] }) {
   const [activeTab, setActiveTab] = useState<ActivityCategory>("all");
   const { openBottomDonate } = useCart();
 
+  const currentList = activities && activities.length > 0 ? activities : ACTIVITIES;
   const filtered =
     activeTab === "all"
-      ? ACTIVITIES
-      : ACTIVITIES.filter((item) => item.category === activeTab);
+      ? currentList
+      : currentList.filter((item: any) => item.category === activeTab);
 
   const handleSponsorTier = (tierId: string, amount: number) => {
     track("community_activity_sponsor", { tierId, amount });
@@ -290,7 +291,7 @@ export function CommunityActivitiesSection() {
 
                   {/* 3 Compact Bullet Highlights */}
                   <div className="rounded-2xl bg-cream/70 p-2.5 sm:p-3 border border-teal-900/10 space-y-1 text-xs">
-                    {activity.keyPoints.map((pt, i) => (
+                    {activity.keyPoints.map((pt: string, i: number) => (
                       <div key={i} className="flex items-center gap-1.5 text-[11px] text-teal-950/85">
                         <span className="text-emerald-700 font-bold">✓</span>
                         <span className="truncate">{pt}</span>

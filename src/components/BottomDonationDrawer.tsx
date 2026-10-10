@@ -31,6 +31,26 @@ export function BottomDonationDrawer() {
     setCustom,
   } = useCart();
 
+  const [quickAmounts, setQuickAmounts] = useState(QUICK_AMOUNTS);
+
+  useEffect(() => {
+    fetch("/api/admin/site-content")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d?.content?.shagunTiers && d.content.shagunTiers.length > 0) {
+          setQuickAmounts(
+            d.content.shagunTiers.map((t: any) => ({
+              amount: t.amount,
+              label: `₹${t.amount.toLocaleString("en-IN")} ${t.name}`,
+              subtitle: t.meaning,
+              isPopular: t.isPopular,
+            }))
+          );
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   const [selectedAmount, setSelectedAmount] = useState<number>(101);
   const [customInput, setCustomInput] = useState<string>("");
   const [activeTab, setActiveTab] = useState<"quick" | "tiers" | "bank">("quick");
@@ -230,7 +250,7 @@ export function BottomDonationDrawer() {
                   Select Impact Tier or Preset:
                 </label>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                  {QUICK_AMOUNTS.map((item) => {
+                  {quickAmounts.map((item) => {
                     const isSelected = currentAmount === item.amount;
                     return (
                       <button

@@ -159,7 +159,20 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
   const [editingTodayUpdate, setEditingTodayUpdate] = useState<any | null>(null);
 
   // Content CMS subtab
-  const [contentSubtab, setContentSubtab] = useState<"hero" | "meals" | "tiers" | "quotes" | "faqs" | "about_contact">("hero");
+  const [contentSubtab, setContentSubtab] = useState<
+    | "hero"
+    | "shagun"
+    | "celebrations"
+    | "wishes"
+    | "meals"
+    | "tiers"
+    | "chapters"
+    | "community"
+    | "trust"
+    | "quotes"
+    | "faqs"
+    | "about_contact"
+  >("hero");
 
   // Volunteers state
   const [volunteers, setVolunteers] = useState<any[]>([]);
@@ -717,6 +730,148 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
     options.splice(optIndex, 1);
     updated[tierIndex] = { ...updated[tierIndex], options };
     setContentForm({ ...contentForm, supportTiers: updated });
+  }
+
+  // Shagun Tiers handlers
+  function handleUpdateShagunTier(index: number, patch: any) {
+    const updated = [...(contentForm?.shagunTiers || [])];
+    updated[index] = { ...updated[index], ...patch };
+    setContentForm({ ...contentForm, shagunTiers: updated });
+  }
+
+  function handleAddShagunTier() {
+    const newTier = {
+      amount: 151,
+      name: "Special Punya Seva",
+      kannada: "ವಿಶೇಷ ಪುಣ್ಯ ಸೇವೆ",
+      meaning: "Special Seva for 1 Resident Child",
+      icon: "✨",
+      isPopular: false,
+    };
+    setContentForm({
+      ...contentForm,
+      shagunTiers: [...(contentForm?.shagunTiers || []), newTier],
+    });
+  }
+
+  function handleDeleteShagunTier(index: number) {
+    if (!confirm("Are you sure you want to remove this Shagun tier?")) return;
+    const updated = [...(contentForm?.shagunTiers || [])];
+    updated.splice(index, 1);
+    setContentForm({ ...contentForm, shagunTiers: updated });
+  }
+
+  // Special Celebration Packages handlers
+  function handleUpdateCelebrationPackage(index: number, patch: any) {
+    const updated = [...(contentForm?.celebrationPackages || [])];
+    updated[index] = { ...updated[index], ...patch };
+    setContentForm({ ...contentForm, celebrationPackages: updated });
+  }
+
+  function handleAddCelebrationPackage() {
+    const newPkg = {
+      id: `pkg_${Date.now()}`,
+      name: "Custom Celebration Feast",
+      price: 4500,
+      highlight: false,
+      menu: ["Steaming Hot Rice", "Special Sambar", "Vegetable Sagu", "Traditional Sweets"],
+      servings: "All 25 resident children",
+      videoBlessingIncluded: true,
+      videoCallOptionEnabled: true,
+      videoCost: 0,
+    };
+    setContentForm({
+      ...contentForm,
+      celebrationPackages: [...(contentForm?.celebrationPackages || []), newPkg],
+    });
+  }
+
+  function handleDeleteCelebrationPackage(index: number) {
+    if (!confirm("Are you sure you want to remove this Celebration Package?")) return;
+    const updated = [...(contentForm?.celebrationPackages || [])];
+    updated.splice(index, 1);
+    setContentForm({ ...contentForm, celebrationPackages: updated });
+  }
+
+  // Delivered WhatsApp Wish Videos handlers
+  function handleUpdateWishVideo(index: number, patch: any) {
+    const updated = [...(contentForm?.wishVideos || [])];
+    updated[index] = { ...updated[index], ...patch };
+    setContentForm({ ...contentForm, wishVideos: updated });
+  }
+
+  function handleAddWishVideo() {
+    const newWish = {
+      id: `wish_${Date.now()}`,
+      celebrantName: "Celebrant Name",
+      occasion: "Birthday Feast",
+      donorName: "Kind Well-wisher (Bengaluru)",
+      deliveredDate: `Delivered on WhatsApp • ${new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}`,
+      packageTitle: "Special Birthday Lunch with Payasam",
+      packageCost: 3500,
+      videoUrl: "/media/video-chant-prayer.mp4",
+      thumbnailUrl: "/media/birthday-cake-celebration.jpg",
+      quote: "Happy Birthday! Thank you for sponsoring our wholesome feast! All 25 of us chanted your name with gratitude!",
+    };
+    setContentForm({
+      ...contentForm,
+      wishVideos: [...(contentForm?.wishVideos || []), newWish],
+    });
+  }
+
+  function handleDeleteWishVideo(index: number) {
+    if (!confirm("Are you sure you want to remove this delivered wish video?")) return;
+    const updated = [...(contentForm?.wishVideos || [])];
+    updated.splice(index, 1);
+    setContentForm({ ...contentForm, wishVideos: updated });
+  }
+
+  // NGO Field Activities handlers
+  function handleUpdateNgoActivity(index: number, patch: any) {
+    const updated = [...(contentForm?.ngoActivities || [])];
+    updated[index] = { ...updated[index], ...patch };
+    setContentForm({ ...contentForm, ngoActivities: updated });
+  }
+
+  function handleAddNgoActivity() {
+    const newAct = {
+      id: `act_${Date.now()}`,
+      category: "food" as const,
+      categoryLabel: "Annadana & Meals",
+      title: "Community Seva Drive",
+      subtitle: "Serving with unconditional love",
+      cadence: "Weekly Seva Drive",
+      image: "/media/banana-leaf-feast.jpg",
+      metricBadge: "Active Seva",
+      emotionalTag: "🍲 Nourishing destitute lives",
+      shortDesc: "Caregivers and children serve wholesome food to vulnerable families in Bengaluru.",
+      keyPoints: ["Nutritious satvik meals", "Direct ground distribution", "Dignity for all"],
+      suggestedAmount: 2500,
+      tierName: "Community Sponsorship",
+      volunteerRole: "Field Volunteer",
+    };
+    setContentForm({
+      ...contentForm,
+      ngoActivities: [...(contentForm?.ngoActivities || []), newAct],
+    });
+  }
+
+  function handleDeleteNgoActivity(index: number) {
+    if (!confirm("Are you sure you want to remove this field activity?")) return;
+    const updated = [...(contentForm?.ngoActivities || [])];
+    updated.splice(index, 1);
+    setContentForm({ ...contentForm, ngoActivities: updated });
+  }
+
+  // Bank & Legal Registration handlers
+  function handleUpdateBankDetails(patch: any) {
+    setContentForm({
+      ...contentForm,
+      bankDetails: {
+        ...(contentForm?.bankDetails || {}),
+        ...patch,
+      },
+    });
   }
 
   // Load Analytics data
@@ -3262,9 +3417,15 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
           <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-3 rounded-2xl ring-1 ring-teal-900/10 shadow-2xs">
             <div className="flex flex-wrap gap-1.5">
               {[
-                { id: "hero", label: "🌟 Hero & Headlines" },
+                { id: "hero", label: "🌟 Hero & Video" },
+                { id: "shagun", label: "🪙 Divine Shagun & Daily Seva" },
+                { id: "celebrations", label: "🎂 Celebration Packages & Video Cost" },
+                { id: "wishes", label: "📱 Delivered WhatsApp Wishes" },
                 { id: "meals", label: "🍲 Today Live Meals Tracker" },
                 { id: "tiers", label: "🏷️ 5 Official Support Tiers" },
+                { id: "chapters", label: "🎬 Documentary Chapters" },
+                { id: "community", label: "🤝 Activities & Volunteers" },
+                { id: "trust", label: "🛡️ Bank Details & Official Reg" },
                 { id: "quotes", label: "💬 Caregiver Voices & Quotes" },
                 { id: "faqs", label: "❓ FAQs Manager" },
                 { id: "about_contact", label: "🏛️ Mission & Contact Info" },
@@ -3359,6 +3520,501 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
                         className="w-full rounded-xl border border-teal-900/15 px-3 py-2 text-xs font-semibold text-teal-950"
                       />
                     </div>
+                  </div>
+                </div>
+              )}
+
+              {/* SUBTAB: SHAGUN & DAILY SEVA AMOUNTS */}
+              {contentSubtab === "shagun" && (
+                <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-teal-900/10 space-y-5">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-teal-900/10 pb-3">
+                    <div>
+                      <h3 className="font-display text-base font-bold text-teal-900">
+                        🪙 Divine Shagun &amp; Quick Seva Amounts (₹11 to ₹5,001)
+                      </h3>
+                      <p className="text-xs text-teal-950/60">
+                        Controls the fast giving presets and micro-donation options (Milk ₹11, Fruits ₹21, Breakfast ₹51, Punya Meal ₹101, etc.).
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleAddShagunTier}
+                      className="rounded-xl bg-teal-900 px-3.5 py-1.5 text-xs font-bold text-white hover:bg-teal-800 transition cursor-pointer shrink-0"
+                    >
+                      + Add Seva Tier
+                    </button>
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    {(contentForm.shagunTiers || []).map((st: any, idx: number) => (
+                      <div
+                        key={idx}
+                        className={`rounded-2xl border p-3.5 space-y-2.5 transition ${
+                          st.isPopular
+                            ? "bg-amber-50/70 border-amber-300 ring-1 ring-amber-300"
+                            : "bg-cream/30 border-teal-900/10"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-mono text-xs font-bold text-teal-900 flex items-center gap-1.5">
+                            <span className="text-base">{st.icon || "✨"}</span>
+                            <span>Preset #{idx + 1}</span>
+                          </span>
+                          <div className="flex items-center gap-2">
+                            <label className="flex items-center gap-1 text-[10px] font-bold text-teal-950 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={!!st.isPopular}
+                                onChange={(e) => handleUpdateShagunTier(idx, { isPopular: e.target.checked })}
+                                className="rounded text-saffron"
+                              />
+                              <span>Popular</span>
+                            </label>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteShagunTier(idx)}
+                              className="text-[11px] font-bold text-red-600 hover:text-red-800 transition"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-[10px] font-bold text-teal-900/70 mb-0.5">Amount (₹)</label>
+                            <input
+                              type="number"
+                              value={st.amount || ""}
+                              onChange={(e) => handleUpdateShagunTier(idx, { amount: parseInt(e.target.value, 10) || 0 })}
+                              className="w-full rounded-xl border border-teal-900/15 bg-white px-2.5 py-1 text-xs font-black text-teal-950"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-bold text-teal-900/70 mb-0.5">Icon Emoji</label>
+                            <input
+                              type="text"
+                              value={st.icon || ""}
+                              onChange={(e) => handleUpdateShagunTier(idx, { icon: e.target.value })}
+                              className="w-full rounded-xl border border-teal-900/15 bg-white px-2.5 py-1 text-xs font-bold text-center"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-[10px] font-bold text-teal-900/70 mb-0.5">Tier Title (English)</label>
+                          <input
+                            type="text"
+                            value={st.name || ""}
+                            onChange={(e) => handleUpdateShagunTier(idx, { name: e.target.value })}
+                            className="w-full rounded-xl border border-teal-900/15 bg-white px-2.5 py-1 text-xs font-bold text-teal-950"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[10px] font-bold text-teal-900/70 mb-0.5">Kannada Text</label>
+                          <input
+                            type="text"
+                            value={st.kannada || ""}
+                            onChange={(e) => handleUpdateShagunTier(idx, { kannada: e.target.value })}
+                            className="w-full rounded-xl border border-teal-900/15 bg-white px-2.5 py-1 text-xs font-bold text-teal-900"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[10px] font-bold text-teal-900/70 mb-0.5">Impact Meaning</label>
+                          <input
+                            type="text"
+                            value={st.meaning || ""}
+                            onChange={(e) => handleUpdateShagunTier(idx, { meaning: e.target.value })}
+                            className="w-full rounded-xl border border-teal-900/15 bg-white px-2.5 py-1 text-[11px] text-teal-950/80"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* SUBTAB: CELEBRATION PACKAGES & WHATSAPP VIDEO COST */}
+              {contentSubtab === "celebrations" && (
+                <div className="space-y-6">
+                  {/* WhatsApp Video Blessing & Call Fee Card */}
+                  <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-teal-900/10 space-y-4">
+                    <div className="border-b border-teal-900/10 pb-3">
+                      <div className="inline-flex items-center gap-2 rounded-md bg-emerald-500/15 px-2.5 py-1 text-xs font-bold text-emerald-800 uppercase tracking-wider mb-1">
+                        <span>📱 WhatsApp Video Blessing &amp; Live Video Call Settings</span>
+                      </div>
+                      <h3 className="font-display text-base font-bold text-teal-900">
+                        WhatsApp Blessing Delivery &amp; Pricing Configuration
+                      </h3>
+                      <p className="text-xs text-teal-950/60">
+                        Configure the exact cost (₹0 for Free or custom fee) and wording for personal celebration video songs recorded by the 25 boys.
+                      </p>
+                    </div>
+
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div>
+                        <label className="block text-xs font-bold text-teal-900/80 mb-1">
+                          WhatsApp Video Blessing Cost (₹):
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="number"
+                            min="0"
+                            value={contentForm.celebrationVideoCost ?? 0}
+                            onChange={(e) => setContentForm({ ...contentForm, celebrationVideoCost: parseInt(e.target.value, 10) || 0 })}
+                            className="w-full rounded-xl border border-teal-900/15 px-3 py-2 text-xs font-black text-teal-950"
+                          />
+                          <span className="text-[11px] font-bold text-emerald-700 shrink-0">
+                            {(contentForm.celebrationVideoCost === 0 || !contentForm.celebrationVideoCost) ? "✓ Free Included" : "Custom Fee"}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-teal-950/60 mt-1">Enter 0 to mark as &ldquo;Included Free with Every Feast Booking&rdquo;.</p>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-teal-900/80 mb-1">
+                          Live Video Call Option Fee (₹):
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={contentForm.celebrationVideoCallCost ?? 0}
+                          onChange={(e) => setContentForm({ ...contentForm, celebrationVideoCallCost: parseInt(e.target.value, 10) || 0 })}
+                          className="w-full rounded-xl border border-teal-900/15 px-3 py-2 text-xs font-black text-teal-950"
+                        />
+                      </div>
+
+                      <div className="sm:col-span-2">
+                        <label className="block text-xs font-bold text-teal-900/80 mb-1">
+                          Video Blessing Feature Title:
+                        </label>
+                        <input
+                          type="text"
+                          value={contentForm.celebrationVideoHeading || ""}
+                          onChange={(e) => setContentForm({ ...contentForm, celebrationVideoHeading: e.target.value })}
+                          className="w-full rounded-xl border border-teal-900/15 px-3 py-2 text-xs font-bold text-teal-950"
+                        />
+                      </div>
+
+                      <div className="sm:col-span-2">
+                        <label className="block text-xs font-bold text-teal-900/80 mb-1">
+                          WhatsApp Proof Delivery Note / Description:
+                        </label>
+                        <textarea
+                          rows={2}
+                          value={contentForm.celebrationVideoDescription || ""}
+                          onChange={(e) => setContentForm({ ...contentForm, celebrationVideoDescription: e.target.value })}
+                          className="w-full rounded-xl border border-teal-900/15 px-3 py-2 text-xs text-teal-950"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Celebration Feast Packages List Card */}
+                  <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-teal-900/10 space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-teal-900/10 pb-3">
+                      <div>
+                        <h3 className="font-display text-base font-bold text-teal-900">
+                          Special Celebration Feast Packages (Birthday &amp; Milestone Sevas)
+                        </h3>
+                        <p className="text-xs text-teal-950/60">
+                          Editable packages shown on /celebrate-birthday, /celebrate-special-day, and homepage trending section.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleAddCelebrationPackage}
+                        className="rounded-xl bg-teal-900 px-3.5 py-1.5 text-xs font-bold text-white hover:bg-teal-800 transition cursor-pointer shrink-0"
+                      >
+                        + Add Feast Package
+                      </button>
+                    </div>
+
+                    <div className="space-y-4">
+                      {(contentForm.celebrationPackages || []).map((pkg: any, idx: number) => (
+                        <div
+                          key={pkg.id || idx}
+                          className={`rounded-2xl border p-4 space-y-3 transition ${
+                            pkg.highlight
+                              ? "bg-amber-50/50 border-amber-300 ring-1 ring-amber-300"
+                              : "bg-cream/20 border-teal-900/10"
+                          }`}
+                        >
+                          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-teal-900/10 pb-2">
+                            <div className="flex items-center gap-2">
+                              <span className="font-display text-sm font-bold text-teal-900">
+                                Package #{idx + 1}: {pkg.name}
+                              </span>
+                              {pkg.highlight && (
+                                <span className="rounded-md bg-saffron px-2 py-0.5 text-[9px] font-bold text-white uppercase">
+                                  Popular Choice
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <label className="flex items-center gap-1.5 text-xs font-bold text-teal-950 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={!!pkg.highlight}
+                                  onChange={(e) => handleUpdateCelebrationPackage(idx, { highlight: e.target.checked })}
+                                  className="rounded text-saffron"
+                                />
+                                <span>Featured</span>
+                              </label>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteCelebrationPackage(idx)}
+                                className="rounded-lg bg-red-100 px-2.5 py-1 text-xs font-bold text-red-600 hover:bg-red-200 transition"
+                              >
+                                Delete Package
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="grid gap-3 sm:grid-cols-3">
+                            <div className="sm:col-span-2">
+                              <label className="block text-[11px] font-bold text-teal-900/70 mb-1">Package Name</label>
+                              <input
+                                type="text"
+                                value={pkg.name || ""}
+                                onChange={(e) => handleUpdateCelebrationPackage(idx, { name: e.target.value })}
+                                className="w-full rounded-xl border border-teal-900/15 bg-white px-3 py-1.5 text-xs font-bold text-teal-950"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[11px] font-bold text-teal-900/70 mb-1">Package Price / Cost (₹)</label>
+                              <input
+                                type="number"
+                                value={pkg.price || ""}
+                                onChange={(e) => handleUpdateCelebrationPackage(idx, { price: parseInt(e.target.value, 10) || 0 })}
+                                className="w-full rounded-xl border border-teal-900/15 bg-white px-3 py-1.5 text-xs font-black text-saffron-dark"
+                              />
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="block text-[11px] font-bold text-teal-900/70 mb-1">Servings Scope</label>
+                            <input
+                              type="text"
+                              value={pkg.servings || ""}
+                              onChange={(e) => handleUpdateCelebrationPackage(idx, { servings: e.target.value })}
+                              placeholder="e.g. All 25 resident children"
+                              className="w-full rounded-xl border border-teal-900/15 bg-white px-3 py-1.5 text-xs font-medium text-teal-950"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-[11px] font-bold text-teal-900/70 mb-1">
+                              Menu Items (Comma-separated or newline-separated):
+                            </label>
+                            <textarea
+                              rows={2}
+                              value={Array.isArray(pkg.menu) ? pkg.menu.join(", ") : (pkg.menu || "")}
+                              onChange={(e) => {
+                                const items = e.target.value.split(/,\s*|\n/).map((s) => s.trim()).filter(Boolean);
+                                handleUpdateCelebrationPackage(idx, { menu: items });
+                              }}
+                              className="w-full rounded-xl border border-teal-900/15 bg-white px-3 py-1.5 text-xs text-teal-950"
+                            />
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-4 text-xs font-medium text-teal-950">
+                            <label className="flex items-center gap-1.5 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={pkg.videoBlessingIncluded !== false}
+                                onChange={(e) => handleUpdateCelebrationPackage(idx, { videoBlessingIncluded: e.target.checked })}
+                                className="rounded text-teal-900"
+                              />
+                              <span>Includes WhatsApp Video Song Blessing</span>
+                            </label>
+                            <label className="flex items-center gap-1.5 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={pkg.videoCallOptionEnabled !== false}
+                                onChange={(e) => handleUpdateCelebrationPackage(idx, { videoCallOptionEnabled: e.target.checked })}
+                                className="rounded text-teal-900"
+                              />
+                              <span>Live Video Call with Boys Option</span>
+                            </label>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* SUBTAB: DELIVERED WHATSAPP WISH VIDEOS */}
+              {contentSubtab === "wishes" && (
+                <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-teal-900/10 space-y-5">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-teal-900/10 pb-3">
+                    <div>
+                      <h3 className="font-display text-base font-bold text-teal-900">
+                        Delivered WhatsApp Wish Videos Showcase
+                      </h3>
+                      <p className="text-xs text-teal-950/60">
+                        Real celebration recordings of the boys singing &amp; praying sent to donors. Shown in the WhatsApp Proof Carousel on /celebrate-birthday and homepage.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleAddWishVideo}
+                      className="rounded-xl bg-teal-900 px-3.5 py-1.5 text-xs font-bold text-white hover:bg-teal-800 transition cursor-pointer shrink-0"
+                    >
+                      + Register Wish Video
+                    </button>
+                  </div>
+
+                  <div className="space-y-4">
+                    {(contentForm.wishVideos || []).map((wish: any, idx: number) => (
+                      <div
+                        key={wish.id || idx}
+                        className="rounded-2xl border border-teal-900/15 bg-cream/30 p-4 space-y-3"
+                      >
+                        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-teal-900/10 pb-2">
+                          <span className="font-display text-sm font-bold text-teal-900">
+                            Video #{idx + 1}: {wish.celebrantName} ({wish.occasion})
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteWishVideo(idx)}
+                            className="rounded-lg bg-red-100 px-2.5 py-1 text-xs font-bold text-red-600 hover:bg-red-200 transition"
+                          >
+                            Delete Video
+                          </button>
+                        </div>
+
+                        <div className="grid gap-3 sm:grid-cols-3">
+                          <div>
+                            <label className="block text-[11px] font-bold text-teal-900/70 mb-1">Celebrant Name / Milestone</label>
+                            <input
+                              type="text"
+                              value={wish.celebrantName || ""}
+                              onChange={(e) => handleUpdateWishVideo(idx, { celebrantName: e.target.value })}
+                              className="w-full rounded-xl border border-teal-900/15 bg-white px-3 py-1.5 text-xs font-bold text-teal-950"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-bold text-teal-900/70 mb-1">Occasion Type</label>
+                            <input
+                              type="text"
+                              value={wish.occasion || ""}
+                              onChange={(e) => handleUpdateWishVideo(idx, { occasion: e.target.value })}
+                              className="w-full rounded-xl border border-teal-900/15 bg-white px-3 py-1.5 text-xs font-bold text-teal-950"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-bold text-teal-900/70 mb-1">Donor Name &amp; City</label>
+                            <input
+                              type="text"
+                              value={wish.donorName || ""}
+                              onChange={(e) => handleUpdateWishVideo(idx, { donorName: e.target.value })}
+                              className="w-full rounded-xl border border-teal-900/15 bg-white px-3 py-1.5 text-xs font-medium text-teal-950"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid gap-3 sm:grid-cols-3">
+                          <div>
+                            <label className="block text-[11px] font-bold text-teal-900/70 mb-1">Delivered Tag / Date</label>
+                            <input
+                              type="text"
+                              value={wish.deliveredDate || ""}
+                              onChange={(e) => handleUpdateWishVideo(idx, { deliveredDate: e.target.value })}
+                              placeholder="Delivered on WhatsApp • 28 Sep"
+                              className="w-full rounded-xl border border-teal-900/15 bg-white px-3 py-1.5 text-xs font-medium text-teal-950"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-bold text-teal-900/70 mb-1">Package Sponsoring</label>
+                            <input
+                              type="text"
+                              value={wish.packageTitle || ""}
+                              onChange={(e) => handleUpdateWishVideo(idx, { packageTitle: e.target.value })}
+                              className="w-full rounded-xl border border-teal-900/15 bg-white px-3 py-1.5 text-xs font-medium text-teal-950"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-bold text-teal-900/70 mb-1">Package Cost (₹)</label>
+                            <input
+                              type="number"
+                              value={wish.packageCost || ""}
+                              onChange={(e) => handleUpdateWishVideo(idx, { packageCost: parseInt(e.target.value, 10) || 0 })}
+                              className="w-full rounded-xl border border-teal-900/15 bg-white px-3 py-1.5 text-xs font-black text-saffron-dark"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <div>
+                            <label className="block text-[11px] font-bold text-teal-900/70 mb-1">Video File URL (.mp4)</label>
+                            <div className="flex gap-2">
+                              <input
+                                type="text"
+                                value={wish.videoUrl || ""}
+                                onChange={(e) => handleUpdateWishVideo(idx, { videoUrl: e.target.value })}
+                                className="flex-1 rounded-xl border border-teal-900/15 bg-white px-3 py-1.5 text-xs font-mono"
+                              />
+                              <label className="rounded-xl bg-teal-900 px-3 py-1.5 text-[11px] font-bold text-white cursor-pointer hover:bg-teal-800 transition shrink-0 flex items-center">
+                                <input
+                                  type="file"
+                                  accept="video/mp4,video/webm"
+                                  className="hidden"
+                                  onChange={async (e) => {
+                                    const f = e.target.files?.[0];
+                                    if (f) {
+                                      const u = await handleFileUpload(f, "videos");
+                                      if (u) handleUpdateWishVideo(idx, { videoUrl: u });
+                                    }
+                                  }}
+                                />
+                                <span>📁 Upload MP4</span>
+                              </label>
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="block text-[11px] font-bold text-teal-900/70 mb-1">Poster Thumbnail URL (.jpg)</label>
+                            <div className="flex gap-2">
+                              <input
+                                type="text"
+                                value={wish.thumbnailUrl || ""}
+                                onChange={(e) => handleUpdateWishVideo(idx, { thumbnailUrl: e.target.value })}
+                                className="flex-1 rounded-xl border border-teal-900/15 bg-white px-3 py-1.5 text-xs font-mono"
+                              />
+                              <label className="rounded-xl bg-teal-900 px-3 py-1.5 text-[11px] font-bold text-white cursor-pointer hover:bg-teal-800 transition shrink-0 flex items-center">
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  className="hidden"
+                                  onChange={async (e) => {
+                                    const f = e.target.files?.[0];
+                                    if (f) {
+                                      const u = await handleFileUpload(f, "images");
+                                      if (u) handleUpdateWishVideo(idx, { thumbnailUrl: u });
+                                    }
+                                  }}
+                                />
+                                <span>📁 Upload Poster</span>
+                              </label>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] font-bold text-teal-900/70 mb-1">WhatsApp Speech Bubble Quote</label>
+                          <textarea
+                            rows={2}
+                            value={wish.quote || ""}
+                            onChange={(e) => handleUpdateWishVideo(idx, { quote: e.target.value })}
+                            className="w-full rounded-xl border border-teal-900/15 bg-white px-3 py-1.5 text-xs text-teal-950"
+                          />
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}
@@ -3612,6 +4268,542 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
                         </div>
                       </div>
                     ))}
+                  </div>
+                </div>
+              )}
+
+              {/* SUBTAB: DOCUMENTARY CHAPTERS */}
+              {contentSubtab === "chapters" && (
+                <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-teal-900/10 space-y-4">
+                  <div className="border-b border-teal-900/10 pb-3">
+                    <h3 className="font-display text-base font-bold text-teal-900">
+                      Documentary Video Chapters (5 Authentic Ashrama Stories)
+                    </h3>
+                    <p className="text-xs text-teal-950/60">
+                      Controls the 5 video chapters shown on the homepage (Dawn, Kitchen, Vidya, Play, Night Shanti).
+                    </p>
+                  </div>
+
+                  <div className="space-y-4">
+                    {(contentForm.docChapters || []).map((ch: any, idx: number) => (
+                      <div
+                        key={ch.id || idx}
+                        className="rounded-2xl border border-teal-900/15 bg-cream/30 p-4 space-y-3"
+                      >
+                        <div className="flex items-center justify-between border-b border-teal-900/10 pb-2">
+                          <span className="font-display text-sm font-bold text-teal-900">
+                            Chapter {ch.number || idx + 1}: {ch.title}
+                          </span>
+                          <span className="font-mono text-xs text-saffron font-bold">
+                            Duration: {ch.duration || "0:45"}
+                          </span>
+                        </div>
+
+                        <div className="grid gap-3 sm:grid-cols-3">
+                          <div className="sm:col-span-2">
+                            <label className="block text-[11px] font-bold text-teal-900/70 mb-1">Chapter Title</label>
+                            <input
+                              type="text"
+                              value={ch.title || ""}
+                              onChange={(e) => {
+                                const chs = [...contentForm.docChapters];
+                                chs[idx] = { ...chs[idx], title: e.target.value };
+                                setContentForm({ ...contentForm, docChapters: chs });
+                              }}
+                              className="w-full rounded-xl border border-teal-900/15 bg-white px-3 py-1.5 text-xs font-bold text-teal-950"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-bold text-teal-900/70 mb-1">Duration Tag</label>
+                            <input
+                              type="text"
+                              value={ch.duration || ""}
+                              onChange={(e) => {
+                                const chs = [...contentForm.docChapters];
+                                chs[idx] = { ...chs[idx], duration: e.target.value };
+                                setContentForm({ ...contentForm, docChapters: chs });
+                              }}
+                              className="w-full rounded-xl border border-teal-900/15 bg-white px-3 py-1.5 text-xs font-mono"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] font-bold text-teal-900/70 mb-1">Subtitle</label>
+                          <input
+                            type="text"
+                            value={ch.subtitle || ""}
+                            onChange={(e) => {
+                              const chs = [...contentForm.docChapters];
+                              chs[idx] = { ...chs[idx], subtitle: e.target.value };
+                              setContentForm({ ...contentForm, docChapters: chs });
+                            }}
+                            className="w-full rounded-xl border border-teal-900/15 bg-white px-3 py-1.5 text-xs text-teal-950"
+                          />
+                        </div>
+
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <div>
+                            <label className="block text-[11px] font-bold text-teal-900/70 mb-1">Video File URL (.mp4)</label>
+                            <div className="flex gap-2">
+                              <input
+                                type="text"
+                                value={ch.videoSrc || ""}
+                                onChange={(e) => {
+                                  const chs = [...contentForm.docChapters];
+                                  chs[idx] = { ...chs[idx], videoSrc: e.target.value };
+                                  setContentForm({ ...contentForm, docChapters: chs });
+                                }}
+                                className="flex-1 rounded-xl border border-teal-900/15 bg-white px-3 py-1.5 text-xs font-mono"
+                              />
+                              <label className="rounded-xl bg-teal-900 px-3 py-1.5 text-[11px] font-bold text-white cursor-pointer hover:bg-teal-800 transition shrink-0 flex items-center">
+                                <input
+                                  type="file"
+                                  accept="video/mp4,video/webm"
+                                  className="hidden"
+                                  onChange={async (e) => {
+                                    const f = e.target.files?.[0];
+                                    if (f) {
+                                      const u = await handleFileUpload(f, "videos");
+                                      if (u) {
+                                        const chs = [...contentForm.docChapters];
+                                        chs[idx] = { ...chs[idx], videoSrc: u };
+                                        setContentForm({ ...contentForm, docChapters: chs });
+                                      }
+                                    }
+                                  }}
+                                />
+                                <span>📁 Upload MP4</span>
+                              </label>
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="block text-[11px] font-bold text-teal-900/70 mb-1">Poster Image URL (.jpg)</label>
+                            <div className="flex gap-2">
+                              <input
+                                type="text"
+                                value={ch.posterSrc || ""}
+                                onChange={(e) => {
+                                  const chs = [...contentForm.docChapters];
+                                  chs[idx] = { ...chs[idx], posterSrc: e.target.value };
+                                  setContentForm({ ...contentForm, docChapters: chs });
+                                }}
+                                className="flex-1 rounded-xl border border-teal-900/15 bg-white px-3 py-1.5 text-xs font-mono"
+                              />
+                              <label className="rounded-xl bg-teal-900 px-3 py-1.5 text-[11px] font-bold text-white cursor-pointer hover:bg-teal-800 transition shrink-0 flex items-center">
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  className="hidden"
+                                  onChange={async (e) => {
+                                    const f = e.target.files?.[0];
+                                    if (f) {
+                                      const u = await handleFileUpload(f, "images");
+                                      if (u) {
+                                        const chs = [...contentForm.docChapters];
+                                        chs[idx] = { ...chs[idx], posterSrc: u };
+                                        setContentForm({ ...contentForm, docChapters: chs });
+                                      }
+                                    }
+                                  }}
+                                />
+                                <span>📁 Upload Poster</span>
+                              </label>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] font-bold text-teal-900/70 mb-1">Chapter Story Description</label>
+                          <textarea
+                            rows={2}
+                            value={ch.description || ""}
+                            onChange={(e) => {
+                              const chs = [...contentForm.docChapters];
+                              chs[idx] = { ...chs[idx], description: e.target.value };
+                              setContentForm({ ...contentForm, docChapters: chs });
+                            }}
+                            className="w-full rounded-xl border border-teal-900/15 bg-white px-3 py-1.5 text-xs text-teal-950"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* SUBTAB: COMMUNITY & VOLUNTEERS */}
+              {contentSubtab === "community" && (
+                <div className="space-y-6">
+                  {/* VOLUNTEER & CREATOR MEDIA */}
+                  <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-teal-900/10 space-y-4">
+                    <div className="border-b border-teal-900/10 pb-3">
+                      <h3 className="font-display text-base font-bold text-teal-900">
+                        Volunteers &amp; Creator Pipeline Media
+                      </h3>
+                      <p className="text-xs text-teal-950/60">
+                        Controls the video reels and photos featured in &ldquo;Share Your Talent &amp; Reach&rdquo; on the homepage.
+                      </p>
+                    </div>
+
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="rounded-2xl border border-teal-900/15 bg-cream/30 p-3.5 space-y-2">
+                        <label className="block text-xs font-bold text-teal-900">Volunteer Story Video URL (.mp4)</label>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={contentForm.volunteerVideoUrl || ""}
+                            onChange={(e) => setContentForm({ ...contentForm, volunteerVideoUrl: e.target.value })}
+                            className="flex-1 rounded-xl border border-teal-900/15 bg-white px-3 py-1.5 text-xs font-mono"
+                          />
+                          <label className="rounded-xl bg-teal-900 px-3 py-1.5 text-[11px] font-bold text-white cursor-pointer hover:bg-teal-800 transition shrink-0 flex items-center">
+                            <input
+                              type="file"
+                              accept="video/mp4,video/webm"
+                              className="hidden"
+                              onChange={async (e) => {
+                                const f = e.target.files?.[0];
+                                if (f) {
+                                  const u = await handleFileUpload(f, "videos");
+                                  if (u) setContentForm({ ...contentForm, volunteerVideoUrl: u });
+                                }
+                              }}
+                            />
+                            <span>📁 Upload MP4</span>
+                          </label>
+                        </div>
+                      </div>
+
+                      <div className="rounded-2xl border border-teal-900/15 bg-cream/30 p-3.5 space-y-2">
+                        <label className="block text-xs font-bold text-teal-900">Volunteer Card Photo URL (.jpg)</label>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={contentForm.volunteerPhotoUrl || ""}
+                            onChange={(e) => setContentForm({ ...contentForm, volunteerPhotoUrl: e.target.value })}
+                            className="flex-1 rounded-xl border border-teal-900/15 bg-white px-3 py-1.5 text-xs font-mono"
+                          />
+                          <label className="rounded-xl bg-teal-900 px-3 py-1.5 text-[11px] font-bold text-white cursor-pointer hover:bg-teal-800 transition shrink-0 flex items-center">
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={async (e) => {
+                                const f = e.target.files?.[0];
+                                if (f) {
+                                  const u = await handleFileUpload(f, "images");
+                                  if (u) setContentForm({ ...contentForm, volunteerPhotoUrl: u });
+                                }
+                              }}
+                            />
+                            <span>📁 Upload Photo</span>
+                          </label>
+                        </div>
+                      </div>
+
+                      <div className="rounded-2xl border border-teal-900/15 bg-cream/30 p-3.5 space-y-2">
+                        <label className="block text-xs font-bold text-teal-900">Creator Video Reel URL (.mp4)</label>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={contentForm.creatorReelUrl || ""}
+                            onChange={(e) => setContentForm({ ...contentForm, creatorReelUrl: e.target.value })}
+                            className="flex-1 rounded-xl border border-teal-900/15 bg-white px-3 py-1.5 text-xs font-mono"
+                          />
+                          <label className="rounded-xl bg-teal-900 px-3 py-1.5 text-[11px] font-bold text-white cursor-pointer hover:bg-teal-800 transition shrink-0 flex items-center">
+                            <input
+                              type="file"
+                              accept="video/mp4,video/webm"
+                              className="hidden"
+                              onChange={async (e) => {
+                                const f = e.target.files?.[0];
+                                if (f) {
+                                  const u = await handleFileUpload(f, "videos");
+                                  if (u) setContentForm({ ...contentForm, creatorReelUrl: u });
+                                }
+                              }}
+                            />
+                            <span>📁 Upload MP4</span>
+                          </label>
+                        </div>
+                      </div>
+
+                      <div className="rounded-2xl border border-teal-900/15 bg-cream/30 p-3.5 space-y-2">
+                        <label className="block text-xs font-bold text-teal-900">Creator Card Photo URL (.jpg)</label>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={contentForm.creatorPhotoUrl || ""}
+                            onChange={(e) => setContentForm({ ...contentForm, creatorPhotoUrl: e.target.value })}
+                            className="flex-1 rounded-xl border border-teal-900/15 bg-white px-3 py-1.5 text-xs font-mono"
+                          />
+                          <label className="rounded-xl bg-teal-900 px-3 py-1.5 text-[11px] font-bold text-white cursor-pointer hover:bg-teal-800 transition shrink-0 flex items-center">
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={async (e) => {
+                                const f = e.target.files?.[0];
+                                if (f) {
+                                  const u = await handleFileUpload(f, "images");
+                                  if (u) setContentForm({ ...contentForm, creatorPhotoUrl: u });
+                                }
+                              }}
+                            />
+                            <span>📁 Upload Photo</span>
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ON-GROUND NGO FIELD INITIATIVES */}
+                  <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-teal-900/10 space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-teal-900/10 pb-3">
+                      <div>
+                        <h3 className="font-display text-base font-bold text-teal-900">
+                          On-Ground Seva: Field Initiatives &amp; Drives
+                        </h3>
+                        <p className="text-xs text-teal-950/60">
+                          Community drives (Annadana meals, Health camps, Vidya classes, Sports club) shown in &ldquo;Hands That Serve&rdquo;.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleAddNgoActivity}
+                        className="rounded-xl bg-teal-900 px-3.5 py-1.5 text-xs font-bold text-white hover:bg-teal-800 transition cursor-pointer shrink-0"
+                      >
+                        + Add Field Initiative
+                      </button>
+                    </div>
+
+                    <div className="space-y-4">
+                      {(contentForm.ngoActivities || []).map((act: any, idx: number) => (
+                        <div
+                          key={act.id || idx}
+                          className="rounded-2xl border border-teal-900/15 bg-cream/30 p-4 space-y-3"
+                        >
+                          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-teal-900/10 pb-2">
+                            <span className="font-display text-sm font-bold text-teal-900">
+                              Initiative #{idx + 1}: {act.title}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteNgoActivity(idx)}
+                              className="rounded-lg bg-red-100 px-2.5 py-1 text-xs font-bold text-red-600 hover:bg-red-200 transition"
+                            >
+                              Delete
+                            </button>
+                          </div>
+
+                          <div className="grid gap-3 sm:grid-cols-3">
+                            <div className="sm:col-span-2">
+                              <label className="block text-[11px] font-bold text-teal-900/70 mb-1">Title</label>
+                              <input
+                                type="text"
+                                value={act.title || ""}
+                                onChange={(e) => handleUpdateNgoActivity(idx, { title: e.target.value })}
+                                className="w-full rounded-xl border border-teal-900/15 bg-white px-3 py-1.5 text-xs font-bold text-teal-950"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[11px] font-bold text-teal-900/70 mb-1">Suggested Seva Amount (₹)</label>
+                              <input
+                                type="number"
+                                value={act.suggestedAmount || ""}
+                                onChange={(e) => handleUpdateNgoActivity(idx, { suggestedAmount: parseInt(e.target.value, 10) || 0 })}
+                                className="w-full rounded-xl border border-teal-900/15 bg-white px-3 py-1.5 text-xs font-black text-saffron-dark"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="grid gap-3 sm:grid-cols-3">
+                            <div>
+                              <label className="block text-[11px] font-bold text-teal-900/70 mb-1">Cadence / Timing</label>
+                              <input
+                                type="text"
+                                value={act.cadence || ""}
+                                onChange={(e) => handleUpdateNgoActivity(idx, { cadence: e.target.value })}
+                                className="w-full rounded-xl border border-teal-900/15 bg-white px-3 py-1.5 text-xs text-teal-950"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[11px] font-bold text-teal-900/70 mb-1">Metric Badge</label>
+                              <input
+                                type="text"
+                                value={act.metricBadge || ""}
+                                onChange={(e) => handleUpdateNgoActivity(idx, { metricBadge: e.target.value })}
+                                className="w-full rounded-xl border border-teal-900/15 bg-white px-3 py-1.5 text-xs text-teal-950"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[11px] font-bold text-teal-900/70 mb-1">Volunteer Role Title</label>
+                              <input
+                                type="text"
+                                value={act.volunteerRole || ""}
+                                onChange={(e) => handleUpdateNgoActivity(idx, { volunteerRole: e.target.value })}
+                                className="w-full rounded-xl border border-teal-900/15 bg-white px-3 py-1.5 text-xs text-teal-950"
+                              />
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="block text-[11px] font-bold text-teal-900/70 mb-1">Short Description</label>
+                            <textarea
+                              rows={2}
+                              value={act.shortDesc || ""}
+                              onChange={(e) => handleUpdateNgoActivity(idx, { shortDesc: e.target.value })}
+                              className="w-full rounded-xl border border-teal-900/15 bg-white px-3 py-1.5 text-xs text-teal-950"
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* SUBTAB: BANK DETAILS & OFFICIAL REGISTRATIONS */}
+              {contentSubtab === "trust" && (
+                <div className="space-y-6">
+                  {/* DIRECT WIRE & BANK DETAILS */}
+                  <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-teal-900/10 space-y-4">
+                    <div className="border-b border-teal-900/10 pb-3">
+                      <div className="inline-flex items-center gap-2 rounded-md bg-teal-900/10 px-2.5 py-1 text-xs font-bold text-teal-900 uppercase tracking-wider mb-1">
+                        <span>🏛️ Axis Bank Official Account</span>
+                      </div>
+                      <h3 className="font-display text-base font-bold text-teal-900">
+                        Official Direct Wire &amp; Bank Details
+                      </h3>
+                      <p className="text-xs text-teal-950/60">
+                        Displayed in donation drawer, checkout bank transfer tab, and transparency center.
+                      </p>
+                    </div>
+
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div>
+                        <label className="block text-xs font-bold text-teal-900/70 mb-1">Bank Name:</label>
+                        <input
+                          type="text"
+                          value={contentForm.bankDetails?.bankName || ""}
+                          onChange={(e) => handleUpdateBankDetails({ bankName: e.target.value })}
+                          className="w-full rounded-xl border border-teal-900/15 px-3 py-2 text-xs font-bold text-teal-950"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-teal-900/70 mb-1">Account Number:</label>
+                        <input
+                          type="text"
+                          value={contentForm.bankDetails?.accountNumber || ""}
+                          onChange={(e) => handleUpdateBankDetails({ accountNumber: e.target.value })}
+                          className="w-full rounded-xl border border-teal-900/15 px-3 py-2 text-xs font-mono font-bold text-teal-950"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-teal-900/70 mb-1">IFSC Code:</label>
+                        <input
+                          type="text"
+                          value={contentForm.bankDetails?.ifsc || ""}
+                          onChange={(e) => handleUpdateBankDetails({ ifsc: e.target.value })}
+                          className="w-full rounded-xl border border-teal-900/15 px-3 py-2 text-xs font-mono font-bold text-teal-950"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-teal-900/70 mb-1">Branch Name:</label>
+                        <input
+                          type="text"
+                          value={contentForm.bankDetails?.branch || ""}
+                          onChange={(e) => handleUpdateBankDetails({ branch: e.target.value })}
+                          className="w-full rounded-xl border border-teal-900/15 px-3 py-2 text-xs font-bold text-teal-950"
+                        />
+                      </div>
+                      <div className="sm:col-span-2">
+                        <label className="block text-xs font-bold text-teal-900/70 mb-1">Account Holder Full Legal Name:</label>
+                        <input
+                          type="text"
+                          value={contentForm.bankDetails?.accountHolder || ""}
+                          onChange={(e) => handleUpdateBankDetails({ accountHolder: e.target.value })}
+                          className="w-full rounded-xl border border-teal-900/15 px-3 py-2 text-xs font-bold text-teal-950"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-teal-900/70 mb-1">Official UPI VPA ID:</label>
+                        <input
+                          type="text"
+                          value={contentForm.bankDetails?.upiVpa || ""}
+                          onChange={(e) => handleUpdateBankDetails({ upiVpa: e.target.value })}
+                          className="w-full rounded-xl border border-teal-900/15 px-3 py-2 text-xs font-mono font-bold text-teal-950"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-teal-900/70 mb-1">Account Type:</label>
+                        <input
+                          type="text"
+                          value={contentForm.bankDetails?.accountType || ""}
+                          onChange={(e) => handleUpdateBankDetails({ accountType: e.target.value })}
+                          className="w-full rounded-xl border border-teal-900/15 px-3 py-2 text-xs font-bold text-teal-950"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* OFFICIAL GOVERNMENT ACCREDITATIONS */}
+                  <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-teal-900/10 space-y-4">
+                    <div className="border-b border-teal-900/10 pb-3">
+                      <div className="inline-flex items-center gap-2 rounded-md bg-emerald-500/15 px-2.5 py-1 text-xs font-bold text-emerald-800 uppercase tracking-wider mb-1">
+                        <span>📜 Government Accreditations &amp; Registrations</span>
+                      </div>
+                      <h3 className="font-display text-base font-bold text-teal-900">
+                        Official Legal Registration Numbers
+                      </h3>
+                      <p className="text-xs text-teal-950/60">
+                        Verified numbers shown across certificates, 80G tax receipts, and transparency portals.
+                      </p>
+                    </div>
+
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div>
+                        <label className="block text-xs font-bold text-teal-900/70 mb-1">JJ Act Form 28 Registration No:</label>
+                        <input
+                          type="text"
+                          value={contentForm.bankDetails?.jjActRegNo || ""}
+                          onChange={(e) => handleUpdateBankDetails({ jjActRegNo: e.target.value })}
+                          placeholder="KA18CH0242"
+                          className="w-full rounded-xl border border-teal-900/15 px-3 py-2 text-xs font-mono font-bold text-teal-950"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-teal-900/70 mb-1">Section 80G Form 10AC URN:</label>
+                        <input
+                          type="text"
+                          value={contentForm.bankDetails?.form10acUrn || ""}
+                          onChange={(e) => handleUpdateBankDetails({ form10acUrn: e.target.value })}
+                          placeholder="AABTJ7431MF20231"
+                          className="w-full rounded-xl border border-teal-900/15 px-3 py-2 text-xs font-mono font-bold text-teal-950"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-teal-900/70 mb-1">MCA CSR-1 Registration No:</label>
+                        <input
+                          type="text"
+                          value={contentForm.bankDetails?.csrRegistration || ""}
+                          onChange={(e) => handleUpdateBankDetails({ csrRegistration: e.target.value })}
+                          placeholder="CSR00078945"
+                          className="w-full rounded-xl border border-teal-900/15 px-3 py-2 text-xs font-mono font-bold text-teal-950"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-teal-900/70 mb-1">Niti Aayog NGO Darpan ID:</label>
+                        <input
+                          type="text"
+                          value={contentForm.bankDetails?.darpanId || ""}
+                          onChange={(e) => handleUpdateBankDetails({ darpanId: e.target.value })}
+                          placeholder="KA/2021/0284729"
+                          className="w-full rounded-xl border border-teal-900/15 px-3 py-2 text-xs font-mono font-bold text-teal-950"
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}

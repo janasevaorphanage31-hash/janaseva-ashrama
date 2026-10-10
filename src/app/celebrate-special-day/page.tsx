@@ -45,7 +45,11 @@ export const metadata: Metadata = {
   },
 };
 
-export default function CelebrateSpecialDayPage() {
+import { getSiteContentMap } from "@/lib/site-content";
+
+export default async function CelebrateSpecialDayPage() {
+  const siteContent = await getSiteContentMap();
+
   return (
     <div className="w-full">
       <Breadcrumbs items={[{ label: "Special Day Seva" }]} />
@@ -57,7 +61,7 @@ export default function CelebrateSpecialDayPage() {
 
       <Section className="py-10">
         <Container>
-          <CelebrateBirthdayClient />
+          <CelebrateBirthdayClient content={siteContent} wishVideos={siteContent.wishVideos} />
         </Container>
       </Section>
     </div>

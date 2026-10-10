@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState, type FormEvent } from "react";
 import { useCart } from "./CartProvider";
 import { formatINR, SITE } from "@/lib/site";
-import type { WishVideoItem } from "@/lib/site-content";
+import type { WishVideoItem, CelebrationPackageItem, SiteContentMap } from "@/lib/site-content";
 import { track } from "@/lib/track";
 import {
   validateName,
@@ -90,12 +90,24 @@ const OCCASIONS = [
   "General Family Blessings",
 ];
 
-export function CelebrateBirthdayClient({ wishVideos }: { wishVideos?: WishVideoItem[] }) {
+export function CelebrateBirthdayClient({
+  content,
+  wishVideos,
+}: {
+  content?: Partial<SiteContentMap>;
+  wishVideos?: WishVideoItem[];
+}) {
   const { setCustom } = useCart();
-  const [selectedPkg, setSelectedPkg] = useState<string>("lunch-special");
+  const packages: (CelebrationPackageItem | FeastPackage)[] =
+    content?.celebrationPackages && content.celebrationPackages.length > 0
+      ? content.celebrationPackages
+      : PACKAGES;
+
+  const [selectedPkg, setSelectedPkg] = useState<string>(packages[1]?.id || packages[0]?.id || "lunch-special");
   const [activeWishIndex, setActiveWishIndex] = useState(0);
 
-  const wishes = wishVideos && wishVideos.length > 0 ? wishVideos : [
+  const rawWishes = content?.wishVideos && content.wishVideos.length > 0 ? content.wishVideos : wishVideos;
+  const wishes = rawWishes && rawWishes.length > 0 ? rawWishes : [
     {
       id: "wish-1",
       celebrantName: "Little Ananya's 7th Birthday",
@@ -167,9 +179,9 @@ export function CelebrateBirthdayClient({ wishVideos }: { wishVideos?: WishVideo
       .catch(() => {});
   }, []);
 
-  const activePackage = PACKAGES.find((p) => p.id === selectedPkg) || PACKAGES[1];
+  const activePackage = packages.find((p) => p.id === selectedPkg) || packages[1] || packages[0];
 
-  const handleSponsor = (pkg: FeastPackage) => {
+  const handleSponsor = (pkg: FeastPackage | CelebrationPackageItem) => {
     track("birthday_package_select", { package: pkg.id, price: pkg.price });
     setCustom(pkg.price);
   };
@@ -318,7 +330,7 @@ export function CelebrateBirthdayClient({ wishVideos }: { wishVideos?: WishVideo
 
         {/* 5 Feast Packages Grid */}
         <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-5">
-          {PACKAGES.map((pkg) => {
+          {packages.map((pkg) => {
             const isSelected = selectedPkg === pkg.id;
             return (
               <div
@@ -397,7 +409,9 @@ export function CelebrateBirthdayClient({ wishVideos }: { wishVideos?: WishVideo
             </span>
           </div>
           <span className="text-[11px] text-gold font-semibold">
-            Included Free With Every Feast Booking
+            {content?.celebrationVideoCost === 0 || !content?.celebrationVideoCost
+              ? "Included Free With Every Feast Booking"
+              : `${content?.celebrationVideoHeading || "Personalized Video Blessing"} (${formatINR(content.celebrationVideoCost)})`}
           </span>
         </div>
 
@@ -440,7 +454,7 @@ export function CelebrateBirthdayClient({ wishVideos }: { wishVideos?: WishVideo
                   &ldquo;{currentWish.quote}&rdquo;
                 </p>
                 <p className="mt-2 text-[10px] text-emerald-300 font-semibold flex items-center gap-1">
-                  <span>✓✓ Delivered on WhatsApp with photos of food served &amp; 80G tax receipt</span>
+                  <span>✓✓ {content?.celebrationVideoDescription || "Delivered on WhatsApp with photos of food served & 80G tax receipt"}</span>
                 </p>
               </div>
             </div>
@@ -650,7 +664,7 @@ export function CelebrateBirthdayClient({ wishVideos }: { wishVideos?: WishVideo
                       onChange={(e) => setSelectedPkg(e.target.value)}
                       className="focus-ring w-full rounded-xl border border-teal-900/20 bg-cream px-3 py-2 text-xs font-semibold text-teal-950"
                     >
-                      {PACKAGES.map((p) => (
+                      {packages.map((p) => (
                         <option key={p.id} value={p.id}>
                           {p.name} ({formatINR(p.price)})
                         </option>

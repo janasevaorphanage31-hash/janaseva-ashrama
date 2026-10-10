@@ -177,7 +177,7 @@ export default async function CelebrateBirthdayPage() {
 
       <Section tone="cream" className="py-12 md:py-16">
         <Container className="max-w-6xl">
-          <CelebrateBirthdayClient wishVideos={siteContent.wishVideos} />
+          <CelebrateBirthdayClient content={siteContent} wishVideos={siteContent.wishVideos} />
 
           {/* Deep SEO / AEO Answer Engine FAQ Section */}
           <div className="mt-16 rounded-3xl bg-white p-6 sm:p-10 shadow-sm ring-1 ring-teal-900/10">
