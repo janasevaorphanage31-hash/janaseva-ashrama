@@ -121,50 +121,14 @@ export function TrustSection() {
       </div>
 
       <Container>
-        {/* Official Charity Bank Account (Authoritative Single Source of Truth) */}
-        <div className="mt-10 rounded-3xl bg-teal-950 text-white p-6 sm:p-8 shadow-xl border border-teal-800">
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-teal-800 pb-3">
-            <div>
-              <span className="font-display font-bold text-base sm:text-lg text-gold">
-                Official Charity Bank Account (Direct NEFT / IMPS / RTGS / UPI)
-              </span>
-              <p className="text-xs text-teal-200 mt-0.5">
-                Transfer directly to our registered charity bank account with verified Form 10AC 80G tax exemption.
-              </p>
-            </div>
-            <span className="rounded-lg bg-teal-800 px-3 py-1 text-xs font-bold text-teal-200">
-              Axis Bank · Banashankari Branch
-            </span>
-          </div>
-
-          <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
-            <div className="rounded-2xl bg-white/5 p-3.5 border border-white/10">
-              <span className="text-[10px] uppercase font-bold text-white/60 block">A/c Holder Name</span>
-              <span className="font-bold text-white leading-snug text-xs sm:text-sm mt-0.5 block">{BANK_DETAILS.accountName}</span>
-            </div>
-            <div className="rounded-2xl bg-white/5 p-3.5 border border-white/10">
-              <span className="text-[10px] uppercase font-bold text-white/60 block">Bank &amp; Branch</span>
-              <span className="font-bold text-white text-xs sm:text-sm mt-0.5 block">{BANK_DETAILS.bankName} ({BANK_DETAILS.branch})</span>
-            </div>
-            <div className="rounded-2xl bg-black/30 p-3.5 border border-amber-400/30">
-              <span className="text-[10px] uppercase font-bold text-gold block">Account Number</span>
-              <span className="font-mono font-bold text-sm sm:text-base text-amber-300 mt-0.5 block select-all tracking-wider">{BANK_DETAILS.accountNumber}</span>
-            </div>
-            <div className="rounded-2xl bg-black/30 p-3.5 border border-amber-400/30">
-              <span className="text-[10px] uppercase font-bold text-gold block">IFSC Code</span>
-              <span className="font-mono font-bold text-sm sm:text-base text-amber-300 mt-0.5 block select-all tracking-wider">{BANK_DETAILS.ifscCode}</span>
-            </div>
-          </div>
-        </div>
-
         {/* Quick Question / Direct Contact Strip */}
-        <div className="mt-6 flex flex-col items-center justify-between gap-4 rounded-3xl bg-teal-900 p-6 text-white sm:flex-row sm:p-7 shadow-md">
+        <div className="mt-8 flex flex-col items-center justify-between gap-4 rounded-3xl bg-teal-900 p-6 text-white sm:flex-row sm:p-7 shadow-md">
           <div>
             <h4 className="font-display text-lg font-bold text-gold">
-              Have questions or want to verify our credentials in person?
+              Have questions or want to meet the boys in person?
             </h4>
             <p className="mt-1 text-xs sm:text-sm text-white/80">
-              Speak directly with an Ashrama trustee or coordinator before making your contribution.
+              Speak directly with an Ashrama caregiver or trustee before making your contribution.
             </p>
           </div>
           <div className="flex shrink-0 flex-wrap items-center gap-3">
@@ -200,3 +164,4 @@ export function TrustSection() {
     </Section>
   );
 }
+
