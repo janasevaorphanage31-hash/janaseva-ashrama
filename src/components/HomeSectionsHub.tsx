@@ -15,13 +15,14 @@ import { TrustSection } from "./sections/TrustSection";
 import { VerifiedImpactSection } from "./sections/VerifiedImpactSection";
 import { CommunityActivitiesSection } from "./sections/CommunityActivitiesSection";
 import { DonationFAQ } from "./DonationFAQ";
-import { InvolvedSection } from "./sections/InvolvedSection";
+import { CommunityV2Section } from "./sections/CommunityV2Section";
 import { TodaySection } from "./sections/TodaySection";
 import { ContactSection } from "./sections/ContactSection";
 import { Container } from "./ui";
 import type { SiteContentMap } from "@/lib/site-content";
 
-export type HomeMode = "all" | "tiers" | "celebrate" | "annadana" | "life" | "trust";
+export type HomeMode = "all" | "tiers" | "celebrate" | "annadana" | "life" | "community" | "trust";
+
 
 interface ModeItem {
   id: HomeMode;
@@ -74,6 +75,14 @@ const MODES: ModeItem[] = [
     description: "Documentary chapters, photos & daily prayers",
   },
   {
+    id: "community",
+    label: "Community",
+    icon: "🤝",
+    badge: "V2",
+    targetId: "volunteer",
+    description: "Volunteers, influencers, corporate CSR & WhatsApp network",
+  },
+  {
     id: "trust",
     label: "Trust",
     icon: "🛡️",
@@ -89,6 +98,7 @@ const MODE_TARGET_MAP: Record<HomeMode, string> = {
   celebrate: "celebrate",
   annadana: "impact",
   life: "boys-gallery",
+  community: "volunteer",
   trust: "transparency",
 };
 
@@ -153,9 +163,12 @@ export function HomeSectionsHub({
       const impEl = document.getElementById("impact");
       const galEl = document.getElementById("boys-gallery");
       const trEl = document.getElementById("transparency") || document.getElementById("trust");
+      const volEl = document.getElementById("volunteer") || document.getElementById("community");
 
       if (trEl && trEl.offsetTop <= scrollPos) {
         setActiveMode("trust");
+      } else if (volEl && volEl.offsetTop <= scrollPos) {
+        setActiveMode("community");
       } else if (galEl && galEl.offsetTop <= scrollPos) {
         setActiveMode("life");
       } else if (impEl && impEl.offsetTop <= scrollPos) {
@@ -261,8 +274,8 @@ export function HomeSectionsHub({
         {/* 7. On-Ground NGO Activities & Community Outreach (Field Initiatives) */}
         <CommunityActivitiesSection activities={siteContent?.ngoActivities} />
 
-        {/* 8. Share Your Talent & Reach: Volunteers & Mentorship */}
-        <InvolvedSection content={siteContent} />
+        {/* 8. Share Your Talent & Reach: Volunteers, Creators, Corporate CSR & WhatsApp Network V2 */}
+        <CommunityV2Section />
 
         {/* 9. Documentary Video Chapters */}
         <DocumentaryVideoSection chapters={siteContent?.docChapters} />

@@ -43,6 +43,7 @@ test("Database Schema Integrity", async (t) => {
       "impact_metrics",
       "media_assets",
       "media_consents",
+      "community_members",
     ];
 
     for (const table of requiredTables) {

@@ -123,7 +123,30 @@ export async function ensureDbSchema(): Promise<void> {
           ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS is_sample BOOLEAN NOT NULL DEFAULT FALSE;
           ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS paused_at TIMESTAMP;
           ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP NOT NULL DEFAULT NOW();
+
+          CREATE TABLE IF NOT EXISTS community_members (
+            id SERIAL PRIMARY KEY,
+            role TEXT NOT NULL DEFAULT 'VOLUNTEER',
+            name TEXT NOT NULL,
+            email TEXT NOT NULL,
+            phone TEXT NOT NULL,
+            city TEXT,
+            handle_or_org TEXT,
+            reach TEXT,
+            skills TEXT,
+            message TEXT,
+            whatsapp_opt_in BOOLEAN NOT NULL DEFAULT TRUE,
+            status TEXT NOT NULL DEFAULT 'NEW',
+            admin_notes TEXT,
+            created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+          );
+
+          CREATE INDEX IF NOT EXISTS comm_mem_role_idx ON community_members(role);
+          CREATE INDEX IF NOT EXISTS comm_mem_status_idx ON community_members(status);
+          CREATE INDEX IF NOT EXISTS comm_mem_phone_idx ON community_members(phone);
         `);
+
       } catch (err) {
         console.error("ensureDbSchema failed:", err);
         delete globalForDb.__arenaNextJsSchemaPromise;

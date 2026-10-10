@@ -485,3 +485,31 @@ export const celebrationBookings = pgTable(
   ],
 );
 
+/** V2 Community, Volunteer, Influencer & Corporate WhatsApp filing table. */
+export const communityMembers = pgTable(
+  "community_members",
+  {
+    id: serial("id").primaryKey(),
+    role: text("role").notNull().default("VOLUNTEER"), // VOLUNTEER | INFLUENCER | COMPANY_CSR | WHATSAPP_AMBASSADOR
+    name: text("name").notNull(),
+    email: text("email").notNull(),
+    phone: text("phone").notNull(), // WhatsApp contact number
+    city: text("city"),
+    handleOrOrg: text("handle_or_org"), // Instagram/YouTube handle, or Company Name
+    reach: text("reach"), // e.g. "10k-50k followers", "50-200 employees"
+    skills: text("skills"), // Specific skills / contribution area
+    message: text("message"),
+    whatsappOptIn: boolean("whatsapp_opt_in").notNull().default(true),
+    status: text("status").notNull().default("NEW"), // NEW | CONTACTED | APPROVED | ADDED_TO_WHATSAPP | ARCHIVED
+    adminNotes: text("admin_notes"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => [
+    index("comm_mem_role_idx").on(t.role),
+    index("comm_mem_status_idx").on(t.status),
+    index("comm_mem_phone_idx").on(t.phone),
+  ],
+);
+
+
