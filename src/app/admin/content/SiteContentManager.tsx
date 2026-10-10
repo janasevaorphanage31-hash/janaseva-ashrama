@@ -588,7 +588,7 @@ export function SiteContentManager({
                 type="text"
                 value={content.googleMapsUrl || ""}
                 onChange={(e) => setContent({ ...content, googleMapsUrl: e.target.value })}
-                placeholder="https://www.google.com/maps/place/jana+seva+ashrama/..."
+                placeholder="https://maps.app.goo.gl/FMaM6eLKk3nNJmth8"
                 className="w-full rounded-xl border border-teal-900/20 p-2.5 text-xs font-mono text-teal-900"
               />
             </div>

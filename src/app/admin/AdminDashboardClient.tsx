@@ -3813,6 +3813,7 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
                           type="text"
                           value={contentForm.googleMapsUrl || ""}
                           onChange={(e) => setContentForm({ ...contentForm, googleMapsUrl: e.target.value })}
+                          placeholder="https://maps.app.goo.gl/FMaM6eLKk3nNJmth8"
                           className="w-full rounded-xl border border-teal-900/15 px-3 py-2 text-xs text-teal-950 font-mono"
                         />
                       </div>

@@ -224,7 +224,7 @@ export const SITE = {
     longitude: 77.5364587,
   },
   visitingHours: "Monday to Sunday: 10:00 AM to 6:00 PM (IST) with prior telephone appointment",
-  mapsUrl: "https://www.google.com/maps/place/jana+seva+ashrama/@12.8982219,77.5364587,17z/data=!3m1!4b1!4m6!3m5!1s0x3bae3fed70d97ccd:0xd9253237ccb74717!8m2!3d12.8982219!4d77.5364587",
+  mapsUrl: "https://maps.app.goo.gl/FMaM6eLKk3nNJmth8",
   mapsEmbedUrl: "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3889.1477109811526!2d77.53645877367013!3d12.898221916485635!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3bae3fed70d97ccd%3A0xd9253237ccb74717!2sjana%20seva%20ashrama!5e0!3m2!1sen!2sin!4v1791617144025!5m2!1sen!2sin",
   taxExemption: "Provisional 80G Approval (Form 10AC, URN: AABTJ7431MF20231) · 12AA Certified · CSR Eligible (CSR00078800)",
   registeredTrust: "Child Care Institution (JJ Act KA18CH0242) · Registered Charitable Society (Karnataka) under Section 12AA/80G",

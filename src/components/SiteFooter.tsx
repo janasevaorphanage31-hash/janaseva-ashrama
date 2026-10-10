@@ -92,7 +92,15 @@ export function SiteFooter() {
                 <svg className="h-4 w-4 fill-current text-gold shrink-0 mt-0.5" viewBox="0 0 24 24" aria-hidden="true">
                   <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
                 </svg>
-                <span><strong>Ashrama Campus:</strong> {SITE.address}</span>
+                <a
+                  href={SITE.mapsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-gold transition-colors inline-block"
+                  title="Open Ashrama location in Google Maps"
+                >
+                  <strong>Ashrama Campus:</strong> {SITE.address}
+                </a>
               </p>
               <p className="pl-6 text-[11px] text-white/60">
                 <strong>Registered Society Office:</strong> {SITE.registeredOffice}
