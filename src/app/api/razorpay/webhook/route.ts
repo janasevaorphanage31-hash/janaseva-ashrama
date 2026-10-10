@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import { and, eq } from "drizzle-orm";
-import { db } from "@/db";
+import { db, ensureDbSchema } from "@/db";
 import { analyticsEvents, donations, recurringSubscriptions } from "@/db/schema";
 import { markPaid, recordSubscriptionCharge, webhookSignatureValid } from "@/lib/payments";
+
+export const dynamic = "force-dynamic";
 
 /**
  * Razorpay webhook handler for one-time and recurring subscriptions.
@@ -21,11 +23,14 @@ import { markPaid, recordSubscriptionCharge, webhookSignatureValid } from "@/lib
  * All event handlers are strictly idempotent.
  */
 export async function POST(req: Request) {
+  await ensureDbSchema();
+
   const raw = await req.text();
   const sig = req.headers.get("x-razorpay-signature") ?? "";
   if (!webhookSignatureValid(raw, sig)) {
     return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
   }
+
 
   let evt: {
     event?: string;

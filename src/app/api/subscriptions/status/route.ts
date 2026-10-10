@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import { and, desc, eq, or } from "drizzle-orm";
-import { db } from "@/db";
+import { db, ensureDbSchema } from "@/db";
 import { donations, recurringSubscriptions } from "@/db/schema";
 import { clean, clientIp, isEmail, rateLimit } from "@/lib/server-utils";
+
+export const dynamic = "force-dynamic";
 
 /**
  * Donor self-service lookup for recurring subscriptions and payment receipts.
@@ -11,6 +13,9 @@ export async function GET(req: Request) {
   if (!rateLimit(`sub_sts:${clientIp(req)}`, 30, 10 * 60_000)) {
     return NextResponse.json({ error: "Too many requests." }, { status: 429 });
   }
+
+  await ensureDbSchema();
+
 
   const url = new URL(req.url);
   const publicId = clean(url.searchParams.get("publicId"), 64);

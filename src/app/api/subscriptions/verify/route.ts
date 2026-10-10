@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
-import { db } from "@/db";
+import { db, ensureDbSchema } from "@/db";
 import { recurringSubscriptions } from "@/db/schema";
 import {
   fetchRazorpayPayment,
@@ -11,6 +11,8 @@ import {
 } from "@/lib/payments";
 import { clean, clientIp, rateLimit } from "@/lib/server-utils";
 
+export const dynamic = "force-dynamic";
+
 /**
  * Server-side verification for Razorpay Subscription authorization:
  * Verifies HMAC_SHA256(payment_id + "|" + subscription_id, secret),
@@ -20,6 +22,9 @@ export async function POST(req: Request) {
   if (!rateLimit(`sub_ver:${clientIp(req)}`, 30, 10 * 60_000)) {
     return NextResponse.json({ error: "Too many verification requests." }, { status: 429 });
   }
+
+  await ensureDbSchema();
+
 
   if (!razorpayConfigured()) {
     return NextResponse.json({ error: "Razorpay is not configured." }, { status: 400 });

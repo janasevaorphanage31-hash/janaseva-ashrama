@@ -1,14 +1,18 @@
 import { NextResponse } from "next/server";
 import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
-import { db } from "@/db";
+import { db, ensureDbSchema } from "@/db";
 import { donations, recurringSubscriptions } from "@/db/schema";
 import { requireAdminApi } from "@/lib/admin-auth";
 import { cancelRazorpaySubscription, razorpayConfigured } from "@/lib/payments";
 import { clean } from "@/lib/server-utils";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(req: Request) {
+  await ensureDbSchema();
   const session = await requireAdminApi(["SUPER_ADMIN", "STAFF_ADMIN", "FINANCE", "DONATION_ADMIN"]);
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
 
   const url = new URL(req.url);
   const q = (url.searchParams.get("q") || "").trim().toLowerCase();
@@ -101,8 +105,10 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  await ensureDbSchema();
   const session = await requireAdminApi(["SUPER_ADMIN", "STAFF_ADMIN", "FINANCE"]);
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
 
   const b = await req.json().catch(() => null);
   const action = clean(b?.action, 32);

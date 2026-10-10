@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
 import { and, eq, inArray, or, sql } from "drizzle-orm";
-import { db } from "@/db";
+import { db, ensureDbSchema } from "@/db";
 import { campaigns, donationLines, donations, impactGifts, impactItems } from "@/db/schema";
 import { createRazorpayOrder, razorpayConfigured, razorpayKeyId } from "@/lib/payments";
 import { clean, clientIp, isEmail, isPhone, normalizePhone, publicToken, rateLimit } from "@/lib/server-utils";
 import { ensureSeed } from "@/lib/content";
 import { NAME_REGEX, PAN_REGEX } from "@/lib/validation";
+
+export const dynamic = "force-dynamic";
 
 const MIN = 10;
 const MAX = 500_000;
@@ -13,16 +15,21 @@ const MAX = 500_000;
 type Line = { itemSlug: string | null; label: string; unitPrice: number; qty: number };
 
 export async function POST(req: Request) {
-  if (!rateLimit(`don:${clientIp(req)}`, 15, 10 * 60_000)) {
-    return NextResponse.json({ error: "Too many attempts. Please wait a few minutes and try again." }, { status: 429 });
-  }
-  const b = await req.json().catch(() => null);
-  if (!b) return NextResponse.json({ error: "Invalid request." }, { status: 400 });
+  try {
+    if (!rateLimit(`don:${clientIp(req)}`, 15, 10 * 60_000)) {
+      return NextResponse.json({ error: "Too many attempts. Please wait a few minutes and try again." }, { status: 429 });
+    }
 
-  const donorName = clean(b.donor?.name, 120);
-  const donorEmail = clean(b.donor?.email, 200).toLowerCase();
-  const donorPhoneRaw = clean(b.donor?.phone, 24);
-  const donorPhone = normalizePhone(donorPhoneRaw);
+    await ensureDbSchema();
+
+    const b = await req.json().catch(() => null);
+    if (!b) return NextResponse.json({ error: "Invalid request." }, { status: 400 });
+
+    const donorName = clean(b.donor?.name, 120);
+    const donorEmail = clean(b.donor?.email, 200).toLowerCase();
+    const donorPhoneRaw = clean(b.donor?.phone, 24);
+    const donorPhone = normalizePhone(donorPhoneRaw);
+
   const anonymous = !!b.donor?.anonymous;
   const key = clean(b.idempotencyKey, 80);
 
@@ -165,4 +172,9 @@ export async function POST(req: Request) {
     console.error("Donation creation failed:", err);
     return NextResponse.json({ error: err.message || "Failed to process contribution. Please try again." }, { status: 500 });
   }
+} catch (outerErr: any) {
+  console.error("Donation route unexpected error:", outerErr);
+  return NextResponse.json({ error: outerErr?.message || "Failed to process contribution. Please try again." }, { status: 500 });
 }
+}
+

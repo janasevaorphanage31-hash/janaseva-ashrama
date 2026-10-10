@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
-import { db } from "@/db";
+import { db, ensureDbSchema } from "@/db";
 import { recurringSubscriptions } from "@/db/schema";
 import {
   createRazorpayPlan,
@@ -11,16 +11,22 @@ import {
 import { clean, clientIp, isEmail, isPhone, normalizePhone, publicToken, rateLimit } from "@/lib/server-utils";
 import { NAME_REGEX, PAN_REGEX } from "@/lib/validation";
 
+export const dynamic = "force-dynamic";
+
 const MIN_MONTHLY = 50; // ₹50 min monthly pledge
 const MAX_MONTHLY = 100_000; // ₹1,00,000 max monthly pledge
 
 export async function POST(req: Request) {
-  if (!rateLimit(`sub_crt:${clientIp(req)}`, 15, 10 * 60_000)) {
-    return NextResponse.json({ error: "Too many attempts. Please wait a few minutes." }, { status: 429 });
-  }
+  try {
+    if (!rateLimit(`sub_crt:${clientIp(req)}`, 15, 10 * 60_000)) {
+      return NextResponse.json({ error: "Too many attempts. Please wait a few minutes." }, { status: 429 });
+    }
 
-  const b = await req.json().catch(() => null);
-  if (!b) return NextResponse.json({ error: "Invalid request payload." }, { status: 400 });
+    await ensureDbSchema();
+
+    const b = await req.json().catch(() => null);
+    if (!b) return NextResponse.json({ error: "Invalid request payload." }, { status: 400 });
+
 
   const donorName = clean(b.donor?.name, 120);
   const donorEmail = clean(b.donor?.email, 200).toLowerCase();
@@ -155,4 +161,12 @@ export async function POST(req: Request) {
       { status: 502 },
     );
   }
+} catch (outerErr: any) {
+  console.error("Subscription route unexpected error:", outerErr);
+  return NextResponse.json(
+    { error: outerErr?.message || "Internal server error. Please try again." },
+    { status: 500 },
+  );
 }
+}
+

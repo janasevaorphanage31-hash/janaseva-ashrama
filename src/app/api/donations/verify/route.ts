@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
-import { db } from "@/db";
+import { db, ensureDbSchema } from "@/db";
 import { donations } from "@/db/schema";
 import {
   captureRazorpayPayment,
@@ -11,10 +11,14 @@ import {
 } from "@/lib/payments";
 import { clean, clientIp, rateLimit } from "@/lib/server-utils";
 
+export const dynamic = "force-dynamic";
+
 /** Server-side verification: signature + payment status + amount + order match, then one-time state change. */
 export async function POST(req: Request) {
   if (!rateLimit(`ver:${clientIp(req)}`, 30, 10 * 60_000)) return NextResponse.json({ error: "Too many requests." }, { status: 429 });
+  await ensureDbSchema();
   if (!razorpayConfigured()) return NextResponse.json({ error: "Payments are not configured." }, { status: 400 });
+
 
   const b = await req.json().catch(() => null);
   const publicId = clean(b?.publicId, 64);

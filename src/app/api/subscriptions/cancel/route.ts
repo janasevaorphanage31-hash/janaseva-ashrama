@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
-import { db } from "@/db";
+import { db, ensureDbSchema } from "@/db";
 import { analyticsEvents, recurringSubscriptions } from "@/db/schema";
 import { cancelRazorpaySubscription, razorpayConfigured } from "@/lib/payments";
 import { clean, clientIp, rateLimit } from "@/lib/server-utils";
+
+export const dynamic = "force-dynamic";
 
 /**
  * Cancels an active recurring subscription mandate.
@@ -13,6 +15,9 @@ export async function POST(req: Request) {
   if (!rateLimit(`sub_cnl:${clientIp(req)}`, 15, 10 * 60_000)) {
     return NextResponse.json({ error: "Too many cancellation requests." }, { status: 429 });
   }
+
+  await ensureDbSchema();
+
 
   const b = await req.json().catch(() => null);
   const publicId = clean(b?.publicId, 64);
