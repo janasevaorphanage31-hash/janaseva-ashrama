@@ -29,6 +29,20 @@ export const metadata: Metadata = {
     siteName: SITE.name,
     locale: "en_IN",
     type: "website",
+    images: [
+      {
+        url: `${SITE.url}/media/janaseva-ashrama-original.jpg`,
+        width: 1200,
+        height: 675,
+        alt: "Celebrate Birthday with Children at Janaseva Ashrama Bangalore",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Celebrate Birthday at Janaseva Ashrama Bangalore",
+    description: "Sponsor a feast or book a birthday visit with 25 resident boys in Bangalore.",
+    images: [`${SITE.url}/media/janaseva-ashrama-original.jpg`],
   },
 };
 

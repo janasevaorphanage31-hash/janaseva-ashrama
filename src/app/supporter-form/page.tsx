@@ -26,7 +26,13 @@ export const metadata: Metadata = {
     description:
       "Support 25 resident boys with daily meals, clothes, and education. Official Supporter Form of Makkala Ashraya Kendra with instant 80G tax exemption.",
     url: `${SITE.url}/supporter-form`,
-    images: [{ url: "/media/poster-desktop.jpg", width: 1200, height: 630, alt: "Children at Janaseva Ashrama" }],
+    images: [{ url: `${SITE.url}/media/janaseva-ashrama-original.jpg`, width: 1200, height: 675, alt: "Children at Janaseva Ashrama" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Official Supporter Form · Janaseva Ashrama Bangalore",
+    description: "Support 25 resident boys with daily meals, clothes, and education.",
+    images: [`${SITE.url}/media/janaseva-ashrama-original.jpg`],
   },
 };
 

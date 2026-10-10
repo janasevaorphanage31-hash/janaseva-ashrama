@@ -246,7 +246,7 @@ export function VolunteerForm({
 }
 
 const COVERS = [
-  { src: "/media/garden.jpg", label: "Garden" },
+  { src: "/media/janaseva-ashrama-original.jpg", label: "Ashrama Campus" },
   { src: "/media/community.jpg", label: "Community" },
   { src: "/media/food.jpg", label: "Meals" },
   { src: "/media/education.jpg", label: "Learning" },

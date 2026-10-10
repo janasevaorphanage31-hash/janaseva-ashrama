@@ -6,7 +6,7 @@ const LIFE = [
   { t: "Nutrition", d: "Meals prepared and shared as part of everyday life.", img: "/media/food.jpg" },
   { t: "Healthcare", d: "Health and wellbeing support as part of everyday care.", img: "/media/health.jpg" },
   { t: "Skills", d: "Learning and skill-building opportunities for the future.", img: "/media/learning.jpg" },
-  { t: "Activities", d: "Sports, music, art, gardening and festivals.", img: "/media/garden.jpg" },
+  { t: "Activities", d: "Sports, music, art, gardening and festivals.", img: "/media/lawn-cheer-circle.jpg" },
   { t: "Community", d: "Neighbours, volunteers and friends who make the home bigger.", img: "/media/community.jpg" },
 ];
 

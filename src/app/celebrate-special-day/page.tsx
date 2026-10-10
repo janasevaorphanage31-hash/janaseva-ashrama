@@ -28,6 +28,20 @@ export const metadata: Metadata = {
     siteName: SITE.name,
     locale: "en_IN",
     type: "website",
+    images: [
+      {
+        url: `${SITE.url}/media/janaseva-ashrama-original.jpg`,
+        width: 1200,
+        height: 675,
+        alt: "Special Day Celebration at Janaseva Ashrama Bangalore",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Special Day Celebration at Janaseva Ashrama Bangalore",
+    description: "Sponsor meals or visit Janaseva Ashrama on your special day.",
+    images: [`${SITE.url}/media/janaseva-ashrama-original.jpg`],
   },
 };
 

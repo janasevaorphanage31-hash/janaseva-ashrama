@@ -540,11 +540,11 @@ function parseMediaGallery(item: ImpactItem): MediaItem[] {
       result.push({ type: "video", url: "/media/chapter3_vidya.mp4", poster: "/media/education.jpg", caption: "Education documentary" });
     } else if (cat.includes("sport") || cat.includes("activ") || cat.includes("play")) {
       result.push({ type: "image", url: "/media/activities.jpg", caption: "Play & games" });
-      result.push({ type: "image", url: "/media/garden.jpg", caption: "Ashrama grounds" });
+      result.push({ type: "image", url: "/media/janaseva-ashrama-original.jpg", caption: "Ashrama grounds" });
       result.push({ type: "video", url: "/media/chapter4_play.mp4", poster: "/media/play.jpg", caption: "Playtime documentary" });
     } else {
       result.push({ type: "image", url: "/media/learning.jpg", caption: "Daily care" });
-      result.push({ type: "image", url: "/media/garden.jpg", caption: "Safe environment" });
+      result.push({ type: "image", url: "/media/janaseva-ashrama-original.jpg", caption: "Safe environment" });
       result.push({ type: "video", url: "/media/ashrama_video.mp4", poster: "/media/poster.jpg", caption: "Campus overview" });
     }
   }

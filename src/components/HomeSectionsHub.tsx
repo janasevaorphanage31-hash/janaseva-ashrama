@@ -34,49 +34,49 @@ interface ModeItem {
 const MODES: ModeItem[] = [
   {
     id: "all",
-    label: "All Highlights",
+    label: "Story",
     icon: "🌟",
-    badge: "Full Story",
+    badge: "All",
     targetId: "hub-top",
     description: "Complete continuous journey of Janaseva Ashrama",
   },
   {
     id: "tiers",
-    label: "5 Support Tiers",
-    icon: "🏛️",
-    badge: "Official",
+    label: "Sponsor",
+    icon: "🍲",
+    badge: "Tiers",
     targetId: "official-tiers",
     description: "Form 28 JJ Act registered sponsorship tiers",
   },
   {
     id: "celebrate",
-    label: "Birthday & Feasts",
+    label: "Birthday",
     icon: "🎂",
-    badge: "Video Song",
+    badge: "Seva",
     targetId: "celebrate",
     description: "Sponsor cake, sweets & get a video song blessing",
   },
   {
     id: "annadana",
-    label: "Daily Needs Basket",
+    label: "Annadana",
     icon: "🛒",
-    badge: "Giving Basket",
+    badge: "Daily",
     targetId: "impact",
     description: "Provisions & meals for 25 resident boys",
   },
   {
     id: "life",
-    label: "Boys' Life & Gallery",
+    label: "Life",
     icon: "📸",
-    badge: "60 Moments",
+    badge: "Photos",
     targetId: "boys-gallery",
     description: "Documentary chapters, photos & daily prayers",
   },
   {
     id: "trust",
-    label: "Trust & 80G Tax",
+    label: "Trust",
     icon: "🛡️",
-    badge: "100% Verified",
+    badge: "80G",
     targetId: "transparency",
     description: "Form 10AC, CSR-1, Axis Bank wire & FAQs",
   },
@@ -220,14 +220,13 @@ export function HomeSectionsHub({
             })}
           </div>
 
-          {/* Quick Helper Subtext */}
-          <div className="mt-1 flex items-center justify-between text-[10px] text-teal-950/60 font-semibold px-1">
+          {/* Clean minimal indicator (hidden on mobile to save vertical viewport space) */}
+          <div className="hidden sm:flex mt-1 items-center justify-between text-[10px] text-teal-950/60 font-semibold px-1">
             <span className="flex items-center gap-1.5">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              <span>Continuous Ashrama Story · Tap any section to jump directly</span>
+              <span>Tap any section to jump</span>
             </span>
-
-            <span className="text-[10px] text-teal-900 font-bold hidden sm:inline">
+            <span className="text-[10px] text-teal-900 font-bold">
               25 Resident Boys · Form 10AC 80G Certified
             </span>
           </div>

@@ -569,7 +569,7 @@ export const CAMPAIGN_SEED = {
   campaignType: "Individual",
   story:
     "This is an example campaign page showing how Create an Impact will look. Instead of gifts, a supporter asks friends to chip in toward 100 meals at Janaseva Ashrama. Create your own to get a shareable link and QR code.",
-  coverImage: "/media/garden.jpg",
+  coverImage: "/media/janaseva-ashrama-original.jpg",
   organizerName: "Example supporter",
   goalAmount: 10000,
 };

@@ -146,7 +146,7 @@ export const DEFAULT_SITE_CONTENT: SiteContentMap = {
       subtitle: "Awakening with prayer, gentle routines, and fresh energy",
       duration: "0:45",
       videoSrc: "/media/chapter1_dawn.mp4",
-      posterSrc: "/media/garden.jpg",
+      posterSrc: "/media/lawn-cheer-circle.jpg",
       associatedSlug: "fruits",
       associatedItemName: "Fruit & Milk Basket",
       associatedPrice: 150,

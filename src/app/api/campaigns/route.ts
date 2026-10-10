@@ -4,7 +4,7 @@ import { campaigns } from "@/db/schema";
 import { clean, clientIp, isEmail, isPhone, normalizePhone, publicToken, rateLimit, slugify } from "@/lib/server-utils";
 import { NAME_REGEX } from "@/lib/validation";
 
-const COVERS = ["/media/garden.jpg", "/media/community.jpg", "/media/food.jpg", "/media/education.jpg", "/media/play.jpg", "/media/volunteers.jpg"];
+const COVERS = ["/media/janaseva-ashrama-original.jpg", "/media/community.jpg", "/media/food.jpg", "/media/education.jpg", "/media/play.jpg", "/media/volunteers.jpg"];
 const OCCASIONS = new Set(["Birthday", "Anniversary", "First Salary", "Graduation", "Achievement", "Festival", "Tribute", "Thank You", "Custom occasion"]);
 const CAMPAIGN_TYPES = new Set(["Individual", "Couple", "Family", "Friends", "Company", "Team", "College", "School", "Sports team", "Creator / community"]);
 

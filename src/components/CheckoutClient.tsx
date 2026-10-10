@@ -180,7 +180,7 @@ const POPULAR_QUICK_ITEMS = [
     name: "Cozy Bedding & Warm Blanket Set",
     desc: "Clean mattress bedsheet, soft pillow cover, and warm winter fleece blanket",
     unitPrice: 501,
-    image: "/media/garden.jpg",
+    image: "/media/essentials.jpg",
     icon: "🛏️",
     badge: "Warm Sleep",
     category: "shelter",

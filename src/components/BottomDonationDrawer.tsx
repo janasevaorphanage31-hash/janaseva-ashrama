@@ -307,7 +307,7 @@ export function BottomDonationDrawer() {
           {activeTab === "tiers" && (
             <div className="space-y-3">
               <p className="text-xs text-teal-950/75">
-                Exact sponsorship tiers approved under trust resolution for Janaseva Samruddi Ashrama:
+                Choose a sponsorship tier for our 25 resident boys:
               </p>
               {SUPPORTER_CATEGORIES.map((cat) => {
                 const isCatActive = selectedTierOption.categoryId === cat.id;
