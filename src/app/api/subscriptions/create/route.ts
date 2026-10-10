@@ -152,8 +152,10 @@ export async function POST(req: Request) {
       amount: sub.amount,
       subscriptionId: rzSub.id,
       keyId: razorpayKeyId(),
+      shortUrl: rzSub.short_url || null,
       status: "created",
     });
+
   } catch (err: any) {
     console.error("Razorpay subscription creation failed:", err);
     return NextResponse.json(

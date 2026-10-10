@@ -398,6 +398,8 @@ export function CheckoutClient() {
   const [demoNote, setDemoNote] = useState(false);
   const [validationModalOpen, setValidationModalOpen] = useState(false);
   const [validationModalMessage, setValidationModalMessage] = useState("");
+  const [mandateFallbackUrl, setMandateFallbackUrl] = useState("");
+
   const [showAddDrawer, setShowAddDrawer] = useState(false);
   const [customInputValue, setCustomInputValue] = useState("");
   const [activeCategory, setActiveCategory] = useState<string>("all");
@@ -501,6 +503,8 @@ export function CheckoutClient() {
     if (busy) return;
     setError("");
     setPaymentFailed(false);
+    setMandateFallbackUrl("");
+
 
     // 0. Ensure there is an amount to donate
     if (cart.total <= 0) {
@@ -601,9 +605,14 @@ export function CheckoutClient() {
           publicId: string;
           keyId?: string;
           subscriptionId?: string;
+          shortUrl?: string;
           amount: number;
         }>(res);
         if (!res.ok || data.error) throw new Error(data.error || "Subscription creation failed.");
+
+        if (data.shortUrl) {
+          setMandateFallbackUrl(data.shortUrl);
+        }
 
         if (data.mode === "demo") {
           setDemoNote(true);
@@ -654,14 +663,16 @@ export function CheckoutClient() {
           },
         });
 
-        rz.on("payment.failed", () => {
+        rz.on("payment.failed", (resp: any) => {
           track("subscription_failed", { stage: "gateway" });
-          setError("Your recurring mandate authorization was not completed. No amount has been deducted.");
+          const desc = resp?.error?.description || "Your recurring mandate authorization was not completed. No amount has been deducted.";
+          setError(desc);
           setPaymentFailed(true);
           setBusy(false);
         });
 
         rz.open();
+
       } catch (err) {
         setError((err as Error).message || "Could not start recurring mandate. Please try again.");
         setBusy(false);
@@ -1826,11 +1837,22 @@ export function CheckoutClient() {
                   >
                     Retry Payment
                   </button>
+                  {mandateFallbackUrl && frequency === "monthly" && (
+                    <a
+                      href={mandateFallbackUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="rounded-xl bg-emerald-700 px-3.5 py-1.5 text-xs font-bold text-white shadow hover:bg-emerald-800 transition inline-flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <span>Authorize on Razorpay Portal ↗</span>
+                    </a>
+                  )}
                   <button
                     type="button"
                     onClick={handleAutoFillTestDonor}
                     className="rounded-xl bg-amber-600 px-3 py-1.5 text-xs font-bold text-white shadow hover:bg-amber-700 cursor-pointer"
                   >
+
                     ⚡ Auto-Fill Demo Details
                   </button>
                   <a

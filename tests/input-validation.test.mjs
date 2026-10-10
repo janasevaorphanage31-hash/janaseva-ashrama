@@ -93,13 +93,17 @@ test("Field Input Validation Engine Suite", async (t) => {
   });
 
   await t.test("Future date validation — reject past dates, allow today and future", () => {
-    const today = new Date().toISOString().split("T")[0];
-    const tomorrow = new Date(Date.now() + 86400000).toISOString().split("T")[0];
-    const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
+    const d = new Date();
+    const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    const tm = new Date(Date.now() + 86400000);
+    const tomorrow = `${tm.getFullYear()}-${String(tm.getMonth() + 1).padStart(2, "0")}-${String(tm.getDate()).padStart(2, "0")}`;
+    const ys = new Date(Date.now() - 86400000);
+    const yesterday = `${ys.getFullYear()}-${String(ys.getMonth() + 1).padStart(2, "0")}-${String(ys.getDate()).padStart(2, "0")}`;
 
     assert.strictEqual(validateFutureDate(today).valid, true);
     assert.strictEqual(validateFutureDate(tomorrow).valid, true);
     assert.strictEqual(validateFutureDate(yesterday).valid, false);
     assert.strictEqual(validateFutureDate("invalid-date").valid, false);
   });
+
 });

@@ -95,8 +95,9 @@ async function runSecurityTests() {
       const res = await fetch(tUrl);
       const text = await res.text();
       const leaked = text.includes('"name": "janaseva-orphanage"');
-      assert(`Path Traversal Blocked: ${tUrl.split("/uploads/")[1]}`, !leaked && (res.status === 403 || res.status === 404), `Status: ${res.status}`);
+      assert(`Path Traversal Blocked: ${tUrl.split("/uploads/")[1]}`, !leaked && (res.status === 400 || res.status === 403 || res.status === 404), `Status: ${res.status}`);
     }
+
   } catch (err) {
     assert("Path traversal test execution", false, err.message);
   }

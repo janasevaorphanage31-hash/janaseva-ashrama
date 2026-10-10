@@ -90,7 +90,9 @@ export type RzSubscription = {
   charge_at?: number;
   start_at?: number;
   end_at?: number;
+  short_url?: string;
 };
+
 
 /**
  * Creates a monthly recurring subscription mandate on Razorpay.

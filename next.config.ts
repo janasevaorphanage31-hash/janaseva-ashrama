@@ -27,8 +27,9 @@ const securityHeaders = [
   },
   {
     key: "Content-Security-Policy",
-    value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://checkout.razorpay.com; frame-src 'self' https://api.razorpay.com https://checkout.razorpay.com; connect-src 'self' https://api.razorpay.com https://lumberjack.razorpay.com; img-src 'self' data: blob: https://images.unsplash.com https://i.ytimg.com https://img.youtube.com; style-src 'self' 'unsafe-inline'; font-src 'self' data:; object-src 'none'; base-uri 'self';",
+    value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://checkout.razorpay.com https://*.razorpay.com; frame-src 'self' https://api.razorpay.com https://checkout.razorpay.com https://*.razorpay.com https://*.rzp.io https:; connect-src 'self' https://api.razorpay.com https://lumberjack.razorpay.com https://*.razorpay.com https://*.rzp.io; img-src 'self' data: blob: https://images.unsplash.com https://i.ytimg.com https://img.youtube.com https://*.razorpay.com https://cdn.razorpay.com; style-src 'self' 'unsafe-inline'; font-src 'self' data:; object-src 'none'; base-uri 'self';",
   },
+
 ];
 
 const nextConfig: NextConfig = {

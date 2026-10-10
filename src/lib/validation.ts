@@ -144,17 +144,21 @@ export function validateFutureDate(dateStr: string, fieldLabel = "Date"): Valida
   if (!dateStr || !dateStr.trim()) {
     return { valid: false, error: `Please select a ${fieldLabel.toLowerCase()}.` };
   }
-  const dateObj = new Date(dateStr);
-  if (isNaN(dateObj.getTime())) {
+  const cleanStr = dateStr.trim();
+  const parts = cleanStr.split("-").map(Number);
+  if (parts.length !== 3 || parts.some(isNaN)) {
+    return { valid: false, error: `Please enter a valid ${fieldLabel.toLowerCase()}.` };
+  }
+  const [year, month, day] = parts;
+  const target = new Date(year, month - 1, day);
+  if (isNaN(target.getTime())) {
     return { valid: false, error: `Please enter a valid ${fieldLabel.toLowerCase()}.` };
   }
 
-  // Set today's date to midnight
+  // Set today's date to midnight (local time)
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  // Parse target date midnight
-  const target = new Date(dateStr);
   target.setHours(0, 0, 0, 0);
 
   if (target < today) {
@@ -163,6 +167,7 @@ export function validateFutureDate(dateStr: string, fieldLabel = "Date"): Valida
 
   return { valid: true };
 }
+
 
 /**
  * Sanitizes input to numbers only.
