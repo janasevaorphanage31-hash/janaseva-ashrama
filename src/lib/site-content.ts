@@ -91,6 +91,12 @@ export type SiteContentMap = {
 
   // 5 Official Support Tiers & Pricing
   supportTiers: SupporterCategory[];
+
+  // Volunteer & Community Showcase Media
+  volunteerVideoUrl?: string;
+  volunteerPhotoUrl?: string;
+  creatorReelUrl?: string;
+  creatorPhotoUrl?: string;
 };
 
 export type WishVideoItem = {
@@ -316,6 +322,10 @@ export const DEFAULT_SITE_CONTENT: SiteContentMap = {
     },
   ],
   supportTiers: SUPPORTER_CATEGORIES,
+  volunteerVideoUrl: "/media/ashrama_video.mp4",
+  volunteerPhotoUrl: "/media/volunteers.jpg",
+  creatorReelUrl: "/media/ashrama_journey.mp4",
+  creatorPhotoUrl: "/media/community.jpg",
 };
 
 const SITE_CONTENT_SLUG = "global-site-content";
@@ -331,17 +341,17 @@ export async function getSiteContentMap(): Promise<SiteContentMap> {
     if (!row || !row.body) return DEFAULT_SITE_CONTENT;
 
     const parsed = JSON.parse(row.body);
-
-    const sanitizedHeroVideo =
-      parsed.heroVideoUrl && parsed.heroVideoUrl !== "/media/master-mobile.mp4"
-        ? parsed.heroVideoUrl
-        : "/media/video-chant-prayer.mp4";
+    const heroVideoUrl = parsed.heroVideoUrl || DEFAULT_SITE_CONTENT.heroVideoUrl;
 
     return {
       ...DEFAULT_SITE_CONTENT,
       ...parsed,
-      heroVideoUrl: sanitizedHeroVideo,
+      heroVideoUrl,
       heroPosterUrl: parsed.heroPosterUrl || "/media/poster-desktop.jpg",
+      volunteerVideoUrl: parsed.volunteerVideoUrl || DEFAULT_SITE_CONTENT.volunteerVideoUrl,
+      volunteerPhotoUrl: parsed.volunteerPhotoUrl || DEFAULT_SITE_CONTENT.volunteerPhotoUrl,
+      creatorReelUrl: parsed.creatorReelUrl || DEFAULT_SITE_CONTENT.creatorReelUrl,
+      creatorPhotoUrl: parsed.creatorPhotoUrl || DEFAULT_SITE_CONTENT.creatorPhotoUrl,
       docChapters: parsed.docChapters || DEFAULT_SITE_CONTENT.docChapters,
       quotes: parsed.quotes || DEFAULT_SITE_CONTENT.quotes,
       faqs: parsed.faqs || DEFAULT_SITE_CONTENT.faqs,

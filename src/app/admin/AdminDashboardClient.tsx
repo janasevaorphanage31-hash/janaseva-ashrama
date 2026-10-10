@@ -785,21 +785,22 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
   }
 
   // Save Site Content CMS data
-  async function handleSaveContent(e?: FormEvent) {
+  async function handleSaveContent(e?: FormEvent, formOverride?: any) {
     if (e) e.preventDefault();
-    if (!contentForm) return;
+    const payload = formOverride || contentForm;
+    if (!payload) return;
     setContentSaving(true);
     setNotification("");
     try {
       const res = await fetch("/api/admin/site-content", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(contentForm),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (res.ok) {
         setNotification("Site content and settings saved successfully. Changes are live on the website.");
-        setContentForm(data.content);
+        if (data.content) setContentForm(data.content);
       } else {
         setNotification(data.error || "Failed to save content.");
       }
@@ -1357,7 +1358,10 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
       }
       else if (activeTab === "catalogs") void loadCatalogs();
       else if (activeTab === "documents") void loadDocuments();
-      else if (activeTab === "community") void loadVolunteers();
+      else if (activeTab === "community") {
+        void loadVolunteers();
+        void loadSiteContent();
+      }
       else if (activeTab === "team") void loadTeamMembers();
     }, 0);
     return () => clearTimeout(t);
@@ -4117,33 +4121,43 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
 
               {/* HERO CINEMATIC VIDEO & POSTER */}
               <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-teal-900/10 space-y-4">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-teal-900/10 pb-3">
                   <div>
                     <h3 className="font-display text-base font-bold text-teal-900">
-                      Hero Video & Poster Configuration
+                      Hero Video &amp; Poster Configuration
                     </h3>
                     <p className="text-xs text-teal-950/60">
-                      Controls the cinematic opening background video and fallback poster.
+                      Controls the cinematic opening background video and fallback poster on the homepage.
                     </p>
                   </div>
-                  {contentForm.heroVideoUrl && (
+                  <div className="flex items-center gap-2">
+                    {contentForm?.heroVideoUrl && (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedVideoPreview(contentForm.heroVideoUrl)}
+                        className="rounded-xl bg-teal-900 px-3 py-1.5 text-xs font-bold text-white hover:bg-teal-800 transition cursor-pointer"
+                      >
+                        ▶ Preview Hero Video
+                      </button>
+                    )}
                     <button
                       type="button"
-                      onClick={() => setSelectedVideoPreview(contentForm.heroVideoUrl)}
-                      className="rounded-xl bg-teal-900 px-3 py-1.5 text-xs font-bold text-white hover:bg-teal-800 transition"
+                      disabled={contentSaving}
+                      onClick={() => void handleSaveContent()}
+                      className="rounded-xl bg-saffron px-4 py-1.5 text-xs font-bold text-white hover:bg-saffron-dark transition shadow-sm cursor-pointer disabled:opacity-50"
                     >
-                      Preview Hero Video
+                      {contentSaving ? "Saving..." : "💾 Save Hero Video & Poster"}
                     </button>
-                  )}
+                  </div>
                 </div>
 
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="text-xs font-bold text-teal-900/70">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="rounded-2xl border border-teal-900/10 bg-cream/30 p-3.5 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-bold text-teal-900">
                         Hero Video URL (.mp4):
                       </label>
-                      <label className="cursor-pointer text-[11px] font-bold text-teal-800 hover:text-saffron transition underline">
+                      <label className="cursor-pointer rounded-lg bg-teal-900 px-2.5 py-1 text-[11px] font-bold text-white hover:bg-teal-800 transition">
                         <span>📁 Upload MP4</span>
                         <input
                           type="file"
@@ -4153,26 +4167,53 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
                             const f = e.target.files?.[0];
                             if (f) {
                               const url = await handleFileUpload(f, "videos");
-                              if (url) setContentForm({ ...contentForm, heroVideoUrl: url });
+                              if (url) {
+                                const updated = { ...contentForm, heroVideoUrl: url };
+                                setContentForm(updated);
+                                await handleSaveContent(undefined, updated);
+                              }
                             }
                           }}
                         />
                       </label>
                     </div>
-                    <input
-                      type="text"
-                      value={contentForm.heroVideoUrl || ""}
-                      onChange={(e) => setContentForm({ ...contentForm, heroVideoUrl: e.target.value })}
-                      className="w-full rounded-xl border border-teal-900/15 px-3 py-2 text-xs font-mono text-teal-950"
-                    />
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={contentForm?.heroVideoUrl || ""}
+                        onChange={(e) => setContentForm({ ...contentForm, heroVideoUrl: e.target.value })}
+                        className="w-full rounded-xl border border-teal-900/15 px-3 py-2 text-xs font-mono text-teal-950 bg-white"
+                        placeholder="/media/video-chant-prayer.mp4"
+                      />
+                      <select
+                        value={contentForm?.heroVideoUrl || ""}
+                        onChange={async (e) => {
+                          if (!e.target.value) return;
+                          const updated = { ...contentForm, heroVideoUrl: e.target.value };
+                          setContentForm(updated);
+                          await handleSaveContent(undefined, updated);
+                        }}
+                        className="rounded-xl border border-teal-900/15 px-2 py-1 text-xs font-medium bg-white max-w-[140px]"
+                      >
+                        <option value="">Choose video...</option>
+                        {CURATED_GALLERY.filter((item) => item.type === "video").map((v) => (
+                          <option key={v.id} value={v.url}>{v.semanticName}</option>
+                        ))}
+                      </select>
+                    </div>
+                    {contentForm?.heroVideoUrl && (
+                      <div className="aspect-video w-full rounded-xl overflow-hidden bg-black/5 border border-teal-900/10">
+                        <video src={contentForm.heroVideoUrl} controls className="h-full w-full object-cover" />
+                      </div>
+                    )}
                   </div>
 
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="text-xs font-bold text-teal-900/70">
+                  <div className="rounded-2xl border border-teal-900/10 bg-cream/30 p-3.5 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-bold text-teal-900">
                         Hero Video Poster Image URL:
                       </label>
-                      <label className="cursor-pointer text-[11px] font-bold text-teal-800 hover:text-saffron transition underline">
+                      <label className="cursor-pointer rounded-lg bg-teal-900 px-2.5 py-1 text-[11px] font-bold text-white hover:bg-teal-800 transition">
                         <span>📁 Upload Poster</span>
                         <input
                           type="file"
@@ -4182,18 +4223,46 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
                             const f = e.target.files?.[0];
                             if (f) {
                               const url = await handleFileUpload(f, "images");
-                              if (url) setContentForm({ ...contentForm, heroPosterUrl: url });
+                              if (url) {
+                                const updated = { ...contentForm, heroPosterUrl: url };
+                                setContentForm(updated);
+                                await handleSaveContent(undefined, updated);
+                              }
                             }
                           }}
                         />
                       </label>
                     </div>
-                    <input
-                      type="text"
-                      value={contentForm.heroPosterUrl || ""}
-                      onChange={(e) => setContentForm({ ...contentForm, heroPosterUrl: e.target.value })}
-                      className="w-full rounded-xl border border-teal-900/15 px-3 py-2 text-xs font-mono text-teal-950"
-                    />
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={contentForm?.heroPosterUrl || ""}
+                        onChange={(e) => setContentForm({ ...contentForm, heroPosterUrl: e.target.value })}
+                        className="w-full rounded-xl border border-teal-900/15 px-3 py-2 text-xs font-mono text-teal-950 bg-white"
+                        placeholder="/media/poster-desktop.jpg"
+                      />
+                      <select
+                        value={contentForm?.heroPosterUrl || ""}
+                        onChange={async (e) => {
+                          if (!e.target.value) return;
+                          const updated = { ...contentForm, heroPosterUrl: e.target.value };
+                          setContentForm(updated);
+                          await handleSaveContent(undefined, updated);
+                        }}
+                        className="rounded-xl border border-teal-900/15 px-2 py-1 text-xs font-medium bg-white max-w-[140px]"
+                      >
+                        <option value="">Choose photo...</option>
+                        {CURATED_GALLERY.filter((item) => item.type === "image").map((img) => (
+                          <option key={img.id} value={img.url}>{img.semanticName}</option>
+                        ))}
+                      </select>
+                    </div>
+                    {contentForm?.heroPosterUrl && (
+                      <div className="aspect-video w-full rounded-xl overflow-hidden bg-black/5 border border-teal-900/10">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={contentForm.heroPosterUrl} alt="Hero Poster" className="h-full w-full object-cover" />
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -4206,20 +4275,30 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
                       Documentary Video Chapters (Life in Motion)
                     </h3>
                     <p className="text-xs text-teal-950/60">
-                      Manage authentic video chapters shown in the documentary reel on the homepage.
+                      Manage authentic video chapters shown in the documentary reel on the homepage. Upload videos or choose from authentic Ashrama footage.
                     </p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={handleAddChapter}
-                    className="rounded-xl bg-teal-900 px-3.5 py-1.5 text-xs font-bold text-white hover:bg-teal-800 transition cursor-pointer shrink-0"
-                  >
-                    + Add New Chapter
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleAddChapter}
+                      className="rounded-xl bg-teal-900 px-3.5 py-1.5 text-xs font-bold text-white hover:bg-teal-800 transition cursor-pointer shrink-0"
+                    >
+                      + Add New Chapter
+                    </button>
+                    <button
+                      type="button"
+                      disabled={contentSaving}
+                      onClick={() => void handleSaveContent()}
+                      className="rounded-xl bg-saffron px-5 py-1.5 font-bold text-white hover:bg-saffron-dark transition text-xs cursor-pointer shadow-sm disabled:opacity-50"
+                    >
+                      {contentSaving ? "Saving..." : "💾 Save All Video Changes"}
+                    </button>
+                  </div>
                 </div>
 
                 <div className="space-y-4">
-                  {(contentForm.docChapters || []).map((chap: any, idx: number) => (
+                  {(contentForm?.docChapters || []).map((chap: any, idx: number) => (
                     <div
                       key={chap.id || idx}
                       className="rounded-2xl border border-teal-900/10 bg-cream/40 p-4 space-y-3"
@@ -4232,14 +4311,24 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
                           <button
                             type="button"
                             onClick={() => setSelectedVideoPreview(chap.videoSrc)}
-                            className="rounded-lg bg-teal-900/10 px-2.5 py-1 text-[11px] font-bold text-teal-900 hover:bg-teal-900/20"
+                            className="rounded-lg bg-teal-900/10 px-2.5 py-1 text-[11px] font-bold text-teal-900 hover:bg-teal-900/20 cursor-pointer"
                           >
-                            Play Video
+                            ▶ Play Video
+                          </button>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              await handleSaveContent();
+                              setNotification(`Chapter ${chap.number || idx + 1} saved successfully!`);
+                            }}
+                            className="rounded-lg bg-teal-800 px-2.5 py-1 text-[11px] font-bold text-white hover:bg-teal-700 transition cursor-pointer"
+                          >
+                            💾 Save Chapter
                           </button>
                           <button
                             type="button"
                             onClick={() => handleDeleteChapter(idx)}
-                            className="rounded-lg bg-red-100 px-2.5 py-1 text-[11px] font-bold text-red-600 hover:bg-red-200 transition"
+                            className="rounded-lg bg-red-100 px-2.5 py-1 text-[11px] font-bold text-red-600 hover:bg-red-200 transition cursor-pointer"
                           >
                             Delete
                           </button>
@@ -4255,43 +4344,11 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
                             type="text"
                             value={chap.title || ""}
                             onChange={(e) => {
-                              const updated = [...contentForm.docChapters];
+                              const updated = [...(contentForm?.docChapters || [])];
                               updated[idx] = { ...updated[idx], title: e.target.value };
                               setContentForm({ ...contentForm, docChapters: updated });
                             }}
-                            className="w-full rounded-xl border border-teal-900/15 px-3 py-1.5 text-xs font-semibold"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-[11px] font-semibold text-teal-900/70 mb-0.5">
-                            Video File URL (.mp4):
-                          </label>
-                          <input
-                            type="text"
-                            value={chap.videoSrc || ""}
-                            onChange={(e) => {
-                              const updated = [...contentForm.docChapters];
-                              updated[idx] = { ...updated[idx], videoSrc: e.target.value };
-                              setContentForm({ ...contentForm, docChapters: updated });
-                            }}
-                            className="w-full rounded-xl border border-teal-900/15 px-3 py-1.5 text-xs font-mono"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-[11px] font-semibold text-teal-900/70 mb-0.5">
-                            Poster Image URL:
-                          </label>
-                          <input
-                            type="text"
-                            value={chap.posterSrc || ""}
-                            onChange={(e) => {
-                              const updated = [...contentForm.docChapters];
-                              updated[idx] = { ...updated[idx], posterSrc: e.target.value };
-                              setContentForm({ ...contentForm, docChapters: updated });
-                            }}
-                            className="w-full rounded-xl border border-teal-900/15 px-3 py-1.5 text-xs font-mono"
+                            className="w-full rounded-xl border border-teal-900/15 px-3 py-1.5 text-xs font-semibold bg-white"
                           />
                         </div>
 
@@ -4303,12 +4360,131 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
                             type="text"
                             value={chap.subtitle || ""}
                             onChange={(e) => {
-                              const updated = [...contentForm.docChapters];
+                              const updated = [...(contentForm?.docChapters || [])];
                               updated[idx] = { ...updated[idx], subtitle: e.target.value };
                               setContentForm({ ...contentForm, docChapters: updated });
                             }}
-                            className="w-full rounded-xl border border-teal-900/15 px-3 py-1.5 text-xs"
+                            className="w-full rounded-xl border border-teal-900/15 px-3 py-1.5 text-xs bg-white"
                           />
+                        </div>
+
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <label className="text-[11px] font-bold text-teal-900/80">
+                              Video File URL (.mp4):
+                            </label>
+                            <label className="cursor-pointer text-[11px] font-bold text-saffron-dark hover:text-saffron transition underline">
+                              <span>📁 Upload Video</span>
+                              <input
+                                type="file"
+                                accept="video/mp4,video/webm"
+                                className="hidden"
+                                onChange={async (e) => {
+                                  const f = e.target.files?.[0];
+                                  if (f) {
+                                    const url = await handleFileUpload(f, "videos");
+                                    if (url) {
+                                      const updated = [...(contentForm?.docChapters || [])];
+                                      updated[idx] = { ...updated[idx], videoSrc: url };
+                                      setContentForm({ ...contentForm, docChapters: updated });
+                                      await handleSaveContent(undefined, { ...contentForm, docChapters: updated });
+                                    }
+                                  }
+                                }}
+                              />
+                            </label>
+                          </div>
+                          <div className="flex gap-2">
+                            <input
+                              type="text"
+                              value={chap.videoSrc || ""}
+                              onChange={(e) => {
+                                const updated = [...(contentForm?.docChapters || [])];
+                                updated[idx] = { ...updated[idx], videoSrc: e.target.value };
+                                setContentForm({ ...contentForm, docChapters: updated });
+                              }}
+                              className="w-full rounded-xl border border-teal-900/15 px-3 py-1.5 text-xs font-mono bg-white"
+                            />
+                            <select
+                              value={chap.videoSrc || ""}
+                              onChange={async (e) => {
+                                if (!e.target.value) return;
+                                const updated = [...(contentForm?.docChapters || [])];
+                                updated[idx] = { ...updated[idx], videoSrc: e.target.value };
+                                setContentForm({ ...contentForm, docChapters: updated });
+                                await handleSaveContent(undefined, { ...contentForm, docChapters: updated });
+                              }}
+                              className="rounded-xl border border-teal-900/15 px-2 py-1 text-[11px] font-medium bg-white max-w-[130px]"
+                            >
+                              <option value="">Choose video...</option>
+                              {CURATED_GALLERY.filter((item) => item.type === "video").map((v) => (
+                                <option key={v.id} value={v.url}>{v.semanticName}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <label className="text-[11px] font-bold text-teal-900/80">
+                              Poster Image URL:
+                            </label>
+                            <label className="cursor-pointer text-[11px] font-bold text-saffron-dark hover:text-saffron transition underline">
+                              <span>📁 Upload Poster</span>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={async (e) => {
+                                  const f = e.target.files?.[0];
+                                  if (f) {
+                                    const url = await handleFileUpload(f, "images");
+                                    if (url) {
+                                      const updated = [...(contentForm?.docChapters || [])];
+                                      updated[idx] = { ...updated[idx], posterSrc: url };
+                                      setContentForm({ ...contentForm, docChapters: updated });
+                                      await handleSaveContent(undefined, { ...contentForm, docChapters: updated });
+                                    }
+                                  }
+                                }}
+                              />
+                            </label>
+                          </div>
+                          <div className="flex gap-2">
+                            <input
+                              type="text"
+                              value={chap.posterSrc || ""}
+                              onChange={(e) => {
+                                const updated = [...(contentForm?.docChapters || [])];
+                                updated[idx] = { ...updated[idx], posterSrc: e.target.value };
+                                setContentForm({ ...contentForm, docChapters: updated });
+                              }}
+                              className="w-full rounded-xl border border-teal-900/15 px-3 py-1.5 text-xs font-mono bg-white"
+                            />
+                            <select
+                              value={chap.posterSrc || ""}
+                              onChange={async (e) => {
+                                if (!e.target.value) return;
+                                const updated = [...(contentForm?.docChapters || [])];
+                                updated[idx] = { ...updated[idx], posterSrc: e.target.value };
+                                setContentForm({ ...contentForm, docChapters: updated });
+                                await handleSaveContent(undefined, { ...contentForm, docChapters: updated });
+                              }}
+                              className="rounded-xl border border-teal-900/15 px-2 py-1 text-[11px] font-medium bg-white max-w-[130px]"
+                            >
+                              <option value="">Choose photo...</option>
+                              {CURATED_GALLERY.filter((item) => item.type === "image").map((img) => (
+                                <option key={img.id} value={img.url}>{img.semanticName}</option>
+                              ))}
+                            </select>
+                          </div>
+                          {chap.posterSrc && (
+                            <div className="mt-1.5 flex items-center gap-2">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img src={chap.posterSrc} alt="Poster preview" className="h-9 w-14 rounded-lg object-cover border border-teal-900/15" />
+                              <span className="text-[10px] text-teal-900/60 font-mono truncate">{chap.posterSrc}</span>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -4318,10 +4494,11 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
                 <div className="flex justify-end pt-2">
                   <button
                     type="button"
+                    disabled={contentSaving}
                     onClick={() => void handleSaveContent()}
-                    className="rounded-xl bg-saffron px-6 py-2.5 font-bold text-white hover:bg-saffron-dark transition text-xs cursor-pointer shadow-xs"
+                    className="rounded-xl bg-saffron px-6 py-2.5 font-bold text-white hover:bg-saffron-dark transition text-xs cursor-pointer shadow-xs disabled:opacity-50"
                   >
-                    Save All Video Changes
+                    {contentSaving ? "Saving..." : "Save All Video Changes"}
                   </button>
                 </div>
               </div>
@@ -4527,7 +4704,7 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
                       Ashrama Media Gallery &amp; Video Library ({CURATED_GALLERY.length} Authentic Assets)
                     </h3>
                     <p className="text-xs text-teal-950/60">
-                      All verified photos and videos of our 25 resident boys in Thurahalli, Bangalore. Click any item to preview or copy its public URL.
+                      All verified photos and videos of our 25 resident boys in Thurahalli, Bangalore. Upload new files, or assign existing media to Hero &amp; Chapters with 1 click.
                     </p>
                   </div>
                   <div className="w-full md:w-72">
@@ -4539,6 +4716,40 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
                       className="w-full rounded-xl border border-teal-900/20 bg-cream/30 px-3.5 py-2 text-xs font-medium text-teal-950 placeholder:text-teal-950/40 focus:outline-none focus:ring-2 focus:ring-teal-900"
                     />
                   </div>
+                </div>
+
+                {/* Direct Upload Vault Bar */}
+                <div className="rounded-2xl border-2 border-dashed border-teal-900/25 bg-teal-950/5 p-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal-900 text-white text-lg">
+                      📤
+                    </span>
+                    <div>
+                      <p className="text-xs font-bold text-teal-900">Upload New Photo or Video to Ashrama Media Vault</p>
+                      <p className="text-[11px] text-teal-950/70">
+                        Supports MP4, WEBM, JPG, PNG up to 50MB. Instantly saved to secure Ashrama storage.
+                      </p>
+                    </div>
+                  </div>
+                  <label className="inline-flex items-center gap-2 cursor-pointer rounded-xl bg-teal-900 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-teal-950 transition shrink-0">
+                    <input
+                      type="file"
+                      accept="image/*,video/mp4,video/webm"
+                      className="hidden"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const cat = file.type.startsWith("video/") ? "videos" : "images";
+                          const url = await handleFileUpload(file, cat);
+                          if (url) {
+                            navigator.clipboard?.writeText(url);
+                            setNotification(`Uploaded: ${url} (Copied to clipboard!)`);
+                          }
+                        }
+                      }}
+                    />
+                    <span>{uploading ? "⏳ Uploading..." : "📁 Browse & Upload Media"}</span>
+                  </label>
                 </div>
 
                 {/* Category Filter Pills */}
@@ -4627,26 +4838,152 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
                       </div>
 
                       <div className="mt-2 pt-2 border-t border-teal-900/10 flex flex-col gap-1">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            navigator.clipboard?.writeText(item.url);
-                            setNotification(`Copied path: ${item.url}`);
-                          }}
-                          className="rounded-lg bg-white border border-teal-900/15 py-1 text-[10px] text-teal-900 font-bold hover:bg-cream transition"
-                        >
-                          Copy Path
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (item.type === "video") setSelectedVideoPreview(item.url);
-                            else setSelectedImagePreview({ url: item.url, title: item.title, kannada: item.kannada, desc: item.description });
-                          }}
-                          className="rounded-lg bg-teal-900 text-white py-1 text-[10px] font-bold hover:bg-teal-950 transition"
-                        >
-                          {item.type === "video" ? "▶ Play Video" : "🔍 Preview"}
-                        </button>
+                        <div className="grid grid-cols-2 gap-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              navigator.clipboard?.writeText(item.url);
+                              setNotification(`Copied path: ${item.url}`);
+                            }}
+                            className="rounded-lg bg-white border border-teal-900/15 py-1 text-[9.5px] text-teal-900 font-bold hover:bg-cream transition"
+                          >
+                            Copy Path
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (item.type === "video") setSelectedVideoPreview(item.url);
+                              else setSelectedImagePreview({ url: item.url, title: item.title, kannada: item.kannada, desc: item.description });
+                            }}
+                            className="rounded-lg bg-teal-900 text-white py-1 text-[9.5px] font-bold hover:bg-teal-950 transition"
+                          >
+                            {item.type === "video" ? "▶ Play" : "🔍 Preview"}
+                          </button>
+                        </div>
+
+                        {/* Quick 1-Click Assignment Actions */}
+                        {item.type === "video" ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                const updated = { ...contentForm, heroVideoUrl: item.url };
+                                setContentForm(updated);
+                                await handleSaveContent(undefined, updated);
+                                setNotification(`✅ Assigned & Saved as Hero Video: ${item.semanticName}`);
+                              }}
+                              className="rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white py-1 px-1.5 text-[9px] font-bold transition flex items-center justify-center gap-1"
+                            >
+                              <span>⭐ Set as Hero Video</span>
+                            </button>
+                            <select
+                              defaultValue=""
+                              onChange={async (e) => {
+                                const chIdx = parseInt(e.target.value, 10);
+                                if (!isNaN(chIdx) && contentForm?.chapters?.[chIdx]) {
+                                  const chs = [...contentForm.chapters];
+                                  chs[chIdx] = { ...chs[chIdx], videoSrc: item.url };
+                                  const updated = { ...contentForm, chapters: chs };
+                                  setContentForm(updated);
+                                  await handleSaveContent(undefined, updated);
+                                  setNotification(`✅ Chapter ${chIdx + 1} video updated & saved!`);
+                                  e.target.value = "";
+                                }
+                              }}
+                              className="w-full rounded-lg border border-teal-900/20 bg-white py-1 px-1 text-[9px] font-bold text-teal-900"
+                            >
+                              <option value="" disabled>🎬 Assign to Chapter ▾</option>
+                              {(contentForm?.chapters || []).map((ch: any, idx: number) => (
+                                <option key={idx} value={idx}>
+                                  Set Ch {idx + 1}: {ch.title?.slice(0, 18)}...
+                                </option>
+                              ))}
+                            </select>
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                const updated = { ...contentForm, volunteerVideoUrl: item.url };
+                                setContentForm(updated);
+                                await handleSaveContent(undefined, updated);
+                                setNotification(`✅ Set as Volunteer Story Video!`);
+                              }}
+                              className="rounded-lg bg-teal-800 hover:bg-teal-900 text-white py-0.5 px-1 text-[8.5px] font-bold transition text-center"
+                            >
+                              🤝 Set Volunteer Video
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                const updated = { ...contentForm, heroPosterUrl: item.url };
+                                setContentForm(updated);
+                                await handleSaveContent(undefined, updated);
+                                setNotification(`✅ Assigned & Saved as Hero Poster: ${item.semanticName}`);
+                              }}
+                              className="rounded-lg bg-amber-600 hover:bg-amber-700 text-white py-1 px-1.5 text-[9px] font-bold transition flex items-center justify-center gap-1"
+                            >
+                              <span>🖼 Set as Hero Poster</span>
+                            </button>
+                            <select
+                              defaultValue=""
+                              onChange={async (e) => {
+                                const chIdx = parseInt(e.target.value, 10);
+                                if (!isNaN(chIdx) && contentForm?.chapters?.[chIdx]) {
+                                  const chs = [...contentForm.chapters];
+                                  chs[chIdx] = { ...chs[chIdx], posterSrc: item.url };
+                                  const updated = { ...contentForm, chapters: chs };
+                                  setContentForm(updated);
+                                  await handleSaveContent(undefined, updated);
+                                  setNotification(`✅ Chapter ${chIdx + 1} poster updated & saved!`);
+                                  e.target.value = "";
+                                }
+                              }}
+                              className="w-full rounded-lg border border-teal-900/20 bg-white py-1 px-1 text-[9px] font-bold text-teal-900"
+                            >
+                              <option value="" disabled>🎬 Set Chapter Poster ▾</option>
+                              {(contentForm?.chapters || []).map((ch: any, idx: number) => (
+                                <option key={idx} value={idx}>
+                                  Set Ch {idx + 1} Poster: {ch.title?.slice(0, 18)}...
+                                </option>
+                              ))}
+                            </select>
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                const updated = { ...contentForm, volunteerPhotoUrl: item.url };
+                                setContentForm(updated);
+                                await handleSaveContent(undefined, updated);
+                                setNotification(`✅ Set as Volunteer Card Photo!`);
+                              }}
+                              className="rounded-lg bg-teal-800 hover:bg-teal-900 text-white py-0.5 px-1 text-[8.5px] font-bold transition text-center"
+                            >
+                              🤝 Set Volunteer Photo
+                            </button>
+                          </>
+                        )}
+
+                        {/* Replace File uploader */}
+                        <label className="rounded-lg border border-dashed border-teal-900/30 bg-cream/30 hover:bg-cream text-teal-950 py-0.5 text-[8.5px] font-bold cursor-pointer text-center transition block">
+                          <input
+                            type="file"
+                            accept={item.type === "video" ? "video/mp4,video/webm" : "image/*"}
+                            className="hidden"
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                const cat = item.type === "video" ? "videos" : "images";
+                                const url = await handleFileUpload(file, cat);
+                                if (url) {
+                                  navigator.clipboard?.writeText(url);
+                                  setNotification(`Uploaded replacement: ${url} (Copied to clipboard!)`);
+                                }
+                              }
+                            }}
+                          />
+                          <span>📁 Replace File</span>
+                        </label>
                       </div>
                     </div>
                   ))}
@@ -5212,27 +5549,161 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
 
           {/* Pipeline Cards Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="rounded-2xl bg-cream p-4 border border-teal-900/10">
-              <div className="flex items-center gap-2 mb-2 text-teal-900 font-bold text-xs">
+            <div className="rounded-2xl bg-cream p-4 border border-teal-900/10 space-y-3">
+              <div className="flex items-center justify-between text-teal-900 font-bold text-xs">
                 <span>🤝 On-Ground Seva Volunteers</span>
+                <button
+                  type="button"
+                  disabled={contentSaving}
+                  onClick={() => void handleSaveContent()}
+                  className="rounded-lg bg-teal-900 px-3 py-1 text-[11px] font-bold text-white hover:bg-teal-800 transition cursor-pointer disabled:opacity-50"
+                >
+                  {contentSaving ? "Saving..." : "💾 Save"}
+                </button>
               </div>
               <p className="text-xs text-teal-950/70">
                 Weekly weekend teaching, sports coaching, kitchen seva, and health camps at our Turahalli home.
               </p>
-              <div className="mt-2 text-[11px] text-teal-900/60">
-                Photo &amp; Video showcase: <code className="bg-white px-1.5 py-0.5 rounded text-teal-950 font-mono">/media/volunteers.jpg</code> &bull; <code className="bg-white px-1.5 py-0.5 rounded text-teal-950 font-mono">/media/ashrama_video.mp4</code>
+              <div className="space-y-2 pt-1">
+                <div>
+                  <div className="flex items-center justify-between mb-0.5 text-[11px]">
+                    <span className="font-semibold text-teal-900">Volunteer Photo:</span>
+                    <label className="cursor-pointer text-saffron-dark hover:underline font-bold">
+                      <span>📁 Upload Photo</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={async (e) => {
+                          const f = e.target.files?.[0];
+                          if (f) {
+                            const url = await handleFileUpload(f, "images");
+                            if (url) {
+                              const updated = { ...contentForm, volunteerPhotoUrl: url };
+                              setContentForm(updated);
+                              await handleSaveContent(undefined, updated);
+                            }
+                          }
+                        }}
+                      />
+                    </label>
+                  </div>
+                  <input
+                    type="text"
+                    value={contentForm?.volunteerPhotoUrl || "/media/volunteers.jpg"}
+                    onChange={(e) => setContentForm({ ...contentForm, volunteerPhotoUrl: e.target.value })}
+                    className="w-full rounded-xl border border-teal-900/15 p-1.5 text-xs font-mono bg-white"
+                  />
+                </div>
+                <div>
+                  <div className="flex items-center justify-between mb-0.5 text-[11px]">
+                    <span className="font-semibold text-teal-900">Volunteer Video (.mp4):</span>
+                    <label className="cursor-pointer text-saffron-dark hover:underline font-bold">
+                      <span>📁 Upload Video</span>
+                      <input
+                        type="file"
+                        accept="video/mp4,video/webm"
+                        className="hidden"
+                        onChange={async (e) => {
+                          const f = e.target.files?.[0];
+                          if (f) {
+                            const url = await handleFileUpload(f, "videos");
+                            if (url) {
+                              const updated = { ...contentForm, volunteerVideoUrl: url };
+                              setContentForm(updated);
+                              await handleSaveContent(undefined, updated);
+                            }
+                          }
+                        }}
+                      />
+                    </label>
+                  </div>
+                  <input
+                    type="text"
+                    value={contentForm?.volunteerVideoUrl || "/media/ashrama_video.mp4"}
+                    onChange={(e) => setContentForm({ ...contentForm, volunteerVideoUrl: e.target.value })}
+                    className="w-full rounded-xl border border-teal-900/15 p-1.5 text-xs font-mono bg-white"
+                  />
+                </div>
               </div>
             </div>
 
-            <div className="rounded-2xl bg-cream p-4 border border-teal-900/10">
-              <div className="flex items-center gap-2 mb-2 text-teal-900 font-bold text-xs">
+            <div className="rounded-2xl bg-cream p-4 border border-teal-900/10 space-y-3">
+              <div className="flex items-center justify-between text-teal-900 font-bold text-xs">
                 <span>📱 Social Media Creators &amp; Influencer Reels</span>
+                <button
+                  type="button"
+                  disabled={contentSaving}
+                  onClick={() => void handleSaveContent()}
+                  className="rounded-lg bg-teal-900 px-3 py-1 text-[11px] font-bold text-white hover:bg-teal-800 transition cursor-pointer disabled:opacity-50"
+                >
+                  {contentSaving ? "Saving..." : "💾 Save"}
+                </button>
               </div>
               <p className="text-xs text-teal-950/70">
                 Instagram and YouTube creators visiting the Ashrama to record authentic reels and amplify children&apos;s educational needs to their followers.
               </p>
-              <div className="mt-2 text-[11px] text-teal-900/60">
-                Creator Reels &amp; Showcase: <code className="bg-white px-1.5 py-0.5 rounded text-teal-950 font-mono">/media/community.jpg</code> &bull; <code className="bg-white px-1.5 py-0.5 rounded text-teal-950 font-mono">/media/ashrama_journey.mp4</code>
+              <div className="space-y-2 pt-1">
+                <div>
+                  <div className="flex items-center justify-between mb-0.5 text-[11px]">
+                    <span className="font-semibold text-teal-900">Creator Photo:</span>
+                    <label className="cursor-pointer text-saffron-dark hover:underline font-bold">
+                      <span>📁 Upload Photo</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={async (e) => {
+                          const f = e.target.files?.[0];
+                          if (f) {
+                            const url = await handleFileUpload(f, "images");
+                            if (url) {
+                              const updated = { ...contentForm, creatorPhotoUrl: url };
+                              setContentForm(updated);
+                              await handleSaveContent(undefined, updated);
+                            }
+                          }
+                        }}
+                      />
+                    </label>
+                  </div>
+                  <input
+                    type="text"
+                    value={contentForm?.creatorPhotoUrl || "/media/community.jpg"}
+                    onChange={(e) => setContentForm({ ...contentForm, creatorPhotoUrl: e.target.value })}
+                    className="w-full rounded-xl border border-teal-900/15 p-1.5 text-xs font-mono bg-white"
+                  />
+                </div>
+                <div>
+                  <div className="flex items-center justify-between mb-0.5 text-[11px]">
+                    <span className="font-semibold text-teal-900">Creator Reel / Video (.mp4):</span>
+                    <label className="cursor-pointer text-saffron-dark hover:underline font-bold">
+                      <span>📁 Upload Reel</span>
+                      <input
+                        type="file"
+                        accept="video/mp4,video/webm"
+                        className="hidden"
+                        onChange={async (e) => {
+                          const f = e.target.files?.[0];
+                          if (f) {
+                            const url = await handleFileUpload(f, "videos");
+                            if (url) {
+                              const updated = { ...contentForm, creatorReelUrl: url };
+                              setContentForm(updated);
+                              await handleSaveContent(undefined, updated);
+                            }
+                          }
+                        }}
+                      />
+                    </label>
+                  </div>
+                  <input
+                    type="text"
+                    value={contentForm?.creatorReelUrl || "/media/ashrama_journey.mp4"}
+                    onChange={(e) => setContentForm({ ...contentForm, creatorReelUrl: e.target.value })}
+                    className="w-full rounded-xl border border-teal-900/15 p-1.5 text-xs font-mono bg-white"
+                  />
+                </div>
               </div>
             </div>
           </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { Container, Head, Section, Chip } from "../ui";
 import { formatINR } from "@/lib/site";
@@ -103,6 +103,15 @@ export function DocumentaryVideoSection({
 
   const current = activeChapters[activeChapterIndex] || activeChapters[0];
 
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.load();
+      if (isPlaying) {
+        videoRef.current.play().catch(() => {});
+      }
+    }
+  }, [current.videoSrc, current.posterSrc, isPlaying]);
+
   const handleSelectChapter = (index: number) => {
     setActiveChapterIndex(index);
     setIsPlaying(true);
@@ -152,6 +161,7 @@ export function DocumentaryVideoSection({
               <video
                 ref={videoRef}
                 key={current.videoSrc}
+                src={current.videoSrc}
                 poster={current.posterSrc}
                 playsInline
                 muted={isMuted}
@@ -222,6 +232,7 @@ export function DocumentaryVideoSection({
                     src={current.posterSrc}
                     alt={current.associatedItemName}
                     fill
+                    unoptimized
                     className="object-cover"
                   />
                 </div>
@@ -275,6 +286,7 @@ export function DocumentaryVideoSection({
                       src={ch.posterSrc}
                       alt={ch.title}
                       fill
+                      unoptimized
                       className="object-cover"
                     />
                     <span className="absolute bottom-1 right-1 rounded bg-black/70 px-1 text-[9px] font-bold text-white">

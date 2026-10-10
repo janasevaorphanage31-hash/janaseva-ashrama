@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Container, Head, Section } from "../ui";
 import { SITE } from "@/lib/site";
 import { track } from "@/lib/track";
+import type { SiteContentMap } from "@/lib/site-content";
 
 const SKILLS = [
   { name: "📐 Math & Science", id: "math" },
@@ -25,10 +26,22 @@ const CREATOR_TYPES = [
   "🏃 Sports & Fitness",
 ];
 
-export function InvolvedSection({ standalone = false }: { standalone?: boolean }) {
+export function InvolvedSection({
+  standalone = false,
+  content,
+}: {
+  standalone?: boolean;
+  content?: Partial<SiteContentMap>;
+}) {
+  const volunteerVideo = content?.volunteerVideoUrl || "/media/ashrama_video.mp4";
+  const volunteerPhoto = content?.volunteerPhotoUrl || "/media/volunteers.jpg";
+  const creatorReel = content?.creatorReelUrl || "/media/ashrama_journey.mp4";
+  const creatorPhoto = content?.creatorPhotoUrl || "/media/community.jpg";
+
   const [activeTab, setActiveTab] = useState<"volunteers" | "influencers">("volunteers");
   const [selectedSkill, setSelectedSkill] = useState("📐 Math & Science");
   const [playingVideo, setPlayingVideo] = useState(false);
+  const [playingCreatorVideo, setPlayingCreatorVideo] = useState(false);
 
   const handleWhatsAppVolunteer = () => {
     track("volunteer_whatsapp_click", { skill: selectedSkill });
@@ -114,7 +127,8 @@ export function InvolvedSection({ standalone = false }: { standalone?: boolean }
               <div className="relative aspect-[4/3] w-full rounded-2xl bg-teal-950 overflow-hidden shadow-md">
                 {playingVideo ? (
                   <video
-                    src="/media/ashrama_video.mp4"
+                    key={volunteerVideo}
+                    src={volunteerVideo}
                     autoPlay
                     controls
                     playsInline
@@ -123,9 +137,10 @@ export function InvolvedSection({ standalone = false }: { standalone?: boolean }
                 ) : (
                   <>
                     <Image
-                      src="/media/volunteers.jpg"
+                      src={volunteerPhoto}
                       alt="Janaseva Volunteers Mentoring Boys"
                       fill
+                      unoptimized
                       className="object-cover"
                       sizes="(max-width: 1024px) 100vw, 40vw"
                     />
@@ -235,18 +250,41 @@ export function InvolvedSection({ standalone = false }: { standalone?: boolean }
             {/* Left: Creator Reel Box */}
             <div className="lg:col-span-5 flex flex-col gap-3">
               <div className="relative aspect-[4/3] w-full rounded-2xl bg-teal-950 overflow-hidden shadow-md">
-                <Image
-                  src="/media/community.jpg"
-                  alt="Creator Collaboration with Janaseva"
-                  fill
-                  className="object-cover"
-                  sizes="(max-width: 1024px) 100vw, 40vw"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-teal-950/80 via-transparent to-transparent" />
-                <div className="absolute bottom-3 left-3 right-3 text-white">
-                  <p className="text-xs font-bold text-white">Ethical Storytelling</p>
-                  <p className="text-[10px] text-teal-100/75">Spreading awareness to 500K+ caring viewers</p>
-                </div>
+                {playingCreatorVideo ? (
+                  <video
+                    key={creatorReel}
+                    src={creatorReel}
+                    autoPlay
+                    controls
+                    playsInline
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <>
+                    <Image
+                      src={creatorPhoto}
+                      alt="Creator Collaboration with Janaseva"
+                      fill
+                      unoptimized
+                      className="object-cover"
+                      sizes="(max-width: 1024px) 100vw, 40vw"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-teal-950/80 via-transparent to-transparent" />
+                    <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-white">
+                      <div>
+                        <p className="text-xs font-bold text-white">Ethical Storytelling</p>
+                        <p className="text-[10px] text-teal-100/75">Spreading awareness to 500K+ caring viewers</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setPlayingCreatorVideo(true)}
+                        className="rounded-lg bg-saffron px-3 py-1.5 text-xs font-bold text-white shadow hover:bg-saffron-dark transition cursor-pointer"
+                      >
+                        ▶ Watch Reel
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-2 text-[11px] text-teal-950/80 font-medium text-center">

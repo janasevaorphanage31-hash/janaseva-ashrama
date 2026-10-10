@@ -100,6 +100,17 @@ export function CinematicHero({ content }: { content?: Partial<SiteContentMap> }
     track("hero_view", { type: "cinematic_video_hero" });
   }, []);
 
+  useEffect(() => {
+    setVideoReady(false);
+    if (videoRef.current) {
+      if (videoRef.current.readyState >= 2) {
+        setVideoReady(true);
+      }
+      videoRef.current.load();
+      videoRef.current.play().catch(() => {});
+    }
+  }, [videoSrc]);
+
   const toggleSound = () => {
     if (!videoRef.current) return;
     const nextMuted = !isMuted;
@@ -138,6 +149,8 @@ export function CinematicHero({ content }: { content?: Partial<SiteContentMap> }
           preload="auto"
           aria-hidden
           onLoadedData={() => setVideoReady(true)}
+          onCanPlay={() => setVideoReady(true)}
+          onPlaying={() => setVideoReady(true)}
           className={`absolute inset-0 h-full w-full ${
             fitMode === "contain" ? "object-contain" : "object-cover object-center"
           } transition-opacity duration-700 ${

@@ -258,7 +258,7 @@ export function HomeSectionsHub({
         <CommunityActivitiesSection />
 
         {/* 8. Share Your Talent & Reach: Volunteers & Mentorship */}
-        <InvolvedSection />
+        <InvolvedSection content={siteContent} />
 
         {/* 9. Documentary Video Chapters */}
         <DocumentaryVideoSection chapters={siteContent?.docChapters} />
