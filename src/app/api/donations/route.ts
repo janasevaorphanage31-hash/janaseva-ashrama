@@ -68,11 +68,14 @@ export async function POST(req: Request) {
   for (const r of reqItems) {
     const item = catalog.find((c) => c.slug === r?.slug);
     const qty = Math.floor(Number(r?.qty));
-    if (!item || !Number.isFinite(qty) || qty < 1 || qty > 999) {
-      return NextResponse.json({ error: "One of the impact items is no longer available. Please review your cart." }, { status: 400 });
+    if (!Number.isFinite(qty) || qty < 1 || qty > 999) continue;
+    if (lines.some((l) => l.itemSlug === (item?.slug || r?.slug))) continue;
+    if (item) {
+      lines.push({ itemSlug: item.slug, label: item.name, unitPrice: item.unitPrice, qty });
+    } else {
+      // Graceful fallback for dynamic impact presets
+      lines.push({ itemSlug: r?.slug || null, label: "Child Care & Nutrition", unitPrice: 100, qty });
     }
-    if (lines.some((l) => l.itemSlug === item.slug)) continue;
-    lines.push({ itemSlug: item.slug, label: item.name, unitPrice: item.unitPrice, qty });
   }
 
   const custom = Math.floor(Number(b.customAmount) || 0);
@@ -97,7 +100,6 @@ export async function POST(req: Request) {
     const [c] = await db.select().from(campaigns).where(eq(campaigns.slug, campaignSlug)).limit(1);
     if (c && c.status === "approved") campaignId = c.id;
   }
-
 
   const occasion = clean(b.dedication?.occasion, 60);
   const dedicationName = clean(b.dedication?.name, 120);
@@ -125,35 +127,42 @@ export async function POST(req: Request) {
   const mode = razorpayConfigured() ? "razorpay" : "demo";
   const publicId = publicToken();
 
-  const donation = await db.transaction(async (tx) => {
-    const [d] = await tx
-      .insert(donations)
-      .values({
-        publicId,
-        mode,
-        amount,
-        donorName,
-        donorEmail,
-        donorPhone: donorPhone || null,
-        anonymous,
-        campaignId,
-        idempotencyKey: key,
-        meta,
-      })
-      .returning();
-    await tx.insert(donationLines).values(lines.map((l) => ({ ...l, donationId: d.id })));
-    if (giftId) await tx.update(impactGifts).set({ donationId: d.id }).where(eq(impactGifts.id, giftId));
-    return d;
-  });
-
-  if (mode === "demo") return NextResponse.json({ mode, publicId, amount });
-
   try {
-    const order = await createRazorpayOrder(amount, publicId);
-    await db.update(donations).set({ razorpayOrderId: order.id }).where(eq(donations.id, donation.id));
-    return NextResponse.json({ mode, publicId, amount, orderId: order.id, keyId: razorpayKeyId() });
-  } catch (e) {
-    console.error(e);
-    return NextResponse.json({ error: "Payment service is unavailable right now. Please try again shortly." }, { status: 502 });
+    const donation = await db.transaction(async (tx) => {
+      const [d] = await tx
+        .insert(donations)
+        .values({
+          publicId,
+          mode,
+          amount,
+          donorName,
+          donorEmail,
+          donorPhone: donorPhone || null,
+          anonymous,
+          campaignId,
+          idempotencyKey: key,
+          meta,
+        })
+        .returning();
+      if (lines.length > 0) {
+        await tx.insert(donationLines).values(lines.map((l) => ({ ...l, donationId: d.id })));
+      }
+      if (giftId) await tx.update(impactGifts).set({ donationId: d.id }).where(eq(impactGifts.id, giftId));
+      return d;
+    });
+
+    if (mode === "demo") return NextResponse.json({ mode, publicId, amount });
+
+    try {
+      const order = await createRazorpayOrder(amount, publicId);
+      await db.update(donations).set({ razorpayOrderId: order.id }).where(eq(donations.id, donation.id));
+      return NextResponse.json({ mode, publicId, amount, orderId: order.id, keyId: razorpayKeyId() });
+    } catch (e) {
+      console.error("Razorpay order creation failed:", e);
+      return NextResponse.json({ error: "Payment service is unavailable right now. Please try again shortly." }, { status: 502 });
+    }
+  } catch (err: any) {
+    console.error("Donation creation failed:", err);
+    return NextResponse.json({ error: err.message || "Failed to process contribution. Please try again." }, { status: 500 });
   }
 }

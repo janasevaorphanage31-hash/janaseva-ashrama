@@ -229,6 +229,121 @@ const CATEGORY_TABS = [
 
 const PRESET_CUSTOM_AMOUNTS = [11, 21, 51, 101, 251, 501, 1001, 2501, 5001];
 
+const ONETIME_PRESETS = [
+  { amt: 100, label: "₹100", title: "Milk & Fruits", desc: "Pure cow milk & fruit for 1 boy", icon: "🥛" },
+  { amt: 250, label: "₹250", title: "Vidya Kit", desc: "School bag, books & stationery", icon: "🎒" },
+  { amt: 500, label: "₹500", title: "Full Day Meals", desc: "Breakfast, lunch & dinner for boys", isPopular: true, icon: "🍲" },
+  { amt: 1000, label: "₹1,000", title: "Weekly Staples", desc: "Rice, dal & kitchen groceries", icon: "🍚" },
+  { amt: 2500, label: "₹2,500", title: "Child Sponsor", desc: "1-Month complete foster care & schooling", icon: "🌟" },
+  { amt: 5000, label: "₹5,000", title: "Ashrama Feast", desc: "Joyful sweet feast for all 25 boys", icon: "🎉" },
+];
+
+const MONTHLY_PRESETS = [
+  { amt: 100, label: "₹100/mo", title: "Daily Cow Milk", desc: "Pure warm morning milk every day", icon: "🥛" },
+  { amt: 300, label: "₹300/mo", title: "Morning Breakfast", desc: "Fresh hot breakfasts before dawn", icon: "🍲" },
+  { amt: 500, label: "₹500/mo", title: "Full Day Meals", desc: "Daily nutritious meals", isPopular: true, icon: "🍛" },
+  { amt: 1000, label: "₹1,000/mo", title: "Education & Care", desc: "Books, uniform & tutoring", icon: "📚" },
+  { amt: 2500, label: "₹2,500/mo", title: "Full Sponsor", desc: "Complete 1-child monthly sponsorship", icon: "🌟" },
+];
+
+function getImpactDescription(amount: number, freq: "onetime" | "monthly"): { icon: string; title: string; text: string } {
+  if (freq === "monthly") {
+    if (amount <= 150) {
+      return {
+        icon: "🥛",
+        title: "Daily Nutrition for a Growing Child",
+        text: `Your ₹${amount}/month ensures a young boy starts every single morning with warm, pure cow milk before morning prayers and school.`,
+      };
+    }
+    if (amount <= 350) {
+      return {
+        icon: "🍲",
+        title: "Daily Morning Breakfasts",
+        text: `Your ₹${amount}/month feeds the boys with steaming, wholesome morning breakfasts prepared fresh before dawn in the ashrama kitchen.`,
+      };
+    }
+    if (amount <= 750) {
+      return {
+        icon: "🍛",
+        title: "Continuous Nutritious Daily Meals",
+        text: `Your ₹${amount}/month provides steady, nutritious daily meals (rice, sambar, fresh vegetables) ensuring no child at the ashrama sleeps hungry.`,
+      };
+    }
+    if (amount <= 1500) {
+      return {
+        icon: "📚",
+        title: "Education, Schooling & Mentorship",
+        text: `Your ₹${amount}/month covers textbooks, notebooks, school uniforms, and dedicated evening tutoring in Math and Science for the boys.`,
+      };
+    }
+    return {
+      icon: "🌟",
+      title: "Complete Foster Care & Upbringing",
+      text: `Your ₹${amount}/month becomes a child's guardian angel, fully sponsoring their nutrition, medical checkups, lodging, clothing, and bright future.`,
+    };
+  }
+
+  // ONE-TIME
+  if (amount < 200) {
+    return {
+      icon: "🥛",
+      title: "Bal Seva · Milk & Fresh Fruit",
+      text: `Your ₹${amount} contribution blesses a resident boy with pure warm cow milk and seasonal fruits for healthy morning vitality and smiles.`,
+    };
+  }
+  if (amount < 400) {
+    return {
+      icon: "🎒",
+      title: "Vidya Seva · School & Learning Kit",
+      text: `Your ₹${amount} contribution equips a young student with notebooks, drawing books, geometry instruments, and classroom essentials.`,
+    };
+  }
+  if (amount < 800) {
+    return {
+      icon: "🍲",
+      title: "Punya Annadana · Wholesome Full Day Meals",
+      text: `Your ₹${amount} contribution serves piping hot, nutritious meals (breakfast, lunch, and dinner) to the boys at Janaseva Ashrama today.`,
+    };
+  }
+  if (amount < 2000) {
+    return {
+      icon: "🍚",
+      title: "Annapurna · Ashrama Kitchen Staples",
+      text: `Your ₹${amount} contribution supplies essential pantry staples (Sona Masoori rice, Toor dal, cooking oil) for the ashrama kitchen.`,
+    };
+  }
+  if (amount < 4000) {
+    return {
+      icon: "🌟",
+      title: "Guardian Sponsorship · 1 Month Foster Care",
+      text: `Your ₹${amount} contribution supports a boy's complete living expenses—daily meals, school uniform, medical care, and safe ashrama shelter.`,
+    };
+  }
+  return {
+    icon: "🎉",
+    title: "Maha Annadana · Grand Ashrama Feast",
+    text: `Your ₹${amount} contribution hosts a special celebration feast with sweets (Payasam & Laddoo) for all 25 boys in honour of your family.`,
+  };
+}
+
+async function parseJsonResponse<T = Record<string, unknown>>(res: Response): Promise<T> {
+  const text = await res.text();
+  if (!text || !text.trim()) {
+    if (!res.ok) {
+      throw new Error(`Server returned error (${res.status}). Please try again.`);
+    }
+    return {} as T;
+  }
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    if (!res.ok) {
+      throw new Error(`Payment service error (${res.status}). Please try again or contact our helpline.`);
+    }
+    throw new Error("Unable to parse server response. Please try again.");
+  }
+}
+
 function cleanIndianMobile(val: string): string {
   let digits = val.replace(/\D/g, "");
   if (digits.length === 12 && digits.startsWith("91")) {
@@ -288,6 +403,9 @@ export function CheckoutClient() {
   const [activeCategory, setActiveCategory] = useState<string>("all");
   const [copiedBankField, setCopiedBankField] = useState<string | null>(null);
   const [confirmingClear, setConfirmingClear] = useState(false);
+  const [showBankDetails, setShowBankDetails] = useState(false);
+  const [showCustomInput, setShowCustomInput] = useState(false);
+  const [showBasketDetails, setShowBasketDetails] = useState(false);
   const attempt = useRef<{ sig: string; key: string } | null>(null);
 
   const handleCopyBank = (text: string, field: string) => {
@@ -357,6 +475,8 @@ export function CheckoutClient() {
     cart.clear();
     router.push(`/receipt/${publicId}`);
   };
+
+  const impactDesc = getImpactDescription(cart.total, frequency);
 
   const handleApplyCustomAmount = (amountNum: number) => {
     if (amountNum >= 10 && amountNum <= 500000) {
@@ -475,8 +595,15 @@ export function CheckoutClient() {
           }),
         });
 
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "Subscription creation failed.");
+        const data = await parseJsonResponse<{
+          error?: string;
+          mode?: string;
+          publicId: string;
+          keyId?: string;
+          subscriptionId?: string;
+          amount: number;
+        }>(res);
+        if (!res.ok || data.error) throw new Error(data.error || "Subscription creation failed.");
 
         if (data.mode === "demo") {
           setDemoNote(true);
@@ -511,12 +638,16 @@ export function CheckoutClient() {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ publicId: data.publicId, ...r }),
               });
-              const vd = await v.json();
-              if (!v.ok) throw new Error(vd.error || "Verification failed.");
+              const vd = await parseJsonResponse<{
+                error?: string;
+                donationPublicId?: string;
+                publicId?: string;
+              }>(v);
+              if (!v.ok || vd.error) throw new Error(vd.error || "Verification failed.");
               finish(vd.donationPublicId || data.publicId);
             } catch (err) {
               track("subscription_verify_failed", { error: (err as Error).message });
-              setError((err as Error).message);
+              setError((err as Error).message || "Mandate verification could not be confirmed immediately. Please check your email.");
               setPaymentFailed(true);
               setBusy(false);
             }
@@ -532,7 +663,7 @@ export function CheckoutClient() {
 
         rz.open();
       } catch (err) {
-        setError((err as Error).message);
+        setError((err as Error).message || "Could not start recurring mandate. Please try again.");
         setBusy(false);
       }
       return;
@@ -576,8 +707,16 @@ export function CheckoutClient() {
         }),
       });
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Something went wrong.");
+      const data = await parseJsonResponse<{
+        error?: string;
+        status?: string;
+        publicId: string;
+        mode?: string;
+        orderId?: string;
+        keyId?: string;
+        amount: number;
+      }>(res);
+      if (!res.ok || data.error) throw new Error(data.error || "Something went wrong.");
       if (data.status) return finish(data.publicId); // already processed
 
       if (data.mode === "demo") {
@@ -586,7 +725,7 @@ export function CheckoutClient() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ publicId: data.publicId }),
-        });
+        }).catch(() => {});
         return finish(data.publicId);
       }
 
@@ -620,12 +759,12 @@ export function CheckoutClient() {
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ publicId: data.publicId, ...r }),
             });
-            const vd = await v.json();
-            if (!v.ok) throw new Error(vd.error || "Verification failed.");
+            const vd = await parseJsonResponse<{ error?: string }>(v);
+            if (!v.ok || vd.error) throw new Error(vd.error || "Verification failed.");
             finish(data.publicId);
           } catch (err) {
             track("payment_failed", { stage: "verify" });
-            setError((err as Error).message);
+            setError((err as Error).message || "Payment verification could not be confirmed. Check your email for receipt.");
             setPaymentFailed(true);
             setBusy(false);
           }
@@ -923,34 +1062,39 @@ export function CheckoutClient() {
     <form onSubmit={submit} className="mx-auto grid max-w-5xl gap-6 px-4 sm:px-6 py-6 pb-28 lg:pb-8 lg:grid-cols-[1fr_390px]" noValidate>
       <div className="space-y-6">
 
-        {/* ── FREQUENCY SELECTOR: ONE-TIME | MONTHLY AUTO-PAY ── */}
-        <div className="rounded-3xl bg-white p-2 sm:p-2.5 shadow-md ring-1 ring-teal-900/10">
-          <div className="grid grid-cols-2 gap-2">
+        {/* ── UNIFIED FREQUENCY & AMOUNT SELECTION CARD ── */}
+        <div className="rounded-3xl bg-white p-4 sm:p-6 shadow-sm ring-1 ring-teal-900/10 space-y-4">
+          {/* Frequency Toggle: ONE-TIME | MONTHLY AUTO-PAY */}
+          <div className="grid grid-cols-2 gap-2 p-1.5 rounded-2xl bg-cream border border-teal-900/10">
             <button
               type="button"
-              onClick={() => setFrequency("onetime")}
-              className={`py-3 px-3 sm:px-4 rounded-2xl font-bold text-xs sm:text-sm transition flex items-center justify-center gap-1.5 cursor-pointer ${
+              onClick={() => {
+                setFrequency("onetime");
+                track("frequency_switch", { freq: "onetime" });
+              }}
+              className={`py-3 px-3 rounded-xl font-bold text-xs sm:text-sm transition flex items-center justify-center gap-1.5 cursor-pointer ${
                 frequency === "onetime"
                   ? "bg-teal-900 text-white shadow-sm ring-1 ring-teal-950"
-                  : "text-teal-900/70 hover:bg-cream"
+                  : "text-teal-900/70 hover:text-teal-950"
               }`}
             >
               <span className="text-sm">⚡</span>
-              <span>ONE-TIME</span>
+              <span>ONE-TIME GIVING</span>
             </button>
             <button
               type="button"
               onClick={() => {
                 setFrequency("monthly");
-                if (![100, 300, 500, 1000].includes(cart.total)) {
+                if (![100, 300, 500, 1000, 2500].includes(cart.total)) {
                   cart.clear();
                   cart.setCustom(500);
                 }
+                track("frequency_switch", { freq: "monthly" });
               }}
-              className={`py-3 px-3 sm:px-4 rounded-2xl font-bold text-xs sm:text-sm transition flex items-center justify-center gap-1.5 cursor-pointer relative ${
+              className={`py-3 px-3 rounded-xl font-bold text-xs sm:text-sm transition flex items-center justify-center gap-1.5 cursor-pointer relative ${
                 frequency === "monthly"
-                  ? "bg-gradient-to-r from-saffron to-amber-500 text-white shadow-md ring-2 ring-saffron/50"
-                  : "text-teal-900/70 hover:bg-cream"
+                  ? "bg-gradient-to-r from-saffron to-amber-500 text-white shadow-sm ring-1 ring-amber-600/30"
+                  : "text-teal-900/70 hover:text-teal-950"
               }`}
             >
               <span className="text-sm">🔁</span>
@@ -961,202 +1105,275 @@ export function CheckoutClient() {
             </button>
           </div>
 
-          {frequency === "monthly" && (
-            <div className="mt-3 p-3.5 sm:p-4 rounded-2xl bg-amber-50 border border-amber-200 animate-in fade-in space-y-3">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
-                <div>
-                  <span className="text-xs font-black uppercase tracking-wider text-amber-950">
-                    Recurring Monthly Support:
-                  </span>
-                  <p className="text-[11px] text-amber-900/80">
-                    Billed automatically every month via UPI AutoPay, Cards, or NetBanking. Cancel anytime.
-                  </p>
-                </div>
-                <span className="font-display text-lg font-black text-amber-950">
-                  {formatINR(cart.total)} / month
-                </span>
-              </div>
+          {/* Urgent Need & Tax Relief Banner */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded-2xl bg-amber-50/80 border border-amber-200/80 text-xs">
+            <div className="flex items-center gap-2">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+              </span>
+              <span className="font-bold text-amber-950 text-[11px] sm:text-xs">
+                Today&apos;s Need: 25 resident boys need daily hot meals &amp; evening study care
+              </span>
+            </div>
+            <span className="rounded-lg bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-800 border border-emerald-600/20 w-fit">
+              ✓ Form 10AC Section 80G (50% Tax Deduction)
+            </span>
+          </div>
 
-              {/* Monthly Amount Presets: ₹100 / ₹300 / ₹500 / ₹1,000 / Custom */}
-              <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 pt-1">
-                {[
-                  { amt: 100, label: "₹100/mo", desc: "Daily Milk" },
-                  { amt: 300, label: "₹300/mo", desc: "Breakfasts" },
-                  { amt: 500, label: "₹500/mo", desc: "Full Meals", isPopular: true },
-                  { amt: 1000, label: "₹1,000/mo", desc: "Vidya Kit" },
-                ].map((tier) => {
-                  const isMatch = cart.custom === tier.amt && cart.lines.length === 0;
-                  return (
-                    <button
-                      key={tier.amt}
-                      type="button"
-                      onClick={() => {
-                        cart.clear();
-                        cart.setCustom(tier.amt);
-                      }}
-                      className={`p-2 rounded-xl text-center transition cursor-pointer relative border ${
-                        isMatch
-                          ? "bg-saffron text-white font-extrabold border-saffron shadow-sm"
-                          : "bg-white text-teal-950 border-amber-200/80 hover:bg-amber-100/50"
-                      }`}
-                    >
-                      {tier.isPopular && !isMatch && (
-                        <span className="absolute -top-1.5 right-1 rounded-full bg-emerald-700 px-1 py-0.2 text-[7px] font-black uppercase text-white shadow-xs">
-                          Popular
-                        </span>
-                      )}
-                      <span className="block text-xs font-bold">{tier.label}</span>
-                      <span className="block text-[9px] opacity-80 mt-0.5 truncate">{tier.desc}</span>
-                    </button>
-                  );
-                })}
+          {/* Header & Selected Amount Indicator */}
+          <div className="flex items-center justify-between pt-1">
+            <div>
+              <span className="text-xs font-black uppercase tracking-wider text-teal-900/70">
+                {frequency === "monthly" ? "Select Monthly Pledge:" : "Select Contribution Amount:"}
+              </span>
+              <p className="text-[11px] text-teal-950/60 mt-0.5">
+                {frequency === "monthly"
+                  ? "Auto-debited monthly via UPI AutoPay, Cards, or NetBanking. Cancel anytime."
+                  : "Every rupee directly feeds, educates, and houses the 25 boys."}
+              </p>
+            </div>
+            <span className="font-mono text-sm sm:text-base font-black text-teal-950 bg-gold/20 px-3 py-1 rounded-xl border border-gold/40">
+              {formatINR(cart.total)}
+              {frequency === "monthly" ? "/mo" : ""}
+            </span>
+          </div>
 
+          {/* Preset Amount Grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+            {(frequency === "monthly" ? MONTHLY_PRESETS : ONETIME_PRESETS).map((tier) => {
+              const isSelected = cart.total === tier.amt && cart.lines.length === 0 && !showCustomInput;
+              return (
                 <button
+                  key={tier.amt}
                   type="button"
                   onClick={() => {
-                    const customVal = prompt("Enter custom monthly amount in ₹ (min ₹50):", String(cart.total || 500));
-                    const num = Number(customVal);
-                    if (num && num >= 50 && num <= 100000) {
+                    cart.clear();
+                    cart.setCustom(tier.amt);
+                    setShowCustomInput(false);
+                    setCustomInputValue("");
+                    track("checkout_amount_select", { amount: tier.amt, frequency });
+                  }}
+                  className={`p-3 sm:p-3.5 rounded-2xl text-left transition cursor-pointer relative border flex flex-col justify-between ${
+                    isSelected
+                      ? "bg-gradient-to-br from-teal-950 to-teal-900 text-white border-teal-950 shadow-md ring-2 ring-saffron/80"
+                      : "bg-cream/60 hover:bg-cream text-teal-950 border-teal-900/10 hover:border-teal-900/25"
+                  }`}
+                >
+                  {tier.isPopular && !isSelected && (
+                    <span className="absolute -top-2 right-2 rounded-full bg-saffron px-2 py-0.5 text-[8px] font-black uppercase tracking-wide text-white shadow-xs">
+                      ★ Most Chosen
+                    </span>
+                  )}
+                  {isSelected && (
+                    <span className="absolute -top-2 right-2 rounded-full bg-amber-400 px-2 py-0.5 text-[8px] font-black uppercase tracking-wide text-teal-950 shadow-xs">
+                      ✓ Selected
+                    </span>
+                  )}
+                  <div className="flex items-center justify-between">
+                    <span className="text-lg">{tier.icon}</span>
+                    <span className={`font-mono text-sm sm:text-base font-black ${isSelected ? "text-amber-300" : "text-teal-950"}`}>
+                      {tier.label}
+                    </span>
+                  </div>
+                  <div className="mt-2">
+                    <span className={`block text-xs font-bold leading-tight ${isSelected ? "text-white" : "text-teal-950"}`}>
+                      {tier.title}
+                    </span>
+                    <span className={`block text-[10px] mt-0.5 leading-snug line-clamp-1 ${isSelected ? "text-white/80" : "text-teal-950/60"}`}>
+                      {tier.desc}
+                    </span>
+                  </div>
+                </button>
+              );
+            })}
+
+            {/* Custom Amount Selector Tile */}
+            <button
+              type="button"
+              onClick={() => {
+                setShowCustomInput(true);
+                if (!customInputValue && cart.custom) {
+                  setCustomInputValue(String(cart.custom));
+                }
+              }}
+              className={`p-3 sm:p-3.5 rounded-2xl text-left transition cursor-pointer relative border flex flex-col justify-between ${
+                showCustomInput || (![100, 250, 300, 500, 1000, 2500, 5000].includes(cart.total) && cart.lines.length === 0)
+                  ? "bg-gradient-to-br from-teal-950 to-teal-900 text-white border-teal-950 shadow-md ring-2 ring-saffron/80"
+                  : "bg-cream/60 hover:bg-cream text-teal-950 border-teal-900/10 hover:border-teal-900/25"
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-lg">✏️</span>
+                <span className={`font-mono text-xs sm:text-sm font-black ${showCustomInput ? "text-amber-300" : "text-teal-950"}`}>
+                  Custom
+                </span>
+              </div>
+              <div className="mt-2">
+                <span className={`block text-xs font-bold ${showCustomInput ? "text-white" : "text-teal-950"}`}>
+                  Other Amount
+                </span>
+                <span className={`block text-[10px] mt-0.5 leading-snug ${showCustomInput ? "text-white/80" : "text-teal-950/60"}`}>
+                  Enter your choice
+                </span>
+              </div>
+            </button>
+          </div>
+
+          {/* Custom Amount Input Field (When opened) */}
+          {(showCustomInput || (![100, 250, 300, 500, 1000, 2500, 5000].includes(cart.total) && cart.lines.length === 0)) && (
+            <div className="p-3.5 rounded-2xl bg-cream border border-teal-900/15 animate-in fade-in space-y-2.5">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-teal-950">
+                  Enter Custom {frequency === "monthly" ? "Monthly" : ""} Amount:
+                </label>
+                <span className="text-[11px] font-semibold text-teal-900/60 font-mono">
+                  {frequency === "monthly" ? "Min ₹50/mo" : "Min ₹10"}
+                </span>
+              </div>
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 font-mono text-base font-black text-teal-900">
+                  ₹
+                </span>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={customInputValue || (cart.custom ? String(cart.custom) : "")}
+                  onChange={(e) => {
+                    const cleanVal = cleanIndianMobile(e.target.value);
+                    setCustomInputValue(cleanVal);
+                    const num = Number(cleanVal);
+                    if (num >= 10 && num <= 500000) {
                       cart.clear();
                       cart.setCustom(num);
                     }
                   }}
-                  className={`p-2 rounded-xl text-center transition cursor-pointer border col-span-4 sm:col-span-1 ${
-                    ![100, 300, 500, 1000].includes(cart.total) && cart.custom > 0
-                      ? "bg-saffron text-white font-extrabold border-saffron"
-                      : "bg-white text-teal-950 border-amber-200/80 hover:bg-amber-100/50"
-                  }`}
-                >
-                  <span className="block text-xs font-bold">Custom</span>
-                  <span className="block text-[9px] opacity-80 mt-0.5">Your Choice</span>
-                </button>
-              </div>
-
-              {/* Explicit Mandate Consent */}
-              <label className="flex items-start gap-2.5 pt-2 border-t border-amber-200/70 text-xs text-amber-950 font-medium cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={mandateConsent}
-                  onChange={(e) => setMandateConsent(e.target.checked)}
-                  className="mt-0.5 h-4 w-4 rounded accent-saffron"
+                  placeholder="e.g. 500, 1100, 5000"
+                  className="w-full rounded-2xl border-2 border-teal-900/20 bg-white py-3 pl-9 pr-4 font-mono text-base font-bold text-teal-950 outline-none focus:border-teal-900"
                 />
-                <span>
-                  <strong>Explicit Auto-Pay Consent:</strong> I authorize Janaseva Ashrama to debit{" "}
-                  <strong>{formatINR(cart.total)}</strong> monthly for child care, meals and education. I understand this recurring mandate can be paused or cancelled at any time with 1-click in the donor dashboard.
-                </span>
-              </label>
-            </div>
-          )}
-        </div>
-
-        {/* ── TOP URGENT GOAL & 1-TAP AMOUNT SELECTOR (FAST MOBILE GIVING) ── */}
-        <div className="rounded-3xl bg-gradient-to-r from-teal-950 via-teal-900 to-teal-950 p-4 sm:p-5 text-white shadow-lg border border-amber-400/30">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-white/10 pb-3">
-            <div className="flex items-center gap-2">
-              <span className="relative flex h-2.5 w-2.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
-              </span>
-              <span className="text-[11px] font-black uppercase tracking-wider text-amber-300">
-                🔥 Live Urgent Need: 6 Meals Still Needed for 25 Boys
-              </span>
-            </div>
-            <span className="rounded-lg bg-emerald-500/20 px-2.5 py-0.5 text-[11px] font-bold text-emerald-300 w-fit">
-              ✓ Form 10AC 80G Tax Exemption (50% Deduction)
-            </span>
-          </div>
-
-          <div className="mt-3">
-            <div className="flex items-center justify-between text-xs mb-2">
-              <span className="font-bold text-white/90">Select Contribution Amount:</span>
-              <span className="text-amber-300 font-mono font-bold">Selected: {formatINR(cart.total)}</span>
-            </div>
-
-            {/* 1-Tap Preset Amount Chips */}
-            <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
-              {[
-                { amt: 11, label: "₹11 Milk", desc: "1 boy milk" },
-                { amt: 51, label: "₹51 Breakfast", desc: "Hot breakfast" },
-                { amt: 101, label: "₹101 Meal", desc: "Full lunch", isPopular: true },
-                { amt: 501, label: "₹501 Health", desc: "Doctor care" },
-                { amt: 2501, label: "₹2,501 Hall Feast", desc: "All 25 boys" },
-              ].map((item) => {
-                const isMatch = cart.custom === item.amt && cart.lines.length === 0;
-                return (
+              </div>
+              <div className="flex flex-wrap gap-1.5 pt-0.5">
+                {[250, 500, 1100, 2100, 5100, 11000].map((quick) => (
                   <button
-                    key={item.amt}
+                    key={quick}
                     type="button"
                     onClick={() => {
                       cart.clear();
-                      cart.setCustom(item.amt);
-                      track("checkout_quick_chip_select", { amount: item.amt });
+                      cart.setCustom(quick);
+                      setCustomInputValue(String(quick));
+                      setShowCustomInput(true);
                     }}
-                    className={`p-2 sm:p-2.5 rounded-xl text-center transition cursor-pointer relative border ${
-                      isMatch
-                        ? "bg-amber-400 text-teal-950 font-black border-amber-300 shadow-md ring-2 ring-white/50"
-                        : "bg-white/10 text-white hover:bg-white/20 border-white/10"
-                    }`}
+                    className="rounded-lg bg-white px-2.5 py-1 text-xs font-mono font-bold text-teal-900 border border-teal-900/15 hover:bg-sand transition"
                   >
-                    {item.isPopular && !isMatch && (
-                      <span className="absolute -top-2 right-1 rounded-full bg-saffron px-1.5 py-0.2 text-[8px] font-black uppercase text-white shadow">
-                        ★ Pop
-                      </span>
-                    )}
-                    <span className={`block font-display text-sm sm:text-base font-black ${isMatch ? "text-teal-950" : "text-amber-300"}`}>
-                      ₹{item.amt}
-                    </span>
-                    <span className="block text-[10px] font-bold leading-tight mt-0.5 truncate">{item.label}</span>
+                    + ₹{quick.toLocaleString("en-IN")}
                   </button>
-                );
-              })}
+                ))}
+              </div>
             </div>
-          </div>
-        </div>
+          )}
 
-        {/* ── CARD 1: REVIEW & ALTER YOUR SELECTIONS (Donor Empowerment) ── */}
-        <div className="rounded-3xl bg-white p-5 sm:p-6 shadow-sm ring-1 ring-teal-900/10">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-teal-900/10 pb-3">
-            <div>
-              <h2 className="font-display text-lg sm:text-xl font-bold text-teal-950 flex items-center gap-2">
-                <span>🛒 Your Impact Basket</span>
-                <span className="rounded-full bg-teal-100 px-2.5 py-0.5 text-xs font-bold text-teal-900">
-                  {cart.count} {cart.count === 1 ? "item" : "items"}
-                </span>
-              </h2>
-              <p className="text-xs text-teal-950/65 mt-0.5">
-                Adjust quantities with [ − ] [ + ], add extra needs, or remove anything anytime.
+          {/* Dynamic Emotional Impact Description Banner */}
+          <div className="rounded-2xl bg-gradient-to-r from-amber-500/10 via-gold/15 to-teal-500/10 p-3.5 sm:p-4 border border-amber-500/25 flex items-start gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white shadow-2xs text-lg">
+              {impactDesc.icon}
+            </div>
+            <div className="min-w-0">
+              <span className="text-[10px] font-black uppercase tracking-wider text-amber-950">
+                Your Impact: {impactDesc.title}
+              </span>
+              <p className="text-xs text-teal-950/80 leading-relaxed mt-0.5">
+                {impactDesc.text}
               </p>
             </div>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setShowAddDrawer(!showAddDrawer)}
-                className="text-xs font-bold text-teal-900 bg-cream hover:bg-sand border border-teal-900/15 rounded-xl px-3 py-1.5 transition"
-              >
-                {showAddDrawer ? "Close Catalog ✕" : "+ Add More Needs"}
-              </button>
-              <button
-                type="button"
-                onClick={handleClearCart}
-                className={`text-xs font-bold rounded-xl px-2.5 py-1.5 transition ${
-                  confirmingClear
-                    ? "bg-red-600 text-white font-extrabold animate-pulse"
-                    : "text-red-700/80 hover:text-red-800 hover:bg-red-50"
-                }`}
-              >
-                {confirmingClear ? "Confirm Clear? ✕" : "Clear All 🗑"}
-              </button>
-            </div>
           </div>
 
-          {/* Quick Add In-Place Selector (When expanded) */}
+          {/* Monthly Mandate Consent Checkbox (only when monthly is selected) */}
+          {frequency === "monthly" && (
+            <label className="flex items-start gap-2.5 p-3 rounded-2xl bg-amber-50 border border-amber-200/80 text-xs text-amber-950 font-medium cursor-pointer">
+              <input
+                type="checkbox"
+                checked={mandateConsent}
+                onChange={(e) => setMandateConsent(e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded accent-saffron"
+              />
+              <span className="leading-relaxed">
+                <strong>Explicit Auto-Pay Authorization:</strong> I authorize Janaseva Ashrama to debit{" "}
+                <strong>{formatINR(cart.total)}</strong> monthly for child nutrition, schooling and shelter. I understand I can pause or cancel anytime with 1-click in the donor dashboard.
+              </span>
+            </label>
+          )}
+
+          {/* Itemized Selection Summary (if donor has specific items in cart) */}
+          {cart.lines.length > 0 && (
+            <div className="rounded-2xl bg-cream/70 p-3.5 border border-teal-900/15 space-y-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-xs font-bold text-teal-950">
+                    Selected Items from Catalog ({cart.lines.length} {cart.lines.length === 1 ? "item" : "items"})
+                  </span>
+                  <p className="text-[11px] text-teal-950/60">
+                    You can adjust quantities or tap any preset above to switch to a standard amount.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowBasketDetails(!showBasketDetails)}
+                  className="text-xs font-bold text-teal-900 underline cursor-pointer"
+                >
+                  {showBasketDetails ? "Hide ▴" : "View / Edit Items ▾"}
+                </button>
+              </div>
+
+              {showBasketDetails && (
+                <div className="space-y-2 pt-2 border-t border-teal-900/10 animate-in fade-in">
+                  {cart.lines.map((l) => (
+                    <div key={l.item.slug} className="flex items-center justify-between gap-2 text-xs">
+                      <span className="font-semibold text-teal-950 truncate">{l.item.name}</span>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => cart.setQty(l.item.slug, l.qty - 1)}
+                          className="h-6 w-6 rounded bg-white text-teal-950 font-bold border flex items-center justify-center cursor-pointer"
+                        >
+                          −
+                        </button>
+                        <span className="font-mono font-bold">{l.qty}</span>
+                        <button
+                          type="button"
+                          onClick={() => cart.setQty(l.item.slug, l.qty + 1)}
+                          className="h-6 w-6 rounded bg-teal-900 text-white font-bold flex items-center justify-center cursor-pointer"
+                        >
+                          +
+                        </button>
+                        <span className="font-mono font-bold text-teal-950 w-16 text-right">
+                          {formatINR(l.subtotal)}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Optional Expansion to Sponsor Specific Items from Catalog */}
+          <div className="pt-1 flex items-center justify-between">
+            <button
+              type="button"
+              onClick={() => setShowAddDrawer(!showAddDrawer)}
+              className="text-xs font-bold text-teal-900 hover:text-teal-950 underline flex items-center gap-1 cursor-pointer"
+            >
+              <span>{showAddDrawer ? "✕ Hide Catalog Needs" : "+ Want to sponsor a specific item? (School Kits, Uniforms, Meals)"}</span>
+            </button>
+          </div>
+
+          {/* Catalog Drawer (When expanded) */}
           {showAddDrawer && (
-            <div className="mt-4 p-4 rounded-2xl bg-cream/70 border border-teal-900/15 animate-in fade-in">
-              <div className="flex items-center justify-between mb-3">
-                <p className="text-xs font-bold text-teal-900 uppercase tracking-wider">
-                  Select Extra Needs to Add:
-                </p>
-                {/* Category mini-filter */}
+            <div className="p-4 rounded-2xl bg-cream/70 border border-teal-900/15 animate-in fade-in space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <span className="text-xs font-bold text-teal-900 uppercase tracking-wider">
+                  Select Specific Needs to Add:
+                </span>
                 <div className="flex flex-wrap gap-1">
                   {CATEGORY_TABS.map((cat) => (
                     <button
@@ -1182,7 +1399,7 @@ export function CheckoutClient() {
                       cart.setQty(item.slug, (cart.qty[item.slug] || 0) + 1);
                       track("drawer_add", { item: item.slug });
                     }}
-                    className="flex flex-col text-left p-2.5 rounded-xl bg-white border border-teal-900/10 hover:border-teal-900/30 transition shadow-xs"
+                    className="flex flex-col text-left p-2.5 rounded-xl bg-white border border-teal-900/10 hover:border-teal-900/30 transition shadow-xs cursor-pointer"
                   >
                     <span className="text-xs font-bold text-teal-950 truncate">{item.icon} {item.name}</span>
                     <span className="text-[11px] font-mono font-bold text-saffron-dark mt-1">
@@ -1193,91 +1410,6 @@ export function CheckoutClient() {
               </div>
             </div>
           )}
-
-          {/* Line items with Live Stepper & Remover */}
-          <div className="mt-4 space-y-3">
-            {cart.lines.map((l) => (
-              <div
-                key={l.item.slug}
-                className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl bg-cream/50 p-3.5 border border-teal-900/10 transition"
-              >
-                <div className="min-w-0 flex-1">
-                  <h3 className="font-bold text-sm text-teal-950 leading-snug">
-                    {l.item.name}
-                  </h3>
-                  <p className="text-xs text-teal-950/60 font-mono mt-0.5">
-                    {formatINR(l.item.unitPrice)} each
-                  </p>
-                </div>
-
-                {/* Alter Quantity & Subtotal Stepper */}
-                <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0">
-                  <div className="flex items-center gap-1.5 rounded-xl bg-white p-1 border border-teal-900/15 shadow-2xs">
-                    <button
-                      type="button"
-                      onClick={() => cart.setQty(l.item.slug, l.qty - 1)}
-                      aria-label="Decrease quantity"
-                      className="h-7 w-7 rounded-lg bg-cream hover:bg-sand text-teal-950 font-bold flex items-center justify-center transition active:scale-95 cursor-pointer"
-                    >
-                      −
-                    </button>
-                    <span className="w-6 text-center font-bold font-mono text-xs text-teal-950">
-                      {l.qty}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => cart.setQty(l.item.slug, l.qty + 1)}
-                      aria-label="Increase quantity"
-                      className="h-7 w-7 rounded-lg bg-teal-900 hover:bg-teal-950 text-white font-bold flex items-center justify-center transition active:scale-95 cursor-pointer"
-                    >
-                      +
-                    </button>
-                  </div>
-
-                  <span className="w-20 text-right font-display font-bold text-sm sm:text-base text-teal-950">
-                    {formatINR(l.subtotal)}
-                  </span>
-
-                  <button
-                    type="button"
-                    onClick={() => cart.setQty(l.item.slug, 0)}
-                    aria-label={`Remove ${l.item.name}`}
-                    className="p-1.5 rounded-lg text-red-700/70 hover:text-red-800 hover:bg-red-50 transition cursor-pointer"
-                    title="Remove item"
-                  >
-                    🗑
-                  </button>
-                </div>
-              </div>
-            ))}
-
-            {/* Custom contribution item (if added) */}
-            {cart.custom > 0 && (
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl bg-gold/15 p-3.5 border border-gold/30">
-                <div className="min-w-0 flex-1">
-                  <h3 className="font-bold text-sm text-teal-950">
-                    Custom Contribution
-                  </h3>
-                  <p className="text-xs text-teal-950/70">
-                    General Ashrama food &amp; education allocation
-                  </p>
-                </div>
-                <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0">
-                  <span className="font-display font-bold text-base text-teal-950">
-                    {formatINR(cart.custom)}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => cart.setCustom(0)}
-                    className="p-1.5 rounded-lg text-red-700/70 hover:text-red-800 hover:bg-red-50 transition cursor-pointer"
-                    title="Remove custom contribution"
-                  >
-                    🗑
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
         </div>
 
         {/* ── CARD 2: DONOR CONTACT & VERIFIED RECEIPT DETAILS ── */}
@@ -1566,100 +1698,111 @@ export function CheckoutClient() {
           </label>
         </div>
 
-        {/* ── CARD 5: DIRECT BANK TRANSFER (NEFT / IMPS / RTGS) ── */}
-        <div className="rounded-3xl bg-white p-5 sm:p-6 shadow-sm ring-1 ring-teal-900/10">
-          <div className="flex items-center justify-between gap-2 border-b border-teal-900/10 pb-3">
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800">
-                  Direct Bank Transfer Available
-                </span>
+        {/* ── COLLAPSIBLE DIRECT BANK TRANSFER ACCORDION (NEFT / IMPS / RTGS) ── */}
+        <div className="rounded-3xl bg-white p-4 sm:p-5 shadow-xs ring-1 ring-teal-900/10">
+          <button
+            type="button"
+            onClick={() => setShowBankDetails(!showBankDetails)}
+            className="flex w-full items-center justify-between text-left cursor-pointer group"
+          >
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-teal-50 text-teal-900 text-lg border border-teal-900/10 group-hover:bg-teal-100 transition">
+                🏦
               </div>
-              <h3 className="mt-1 font-display text-base sm:text-lg font-bold text-teal-950">
-                Prefer Direct NEFT / IMPS / RTGS?
-              </h3>
-            </div>
-            <span className="rounded-lg bg-teal-50 px-2.5 py-1 text-xs font-bold text-teal-900 border border-teal-900/10">
-              Axis Bank
-            </span>
-          </div>
-
-          <p className="mt-2.5 text-xs text-teal-950/70 leading-relaxed">
-            You can also donate directly to our official orphanage bank account via your banking app or net banking. All transfers are eligible for Form 10AC 80G tax deductions.
-          </p>
-
-          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-            <div className="rounded-2xl bg-cream p-3.5 border border-teal-900/10">
-              <span className="block text-[10px] font-bold uppercase tracking-wider text-teal-900/60">
-                Account Holder Name
-              </span>
-              <p className="font-bold text-teal-950 mt-0.5 leading-snug">
-                {BANK_DETAILS.accountName}
-              </p>
-            </div>
-
-            <div className="rounded-2xl bg-cream p-3.5 border border-teal-900/10">
-              <span className="block text-[10px] font-bold uppercase tracking-wider text-teal-900/60">
-                Bank &amp; Branch
-              </span>
-              <p className="font-bold text-teal-950 mt-0.5">
-                {BANK_DETAILS.bankName} · {BANK_DETAILS.branch} Branch
-              </p>
-            </div>
-
-            <div className="rounded-2xl bg-teal-950 text-white p-3.5 shadow-xs flex items-center justify-between">
               <div>
-                <span className="block text-[10px] font-bold uppercase tracking-wider text-gold">
-                  Account Number
-                </span>
-                <p className="font-mono text-base font-black tracking-wider text-white mt-0.5">
-                  {BANK_DETAILS.accountNumber}
+                <div className="flex items-center gap-2">
+                  <span className="text-xs sm:text-sm font-bold text-teal-950">
+                    Prefer Direct Bank Transfer (NEFT / IMPS / RTGS)?
+                  </span>
+                  <span className="rounded-md bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold text-emerald-800 border border-emerald-600/20">
+                    Form 10AC 80G
+                  </span>
+                </div>
+                <p className="text-[11px] text-teal-950/60 mt-0.5">
+                  {showBankDetails ? "Tap to collapse bank details" : "Tap to view official Axis Bank account number & IFSC"}
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => handleCopyBank(BANK_DETAILS.accountNumber, "acc")}
-                className="rounded-xl bg-white/15 px-3 py-1.5 text-xs font-bold text-white hover:bg-white/25 transition cursor-pointer"
-              >
-                {copiedBankField === "acc" ? "Copied!" : "Copy"}
-              </button>
             </div>
-
-            <div className="rounded-2xl bg-teal-950 text-white p-3.5 shadow-xs flex items-center justify-between">
-              <div>
-                <span className="block text-[10px] font-bold uppercase tracking-wider text-gold">
-                  IFSC Code
-                </span>
-                <p className="font-mono text-base font-black tracking-wider text-white mt-0.5">
-                  {BANK_DETAILS.ifscCode}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => handleCopyBank(BANK_DETAILS.ifscCode, "ifsc")}
-                className="rounded-xl bg-white/15 px-3 py-1.5 text-xs font-bold text-white hover:bg-white/25 transition cursor-pointer"
-              >
-                {copiedBankField === "ifsc" ? "Copied!" : "Copy"}
-              </button>
-            </div>
-          </div>
-
-          <div className="mt-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3 rounded-2xl bg-emerald-50 border border-emerald-600/20 text-xs">
-            <span className="text-emerald-950">
-              <strong>After transferring:</strong> Send transaction screenshot on WhatsApp to receive your 80G tax receipt immediately.
+            <span className="text-xs font-bold text-teal-900 bg-cream px-3 py-1.5 rounded-xl border border-teal-900/10 group-hover:bg-sand transition shrink-0 ml-2">
+              {showBankDetails ? "Hide ▴" : "View Details ▾"}
             </span>
-            <a
-              href={`https://wa.me/${SITE.whatsapp}?text=${encodeURIComponent(
-                `Hello Janaseva Ashrama, I have completed a direct bank transfer of ₹${cart.total || "donation"} to Axis Bank A/c ${BANK_DETAILS.accountNumber}. Please find the screenshot attached for 80G receipt generation.`
-              )}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-1.5 shrink-0 rounded-xl bg-emerald-700 px-4 py-2 font-bold text-white hover:bg-emerald-800 transition shadow-xs text-xs"
-            >
-              <span>Share on WhatsApp →</span>
-            </a>
-          </div>
+          </button>
+
+          {showBankDetails && (
+            <div className="mt-4 pt-4 border-t border-teal-900/10 animate-in fade-in space-y-3">
+              <p className="text-xs text-teal-950/70 leading-relaxed">
+                Transfer directly to our official orphanage bank account via mobile banking or net banking. All transfers are eligible for Form 10AC Section 80G 50% tax deductions.
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
+                <div className="rounded-2xl bg-cream p-3 border border-teal-900/10">
+                  <span className="block text-[10px] font-bold uppercase tracking-wider text-teal-900/60">
+                    Account Holder Name
+                  </span>
+                  <p className="font-bold text-teal-950 mt-0.5">{BANK_DETAILS.accountName}</p>
+                </div>
+
+                <div className="rounded-2xl bg-cream p-3 border border-teal-900/10">
+                  <span className="block text-[10px] font-bold uppercase tracking-wider text-teal-900/60">
+                    Bank &amp; Branch
+                  </span>
+                  <p className="font-bold text-teal-950 mt-0.5">{BANK_DETAILS.bankName} · {BANK_DETAILS.branch} Branch</p>
+                </div>
+
+                <div className="rounded-2xl bg-teal-950 text-white p-3 shadow-xs flex items-center justify-between">
+                  <div>
+                    <span className="block text-[10px] font-bold uppercase tracking-wider text-gold">
+                      Account Number
+                    </span>
+                    <p className="font-mono text-base font-black tracking-wider text-white mt-0.5">
+                      {BANK_DETAILS.accountNumber}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleCopyBank(BANK_DETAILS.accountNumber, "acc")}
+                    className="rounded-xl bg-white/15 px-3 py-1.5 text-xs font-bold text-white hover:bg-white/25 transition cursor-pointer"
+                  >
+                    {copiedBankField === "acc" ? "Copied!" : "Copy"}
+                  </button>
+                </div>
+
+                <div className="rounded-2xl bg-teal-950 text-white p-3 shadow-xs flex items-center justify-between">
+                  <div>
+                    <span className="block text-[10px] font-bold uppercase tracking-wider text-gold">
+                      IFSC Code
+                    </span>
+                    <p className="font-mono text-base font-black tracking-wider text-white mt-0.5">
+                      {BANK_DETAILS.ifscCode}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleCopyBank(BANK_DETAILS.ifscCode, "ifsc")}
+                    className="rounded-xl bg-white/15 px-3 py-1.5 text-xs font-bold text-white hover:bg-white/25 transition cursor-pointer"
+                  >
+                    {copiedBankField === "ifsc" ? "Copied!" : "Copy"}
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 p-3 rounded-2xl bg-emerald-50 border border-emerald-600/20 text-xs">
+                <span className="text-emerald-950 text-[11px]">
+                  <strong>After transferring:</strong> Send transaction screenshot on WhatsApp to receive your 80G tax receipt immediately.
+                </span>
+                <a
+                  href={`https://wa.me/${SITE.whatsapp}?text=${encodeURIComponent(
+                    `Hello Janaseva Ashrama, I have completed a direct bank transfer of ₹${cart.total || "donation"} to Axis Bank A/c ${BANK_DETAILS.accountNumber}. Please find the screenshot attached for 80G receipt generation.`
+                  )}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center gap-1.5 shrink-0 rounded-xl bg-emerald-700 px-3.5 py-1.5 font-bold text-white hover:bg-emerald-800 transition shadow-xs text-xs"
+                >
+                  <span>Share on WhatsApp →</span>
+                </a>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Failure / Error Alert with Reassurance */}
@@ -1775,11 +1918,11 @@ export function CheckoutClient() {
           </span>
         </div>
 
-        {/* Primary Checkout Button */}
+        {/* Primary Checkout Button (Visible on desktop; mobile uses sticky bottom bar) */}
         <button
           disabled={busy || cart.total === 0}
           type="submit"
-          className="focus-ring w-full rounded-2xl bg-saffron px-6 py-4 text-sm font-bold tracking-wide text-white shadow-lg transition hover:bg-saffron-dark disabled:opacity-60 active:scale-95 cursor-pointer"
+          className="hidden lg:block focus-ring w-full rounded-2xl bg-saffron px-6 py-4 text-sm font-bold tracking-wide text-white shadow-lg transition hover:bg-saffron-dark disabled:opacity-60 active:scale-95 cursor-pointer"
         >
           {busy
             ? frequency === "monthly"
