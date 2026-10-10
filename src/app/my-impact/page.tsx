@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
 import { Container, PageHero, Section } from "@/components/ui";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
+import { MyImpactClient } from "@/components/MyImpactClient";
 import { SITE } from "@/lib/site";
 
 export const metadata: Metadata = {
-  title: "Verify Donation Receipt & Impact Tracking · Janaseva Ashrama",
+  title: "Donor Impact & Recurring Giving Dashboard · Janaseva Ashrama",
   description:
-    "Look up your official 80G tax receipt and verified impact certificate using your unique contribution reference ID.",
+    "View your active monthly recurring donations, payment debit history, 80G tax exemption receipts, and manage your Auto-Pay mandates securely.",
   alternates: {
     canonical: `${SITE.url}/my-impact`,
   },
@@ -15,30 +15,18 @@ export const metadata: Metadata = {
 
 export default async function MyImpactPage({ searchParams }: { searchParams: Promise<{ publicId?: string }> }) {
   const sp = await searchParams;
-  if (sp.publicId) redirect(`/receipt/${encodeURIComponent(sp.publicId)}`);
+
   return (
     <>
-      <Breadcrumbs items={[{ label: "My Impact Tracking" }]} />
+      <Breadcrumbs items={[{ label: "Donor Impact & Subscriptions" }]} />
+      <PageHero
+        eyebrow="Donor Impact & Subscriptions"
+        title="Manage Your Monthly Auto-Pay & 80G Receipts"
+        lead="Track your monthly child sponsorships, view upcoming debit dates, manage your mandates, and access official Form 10AC Section 80G tax receipts."
+      />
       <Section tone="cream">
-        <Container className="max-w-xl">
-          <form action="/my-impact" className="rounded-3xl bg-white p-6 ring-1 ring-teal-900/10">
-            <label className="text-sm font-semibold text-teal-900" htmlFor="reference">
-              Receipt / public reference
-            </label>
-            <input
-              id="reference"
-              name="publicId"
-              required
-              placeholder="Enter your reference"
-              className="mt-2 w-full rounded-2xl border border-teal-900/10 px-4 py-3"
-            />
-            <button className="mt-4 rounded-xl bg-saffron px-6 py-3 text-sm font-bold text-white hover:bg-saffron-dark transition">
-              View my impact
-            </button>
-            <p className="mt-3 text-xs text-teal-950/55">
-              For security, the receipt page remains the source of truth for a verified contribution.
-            </p>
-          </form>
+        <Container className="max-w-3xl">
+          <MyImpactClient initialPublicId={sp.publicId} />
         </Container>
       </Section>
     </>

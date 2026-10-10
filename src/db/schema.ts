@@ -103,6 +103,43 @@ export const impactMissions = pgTable("impact_missions", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+export const recurringSubscriptions = pgTable(
+  "recurring_subscriptions",
+  {
+    id: serial("id").primaryKey(),
+    publicId: text("public_id").notNull().unique(), // e.g. "sub_pub_..."
+    status: text("status").notNull().default("created"), // created|authenticated|active|halted|cancelled|completed|demo
+    mode: text("mode").notNull().default("razorpay"), // razorpay|demo
+    amount: integer("amount").notNull(), // Monthly INR amount
+    currency: text("currency").notNull().default("INR"),
+    frequency: text("frequency").notNull().default("monthly"),
+    donorName: text("donor_name").notNull(),
+    donorEmail: text("donor_email").notNull(),
+    donorPhone: text("donor_phone"),
+    donorPan: text("donor_pan"),
+    razorpayPlanId: text("razorpay_plan_id"),
+    razorpaySubscriptionId: text("razorpay_subscription_id").unique(),
+    mandateStatus: text("mandate_status").notNull().default("pending"), // pending|active|failed|cancelled
+    currentCycle: integer("current_cycle").notNull().default(0),
+    totalCycles: integer("total_cycles").notNull().default(60),
+    chargeCount: integer("charge_count").notNull().default(0),
+    nextChargeAt: timestamp("next_charge_at"),
+    lastPaymentId: text("last_payment_id"),
+    lastPaymentAt: timestamp("last_payment_at"),
+    cancelledAt: timestamp("cancelled_at"),
+    cancelReason: text("cancel_reason"),
+    idempotencyKey: text("idempotency_key").notNull().unique(),
+    meta: jsonb("meta"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => [
+    index("rec_subs_status_idx").on(t.status),
+    index("rec_subs_email_idx").on(t.donorEmail),
+    index("rec_subs_rzp_sub_idx").on(t.razorpaySubscriptionId),
+  ],
+);
+
 export const donations = pgTable(
   "donations",
   {
@@ -117,6 +154,8 @@ export const donations = pgTable(
     donorPhone: text("donor_phone"),
     anonymous: boolean("anonymous").notNull().default(false),
     campaignId: integer("campaign_id").references(() => campaigns.id),
+    subscriptionId: integer("subscription_id").references(() => recurringSubscriptions.id, { onDelete: "set null" }),
+    recurringCycle: integer("recurring_cycle"),
     razorpayOrderId: text("razorpay_order_id").unique(),
     razorpayPaymentId: text("razorpay_payment_id").unique(),
     idempotencyKey: text("idempotency_key").notNull().unique(),
@@ -125,7 +164,11 @@ export const donations = pgTable(
     paidAt: timestamp("paid_at"),
     refundedAt: timestamp("refunded_at"),
   },
-  (t) => [index("donations_campaign_idx").on(t.campaignId), index("donations_status_idx").on(t.status)],
+  (t) => [
+    index("donations_campaign_idx").on(t.campaignId),
+    index("donations_status_idx").on(t.status),
+    index("donations_subscription_idx").on(t.subscriptionId),
+  ],
 );
 
 export const donationLines = pgTable("donation_lines", {

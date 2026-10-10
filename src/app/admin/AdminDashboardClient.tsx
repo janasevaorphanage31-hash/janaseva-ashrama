@@ -15,10 +15,11 @@ import {
 } from "@/lib/validation";
 import { ValidationErrorModal } from "@/components/ValidationErrorModal";
 import { BusinessPlanModal } from "@/components/BusinessPlanModal";
+import { AdminSubscriptionsTab } from "@/components/admin/AdminSubscriptionsTab";
 import { CURATED_GALLERY, type GalleryItem } from "@/data/ashrama-curated-gallery";
 import type { TodayMealStatusItem } from "@/lib/site-content";
 
-type Tab = "analytics" | "crm" | "marketing" | "celebrations" | "content" | "media" | "catalogs" | "documents" | "community" | "team";
+type Tab = "analytics" | "crm" | "subscriptions" | "marketing" | "celebrations" | "content" | "media" | "catalogs" | "documents" | "community" | "team";
 
 interface AdminDashboardProps {
   initialSession: {
@@ -1629,6 +1630,7 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
         {[
           { id: "analytics", label: "📊 Analytics & KPIs" },
           { id: "crm", label: "💳 Donor CRM & FinTech" },
+          { id: "subscriptions", label: "🔁 Recurring Auto-Pay & MRR" },
           { id: "marketing", label: "📢 Marketing & Campaigns" },
           { id: "celebrations", label: "🎂 Celebrations & Wishes" },
           { id: "content", label: "📝 Website Content CMS" },
@@ -2341,6 +2343,11 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
             </div>
           )}
         </div>
+      )}
+
+      {/* ==================== RECURRING AUTO-PAY & MRR TAB ==================== */}
+      {activeTab === "subscriptions" && (
+        <AdminSubscriptionsTab />
       )}
 
       {/* ==================== MARKETING & CAMPAIGNS HUB TAB ==================== */}

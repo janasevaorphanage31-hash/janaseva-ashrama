@@ -1,7 +1,7 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 import { and, eq, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { analyticsEvents, donations, impactGifts } from "@/db/schema";
+import { analyticsEvents, donations, impactGifts, recurringSubscriptions } from "@/db/schema";
 
 const API = "https://api.razorpay.com/v1";
 
@@ -19,6 +19,16 @@ export function safeEqualHex(a: string, b: string) {
 
 export function checkoutSignatureValid(orderId: string, paymentId: string, signature: string) {
   const expected = createHmac("sha256", secret()).update(`${orderId}|${paymentId}`).digest("hex");
+  return safeEqualHex(expected, signature);
+}
+
+/**
+ * Validates the Razorpay Subscriptions authorization signature.
+ * In Razorpay Subscriptions, the checkout callback returns:
+ * HMAC_SHA256(razorpay_payment_id + "|" + razorpay_subscription_id, secret)
+ */
+export function subscriptionSignatureValid(paymentId: string, subscriptionId: string, signature: string) {
+  const expected = createHmac("sha256", secret()).update(`${paymentId}|${subscriptionId}`).digest("hex");
   return safeEqualHex(expected, signature);
 }
 
@@ -51,6 +61,66 @@ export const captureRazorpayPayment = (id: string, amountPaise: number) =>
   rz<RzPayment>(`/payments/${encodeURIComponent(id)}/capture`, {
     method: "POST",
     body: JSON.stringify({ amount: amountPaise, currency: "INR" }),
+  });
+
+/**
+ * Creates or registers a recurring monthly plan on Razorpay.
+ */
+export const createRazorpayPlan = (amountInr: number, name?: string) =>
+  rz<{ id: string; period: string; interval: number }>("/plans", {
+    method: "POST",
+    body: JSON.stringify({
+      period: "monthly",
+      interval: 1,
+      item: {
+        name: name || `Janaseva Ashrama Monthly Support (₹${amountInr})`,
+        amount: amountInr * 100,
+        currency: "INR",
+        description: "Monthly sponsorship for 25 boys residing at Janaseva Ashrama",
+      },
+    }),
+  });
+
+export type RzSubscription = {
+  id: string;
+  plan_id: string;
+  status: string;
+  current_count: number;
+  total_count: number;
+  charge_at?: number;
+  start_at?: number;
+  end_at?: number;
+};
+
+/**
+ * Creates a monthly recurring subscription mandate on Razorpay.
+ */
+export const createRazorpaySubscription = (params: {
+  planId: string;
+  totalCount?: number;
+  customerNotify?: number;
+  notes?: Record<string, string>;
+  startAt?: number;
+}) =>
+  rz<RzSubscription>("/subscriptions", {
+    method: "POST",
+    body: JSON.stringify({
+      plan_id: params.planId,
+      total_count: params.totalCount || 60, // 5 years monthly default
+      quantity: 1,
+      customer_notify: params.customerNotify ?? 1,
+      notes: params.notes || {},
+      ...(params.startAt ? { start_at: params.startAt } : {}),
+    }),
+  });
+
+export const fetchRazorpaySubscription = (id: string) =>
+  rz<RzSubscription>(`/subscriptions/${encodeURIComponent(id)}`);
+
+export const cancelRazorpaySubscription = (id: string, cancelAtCycleEnd = false) =>
+  rz<RzSubscription>(`/subscriptions/${encodeURIComponent(id)}/cancel`, {
+    method: "POST",
+    body: JSON.stringify({ cancel_at_cycle_end: cancelAtCycleEnd ? 1 : 0 }),
   });
 
 function financialYear(d = new Date()) {
@@ -100,3 +170,115 @@ export async function markDemoPaid(donationId: number): Promise<boolean> {
     .returning({ id: donations.id });
   return rows.length > 0;
 }
+
+/**
+ * Idempotently records a recurring charge into the donations table.
+ * Each monthly debit creates an individual 80G tax receipt for the donor.
+ */
+export async function recordSubscriptionCharge(params: {
+  subscriptionDbId: number;
+  paymentId: string;
+  amountPaise?: number;
+  currentCycle?: number;
+  nextChargeAt?: Date | null;
+}) {
+  const { subscriptionDbId, paymentId, amountPaise, currentCycle, nextChargeAt } = params;
+
+  // 1. Idempotency check: see if this payment ID was already recorded
+  const [existingDonation] = await db
+    .select()
+    .from(donations)
+    .where(eq(donations.razorpayPaymentId, paymentId))
+    .limit(1);
+
+  if (existingDonation) {
+    return { donation: existingDonation, alreadyRecorded: true };
+  }
+
+  // 2. Fetch subscription
+  const [sub] = await db
+    .select()
+    .from(recurringSubscriptions)
+    .where(eq(recurringSubscriptions.id, subscriptionDbId))
+    .limit(1);
+
+  if (!sub) {
+    throw new Error(`Subscription with DB ID ${subscriptionDbId} not found`);
+  }
+
+  const cycle = currentCycle || (sub.chargeCount + 1);
+  const chargedAmountInr = amountPaise ? Math.round(amountPaise / 100) : sub.amount;
+  const chargeIdempotencyKey = `sub_charge_${paymentId}`;
+
+  // 3. Atomically record donation and update subscription counters
+  const result = await db.transaction(async (tx) => {
+    const [insertedDonation] = await tx
+      .insert(donations)
+      .values({
+        publicId: "rec_" + randomUUID().replace(/-/g, "").slice(0, 20),
+        status: "paid",
+        mode: sub.mode,
+        amount: chargedAmountInr,
+        donorName: sub.donorName,
+        donorEmail: sub.donorEmail,
+        donorPhone: sub.donorPhone,
+        anonymous: false,
+        subscriptionId: sub.id,
+        recurringCycle: cycle,
+        razorpayPaymentId: paymentId,
+        idempotencyKey: chargeIdempotencyKey,
+        paidAt: new Date(),
+        meta: {
+          recurring: true,
+          frequency: sub.frequency,
+          cycleNumber: cycle,
+          donorPan: sub.donorPan,
+          subscriptionPublicId: sub.publicId,
+        },
+      })
+      .returning();
+
+    // Assign standard 80G receipt number: JSA/YY-YY/000xxx
+    const [finalDonation] = await tx
+      .update(donations)
+      .set({
+        receiptNo: sql`${"JSA/" + financialYear() + "/"} || lpad(${insertedDonation.id}::text, 6, '0')`,
+      })
+      .where(eq(donations.id, insertedDonation.id))
+      .returning();
+
+    // Update subscription
+    await tx
+      .update(recurringSubscriptions)
+      .set({
+        status: "active",
+        mandateStatus: "active",
+        chargeCount: sql`${recurringSubscriptions.chargeCount} + 1`,
+        currentCycle: cycle,
+        lastPaymentId: paymentId,
+        lastPaymentAt: new Date(),
+        ...(nextChargeAt ? { nextChargeAt } : {}),
+        updatedAt: new Date(),
+      })
+      .where(eq(recurringSubscriptions.id, sub.id));
+
+    await tx
+      .insert(analyticsEvents)
+      .values({
+        event: "subscription_charged",
+        sessionId: "server",
+        meta: {
+          subscriptionId: sub.id,
+          donationId: finalDonation.id,
+          cycle,
+          amount: chargedAmountInr,
+        },
+      })
+      .catch(() => {});
+
+    return finalDonation;
+  });
+
+  return { donation: result, alreadyRecorded: false };
+}
+

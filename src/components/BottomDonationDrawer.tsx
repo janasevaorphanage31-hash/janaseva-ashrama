@@ -53,6 +53,7 @@ export function BottomDonationDrawer() {
 
   const [selectedAmount, setSelectedAmount] = useState<number>(101);
   const [customInput, setCustomInput] = useState<string>("");
+  const [frequency, setFrequency] = useState<"onetime" | "monthly">("onetime");
   const [activeTab, setActiveTab] = useState<"quick" | "tiers" | "bank">("quick");
   const [selectedTierOption, setSelectedTierOption] = useState<{ categoryId: string; optionId: string }>({
     categoryId: "food_one_day",
@@ -118,8 +119,8 @@ export function BottomDonationDrawer() {
   const handleProceedOnline = () => {
     setCustom(currentAmount);
     closeBottomDonate();
-    track("bottom_donate_proceed_online", { amount: currentAmount });
-    router.push(`/checkout?amount=${currentAmount}`);
+    track("bottom_donate_proceed_online", { amount: currentAmount, frequency });
+    router.push(`/checkout?amount=${currentAmount}${frequency === "monthly" ? "&freq=monthly" : ""}`);
   };
 
   const handleCopy = (text: string, field: string) => {
@@ -218,6 +219,73 @@ export function BottomDonationDrawer() {
 
         {/* Scrollable Content Body */}
         <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-5 bg-sand/20">
+
+          {/* Donation Frequency Selector: One-Time vs Monthly Auto-Pay */}
+          <div className="rounded-2xl bg-white p-1.5 border border-teal-900/15 flex gap-1.5 shadow-xs">
+            <button
+              type="button"
+              onClick={() => setFrequency("onetime")}
+              className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                frequency === "onetime"
+                  ? "bg-teal-900 text-white shadow-xs"
+                  : "text-teal-950/70 hover:bg-cream"
+              }`}
+            >
+              <span>⚡ One-Time</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setFrequency("monthly");
+                if (![100, 300, 500, 1000].includes(currentAmount)) {
+                  setSelectedAmount(500);
+                  setCustomInput("500");
+                }
+              }}
+              className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer relative ${
+                frequency === "monthly"
+                  ? "bg-gradient-to-r from-saffron to-amber-500 text-white shadow-xs"
+                  : "text-teal-950/70 hover:bg-cream"
+              }`}
+            >
+              <span>🔁 Monthly Auto-Pay</span>
+              <span className="rounded bg-white/25 px-1 py-0.2 text-[8px] font-black uppercase tracking-wider ml-1">
+                Continuous
+              </span>
+            </button>
+          </div>
+
+          {frequency === "monthly" && (
+            <div className="rounded-2xl bg-amber-50 border border-amber-200 p-3.5 space-y-2.5 animate-in fade-in text-xs">
+              <div className="flex items-center justify-between text-amber-950">
+                <span className="font-bold">Monthly Recurring Presets:</span>
+                <span className="font-display font-black text-sm">{formatINR(currentAmount)} / month</span>
+              </div>
+              <div className="grid grid-cols-4 gap-2">
+                {[100, 300, 500, 1000].map((amt) => (
+                  <button
+                    key={amt}
+                    type="button"
+                    onClick={() => {
+                      setSelectedAmount(amt);
+                      setCustomInput(String(amt));
+                    }}
+                    className={`py-2 px-1 rounded-xl text-center font-bold transition border cursor-pointer ${
+                      currentAmount === amt
+                        ? "bg-saffron text-white border-saffron shadow-xs"
+                        : "bg-white text-teal-950 border-amber-200 hover:bg-amber-100/50"
+                    }`}
+                  >
+                    ₹{amt}/mo
+                  </button>
+                ))}
+              </div>
+              <p className="text-[11px] text-amber-900/80 leading-tight">
+                Mandate debited monthly via UPI AutoPay or Cards. 80G tax receipt on every debit. Cancel anytime.
+              </p>
+            </div>
+          )}
+
           {/* TAB 1: QUICK IMPACT */}
           {activeTab === "quick" && (
             <div className="space-y-4">
@@ -509,7 +577,7 @@ export function BottomDonationDrawer() {
               onClick={handleProceedOnline}
               className="flex-2 sm:flex-none btn-primary px-6 py-3 text-xs sm:text-sm font-extrabold uppercase tracking-wider cursor-pointer shadow-lg animate-heartbeat"
             >
-              DONATE ONLINE (UPI / CARDS) →
+              {frequency === "monthly" ? "SET UP MONTHLY AUTO-PAY →" : "DONATE ONLINE (UPI / CARDS) →"}
             </button>
           </div>
         </div>

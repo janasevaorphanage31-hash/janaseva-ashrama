@@ -270,6 +270,8 @@ export function CheckoutClient() {
 
   const [form, setForm] = useState({ name: "", email: "", phone: "", pan: "", anonymous: false });
   const [showPanField, setShowPanField] = useState(false);
+  const [frequency, setFrequency] = useState<"onetime" | "monthly">("onetime");
+  const [mandateConsent, setMandateConsent] = useState(true);
   const [dedicationEnabled, setDedicationEnabled] = useState(false);
   const [dedication, setDedication] = useState({ occasion: "Birthday", name: "", message: "" });
   const [deliveryPreference, setDeliveryPreference] = useState<"email" | "whatsapp" | "both">("both");
@@ -310,8 +312,13 @@ export function CheckoutClient() {
     setValidationModalOpen(false);
   };
 
-  // Check URL params for pre-set amount and occasion
+  // Check URL params for pre-set amount, frequency and occasion
   useEffect(() => {
+    const freqParam = search.get("freq");
+    if (freqParam === "monthly") {
+      setFrequency("monthly");
+    }
+
     const amtParam = search.get("amount");
     if (amtParam) {
       const parsed = Number(amtParam);
@@ -439,6 +446,95 @@ export function CheckoutClient() {
       setError(consentMsg);
       setValidationModalMessage(consentMsg);
       setValidationModalOpen(true);
+      return;
+    }
+
+    // ── Monthly Recurring Subscription Checkout Flow ──
+    if (frequency === "monthly") {
+      if (!mandateConsent) {
+        const consentMsg = "Please confirm the monthly mandate authorization to proceed with auto-pay.";
+        setError(consentMsg);
+        setValidationModalMessage(consentMsg);
+        setValidationModalOpen(true);
+        return;
+      }
+
+      setBusy(true);
+      track("subscription_checkout_submit", { total: cart.total });
+
+      const monthlyKey = "sub_" + crypto.randomUUID() + "-" + Date.now().toString(36);
+
+      try {
+        const res = await fetch("/api/subscriptions/create", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            donor: form,
+            amount: cart.total,
+            idempotencyKey: monthlyKey,
+          }),
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Subscription creation failed.");
+
+        if (data.mode === "demo") {
+          setDemoNote(true);
+          return finish(data.publicId);
+        }
+
+        const ok = await loadRazorpay();
+        if (!ok || !window.Razorpay) {
+          throw new Error("Could not load the secure payment gateway. Check your connection.");
+        }
+
+        const rz = new window.Razorpay({
+          key: data.keyId,
+          subscription_id: data.subscriptionId,
+          name: "Janaseva Ashrama",
+          description: `Monthly Auto-Pay: ₹${data.amount}/month`,
+          prefill: { name: form.name, email: form.email, contact: form.phone },
+          theme: { color: "#06312f" },
+          modal: {
+            ondismiss: () => {
+              setBusy(false);
+            },
+          },
+          handler: async (r: {
+            razorpay_payment_id: string;
+            razorpay_subscription_id: string;
+            razorpay_signature: string;
+          }) => {
+            try {
+              const v = await fetch("/api/subscriptions/verify", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ publicId: data.publicId, ...r }),
+              });
+              const vd = await v.json();
+              if (!v.ok) throw new Error(vd.error || "Verification failed.");
+              finish(vd.donationPublicId || data.publicId);
+            } catch (err) {
+              track("subscription_verify_failed", { error: (err as Error).message });
+              setError((err as Error).message);
+              setPaymentFailed(true);
+              setBusy(false);
+            }
+          },
+        });
+
+        rz.on("payment.failed", () => {
+          track("subscription_failed", { stage: "gateway" });
+          setError("Your recurring mandate authorization was not completed. No amount has been deducted.");
+          setPaymentFailed(true);
+          setBusy(false);
+        });
+
+        rz.open();
+      } catch (err) {
+        setError((err as Error).message);
+        setBusy(false);
+      }
       return;
     }
 
@@ -826,6 +922,132 @@ export function CheckoutClient() {
   return (
     <form onSubmit={submit} className="mx-auto grid max-w-5xl gap-6 px-4 sm:px-6 py-6 pb-28 lg:pb-8 lg:grid-cols-[1fr_390px]" noValidate>
       <div className="space-y-6">
+
+        {/* ── FREQUENCY SELECTOR: ONE-TIME | MONTHLY AUTO-PAY ── */}
+        <div className="rounded-3xl bg-white p-2 sm:p-2.5 shadow-md ring-1 ring-teal-900/10">
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setFrequency("onetime")}
+              className={`py-3 px-3 sm:px-4 rounded-2xl font-bold text-xs sm:text-sm transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                frequency === "onetime"
+                  ? "bg-teal-900 text-white shadow-sm ring-1 ring-teal-950"
+                  : "text-teal-900/70 hover:bg-cream"
+              }`}
+            >
+              <span className="text-sm">⚡</span>
+              <span>ONE-TIME</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setFrequency("monthly");
+                if (![100, 300, 500, 1000].includes(cart.total)) {
+                  cart.clear();
+                  cart.setCustom(500);
+                }
+              }}
+              className={`py-3 px-3 sm:px-4 rounded-2xl font-bold text-xs sm:text-sm transition flex items-center justify-center gap-1.5 cursor-pointer relative ${
+                frequency === "monthly"
+                  ? "bg-gradient-to-r from-saffron to-amber-500 text-white shadow-md ring-2 ring-saffron/50"
+                  : "text-teal-900/70 hover:bg-cream"
+              }`}
+            >
+              <span className="text-sm">🔁</span>
+              <span>MONTHLY AUTO-PAY</span>
+              <span className="hidden sm:inline-block rounded-md bg-white/25 px-1.5 py-0.2 text-[9px] uppercase font-black tracking-wide ml-1">
+                Continuous Care
+              </span>
+            </button>
+          </div>
+
+          {frequency === "monthly" && (
+            <div className="mt-3 p-3.5 sm:p-4 rounded-2xl bg-amber-50 border border-amber-200 animate-in fade-in space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+                <div>
+                  <span className="text-xs font-black uppercase tracking-wider text-amber-950">
+                    Recurring Monthly Support:
+                  </span>
+                  <p className="text-[11px] text-amber-900/80">
+                    Billed automatically every month via UPI AutoPay, Cards, or NetBanking. Cancel anytime.
+                  </p>
+                </div>
+                <span className="font-display text-lg font-black text-amber-950">
+                  {formatINR(cart.total)} / month
+                </span>
+              </div>
+
+              {/* Monthly Amount Presets: ₹100 / ₹300 / ₹500 / ₹1,000 / Custom */}
+              <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 pt-1">
+                {[
+                  { amt: 100, label: "₹100/mo", desc: "Daily Milk" },
+                  { amt: 300, label: "₹300/mo", desc: "Breakfasts" },
+                  { amt: 500, label: "₹500/mo", desc: "Full Meals", isPopular: true },
+                  { amt: 1000, label: "₹1,000/mo", desc: "Vidya Kit" },
+                ].map((tier) => {
+                  const isMatch = cart.custom === tier.amt && cart.lines.length === 0;
+                  return (
+                    <button
+                      key={tier.amt}
+                      type="button"
+                      onClick={() => {
+                        cart.clear();
+                        cart.setCustom(tier.amt);
+                      }}
+                      className={`p-2 rounded-xl text-center transition cursor-pointer relative border ${
+                        isMatch
+                          ? "bg-saffron text-white font-extrabold border-saffron shadow-sm"
+                          : "bg-white text-teal-950 border-amber-200/80 hover:bg-amber-100/50"
+                      }`}
+                    >
+                      {tier.isPopular && !isMatch && (
+                        <span className="absolute -top-1.5 right-1 rounded-full bg-emerald-700 px-1 py-0.2 text-[7px] font-black uppercase text-white shadow-xs">
+                          Popular
+                        </span>
+                      )}
+                      <span className="block text-xs font-bold">{tier.label}</span>
+                      <span className="block text-[9px] opacity-80 mt-0.5 truncate">{tier.desc}</span>
+                    </button>
+                  );
+                })}
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const customVal = prompt("Enter custom monthly amount in ₹ (min ₹50):", String(cart.total || 500));
+                    const num = Number(customVal);
+                    if (num && num >= 50 && num <= 100000) {
+                      cart.clear();
+                      cart.setCustom(num);
+                    }
+                  }}
+                  className={`p-2 rounded-xl text-center transition cursor-pointer border col-span-4 sm:col-span-1 ${
+                    ![100, 300, 500, 1000].includes(cart.total) && cart.custom > 0
+                      ? "bg-saffron text-white font-extrabold border-saffron"
+                      : "bg-white text-teal-950 border-amber-200/80 hover:bg-amber-100/50"
+                  }`}
+                >
+                  <span className="block text-xs font-bold">Custom</span>
+                  <span className="block text-[9px] opacity-80 mt-0.5">Your Choice</span>
+                </button>
+              </div>
+
+              {/* Explicit Mandate Consent */}
+              <label className="flex items-start gap-2.5 pt-2 border-t border-amber-200/70 text-xs text-amber-950 font-medium cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={mandateConsent}
+                  onChange={(e) => setMandateConsent(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded accent-saffron"
+                />
+                <span>
+                  <strong>Explicit Auto-Pay Consent:</strong> I authorize Janaseva Ashrama to debit{" "}
+                  <strong>{formatINR(cart.total)}</strong> monthly for child care, meals and education. I understand this recurring mandate can be paused or cancelled at any time with 1-click in the donor dashboard.
+                </span>
+              </label>
+            </div>
+          )}
+        </div>
 
         {/* ── TOP URGENT GOAL & 1-TAP AMOUNT SELECTOR (FAST MOBILE GIVING) ── */}
         <div className="rounded-3xl bg-gradient-to-r from-teal-950 via-teal-900 to-teal-950 p-4 sm:p-5 text-white shadow-lg border border-amber-400/30">
@@ -1559,7 +1781,13 @@ export function CheckoutClient() {
           type="submit"
           className="focus-ring w-full rounded-2xl bg-saffron px-6 py-4 text-sm font-bold tracking-wide text-white shadow-lg transition hover:bg-saffron-dark disabled:opacity-60 active:scale-95 cursor-pointer"
         >
-          {busy ? "Processing Secure Payment…" : `GIVE ${formatINR(cart.total)} SECURELY`}
+          {busy
+            ? frequency === "monthly"
+              ? "Setting up Auto-Pay Mandate…"
+              : "Processing Secure Payment…"
+            : frequency === "monthly"
+            ? `SET UP MONTHLY AUTO-PAY (${formatINR(cart.total)}/MO) 🔁`
+            : `GIVE ${formatINR(cart.total)} SECURELY`}
         </button>
 
         {/* Trust & Psychological Reassurances */}
@@ -1597,9 +1825,18 @@ export function CheckoutClient() {
               <span className="animate-beacon absolute inline-flex h-full w-full rounded-full bg-white opacity-85"></span>
               <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-200"></span>
             </span>
-            <span>{busy ? "Connecting to UPI…" : "GIVE VIA UPI / GPAY / CARDS ⚡"}</span>
+            <span>
+              {busy
+                ? "Connecting Gateway…"
+                : frequency === "monthly"
+                ? "SET UP MONTHLY AUTO-PAY 🔁"
+                : "GIVE VIA UPI / GPAY / CARDS ⚡"}
+            </span>
           </span>
-          <span className="font-mono text-base font-black">{formatINR(cart.total)}</span>
+          <span className="font-mono text-base font-black">
+            {formatINR(cart.total)}
+            {frequency === "monthly" ? "/mo" : ""}
+          </span>
         </button>
       </div>
 

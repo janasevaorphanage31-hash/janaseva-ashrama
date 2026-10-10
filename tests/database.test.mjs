@@ -37,6 +37,7 @@ test("Database Schema Integrity", async (t) => {
       "creator_profiles",
       "ngo_partners",
       "recurring_giving_requests",
+      "recurring_subscriptions",
       "today_updates",
       "documents",
       "impact_metrics",
