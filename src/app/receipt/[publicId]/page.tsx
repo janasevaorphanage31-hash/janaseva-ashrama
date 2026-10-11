@@ -63,8 +63,8 @@ export default async function ReceiptPage({ params }: { params: Promise<{ public
         </div>
       )}
       {demo && (
-        <div className="mb-5 rounded-2xl border-2 border-saffron bg-saffron/10 p-4 text-sm font-semibold text-saffron-dark">
-          DEMO RECEIPT - the payment gateway is not connected yet, so no money was taken and this is not a valid donation receipt.
+        <div className="mb-5 rounded-2xl border border-amber-500/30 bg-amber-50/70 p-4 text-xs font-semibold text-amber-900">
+          Preview Receipt — this is an unverified record. Official 80G tax receipts are issued for live verified contributions.
         </div>
       )}
       {pending && (

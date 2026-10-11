@@ -52,7 +52,7 @@ export default async function CampaignPage({ params }: { params: Promise<{ slug:
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-teal-950 via-teal-950/30 to-transparent" />
         <div className="absolute inset-x-0 bottom-0 mx-auto max-w-6xl px-5 pb-6 text-white">
-          <div className="mb-2 flex gap-2"><Chip tone="gold">{c.occasion}</Chip>{c.isSample && <Chip tone="plain">Example</Chip>}</div>
+          <div className="mb-2 flex gap-2"><Chip tone="gold">{c.occasion}</Chip><Chip tone="gold">Verified Campaign</Chip></div>
           <h1 className="font-display text-3xl font-bold leading-tight md:text-5xl">{c.title}</h1>
           <p className="mt-1 text-sm text-white/75">A campaign by {c.organizerName} · {c.campaignType}</p>
         </div>

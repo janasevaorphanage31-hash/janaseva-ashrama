@@ -439,7 +439,6 @@ export function CheckoutClient() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [paymentFailed, setPaymentFailed] = useState(false);
-  const [demoNote, setDemoNote] = useState(false);
   const [validationModalOpen, setValidationModalOpen] = useState(false);
   const [validationModalMessage, setValidationModalMessage] = useState("");
   const [mandateFallbackUrl, setMandateFallbackUrl] = useState("");
@@ -460,20 +459,6 @@ export function CheckoutClient() {
       setCopiedBankField(field);
       setTimeout(() => setCopiedBankField(null), 2500);
     }
-  };
-
-  // 1-Click Demo / Test Donor Auto-Fill Helper ("unlock all testing checks fields")
-  const handleAutoFillTestDonor = () => {
-    setForm({
-      name: "Ramesh Kumar",
-      email: "donor@janasevaashrama.org",
-      phone: "9980359595",
-      pan: "ABCDE1234F",
-      anonymous: false,
-    });
-    setUpdateConsent(true);
-    setError("");
-    setValidationModalOpen(false);
   };
 
   // Check URL params for pre-set amount, frequency and occasion
@@ -666,7 +651,6 @@ export function CheckoutClient() {
         }
 
         if (data.mode === "demo") {
-          setDemoNote(true);
           return finish(data.publicId);
         }
 
@@ -782,7 +766,6 @@ export function CheckoutClient() {
       if (data.status) return finish(data.publicId); // already processed
 
       if (data.mode === "demo") {
-        setDemoNote(true);
         await fetch("/api/donations/demo-complete", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -1489,15 +1472,6 @@ export function CheckoutClient() {
                 Official 80G tax receipt PDF and personal WhatsApp video will be generated instantly.
               </p>
             </div>
-
-            {/* 1-Click Test / Demo Donor Auto-Fill Helper */}
-            <button
-              type="button"
-              onClick={handleAutoFillTestDonor}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-amber-500/15 border border-amber-500/30 px-3 py-1.5 text-xs font-bold text-amber-900 hover:bg-amber-500/25 transition cursor-pointer self-start sm:self-auto"
-            >
-              <span>⚡ 1-Tap Fill Demo Donor</span>
-            </button>
           </div>
 
           <div className="mt-5 space-y-4">
@@ -1902,14 +1876,6 @@ export function CheckoutClient() {
                       <span>Authorize on Razorpay Portal ↗</span>
                     </a>
                   )}
-                  <button
-                    type="button"
-                    onClick={handleAutoFillTestDonor}
-                    className="rounded-xl bg-amber-600 px-3 py-1.5 text-xs font-bold text-white shadow hover:bg-amber-700 cursor-pointer"
-                  >
-
-                    ⚡ Auto-Fill Demo Details
-                  </button>
                   <a
                     href="tel:9980359595"
                     className="text-xs font-bold text-red-900 underline ml-2"
@@ -2025,12 +1991,6 @@ export function CheckoutClient() {
             ✓ Form 10AC Provisional 80G Approval (AY 2024-25 to 2026-27)
           </p>
         </div>
-
-        {demoNote && (
-          <p className="text-xs font-semibold text-saffron-dark text-center">
-            Demo environment: Simulated payment verification.
-          </p>
-        )}
       </aside>
 
       {/* Mobile Sticky Payment Bar */}

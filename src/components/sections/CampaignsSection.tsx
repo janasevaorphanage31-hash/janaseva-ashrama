@@ -114,11 +114,9 @@ export function CampaignCard({ c }: { c: CampaignCardData }) {
               <span className="absolute left-3 top-3">
                 <Chip tone="plain">{c.occasion}</Chip>
               </span>
-              {c.isSample && (
-                <span className="absolute right-3 top-3">
-                  <Chip tone="gold">Verified Campaign</Chip>
-                </span>
-              )}
+              <span className="absolute right-3 top-3">
+                <Chip tone="gold">Verified Campaign</Chip>
+              </span>
               {c.videoUrl && (
                 <button
                   type="button"

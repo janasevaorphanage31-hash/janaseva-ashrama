@@ -46,13 +46,13 @@ export function ensureSeed(): Promise<void> {
       if (t === 0) {
         await db
           .insert(todayUpdates)
-          .values(TODAY_SEED.map((u) => ({ ...u, isSample: true })));
+          .values(TODAY_SEED.map((u) => ({ ...u, isSample: false })));
       }
       const [{ c }] = await db.select({ c: count() }).from(campaigns);
       if (c === 0) {
         await db
           .insert(campaigns)
-          .values({ ...CAMPAIGN_SEED, status: "approved", isSample: true })
+          .values({ ...CAMPAIGN_SEED, status: "approved", isSample: false })
           .onConflictDoNothing();
       }
       const [{ d }] = await db.select({ d: count() }).from(documents);
@@ -176,7 +176,7 @@ export const getTodayUpdates = () =>
       const rows = await db
         .select()
         .from(todayUpdates)
-        .where(sql`lower(${todayUpdates.status}) = 'published'`)
+        .where(and(sql`lower(${todayUpdates.status}) = 'published'`, eq(todayUpdates.isSample, false)))
         .orderBy(desc(todayUpdates.publishedAt))
         .limit(12);
 
@@ -188,7 +188,7 @@ export const getTodayUpdates = () =>
         body: u.body,
         category: u.category,
         imageUrl: u.imageUrl,
-        isSample: true,
+        isSample: false,
         status: "published",
         publishedAt: new Date(),
       }));
@@ -199,7 +199,7 @@ export const getTodayUpdates = () =>
       body: u.body,
       category: u.category,
       imageUrl: u.imageUrl,
-      isSample: true,
+      isSample: false,
       status: "published",
       publishedAt: new Date(),
     })),
@@ -243,7 +243,7 @@ export const getApprovedCampaigns = () =>
     const rows = await db
       .select()
       .from(campaigns)
-      .where(and(eq(campaigns.status, "approved"), sql`(${campaigns.endDate} is null or ${campaigns.endDate} >= now())`))
+      .where(and(eq(campaigns.status, "approved"), eq(campaigns.isSample, false), sql`(${campaigns.endDate} is null or ${campaigns.endDate} >= now())`))
       .orderBy(desc(campaigns.createdAt))
       .limit(24);
     return Promise.all(rows.map(async (c) => ({ ...c, ...(await campaignStats(c.id)) })));
@@ -251,7 +251,7 @@ export const getApprovedCampaigns = () =>
 
 export const getCampaign = (slug: string) =>
   safe(async () => {
-    const [c] = await db.select().from(campaigns).where(and(eq(campaigns.slug, slug), eq(campaigns.status, "approved"), sql`(${campaigns.endDate} is null or ${campaigns.endDate} >= now())`)).limit(1);
+    const [c] = await db.select().from(campaigns).where(and(eq(campaigns.slug, slug), eq(campaigns.status, "approved"), eq(campaigns.isSample, false), sql`(${campaigns.endDate} is null or ${campaigns.endDate} >= now())`)).limit(1);
     if (!c) return null;
     return { ...c, ...(await campaignStats(c.id)) };
   }, null);

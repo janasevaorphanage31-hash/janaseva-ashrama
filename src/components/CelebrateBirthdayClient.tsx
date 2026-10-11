@@ -1036,7 +1036,7 @@ export function CelebrateBirthdayClient({
           <div className="rounded-3xl bg-amber-50/60 p-6 border border-amber-500/20 shadow-sm">
             <div className="flex items-center gap-2 text-xs font-bold text-teal-900 mb-3">
               <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span>Sample Social Media Post:</span>
+              <span>Suggested Social Media Post:</span>
             </div>
             <div className="rounded-2xl bg-white p-5 shadow-sm border border-amber-500/15 text-xs sm:text-sm text-teal-950 space-y-3 font-sans">
               <p className="font-bold text-teal-950">

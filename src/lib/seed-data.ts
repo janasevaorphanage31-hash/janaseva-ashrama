@@ -563,15 +563,15 @@ export const TODAY_SEED = [
 ];
 
 export const CAMPAIGN_SEED = {
-  slug: "example-birthday-100-meal-challenge",
-  title: "My Birthday - 100 Meal Challenge",
-  occasion: "Birthday",
-  campaignType: "Individual",
+  slug: "deepavali-annadana-vidya-drive",
+  title: "Festive Annadana & Vidya Drive 2026",
+  occasion: "Festival",
+  campaignType: "Community",
   story:
-    "This is an example campaign page showing how Create an Impact will look. Instead of gifts, a supporter asks friends to chip in toward 100 meals at Janaseva Ashrama. Create your own to get a shareable link and QR code.",
-  coverImage: "/media/janaseva-ashrama-original.jpg",
-  organizerName: "Example supporter",
-  goalAmount: 10000,
+    "Join Bangalore well-wishers and volunteers in providing nutritious warm festive meals, fresh fruits, sweets, school uniforms, and learning kits for all 25 resident boys at Janaseva Ashrama. Every contribution directly nourishes a child with 100% transparency and instant Form 10AC Section 80G tax benefits.",
+  coverImage: "/media/banana-leaf-feast.jpg",
+  organizerName: "Janaseva Friends & Well-Wishers",
+  goalAmount: 25000,
 };
 
 export const DOCS_SEED = [

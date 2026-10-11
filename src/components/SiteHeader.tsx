@@ -310,12 +310,20 @@ export function SiteHeader() {
             </div>
           </nav>
 
-          {/* Right Action: Cart & Impact CTA */}
-          <div className="flex items-center gap-2.5 shrink-0">
+          {/* Right Action: Volunteer, Cart & Impact CTA */}
+          <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+            <Link
+              href="/#volunteer"
+              className="focus-ring tap-scale inline-flex items-center gap-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 px-2.5 sm:px-3 py-2 text-xs font-bold text-emerald-300 hover:text-white transition shadow-xs"
+            >
+              <span>🤝</span>
+              <span className="hidden xs:inline">Volunteer</span>
+            </Link>
+
             <Link
               href="/impact"
               onClick={() => track("cta_make_impact", { where: "header" })}
-              className="focus-ring tap-scale relative flex items-center justify-center gap-1.5 rounded-xl bg-saffron px-4 py-2.5 text-xs font-bold tracking-wide text-white shadow-md transition hover:bg-saffron-dark active:scale-95"
+              className="focus-ring tap-scale relative flex items-center justify-center gap-1.5 rounded-xl bg-saffron px-3.5 sm:px-4 py-2.5 text-xs font-bold tracking-wide text-white shadow-md transition hover:bg-saffron-dark active:scale-95"
             >
               <span>MAKE AN IMPACT</span>
               {count > 0 && (

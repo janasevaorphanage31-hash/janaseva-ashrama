@@ -59,6 +59,14 @@ const MODES: ModeItem[] = [
     description: "Sponsor cake, sweets & get a video song blessing",
   },
   {
+    id: "community",
+    label: "Volunteer",
+    icon: "🤝",
+    badge: "Join",
+    targetId: "volunteer",
+    description: "Volunteers, influencers, corporate CSR & WhatsApp network",
+  },
+  {
     id: "annadana",
     label: "Annadana",
     icon: "🛒",
@@ -73,14 +81,6 @@ const MODES: ModeItem[] = [
     badge: "Photos",
     targetId: "boys-gallery",
     description: "Documentary chapters, photos & daily prayers",
-  },
-  {
-    id: "community",
-    label: "Volunteer",
-    icon: "🤝",
-    badge: "Join",
-    targetId: "volunteer",
-    description: "Volunteers, influencers, corporate CSR & WhatsApp network",
   },
   {
     id: "trust",

@@ -20,7 +20,7 @@ export interface DeliveredWish {
   sharesCount: number;
 }
 
-const SAMPLE_DELIVERED_WISHES: DeliveredWish[] = [
+const DELIVERED_WISHES: DeliveredWish[] = [
   {
     id: "wish-1",
     celebrantName: "Little Ananya's 7th Birthday",
@@ -84,7 +84,7 @@ export function DeliveredWishesSection() {
 
         {/* Wish Video Cards Grid */}
         <div className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {SAMPLE_DELIVERED_WISHES.map((item) => (
+          {DELIVERED_WISHES.map((item) => (
             <div
               key={item.id}
               className="flex flex-col justify-between overflow-hidden rounded-3xl bg-cream/35 ring-1 ring-teal-900/10 shadow-sm transition hover:shadow-md hover:ring-teal-900/20"
