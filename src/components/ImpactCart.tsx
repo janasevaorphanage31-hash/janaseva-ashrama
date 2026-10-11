@@ -412,7 +412,7 @@ export function ImpactCart({
                             <button
                               type="button"
                               onClick={() => setQty(item.slug, 1)}
-                              className="focus-ring flex-1 xs:flex-none rounded-xl bg-saffron px-2.5 sm:px-4 py-1.5 sm:py-2 text-[10px] sm:text-xs font-bold text-white shadow-xs hover:bg-saffron-dark transition active:scale-95 text-center whitespace-nowrap"
+                              className="focus-ring tap-scale flex-1 xs:flex-none rounded-xl bg-gradient-celebrate px-3 sm:px-4 py-2 sm:py-2 text-[10px] sm:text-xs font-black text-white shadow-xs glow-saffron hover:opacity-95 transition active:scale-95 text-center whitespace-nowrap"
                             >
                               + Give
                             </button>
@@ -496,7 +496,7 @@ export function ImpactCart({
                 <button
                   type="button"
                   onClick={() => cart.openBottomDonate(custom > 0 ? custom : 101)}
-                  className="animate-heartbeat focus-ring px-3.5 py-1.5 rounded-xl bg-saffron text-white text-xs font-black uppercase tracking-wider shadow-md hover:bg-saffron-dark cursor-pointer flex items-center gap-1.5"
+                  className="animate-heartbeat focus-ring px-4 py-2 rounded-2xl bg-gradient-celebrate text-white text-xs font-black uppercase tracking-wider shadow-lg glow-saffron hover:opacity-95 cursor-pointer flex items-center gap-1.5 tap-scale"
                 >
                   <span className="relative flex h-2 w-2">
                     <span className="animate-beacon absolute inline-flex h-full w-full rounded-full bg-white opacity-80"></span>
@@ -512,9 +512,9 @@ export function ImpactCart({
                     key={amt}
                     type="button"
                     onClick={() => setCustom(amt)}
-                    className={`px-3.5 sm:px-4 py-2 rounded-2xl text-xs font-bold transition focus-ring active:scale-95 ${
+                    className={`px-3.5 sm:px-4 py-2 rounded-2xl text-xs font-bold transition focus-ring active:scale-95 cursor-pointer ${
                       custom === amt
-                        ? "bg-saffron text-white shadow-md font-extrabold"
+                        ? "bg-gradient-celebrate text-white shadow-md glow-saffron font-black scale-105"
                         : "bg-cream text-teal-900 border border-teal-900/15 hover:bg-sand"
                     }`}
                   >

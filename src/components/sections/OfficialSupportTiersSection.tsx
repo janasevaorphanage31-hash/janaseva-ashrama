@@ -288,16 +288,16 @@ export function OfficialSupportTiersSection({
               <div
                 key={cat.id}
                 id={`tier-card-${cat.id}`}
-                className={`group relative flex flex-col justify-between rounded-3xl bg-white p-4 sm:p-5 transition-all duration-200 border shadow-xs hover:shadow-md ${
+                className={`group relative flex flex-col justify-between rounded-3xl bg-white/95 backdrop-blur-md p-4 sm:p-5 transition-all duration-300 border shadow-md hover:shadow-xl hover:-translate-y-0.5 ${
                   isFlagship
-                    ? "border-amber-400 ring-2 ring-amber-400/20"
-                    : "border-teal-900/10 hover:border-teal-900/25"
+                    ? "border-2 border-amber-500 ring-2 ring-amber-400/30 bg-gradient-to-b from-white via-amber-50/20 to-orange-50/10"
+                    : "border-teal-900/10 hover:border-amber-500/40"
                 }`}
               >
                 {/* Popular Flagship Badge */}
                 {isFlagship && (
-                  <div className="absolute -top-2.5 right-4 rounded-full bg-saffron px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-white shadow-xs z-10">
-                    ★ Most Critical
+                  <div className="absolute -top-3 right-4 rounded-full bg-gradient-celebrate px-3 py-0.5 text-[10px] font-black uppercase tracking-wider text-white shadow-md glow-saffron z-10 animate-shimmer">
+                    ★ Most Critical Seva
                   </div>
                 )}
 
@@ -388,7 +388,7 @@ export function OfficialSupportTiersSection({
                     <button
                       type="button"
                       onClick={() => handleSponsorTier(cat.id)}
-                      className="focus-ring tap-scale flex-1 flex items-center justify-center gap-1.5 rounded-xl bg-saffron py-2.5 px-3 text-xs font-black uppercase tracking-wider text-white shadow-xs hover:bg-saffron-dark transition cursor-pointer"
+                      className="focus-ring tap-scale flex-1 flex items-center justify-center gap-1.5 rounded-2xl bg-gradient-celebrate py-3 px-3.5 text-xs font-black uppercase tracking-wider text-white shadow-md glow-saffron hover:opacity-95 transition cursor-pointer"
                     >
                       <span>Sponsor {formatINR(currentOption.amount)} 💝</span>
                     </button>
