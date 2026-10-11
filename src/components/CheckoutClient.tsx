@@ -227,102 +227,146 @@ const CATEGORY_TABS = [
   { id: "celebration", label: "Celebrations & Feasts", icon: "🎉" },
 ];
 
-const PRESET_CUSTOM_AMOUNTS = [11, 21, 51, 101, 251, 501, 1001, 2501, 5001];
+const PRESET_CUSTOM_AMOUNTS = [101, 251, 501, 1001, 1501, 2501, 3501, 7501, 15000];
 
 const ONETIME_PRESETS = [
-  { amt: 100, label: "₹100", title: "Milk & Fruits", desc: "Pure cow milk & fruit for 1 boy", icon: "🥛" },
-  { amt: 250, label: "₹250", title: "Vidya Kit", desc: "School bag, books & stationery", icon: "🎒" },
-  { amt: 500, label: "₹500", title: "Full Day Meals", desc: "Breakfast, lunch & dinner for boys", isPopular: true, icon: "🍲" },
-  { amt: 1000, label: "₹1,000", title: "Weekly Staples", desc: "Rice, dal & kitchen groceries", icon: "🍚" },
-  { amt: 2500, label: "₹2,500", title: "Child Sponsor", desc: "1-Month complete foster care & schooling", icon: "🌟" },
-  { amt: 5000, label: "₹5,000", title: "Ashrama Feast", desc: "Joyful sweet feast for all 25 boys", icon: "🎉" },
+  { amt: 501, label: "₹501", title: "Arogya & Meals", desc: "3 days nutritious meals & doctor care", icon: "🍲" },
+  { amt: 1501, label: "₹1,501", title: "Breakfast for 25", desc: "Hot breakfast & pure cow milk for 25 boys", icon: "🥛" },
+  { amt: 2501, label: "₹2,501", title: "Fruit Feast & Milk", desc: "Fresh fruits, evening milk & study snacks", icon: "🍎" },
+  { amt: 3501, label: "₹3,501", title: "Festive Lunch & Payasam", desc: "Special celebration feast for all 25 boys", isPopular: true, icon: "🍛" },
+  { amt: 7501, label: "₹7,501", title: "Full Day 24-Hr Seva", desc: "All 4 meals (breakfast, lunch, snacks & dinner)", icon: "🌟" },
+  { amt: 15000, label: "₹15,000", title: "Monthly Vidya Seva", desc: "Full month schooling, books & tutoring for boys", icon: "🎒" },
 ];
 
 const MONTHLY_PRESETS = [
-  { amt: 100, label: "₹100/mo", title: "Daily Cow Milk", desc: "Pure warm morning milk every day", icon: "🥛" },
-  { amt: 300, label: "₹300/mo", title: "Morning Breakfast", desc: "Fresh hot breakfasts before dawn", icon: "🍲" },
-  { amt: 500, label: "₹500/mo", title: "Full Day Meals", desc: "Daily nutritious meals", isPopular: true, icon: "🍛" },
-  { amt: 1000, label: "₹1,000/mo", title: "Education & Care", desc: "Books, uniform & tutoring", icon: "📚" },
-  { amt: 2500, label: "₹2,500/mo", title: "Full Sponsor", desc: "Complete 1-child monthly sponsorship", icon: "🌟" },
+  { amt: 301, label: "₹301/mo", title: "Daily Cow Milk", desc: "Pure warm morning milk every day", icon: "🥛" },
+  { amt: 501, label: "₹501/mo", title: "Daily Breakfasts", desc: "Fresh breakfast before dawn every day", icon: "🍲" },
+  { amt: 1001, label: "₹1,001/mo", title: "Vidya & Healthcare", desc: "Books, stationery & routine medical care", isPopular: true, icon: "📚" },
+  { amt: 2501, label: "₹2,501/mo", title: "1-Child Foster Care", desc: "Complete foster support: food, lodging & school", icon: "🌟" },
+  { amt: 5001, label: "₹5,001/mo", title: "Two Children Foster", desc: "Complete upbringing & care for 2 resident boys", icon: "🎉" },
 ];
 
 function getImpactDescription(amount: number, freq: "onetime" | "monthly"): { icon: string; title: string; text: string } {
   if (freq === "monthly") {
-    if (amount <= 150) {
+    if (amount <= 400) {
       return {
         icon: "🥛",
         title: "Daily Nutrition for a Growing Child",
-        text: `Your ₹${amount}/month ensures a young boy starts every single morning with warm, pure cow milk before morning prayers and school.`,
+        text: `Your ₹${formatINR(amount)}/month ensures a young boy starts every single morning with warm, pure cow milk before morning prayers and school.`,
       };
     }
-    if (amount <= 350) {
+    if (amount <= 800) {
       return {
         icon: "🍲",
         title: "Daily Morning Breakfasts",
-        text: `Your ₹${amount}/month feeds the boys with steaming, wholesome morning breakfasts prepared fresh before dawn in the ashrama kitchen.`,
-      };
-    }
-    if (amount <= 750) {
-      return {
-        icon: "🍛",
-        title: "Continuous Nutritious Daily Meals",
-        text: `Your ₹${amount}/month provides steady, nutritious daily meals (rice, sambar, fresh vegetables) ensuring no child at the ashrama sleeps hungry.`,
+        text: `Your ₹${formatINR(amount)}/month feeds the boys with steaming, wholesome morning breakfasts prepared fresh before dawn in the ashrama kitchen.`,
       };
     }
     if (amount <= 1500) {
       return {
         icon: "📚",
-        title: "Education, Schooling & Mentorship",
-        text: `Your ₹${amount}/month covers textbooks, notebooks, school uniforms, and dedicated evening tutoring in Math and Science for the boys.`,
+        title: "Vidya, Schooling & Mentorship",
+        text: `Your ₹${formatINR(amount)}/month covers textbooks, notebooks, school uniforms, and dedicated evening tutoring in Math and Science for the boys.`,
+      };
+    }
+    if (amount <= 3500) {
+      return {
+        icon: "🌟",
+        title: "Complete 1-Child Foster Care & Upbringing",
+        text: `Your ₹${formatINR(amount)}/month becomes a child's guardian angel, fully sponsoring their nutrition, medical checkups, lodging, clothing, and education.`,
       };
     }
     return {
-      icon: "🌟",
-      title: "Complete Foster Care & Upbringing",
-      text: `Your ₹${amount}/month becomes a child's guardian angel, fully sponsoring their nutrition, medical checkups, lodging, clothing, and bright future.`,
+      icon: "🎉",
+      title: "Comprehensive Multi-Child Ashrama Sponsorship",
+      text: `Your ₹${formatINR(amount)}/month supports multiple resident boys with total care—satvik meals, English & Kannada schooling, and a loving home.`,
     };
   }
 
-  // ONE-TIME
-  if (amount < 200) {
+  // ONE-TIME SPECIFIC OPERATIONAL AMOUNTS
+  if (amount === 501) {
+    return {
+      icon: "🩺",
+      title: "Arogya Seva · 3 Days Nutritious Care",
+      text: "Your ₹501 contribution provides 3 days of wholesome satvik meals, fresh fruits, and routine pediatric healthcare for a resident boy.",
+    };
+  }
+  if (amount === 1501) {
+    return {
+      icon: "🍲",
+      title: "Pancha Bhoota · Breakfast for All 25 Boys",
+      text: "Your ₹1,501 contribution prepares piping hot idli, sambar, chutney, and warm morning milk for all 25 boys in the Ashrama kitchen.",
+    };
+  }
+  if (amount === 2501) {
+    return {
+      icon: "🍎",
+      title: "Phala Seva · Evening Fruits, Snacks & Pure Milk",
+      text: "Your ₹2,501 contribution serves evening seasonal fruits, warm nutritious cow milk, and healthy study snacks for all 25 resident boys.",
+    };
+  }
+  if (amount === 3501) {
+    return {
+      icon: "🍛",
+      title: "Maha Prasada · Special Festive Lunch & Payasam",
+      text: "Your ₹3,501 contribution hosts a joyful celebration lunch with sweet payasam, vadai, and festive dishes for all 25 boys in honour of your special day.",
+    };
+  }
+  if (amount === 7501) {
+    return {
+      icon: "🌟",
+      title: "Sarva Seva · Full Day 24-Hour 4-Meal Annadana",
+      text: "Your ₹7,501 contribution sponsors 100% of all 4 meals—breakfast, lunch, evening tea with snacks, and dinner—for all 25 boys for an entire day.",
+    };
+  }
+  if (amount === 15000) {
+    return {
+      icon: "🎒",
+      title: "Vidya Seva · 1-Month Complete Batch Schooling",
+      text: "Your ₹15,000 contribution funds an entire month of school fees, notebooks, stationery kits, and specialized evening tutoring.",
+    };
+  }
+  if (amount === 30000) {
+    return {
+      icon: "🏛️",
+      title: "Patron Sponsorship · Comprehensive Ashrama Seva",
+      text: "Your ₹30,000 contribution covers extensive medical health camps, ashrama maintenance, and annual educational provisions for the children.",
+    };
+  }
+
+  // GENERAL RANGES FOR CUSTOM AMOUNTS
+  if (amount < 300) {
     return {
       icon: "🥛",
       title: "Bal Seva · Milk & Fresh Fruit",
-      text: `Your ₹${amount} contribution blesses a resident boy with pure warm cow milk and seasonal fruits for healthy morning vitality and smiles.`,
+      text: `Your ₹${formatINR(amount)} contribution blesses a resident boy with pure warm cow milk and seasonal fruits for morning vitality.`,
     };
   }
-  if (amount < 400) {
-    return {
-      icon: "🎒",
-      title: "Vidya Seva · School & Learning Kit",
-      text: `Your ₹${amount} contribution equips a young student with notebooks, drawing books, geometry instruments, and classroom essentials.`,
-    };
-  }
-  if (amount < 800) {
+  if (amount < 1000) {
     return {
       icon: "🍲",
-      title: "Punya Annadana · Wholesome Full Day Meals",
-      text: `Your ₹${amount} contribution serves piping hot, nutritious meals (breakfast, lunch, and dinner) to the boys at Janaseva Ashrama today.`,
+      title: "Punya Annadana · Wholesome Daily Meals",
+      text: `Your ₹${formatINR(amount)} contribution serves fresh hot meals (rice, sambar, fresh vegetables) to the boys at Janaseva Ashrama today.`,
     };
   }
-  if (amount < 2000) {
+  if (amount < 3000) {
     return {
       icon: "🍚",
       title: "Annapurna · Ashrama Kitchen Staples",
-      text: `Your ₹${amount} contribution supplies essential pantry staples (Sona Masoori rice, Toor dal, cooking oil) for the ashrama kitchen.`,
+      text: `Your ₹${formatINR(amount)} contribution supplies essential pantry staples (Sona Masoori rice, Toor dal, cooking oil) for the ashrama kitchen.`,
     };
   }
-  if (amount < 4000) {
+  if (amount < 7000) {
     return {
-      icon: "🌟",
-      title: "Guardian Sponsorship · 1 Month Foster Care",
-      text: `Your ₹${amount} contribution supports a boy's complete living expenses—daily meals, school uniform, medical care, and safe ashrama shelter.`,
+      icon: "🍛",
+      title: "Special Annadana · Festive Boys Meal",
+      text: `Your ₹${formatINR(amount)} contribution provides a wholesome special meal with sweets and nutritious sides for all 25 boys.`,
     };
   }
   return {
     icon: "🎉",
-    title: "Maha Annadana · Grand Ashrama Feast",
-    text: `Your ₹${amount} contribution hosts a special celebration feast with sweets (Payasam & Laddoo) for all 25 boys in honour of your family.`,
+    title: "Maha Seva · Grand Ashrama Contribution",
+    text: `Your generous ₹${formatINR(amount)} contribution supports comprehensive child welfare, education, healthcare, and satvik nutrition at Janaseva Ashrama.`,
   };
 }
 
@@ -448,18 +492,25 @@ export function CheckoutClient() {
         });
       }
     } else if (cart.hydrated && cart.total === 0 && cart.lines.length === 0 && cart.custom === 0) {
-      // Default to popular starter amount of ₹500 so donor is immediately ready to pay
+      // Default to popular starter amount of ₹501 so donor is immediately ready to pay
       queueMicrotask(() => {
-        cart.setCustom(500);
+        cart.setCustom(501);
       });
     }
 
     const occ = search.get("occasion");
-    if (occ) {
-      const match = OCCASION_CHOICES.find((o) => o.toLowerCase() === occ.toLowerCase());
+    const nameParam = search.get("name") || search.get("celebrant") || "";
+    const msgParam = search.get("message") || search.get("purpose") || "";
+    if (occ || nameParam || msgParam) {
+      const match = occ ? (OCCASION_CHOICES.find((o) => o.toLowerCase() === occ.toLowerCase()) || "Birthday") : "Birthday";
       queueMicrotask(() => {
         setDedicationEnabled(true);
-        if (match) setDedication((prev) => ({ ...prev, occasion: match }));
+        setDedication((prev) => ({
+          ...prev,
+          occasion: match,
+          name: nameParam || prev.name,
+          message: msgParam || prev.message,
+        }));
       });
     }
   }, [search, cart.hydrated]);
@@ -1096,9 +1147,9 @@ export function CheckoutClient() {
               type="button"
               onClick={() => {
                 setFrequency("monthly");
-                if (![100, 300, 500, 1000, 2500].includes(cart.total)) {
+                if (!MONTHLY_PRESETS.some((p) => p.amt === cart.total)) {
                   cart.clear();
-                  cart.setCustom(500);
+                  cart.setCustom(501);
                 }
                 track("frequency_switch", { freq: "monthly" });
               }}
@@ -1209,7 +1260,7 @@ export function CheckoutClient() {
                 }
               }}
               className={`p-3 sm:p-3.5 rounded-2xl text-left transition cursor-pointer relative border flex flex-col justify-between ${
-                showCustomInput || (![100, 250, 300, 500, 1000, 2500, 5000].includes(cart.total) && cart.lines.length === 0)
+                showCustomInput || (!(frequency === "monthly" ? MONTHLY_PRESETS : ONETIME_PRESETS).some((p) => p.amt === cart.total) && cart.lines.length === 0)
                   ? "bg-gradient-to-br from-teal-950 to-teal-900 text-white border-teal-950 shadow-md ring-2 ring-saffron/80"
                   : "bg-cream/60 hover:bg-cream text-teal-950 border-teal-900/10 hover:border-teal-900/25"
               }`}
@@ -1231,8 +1282,8 @@ export function CheckoutClient() {
             </button>
           </div>
 
-          {/* Custom Amount Input Field (When opened) */}
-          {(showCustomInput || (![100, 250, 300, 500, 1000, 2500, 5000].includes(cart.total) && cart.lines.length === 0)) && (
+          {/* Custom Amount Input Field (When opened or when amount is custom) */}
+          {(showCustomInput || (!(frequency === "monthly" ? MONTHLY_PRESETS : ONETIME_PRESETS).some((p) => p.amt === cart.total) && cart.lines.length === 0)) && (
             <div className="p-3.5 rounded-2xl bg-cream border border-teal-900/15 animate-in fade-in space-y-2.5">
               <div className="flex items-center justify-between">
                 <label className="text-xs font-bold text-teal-950">
@@ -1259,12 +1310,12 @@ export function CheckoutClient() {
                       cart.setCustom(num);
                     }
                   }}
-                  placeholder="e.g. 500, 1100, 5000"
+                  placeholder="e.g. 501, 1501, 3501, 7501"
                   className="w-full rounded-2xl border-2 border-teal-900/20 bg-white py-3 pl-9 pr-4 font-mono text-base font-bold text-teal-950 outline-none focus:border-teal-900"
                 />
               </div>
               <div className="flex flex-wrap gap-1.5 pt-0.5">
-                {[250, 500, 1100, 2100, 5100, 11000].map((quick) => (
+                {(frequency === "monthly" ? [301, 501, 1001, 2501, 5001] : [501, 1501, 2501, 3501, 7501, 15000]).map((quick) => (
                   <button
                     key={quick}
                     type="button"
@@ -1272,16 +1323,20 @@ export function CheckoutClient() {
                       cart.clear();
                       cart.setCustom(quick);
                       setCustomInputValue(String(quick));
-                      setShowCustomInput(true);
                     }}
-                    className="rounded-lg bg-white px-2.5 py-1 text-xs font-mono font-bold text-teal-900 border border-teal-900/15 hover:bg-sand transition"
+                    className={`rounded-xl px-2.5 py-1 text-xs font-bold transition cursor-pointer border ${
+                      cart.total === quick
+                        ? "bg-teal-900 text-white border-teal-900"
+                        : "bg-white text-teal-900/80 border-teal-900/10 hover:border-teal-900/30"
+                    }`}
                   >
-                    + ₹{quick.toLocaleString("en-IN")}
+                    ₹{quick.toLocaleString("en-IN")}
                   </button>
                 ))}
               </div>
             </div>
           )}
+
 
           {/* Dynamic Emotional Impact Description Banner */}
           <div className="rounded-2xl bg-gradient-to-r from-amber-500/10 via-gold/15 to-teal-500/10 p-3.5 sm:p-4 border border-amber-500/25 flex items-start gap-3">

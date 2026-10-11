@@ -51,9 +51,9 @@ export function VerticalSectionRail({
   const handleJump = (target: VerticalNavTarget) => {
     track("vertical_rail_jump", { targetId: target.id, mode: target.mode || "" });
 
-    // If a mode switcher callback exists and we are not in 'all', switch or jump
-    if (onSelectMode && target.mode && currentMode && currentMode !== "all" && currentMode !== target.mode) {
+    if (onSelectMode && target.mode) {
       onSelectMode(target.mode, target.id);
+      setActiveTarget(target.id);
       return;
     }
 
@@ -63,8 +63,6 @@ export function VerticalSectionRail({
       const y = el.getBoundingClientRect().top + window.pageYOffset + yOffset;
       window.scrollTo({ top: y, behavior: "smooth" });
       setActiveTarget(target.id);
-    } else if (onSelectMode && target.mode) {
-      onSelectMode(target.mode, target.id);
     }
   };
 

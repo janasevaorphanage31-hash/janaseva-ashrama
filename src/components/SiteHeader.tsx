@@ -8,10 +8,12 @@ import { useCart } from "./CartProvider";
 import { track } from "@/lib/track";
 
 const primaryNavLinks = [
-  { href: "/celebrate-special-day", label: "Celebrate Special Day", trending: true },
-  { href: "/impact", label: "Verified Needs" },
-  { href: "/stories", label: "Stories of Hope" },
-  { href: "/transparency", label: "80G Transparency" },
+  { href: "/#official-tiers", label: "Sponsor Tiers" },
+  { href: "/#celebrate", label: "Celebrate Special Day", trending: true },
+  { href: "/#impact", label: "Annadana Needs" },
+  { href: "/#volunteer", label: "Volunteer", badge: "Join" },
+  { href: "/#boys-gallery", label: "Ashrama Life" },
+  { href: "/#transparency", label: "80G Transparency" },
 ];
 
 const moreMenuLinks = [
@@ -22,34 +24,22 @@ const moreMenuLinks = [
     icon: "document",
   },
   {
-    href: "/make-a-day-matter",
-    label: "Make a Day Matter",
-    desc: "Dedicate a birthday, anniversary or milestone",
+    href: "/#celebrate",
+    label: "Celebrate Special Day",
+    desc: "Dedicate a birthday, anniversary or milestone with the 25 boys",
     icon: "gift",
   },
   {
-    href: "/story",
-    label: "Our Story",
-    desc: "History, mission & founding of Janaseva",
+    href: "/stories",
+    label: "Stories of Hope",
+    desc: "Children's background, education & inspiring stories",
     icon: "book",
   },
   {
-    href: "/#activities",
-    label: "NGO Outreach & Drives",
-    desc: "Health camps, food relief, city cleaning & village outreach",
-    icon: "heart",
-  },
-  {
-    href: "/janaseva-crew",
-    label: "Give Your Time (Volunteers)",
-    desc: "Weekend tutoring & social creators",
+    href: "/#volunteer",
+    label: "Community & Volunteer Crew",
+    desc: "Weekend tutoring, creators, influencers & WhatsApp NGO network",
     icon: "users",
-  },
-  {
-    href: "/campaigns",
-    label: "Community Campaigns",
-    desc: "Start a group impact fundraiser",
-    icon: "bolt",
   },
   {
     href: "/corporate",
@@ -58,31 +48,31 @@ const moreMenuLinks = [
     icon: "building",
   },
   {
+    href: "/#transparency",
+    label: "80G Transparency Center",
+    desc: "Form 10AC, CSR-1, Axis Bank wire & official accreditations",
+    icon: "shield",
+  },
+  {
     href: "/contact",
     label: "Contact & Location",
-    desc: "Ashrama directions & visiting timings",
+    desc: "Ashrama directions, phone & visiting timings",
     icon: "pin",
   },
 ];
 
 const mobileMenuLinks = [
-  { href: "/", label: "Home", icon: "home" },
-  { href: "/supporter-form", label: "Official Supporter Form", icon: "document", highlight: true },
-  { href: "/celebrate-special-day", label: "Celebrate Special Day", icon: "star", highlight: true },
-  { href: "/impact", label: "Today's Needs & Basket", icon: "heart", highlight: true },
-  { href: "/#activities", label: "NGO Outreach & Drives", icon: "heart" },
-  { href: "/make-a-day-matter", label: "Make a Day Matter", icon: "gift" },
+  { href: "/", label: "Home (All Stories)", icon: "home" },
+  { href: "/#official-tiers", label: "Sponsor Tiers (₹1,501 - ₹7,501)", icon: "document", highlight: true },
+  { href: "/#celebrate", label: "Celebrate Birthday & Milestones", icon: "star", highlight: true },
+  { href: "/#impact", label: "Annadana Needs & Basket", icon: "heart", highlight: true },
+  { href: "/#boys-gallery", label: "Ashrama Life & Boys Gallery", icon: "sparkle" },
+  { href: "/#volunteer", label: "Community, Influencers & WhatsApp", icon: "users" },
+  { href: "/#transparency", label: "80G Transparency & Trust", icon: "shield" },
+  { href: "/supporter-form", label: "Official Supporter Form", icon: "document" },
   { href: "/stories", label: "Stories of Hope", icon: "book" },
-  { href: "/impact-wall", label: "Live Impact Wall", icon: "chart" },
-  { href: "/campaigns", label: "Create an Impact", icon: "bolt" },
-  { href: "/gift-impact", label: "Gift an Impact", icon: "gift" },
-  { href: "/janaseva-crew", label: "Give Your Time (Volunteers)", icon: "users" },
+  { href: "/celebrate-special-day", label: "Custom Celebration Booking", icon: "gift" },
   { href: "/corporate", label: "Corporate / CSR", icon: "building" },
-  { href: "/future", label: "Proposed Future Project", icon: "sparkle" },
-  { href: "/transparency", label: "Transparency Center", icon: "shield" },
-  { href: "/privacy-policy", label: "Privacy Policy", icon: null },
-  { href: "/terms-and-conditions", label: "Terms & Conditions", icon: null },
-  { href: "/refund-policy", label: "Refund Policy", icon: null },
   { href: "/contact", label: "Contact & Location", icon: "pin" },
 ];
 
@@ -250,6 +240,11 @@ export function SiteHeader() {
                 {l.trending && (
                   <span className="rounded-md bg-gold px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider text-teal-950 shadow-sm animate-pulse">
                     Hot
+                  </span>
+                )}
+                {"badge" in l && Boolean((l as any).badge) && (
+                  <span className="rounded-md bg-emerald-400 text-teal-950 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider shadow-sm">
+                    {(l as any).badge}
                   </span>
                 )}
               </Link>

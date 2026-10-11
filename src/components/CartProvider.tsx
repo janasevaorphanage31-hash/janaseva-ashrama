@@ -19,10 +19,12 @@ type Ctx = CartState & {
   isBottomDonateOpen: boolean;
   donateInitialAmount: number;
   donateInitialTierId?: string;
+  donateInitialPurpose?: string;
+  donateInitialOccasion?: string;
   setQty: (slug: string, qty: number) => void;
   setCustom: (amount: number) => void;
   setCampaign: (c: CartState["campaign"]) => void;
-  openBottomDonate: (initialAmount?: number, initialTierId?: string) => void;
+  openBottomDonate: (initialAmount?: number, initialTierId?: string, initialPurpose?: string, initialOccasion?: string) => void;
   closeBottomDonate: () => void;
   toggleBottomDonate: () => void;
   clear: () => void;
@@ -38,6 +40,8 @@ export function CartProvider({ catalog, children }: { catalog: ImpactItem[]; chi
   const [isBottomDonateOpen, setIsBottomDonateOpen] = useState(false);
   const [donateInitialAmount, setDonateInitialAmount] = useState(0);
   const [donateInitialTierId, setDonateInitialTierId] = useState<string | undefined>(undefined);
+  const [donateInitialPurpose, setDonateInitialPurpose] = useState<string | undefined>(undefined);
+  const [donateInitialOccasion, setDonateInitialOccasion] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     try {
@@ -75,15 +79,26 @@ export function CartProvider({ catalog, children }: { catalog: ImpactItem[]; chi
   const setCampaign = useCallback((campaign: CartState["campaign"]) => setState((s) => ({ ...s, campaign })), []);
   const clear = useCallback(() => setState((s) => ({ ...empty, campaign: s.campaign })), []);
 
-  const openBottomDonate = useCallback((initialAmount?: number, initialTierId?: string) => {
+  const openBottomDonate = useCallback((initialAmount?: number, initialTierId?: string, initialPurpose?: string, initialOccasion?: string) => {
     if (initialAmount && initialAmount > 0) {
       setDonateInitialAmount(initialAmount);
     }
     if (initialTierId) {
       setDonateInitialTierId(initialTierId);
     }
+    if (initialPurpose) {
+      setDonateInitialPurpose(initialPurpose);
+    }
+    if (initialOccasion) {
+      setDonateInitialOccasion(initialOccasion);
+    }
     setIsBottomDonateOpen(true);
-    track("bottom_donate_open", { initialAmount: initialAmount || 0, initialTierId: initialTierId || "" });
+    track("bottom_donate_open", {
+      initialAmount: initialAmount || 0,
+      initialTierId: initialTierId || "",
+      initialPurpose: initialPurpose || "",
+      initialOccasion: initialOccasion || "",
+    });
   }, []);
 
   const closeBottomDonate = useCallback(() => {
@@ -110,6 +125,8 @@ export function CartProvider({ catalog, children }: { catalog: ImpactItem[]; chi
       isBottomDonateOpen,
       donateInitialAmount,
       donateInitialTierId,
+      donateInitialPurpose,
+      donateInitialOccasion,
       setQty,
       setCustom,
       setCampaign,
@@ -125,6 +142,8 @@ export function CartProvider({ catalog, children }: { catalog: ImpactItem[]; chi
     isBottomDonateOpen,
     donateInitialAmount,
     donateInitialTierId,
+    donateInitialPurpose,
+    donateInitialOccasion,
     setQty,
     setCustom,
     setCampaign,

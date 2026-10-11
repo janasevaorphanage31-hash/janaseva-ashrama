@@ -76,9 +76,9 @@ const MODES: ModeItem[] = [
   },
   {
     id: "community",
-    label: "Community",
+    label: "Volunteer",
     icon: "🤝",
-    badge: "V2",
+    badge: "Join",
     targetId: "volunteer",
     description: "Volunteers, influencers, corporate CSR & WhatsApp network",
   },
@@ -100,6 +100,33 @@ const MODE_TARGET_MAP: Record<HomeMode, string> = {
   life: "boys-gallery",
   community: "volunteer",
   trust: "transparency",
+};
+
+const HASH_MODE_MAP: Record<string, HomeMode> = {
+  "official-tiers": "tiers",
+  tiers: "tiers",
+  sponsor: "tiers",
+  celebrate: "celebrate",
+  birthday: "celebrate",
+  feast: "celebrate",
+  impact: "annadana",
+  annadana: "annadana",
+  needs: "annadana",
+  basket: "annadana",
+  "today-meals": "annadana",
+  "boys-gallery": "life",
+  life: "life",
+  gallery: "life",
+  photos: "life",
+  community: "community",
+  volunteer: "community",
+  activities: "community",
+  transparency: "trust",
+  trust: "trust",
+  "80g": "trust",
+  faq: "trust",
+  "hub-top": "all",
+  top: "all",
 };
 
 import type {
@@ -184,6 +211,45 @@ export function HomeSectionsHub({
 
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  // Listen to mount URL and hashchange event so any link to /#theme triggers smooth scroll and pill activation
+  useEffect(() => {
+    const syncFromLocation = () => {
+      if (typeof window === "undefined") return;
+
+      // 1. Check URL query params e.g. ?theme=celebrate
+      const params = new URLSearchParams(window.location.search);
+      const themeParam = params.get("theme") as HomeMode | null;
+      if (themeParam && MODE_TARGET_MAP[themeParam]) {
+        jumpToSection(themeParam, MODE_TARGET_MAP[themeParam]);
+        return;
+      }
+
+      // 2. Check URL hash e.g. #celebrate, #official-tiers
+      const rawHash = window.location.hash.replace(/^#/, "");
+      if (rawHash) {
+        const mappedMode = HASH_MODE_MAP[rawHash];
+        if (mappedMode) {
+          jumpToSection(mappedMode, MODE_TARGET_MAP[mappedMode] || rawHash);
+        } else {
+          const el = document.getElementById(rawHash);
+          if (el) {
+            const yOffset = -110;
+            const y = el.getBoundingClientRect().top + window.pageYOffset + yOffset;
+            window.scrollTo({ top: y, behavior: "smooth" });
+          }
+        }
+      }
+    };
+
+    const timer = setTimeout(syncFromLocation, 150);
+
+    window.addEventListener("hashchange", syncFromLocation);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("hashchange", syncFromLocation);
+    };
   }, []);
 
   return (

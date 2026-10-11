@@ -145,7 +145,12 @@ export function OfficialSupportTiersSection({
       amount: option.amount,
     });
 
-    openBottomDonate(option.amount, categoryId);
+    openBottomDonate(
+      option.amount,
+      categoryId,
+      `${cat.title} (${option.label.split("(")[0].trim()})`,
+      "Festival / Celebration"
+    );
   };
 
   const handleAddToCart = (categoryId: string) => {

@@ -9,16 +9,16 @@ import { numberToIndianWords } from "@/lib/number-words";
 import { track } from "@/lib/track";
 
 const QUICK_AMOUNTS = [
-  { amount: 11, label: "₹11 Ekadashi", subtitle: "1 glass milk for 1 boy" },
-  { amount: 21, label: "₹21 Dharma", subtitle: "Fresh fruit & morning snack" },
-  { amount: 51, label: "₹51 Breakfast", subtitle: "Hot idlis & sambar for 1 boy" },
-  { amount: 101, label: "₹101 Punya Meal", subtitle: "Full hot lunch for 1 boy", isPopular: true },
+  { amount: 101, label: "₹101 Punya Meal", subtitle: "Full hot lunch for 1 boy", isPopular: false },
   { amount: 251, label: "₹251 Vidya Kit", subtitle: "Full notebooks & school stationery" },
-  { amount: 501, label: "₹501 Arogya", subtitle: "Pediatric doctor care & tonic" },
-  { amount: 1001, label: "₹1,001 Anna Daata", subtitle: "1 week groceries & fresh vegetables" },
-  { amount: 2101, label: "₹2,101 Maha Prasada", subtitle: "Sweet payasam feast for all 25 boys" },
-  { amount: 2501, label: "₹2,501 Sampoorna", subtitle: "1-time feast for all 25 boys" },
-  { amount: 5001, label: "₹5,001 Sarva Seva", subtitle: "Full day 3 meals for all 25 boys" },
+  { amount: 501, label: "₹501 Arogya & Seva", subtitle: "3 days meals & pediatric care for 1 boy" },
+  { amount: 1001, label: "₹1,001 Anna Daata", subtitle: "1 week fresh vegetables & groceries" },
+  { amount: 1501, label: "₹1,501 Breakfast for 25", subtitle: "Hot idli-sambar & morning milk for all 25 boys" },
+  { amount: 2501, label: "₹2,501 Fruit Feast & Milk", subtitle: "Fresh fruits, evening snacks & pure cow milk" },
+  { amount: 3501, label: "₹3,501 Festive Special Lunch", subtitle: "Sweet payasam & festive feast for all 25 boys", isPopular: true },
+  { amount: 7501, label: "₹7,501 Full Day 24-Hr Annadana", subtitle: "All 4 meals (breakfast, lunch, snacks & dinner)" },
+  { amount: 15000, label: "₹15,000 Monthly Vidya", subtitle: "1 month schooling, books & tutoring for boys" },
+  { amount: 30000, label: "₹30,000 Patron Seva", subtitle: "Comprehensive ashrama sponsorship & care" },
 ];
 
 export function BottomDonationDrawer() {
@@ -28,6 +28,8 @@ export function BottomDonationDrawer() {
     closeBottomDonate,
     donateInitialAmount,
     donateInitialTierId,
+    donateInitialPurpose,
+    donateInitialOccasion,
     setCustom,
   } = useCart();
 
@@ -69,11 +71,15 @@ export function BottomDonationDrawer() {
       setSelectedAmount(donateInitialAmount);
       setCustomInput(String(donateInitialAmount));
     }
-    if (donateInitialTierId) {
+    if (donateInitialTierId && donateInitialTierId !== "birthday_feast") {
       const cat = SUPPORTER_CATEGORIES.find((c) => c.id === donateInitialTierId);
-      if (cat && cat.options[0]) {
-        setSelectedTierOption({ categoryId: cat.id, optionId: cat.options[0].id });
-        setSelectedAmount(cat.options[0].amount);
+      if (cat && cat.options.length > 0) {
+        const matchingOpt = cat.options.find((o) => o.amount === donateInitialAmount) || cat.options[0];
+        setSelectedTierOption({ categoryId: cat.id, optionId: matchingOpt.id });
+        if (!donateInitialAmount || donateInitialAmount <= 0) {
+          setSelectedAmount(matchingOpt.amount);
+          setCustomInput(String(matchingOpt.amount));
+        }
         setActiveTab("tiers");
       }
     }
@@ -120,7 +126,9 @@ export function BottomDonationDrawer() {
     setCustom(currentAmount);
     closeBottomDonate();
     track("bottom_donate_proceed_online", { amount: currentAmount, frequency });
-    router.push(`/checkout?amount=${currentAmount}${frequency === "monthly" ? "&freq=monthly" : ""}`);
+    const occasionQuery = donateInitialOccasion ? `&occasion=${encodeURIComponent(donateInitialOccasion)}` : "";
+    const purposeQuery = donateInitialPurpose ? `&purpose=${encodeURIComponent(donateInitialPurpose)}` : "";
+    router.push(`/checkout?amount=${currentAmount}${frequency === "monthly" ? "&freq=monthly" : ""}${occasionQuery}${purposeQuery}`);
   };
 
   const handleCopy = (text: string, field: string) => {

@@ -199,7 +199,7 @@ export function TrendingBirthdaySection({
 
   const handleSponsorOnline = (cost: number, occasionName: string) => {
     track("birthday_sponsor_click", { occasion: occasionName, amount: cost });
-    openBottomDonate(cost, "birthday_feast");
+    openBottomDonate(cost, "birthday_feast", `${occasionName} Feast for 25 Boys`, occasionName);
   };
 
   const scrollShowcase = (direction: "left" | "right") => {
