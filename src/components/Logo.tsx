@@ -2,12 +2,12 @@
 
 import { useState } from "react";
 
-export function LogoMark({ size = 44 }: { size?: number }) {
+export function LogoMark({ size = 44, className }: { size?: number; className?: string }) {
   const [imgError, setImgError] = useState(false);
 
   if (imgError) {
     return (
-      <svg width={size} height={size} viewBox="0 0 128 128" fill="none" className="shrink-0 rounded-full shadow-xs" aria-hidden="true">
+      <svg width={size} height={size} viewBox="0 0 128 128" fill="none" className={`shrink-0 rounded-full shadow-xs h-8 w-8 sm:h-10 sm:w-10 ${className || ""}`} aria-hidden="true">
         <circle cx="64" cy="64" r="60" fill="#FBF6EC" />
         <circle cx="64" cy="64" r="58" stroke="#F2B544" strokeWidth="4" />
         <path d="M20 72C38 61 48 61 64 72C80 61 90 61 108 72" fill="#F3EAD9" />
@@ -31,7 +31,7 @@ export function LogoMark({ size = 44 }: { size?: number }) {
       width={size}
       height={size}
       onError={() => setImgError(true)}
-      className="shrink-0 rounded-full object-contain shadow-xs aspect-square"
+      className={`shrink-0 rounded-full object-contain shadow-xs aspect-square h-8 w-8 sm:h-10 sm:w-10 ${className || ""}`}
       loading="eager"
       // @ts-expect-error fetchpriority is standard in modern HTML
       fetchpriority="high"
@@ -41,11 +41,11 @@ export function LogoMark({ size = 44 }: { size?: number }) {
 
 export function Logo({ light = false }: { light?: boolean }) {
   return (
-    <span className="flex items-center gap-2.5 shrink-0 select-none">
+    <span className="flex items-center gap-2 sm:gap-2.5 shrink-0 select-none">
       <LogoMark />
       <span className={`leading-none tracking-wide shrink-0 ${light ? "text-white" : "text-teal-900"}`}>
-        <span className="block text-[15px] sm:text-[16px] font-extrabold tracking-wide">JANASEVA</span>
-        <span className={`block text-[9px] sm:text-[10px] font-bold tracking-[0.32em] ${light ? "text-gold" : "text-saffron-dark"}`}>ASHRAMA</span>
+        <span className="block text-sm sm:text-[16px] font-extrabold tracking-wide">JANASEVA</span>
+        <span className={`block text-[8.5px] sm:text-[10px] font-bold tracking-[0.28em] sm:tracking-[0.32em] ${light ? "text-gold" : "text-saffron-dark"}`}>ASHRAMA</span>
       </span>
     </span>
   );

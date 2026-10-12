@@ -295,7 +295,7 @@ export function BottomNav() {
       {/* ── BOTTOM NAV BAR ── */}
       <nav
         aria-label="Mobile Bottom Navigation"
-        className="fixed inset-x-0 bottom-0 z-40 border-t border-teal-900/10 bg-white/98 pb-[max(0.6rem,env(safe-area-inset-bottom))] shadow-[0_-6px_24px_rgba(6,49,47,0.09)] backdrop-blur-xl md:hidden no-print"
+        className="mobile-bottom-nav border-t border-teal-900/10 shadow-[0_-6px_24px_rgba(6,49,47,0.09)] md:hidden no-print"
       >
         <ul className="mx-auto flex h-16 max-w-md items-center justify-around px-1">
 
@@ -339,10 +339,10 @@ export function BottomNav() {
                 openBottomDonate(101, "meal");
               }}
               aria-label="Open donation options for 25 boys"
-              className="focus-ring -mt-5 relative flex flex-col items-center justify-center group tap-scale cursor-pointer"
+              className="focus-ring -mt-4 relative flex flex-col items-center justify-center group tap-scale cursor-pointer"
             >
               <div
-                className={`relative flex h-14 w-14 items-center justify-center rounded-2xl text-white shadow-lg ring-4 ring-white transition animate-heartbeat ${
+                className={`relative flex h-13 w-13 items-center justify-center rounded-2xl text-white shadow-lg ring-4 ring-white transition animate-heartbeat ${
                   active("/impact")
                     ? "bg-saffron-dark"
                     : "bg-saffron hover:bg-saffron-dark"

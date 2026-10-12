@@ -42,7 +42,7 @@ export function OfficialPrintableSupporterForm({ formData, isPrintOnly = false }
         </span>
       );
     }
-    return <div className="flex flex-wrap gap-1">{boxes}</div>;
+    return <div className="flex flex-wrap gap-1 max-w-full overflow-x-auto no-scrollbar">{boxes}</div>;
   };
 
   const isOptionSelected = (catId: string, optId: string) => {
@@ -50,14 +50,14 @@ export function OfficialPrintableSupporterForm({ formData, isPrintOnly = false }
   };
 
   return (
-    <div className={`mx-auto bg-white text-black font-sans leading-tight print:p-0 print:border-none print:shadow-none ${isPrintOnly ? "" : "p-6 sm:p-10 rounded-2xl shadow-xl border-4 border-gray-900 max-w-4xl"}`}>
+    <div className={`mx-auto bg-white text-black font-sans leading-tight print:p-0 print:border-none print:shadow-none ${isPrintOnly ? "" : "p-3 sm:p-6 md:p-10 rounded-2xl shadow-xl border-2 sm:border-4 border-gray-900 max-w-4xl w-full"}`}>
       {/* DOUBLE BORDER WRAPPER TO MATCH ORIGINAL SCANNED PAPER */}
-      <div className="border-2 border-black p-4 sm:p-6 print:border-2 print:p-4">
+      <div className="border sm:border-2 border-black p-3 sm:p-6 print:border-2 print:p-4">
         {/* HEADER BAR */}
-        <div className="flex justify-between items-center text-[11px] sm:text-xs font-semibold tracking-wide border-b border-black pb-2 mb-3">
-          <span>{OFFICIAL_FORM_META.regd1}</span>
-          <span className="text-center font-bold text-teal-900 text-xs sm:text-sm">GOVT REGD NO. KA18CH0242 · 80G FORM 10AC TAX EXEMPT</span>
-          <span>{OFFICIAL_FORM_META.regd2}</span>
+        <div className="flex justify-between items-center text-[10px] sm:text-xs font-semibold tracking-wide border-b border-black pb-2 mb-3">
+          <span className="hidden xs:inline">{OFFICIAL_FORM_META.regd1}</span>
+          <span className="text-center font-bold text-teal-900 text-[11px] sm:text-sm">GOVT REGD NO. KA18CH0242 · 80G FORM 10AC TAX EXEMPT</span>
+          <span className="hidden xs:inline">{OFFICIAL_FORM_META.regd2}</span>
         </div>
 
         {/* ORGANIZATION NAME */}

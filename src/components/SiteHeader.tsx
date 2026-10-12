@@ -182,35 +182,34 @@ export function SiteHeader() {
       >
         <div className="mx-auto flex h-full max-w-7xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
           {/* Left group: Logo (strictly shrink-0, impossible to squeeze or overlap) */}
-          <div className="flex items-center gap-2.5 shrink-0">
-            {/* Hamburger button (Mobile only) */}
-            <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
-              aria-expanded={mobileMenuOpen}
-              className="focus-ring tap-scale md:hidden flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/10 text-white hover:bg-white/20"
-            >
-              <span className="sr-only">{mobileMenuOpen ? "Close" : "Menu"}</span>
-              <svg className="h-5 w-5 fill-none stroke-current stroke-2" viewBox="0 0 24 24" aria-hidden="true">
-                {mobileMenuOpen ? (
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                ) : (
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-                )}
-              </svg>
-            </button>
-
-            {/* Back button */}
-            {showBack && (
+          <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+            {/* Hamburger button (Mobile only - shown on Home page, replaced by Back button on subpages) */}
+            {!showBack ? (
+              <button
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
+                aria-expanded={mobileMenuOpen}
+                className="focus-ring tap-scale md:hidden flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl bg-white/10 text-white hover:bg-white/20"
+              >
+                <span className="sr-only">{mobileMenuOpen ? "Close" : "Menu"}</span>
+                <svg className="h-5 w-5 fill-none stroke-current stroke-2" viewBox="0 0 24 24" aria-hidden="true">
+                  {mobileMenuOpen ? (
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  ) : (
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+                  )}
+                </svg>
+              </button>
+            ) : (
               <button
                 onClick={goBack}
                 aria-label="Go back"
-                className="focus-ring tap-scale flex items-center gap-1 rounded-xl border border-white/30 bg-white/15 px-2.5 py-1.5 text-xs font-bold text-white hover:bg-white/25 shadow-sm shrink-0"
+                className="focus-ring tap-scale flex items-center gap-1 rounded-xl border border-white/30 bg-white/15 px-2 sm:px-2.5 py-1.5 text-xs font-bold text-white hover:bg-white/25 shadow-sm shrink-0"
               >
-                <svg className="h-3.5 w-3.5 fill-none stroke-current stroke-2" viewBox="0 0 24 24" aria-hidden="true">
+                <svg className="h-4 w-4 fill-none stroke-current stroke-2" viewBox="0 0 24 24" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
                 </svg>
-                <span className="hidden xs:inline">Back</span>
+                <span className="text-xs">Back</span>
               </button>
             )}
 
@@ -310,24 +309,24 @@ export function SiteHeader() {
             </div>
           </nav>
 
-          {/* Right Action: Volunteer, Cart & Impact CTA */}
+          {/* Right Action: Volunteer (Desktop/Tablet only) & Impact CTA */}
           <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
             <Link
               href="/#volunteer"
-              className="focus-ring tap-scale inline-flex items-center gap-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 px-2.5 sm:px-3 py-2 text-xs font-bold text-emerald-300 hover:text-white transition shadow-xs"
+              className="focus-ring tap-scale hidden sm:inline-flex items-center gap-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 px-2.5 sm:px-3 py-2 text-xs font-bold text-emerald-300 hover:text-white transition shadow-xs"
             >
               <span>🤝</span>
-              <span className="hidden xs:inline">Volunteer</span>
+              <span>Volunteer</span>
             </Link>
 
             <Link
               href="/impact"
               onClick={() => track("cta_make_impact", { where: "header" })}
-              className="focus-ring tap-scale relative flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-600 hover:to-orange-600 px-3.5 sm:px-4 py-2.5 text-xs font-black tracking-wide text-white shadow-md shadow-orange-500/25 transition active:scale-95"
+              className="focus-ring tap-scale relative flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-600 hover:to-orange-600 px-3 sm:px-4 py-2 sm:py-2.5 text-xs font-black tracking-wide text-white shadow-md shadow-orange-500/25 transition active:scale-95 whitespace-nowrap"
             >
-              <span>DONATE NOW 💝</span>
+              <span>DONATE 💝</span>
               {count > 0 && (
-                <span className="grid h-5 min-w-5 place-items-center rounded-md bg-teal-950 px-1 text-[10px] font-extrabold text-gold shadow-sm">
+                <span className="grid h-4.5 min-w-4.5 sm:h-5 sm:min-w-5 place-items-center rounded-md bg-teal-950 px-1 text-[10px] font-extrabold text-gold shadow-sm">
                   {count}
                 </span>
               )}

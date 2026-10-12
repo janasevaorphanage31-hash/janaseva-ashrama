@@ -322,4 +322,47 @@ h1, h2, h3, .font-display {
   animation: shimmer-sweep 2.4s infinite;
 }
 
+/* =============================================
+   MOBILE NAVIGATION & FLOATING BAR COEXISTENCE
+   ============================================= */
+.mobile-bottom-nav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 40;
+  background-color: rgba(255, 255, 255, 0.98);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  padding-bottom: max(0.5rem, env(safe-area-inset-bottom, 0px));
+}
+
+.mobile-urgent-bar {
+  position: fixed;
+  left: 0.5rem;
+  right: 0.5rem;
+  bottom: calc(5.25rem + env(safe-area-inset-bottom, 0px));
+  z-index: 39;
+}
+
+@media (min-width: 640px) {
+  .mobile-urgent-bar {
+    left: 1rem;
+    right: 1rem;
+    bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+@media (min-width: 768px) {
+  .mobile-urgent-bar {
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    bottom: 1.25rem;
+    width: 100%;
+    max-width: 48rem;
+    z-index: 45;
+  }
+}
+
 

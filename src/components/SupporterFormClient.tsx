@@ -291,62 +291,62 @@ For queries, call: 9980359595 / 9945223232.`;
   };
 
   return (
-    <div className="min-h-screen bg-sand/30 py-8 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-sand/30 py-4 sm:py-8 px-3 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-5xl">
         {/* TOP HERO & SHARING TOOLBAR */}
-        <div className="mb-6 rounded-3xl bg-teal-950 p-6 text-white shadow-xl ring-1 ring-white/10">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="mb-6 rounded-2xl sm:rounded-3xl bg-teal-950 p-4 sm:p-6 text-white shadow-xl ring-1 ring-white/10">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-5 sm:gap-6">
             <div>
-              <div className="inline-flex items-center gap-2 rounded-full bg-gold/20 px-3.5 py-1 text-xs font-bold text-gold ring-1 ring-gold/30">
+              <div className="inline-flex items-center gap-2 rounded-full bg-gold/20 px-3 py-0.5 text-xs font-bold text-gold ring-1 ring-gold/30">
                 <span>📋 Official Janaseva NGO Form</span>
                 <span>·</span>
                 <span>Form 10AC 80G Tax Exempt</span>
               </div>
-              <h1 className="mt-3 font-display text-2xl sm:text-3xl font-extrabold text-white">
+              <h1 className="mt-2.5 font-display text-xl sm:text-3xl font-extrabold text-white">
                 Official Supporter Form
               </h1>
-              <p className="mt-1 text-xs sm:text-sm text-teal-200/90 max-w-2xl">
+              <p className="mt-1 text-xs sm:text-sm text-teal-200/90 max-w-2xl leading-relaxed">
                 Send this link directly to donors, patrons, and well-wishers to support food, clothes, or schooling for 25 children at Makkala Ashraya Kendra.
               </p>
             </div>
 
             {/* QUICK ACTIONS BUTTONS */}
-            <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+            <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 shrink-0">
               {/* WhatsApp Share Button */}
               <a
                 href={`https://wa.me/?text=${encodeURIComponent(shareWhatsAppMessage)}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white shadow-md hover:bg-emerald-500 transition active:scale-95"
+                className="col-span-2 sm:col-span-1 inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-3.5 py-2.5 text-xs font-bold text-white shadow-md hover:bg-emerald-500 transition active:scale-95 text-center"
               >
-                <span>💬 Send to Donor on WhatsApp</span>
+                <span>💬 WhatsApp to Donor</span>
               </a>
 
               {/* Copy Link Button */}
               <button
                 type="button"
                 onClick={handleCopyLink}
-                className="inline-flex items-center gap-2 rounded-xl bg-white/15 px-3.5 py-2.5 text-xs font-bold text-white ring-1 ring-white/20 hover:bg-white/25 transition active:scale-95"
+                className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-white/15 px-3 py-2.5 text-xs font-bold text-white ring-1 ring-white/20 hover:bg-white/25 transition active:scale-95 text-center"
               >
-                <span>{copiedLink ? "✓ Link Copied!" : "🔗 Copy Form Link"}</span>
+                <span>{copiedLink ? "✓ Copied" : "🔗 Copy Link"}</span>
               </button>
 
               {/* Show QR Code */}
               <button
                 type="button"
                 onClick={() => setShowQrModal(true)}
-                className="inline-flex items-center gap-2 rounded-xl bg-white/15 px-3.5 py-2.5 text-xs font-bold text-white ring-1 ring-white/20 hover:bg-white/25 transition active:scale-95"
+                className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-white/15 px-3 py-2.5 text-xs font-bold text-white ring-1 ring-white/20 hover:bg-white/25 transition active:scale-95 text-center"
               >
-                <span>📱 Scan QR Code</span>
+                <span>📱 Scan QR</span>
               </button>
 
               {/* Print Blank Form */}
               <button
                 type="button"
                 onClick={() => setShowBlankPrintModal(true)}
-                className="inline-flex items-center gap-2 rounded-xl bg-gold px-4 py-2.5 text-xs font-bold text-teal-950 shadow-md hover:bg-gold-light transition active:scale-95"
+                className="col-span-2 sm:col-span-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-gold px-3.5 py-2.5 text-xs font-bold text-teal-950 shadow-md hover:bg-gold-light transition active:scale-95 text-center"
               >
-                <span>🖨️ Print Blank Paper Form</span>
+                <span>🖨️ Print Paper Form</span>
               </button>
             </div>
           </div>
@@ -410,35 +410,35 @@ For queries, call: 9980359595 / 9945223232.`;
         )}
 
         {/* MAIN DIGITAL SUPPORTER FORM CONTAINER */}
-        <form onSubmit={handleSubmit} className="space-y-8">
+        <form onSubmit={handleSubmit} className="space-y-6 sm:space-y-8">
           {/* 1. AUTHENTIC FORM HEADER CARD */}
-          <div className="rounded-3xl bg-white p-6 sm:p-8 shadow-sm ring-1 ring-teal-900/10">
-            <div className="flex flex-wrap justify-between items-center text-[11px] font-bold text-teal-900/70 pb-3 border-b border-teal-900/10 gap-2">
-              <span>{OFFICIAL_FORM_META.regd1}</span>
-              <span className="text-center font-bold text-teal-900 bg-teal-50 px-2.5 py-0.5 rounded-full border border-teal-900/10">
+          <div className="rounded-2xl sm:rounded-3xl bg-white p-4 sm:p-8 shadow-sm ring-1 ring-teal-900/10">
+            <div className="flex flex-wrap justify-between items-center text-[10px] sm:text-[11px] font-bold text-teal-900/70 pb-3 border-b border-teal-900/10 gap-2">
+              <span className="hidden xs:inline">{OFFICIAL_FORM_META.regd1}</span>
+              <span className="text-center font-bold text-teal-900 bg-teal-50 px-2.5 py-0.5 rounded-full border border-teal-900/10 mx-auto sm:mx-0">
                 GOVT REGD: KA18CH0242 · SECTION 80G APPROVAL: AABTJ7431MF20231
               </span>
-              <span>{OFFICIAL_FORM_META.regd2}</span>
+              <span className="hidden xs:inline">{OFFICIAL_FORM_META.regd2}</span>
             </div>
 
             <div className="text-center my-4">
-              <h2 className="font-extrabold text-lg sm:text-2xl uppercase tracking-wider text-teal-950 font-display">
+              <h2 className="font-extrabold text-base sm:text-2xl uppercase tracking-wider text-teal-950 font-display">
                 {OFFICIAL_FORM_META.societyName}
               </h2>
-              <div className="inline-block mt-2 px-5 py-1 bg-teal-900 text-white rounded-xl shadow-xs">
-                <span className="font-bold text-sm sm:text-base uppercase tracking-widest">
+              <div className="inline-block mt-2 px-4 sm:px-5 py-1 bg-teal-900 text-white rounded-xl shadow-xs">
+                <span className="font-bold text-xs sm:text-base uppercase tracking-widest">
                   {OFFICIAL_FORM_META.kendraName}
                 </span>
               </div>
               <p className="mt-2 text-xs sm:text-sm text-teal-900/80">
                 Phone: <strong className="font-mono">9945223232, 9980359595</strong> · Email: <strong className="font-mono">janasevaorphanage@gmail.com</strong>
               </p>
-              <p className="text-xs text-teal-900/70">
+              <p className="text-[11px] sm:text-xs text-teal-900/70">
                 Facility Address: #27, Gundu Thopu Turahalli, Subramanyapura, Bangalore - 560061
               </p>
             </div>
 
-            <div className="mt-5 rounded-2xl bg-amber-50 p-4 border border-amber-200 text-xs sm:text-sm text-amber-900 flex items-center justify-between">
+            <div className="mt-4 sm:mt-5 rounded-2xl bg-amber-50 p-3.5 sm:p-4 border border-amber-200 text-xs sm:text-sm text-amber-900 flex items-center justify-between">
               <div>
                 <strong>✨ 100% Verified Allocation:</strong> All donations are eligible for a <strong>50% Income Tax Exemption under Section 80G</strong> (Form 10AC). Instant digital receipts are issued immediately.
               </div>
@@ -449,7 +449,7 @@ For queries, call: 9980359595 / 9945223232.`;
           </div>
 
           {/* 2. CHOOSE SUPPORT / SPONSORSHIP TIERS (THE 5 OFFICIAL CATEGORIES) */}
-          <div className="rounded-3xl bg-white p-6 sm:p-8 shadow-sm ring-1 ring-teal-900/10">
+          <div className="rounded-2xl sm:rounded-3xl bg-white p-4 sm:p-8 shadow-sm ring-1 ring-teal-900/10">
             <div className="flex items-center justify-between mb-4">
               <div>
                 <span className="text-xs font-bold uppercase tracking-wider text-teal-700">Step 1 of 3</span>
@@ -576,7 +576,7 @@ For queries, call: 9980359595 / 9945223232.`;
           </div>
 
           {/* 3. DONOR INFORMATION */}
-          <div className="rounded-3xl bg-white p-6 sm:p-8 shadow-sm ring-1 ring-teal-900/10">
+          <div className="rounded-2xl sm:rounded-3xl bg-white p-4 sm:p-8 shadow-sm ring-1 ring-teal-900/10">
             <span className="text-xs font-bold uppercase tracking-wider text-teal-700">Step 2 of 3</span>
             <h2 className="text-xl sm:text-2xl font-bold font-display text-teal-950 mb-1">
               Donor Information
@@ -695,7 +695,7 @@ For queries, call: 9980359595 / 9945223232.`;
           </div>
 
           {/* 4. PAYMENT MODE & COLLECTION PLACE */}
-          <div className="rounded-3xl bg-white p-6 sm:p-8 shadow-sm ring-1 ring-teal-900/10">
+          <div className="rounded-2xl sm:rounded-3xl bg-white p-4 sm:p-8 shadow-sm ring-1 ring-teal-900/10">
             <span className="text-xs font-bold uppercase tracking-wider text-teal-700">Step 3 of 3</span>
             <h2 className="text-xl sm:text-2xl font-bold font-display text-teal-950 mb-1">
               Collection Place & Payment Mode
@@ -897,9 +897,9 @@ For queries, call: 9980359595 / 9945223232.`;
           )}
 
           {/* SUBMIT BUTTON ROW */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-3xl bg-white p-6 shadow-xl border border-teal-900/10">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl sm:rounded-3xl bg-white p-4 sm:p-6 shadow-xl border border-teal-900/10">
             <div>
-              <span className="text-xs text-teal-900/60 uppercase font-bold tracking-wide block">Total Contribution</span>
+              <span className="text-[11px] sm:text-xs text-teal-900/60 uppercase font-bold tracking-wide block">Total Contribution</span>
               <span className="font-mono text-2xl sm:text-3xl font-extrabold text-teal-950">
                 {formatINR(totalAmount)}
               </span>
@@ -911,7 +911,7 @@ For queries, call: 9980359595 / 9945223232.`;
             <button
               type="submit"
               disabled={busy}
-              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gold px-8 py-4 text-sm sm:text-base font-extrabold text-teal-950 shadow-xl hover:bg-gold-light transition active:scale-98 disabled:opacity-50"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-2xl bg-gold px-6 sm:px-8 py-3.5 sm:py-4 text-sm sm:text-base font-extrabold text-teal-950 shadow-xl hover:bg-gold-light transition active:scale-98 disabled:opacity-50"
             >
               {busy ? (
                 <>
