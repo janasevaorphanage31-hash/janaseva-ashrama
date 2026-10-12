@@ -1571,17 +1571,17 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
       <div className="rounded-2xl bg-teal-950 p-4 text-white shadow-sm ring-1 ring-white/10">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-saffron flex items-center justify-center font-display font-bold text-teal-950 text-xl">
+            <div className="h-10 w-10 shrink-0 rounded-xl bg-saffron flex items-center justify-center font-display font-bold text-teal-950 text-xl shadow-xs">
               JA
             </div>
             <div>
-              <h2 className="font-display text-lg font-bold">Janaseva Ashrama Management Suite</h2>
+              <h2 className="font-display text-base sm:text-lg font-bold leading-tight">Janaseva Ashrama Management Suite</h2>
               <p className="text-xs text-white/70">
                 Logged in: <strong className="text-white">{initialSession.user.displayName}</strong> ({initialSession.user.role})
               </p>
             </div>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
             <button
               type="button"
               onClick={() => setDailyPhotoModalOpen(true)}
@@ -1593,10 +1593,10 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
             <button
               type="button"
               onClick={() => setBusinessPlanOpen(true)}
-              className="rounded-xl bg-gold/90 text-teal-950 px-3.5 py-2 text-xs font-bold hover:bg-gold transition flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95"
+              className="rounded-xl bg-gold/90 text-teal-950 px-3.5 py-2 text-xs font-bold hover:bg-gold transition flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95 hidden sm:inline-flex"
             >
               <span>📊</span>
-              <span>Strategy &amp; Business Plan</span>
+              <span>Strategy</span>
             </button>
             <Link
               href="/"
@@ -1613,6 +1613,7 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
                 await fetch("/api/admin/logout", { method: "POST" });
                 window.location.href = "/admin/login";
               }}
+              className="ml-auto sm:ml-0"
             >
               <button
                 type="submit"
@@ -1625,21 +1626,85 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
         </div>
       </div>
 
-      {/* Main Tab Controller */}
-      <div className="flex flex-wrap gap-2 border-b border-teal-900/10 pb-2">
+      {/* MOBILE QUICK ACTION DOCK (4 Fast-Taps for Phone On-Ground Caretakers) */}
+      <div className="sm:hidden grid grid-cols-2 gap-2.5">
+        <button
+          type="button"
+          onClick={() => setDailyPhotoModalOpen(true)}
+          className="group relative flex flex-col items-start gap-1 rounded-2xl bg-gradient-to-br from-amber-500 to-amber-600 p-3.5 text-left text-white shadow-md active:scale-95 transition cursor-pointer overflow-hidden"
+        >
+          <div className="flex w-full items-center justify-between">
+            <span className="text-2xl drop-shadow-xs">📸</span>
+            <span className="rounded-full bg-white/25 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider">Fast</span>
+          </div>
+          <span className="font-display text-sm font-bold mt-1 text-white">Post Photo</span>
+          <span className="text-[11px] text-white/85 leading-tight">Camera to site in 1-tap</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab("content");
+            setContentSubtab("meals");
+          }}
+          className="group relative flex flex-col items-start gap-1 rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-700 p-3.5 text-left text-white shadow-md active:scale-95 transition cursor-pointer overflow-hidden"
+        >
+          <div className="flex w-full items-center justify-between">
+            <span className="text-2xl drop-shadow-xs">🍲</span>
+            <span className="rounded-full bg-white/25 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider">Live</span>
+          </div>
+          <span className="font-display text-sm font-bold mt-1 text-white">Today Meals</span>
+          <span className="text-[11px] text-white/85 leading-tight">Toggle Served / Open</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab("content");
+            setContentSubtab("hero");
+          }}
+          className="group relative flex flex-col items-start gap-1 rounded-2xl bg-gradient-to-br from-sky-600 to-indigo-700 p-3.5 text-left text-white shadow-md active:scale-95 transition cursor-pointer overflow-hidden"
+        >
+          <div className="flex w-full items-center justify-between">
+            <span className="text-2xl drop-shadow-xs">✍️</span>
+            <span className="rounded-full bg-white/25 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider">Text</span>
+          </div>
+          <span className="font-display text-sm font-bold mt-1 text-white">Edit Headlines</span>
+          <span className="text-[11px] text-white/85 leading-tight">Hero text &amp; notices</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab("documents");
+            setNewDocOpen(true);
+          }}
+          className="group relative flex flex-col items-start gap-1 rounded-2xl bg-gradient-to-br from-purple-600 to-slate-800 p-3.5 text-left text-white shadow-md active:scale-95 transition cursor-pointer overflow-hidden"
+        >
+          <div className="flex w-full items-center justify-between">
+            <span className="text-2xl drop-shadow-xs">📜</span>
+            <span className="rounded-full bg-white/25 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider">80G</span>
+          </div>
+          <span className="font-display text-sm font-bold mt-1 text-white">Upload 80G Doc</span>
+          <span className="text-[11px] text-white/85 leading-tight">Audit PDFs &amp; orders</span>
+        </button>
+      </div>
+
+      {/* Main Tab Controller - Horizontally Scrollable on Mobile for Native App Feel */}
+      <div className="flex overflow-x-auto no-scrollbar scrollbar-none gap-2 border-b border-teal-900/10 pb-2.5 pt-1 -mx-2 px-2 sm:mx-0 sm:px-0 sm:flex-wrap">
         {[
-          { id: "analytics", label: "📊 Analytics & KPIs" },
-          { id: "crm", label: "💳 Donor CRM & FinTech" },
-          { id: "subscriptions", label: "🔁 Recurring Auto-Pay & MRR" },
-          { id: "marketing", label: "📢 Marketing & Campaigns" },
-          { id: "celebrations", label: "🎂 Celebrations & Wishes" },
-          { id: "content", label: "📝 Website Content CMS" },
-          { id: "media", label: "🎥 Media & Today Updates" },
-          { id: "catalogs", label: "🛍️ Giving Basket Catalogs" },
-          { id: "documents", label: "📜 Legal 80G Documents" },
-          { id: "community", label: "🤝 Volunteers & Pipeline" },
+          { id: "analytics", label: "📊 Analytics" },
+          { id: "crm", label: "💳 Donor CRM" },
+          { id: "subscriptions", label: "🔁 Subscriptions" },
+          { id: "marketing", label: "📢 Campaigns" },
+          { id: "celebrations", label: "🎂 Celebrations" },
+          { id: "content", label: "📝 Website Content" },
+          { id: "media", label: "🎥 Media & Today" },
+          { id: "catalogs", label: "🛍️ Giving Basket" },
+          { id: "documents", label: "📜 80G Documents" },
+          { id: "community", label: "🤝 Volunteers" },
           ...(initialSession.user.role === "SUPER_ADMIN"
-            ? [{ id: "team", label: "👥 Team & Employee Roles" }]
+            ? [{ id: "team", label: "👥 Team Roles" }]
             : []),
         ].map((tab) => (
           <button
@@ -1649,9 +1714,9 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
               setActiveTab(tab.id as Tab);
               setNotification("");
             }}
-            className={`rounded-xl px-4 py-2.5 text-xs sm:text-sm font-bold transition ${
+            className={`shrink-0 whitespace-nowrap rounded-xl px-3.5 py-2 text-xs sm:text-sm font-bold transition active:scale-95 cursor-pointer ${
               activeTab === tab.id
-                ? "bg-teal-950 text-white shadow"
+                ? "bg-teal-950 text-white shadow-md ring-2 ring-saffron/40"
                 : "bg-white text-teal-950 ring-1 ring-teal-900/10 hover:bg-cream"
             }`}
           >
@@ -1988,69 +2053,157 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
             ) : donations.length === 0 ? (
               <p className="text-xs text-teal-900/60 py-6 text-center">No donations match the current filter.</p>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead>
-                    <tr className="border-b border-teal-900/10 text-teal-900/70 font-semibold">
-                      <th className="py-2.5">Date</th>
-                      <th className="py-2.5">Receipt / Ref</th>
-                      <th className="py-2.5">Donor Name</th>
-                      <th className="py-2.5">Contact</th>
-                      <th className="py-2.5">Amount &amp; Mode</th>
-                      <th className="py-2.5">Dedication</th>
-                      <th className="py-2.5">Status</th>
-                      <th className="py-2.5 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-teal-900/5">
-                    {donations.map((d) => {
-                      const meta = d.meta || {};
-                      const dedication = meta.dedication || {};
-                      return (
-                        <tr key={d.id} className="hover:bg-cream/40">
-                          <td className="py-3 text-teal-950/70">
-                            {d.createdAt ? new Date(d.createdAt).toLocaleDateString("en-IN") : "-"}
-                          </td>
-                          <td className="py-3 font-mono font-bold text-teal-950">
-                            {d.receiptNo || d.publicId}
-                          </td>
-                          <td className="py-3">
-                            <span className="font-bold text-teal-950 block">{d.donorName}</span>
-                            {meta.pan && (
-                              <span className="font-mono text-[10px] text-teal-800 font-bold">PAN: {meta.pan}</span>
-                            )}
-                          </td>
-                          <td className="py-3 text-teal-950/70">
-                            <span className="block">{d.donorEmail}</span>
-                            {d.donorPhone && <span className="text-[11px]">{d.donorPhone}</span>}
-                          </td>
-                          <td className="py-3 font-bold text-teal-900 text-sm">
-                            <div>{formatINR(d.amount)}</div>
-                            <span className="rounded bg-teal-900/10 px-1.5 py-0.2 text-[9px] font-mono text-teal-950 uppercase font-semibold">
-                              {d.mode || "razorpay"}
+              <>
+                {/* Desktop View: Wide Data Table */}
+                <div className="hidden md:block overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="border-b border-teal-900/10 text-teal-900/70 font-semibold">
+                        <th className="py-2.5">Date</th>
+                        <th className="py-2.5">Receipt / Ref</th>
+                        <th className="py-2.5">Donor Name</th>
+                        <th className="py-2.5">Contact</th>
+                        <th className="py-2.5">Amount &amp; Mode</th>
+                        <th className="py-2.5">Dedication</th>
+                        <th className="py-2.5">Status</th>
+                        <th className="py-2.5 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-teal-900/5">
+                      {donations.map((d) => {
+                        const meta = d.meta || {};
+                        const dedication = meta.dedication || {};
+                        return (
+                          <tr key={d.id} className="hover:bg-cream/40">
+                            <td className="py-3 text-teal-950/70">
+                              {d.createdAt ? new Date(d.createdAt).toLocaleDateString("en-IN") : "-"}
+                            </td>
+                            <td className="py-3 font-mono font-bold text-teal-950">
+                              {d.receiptNo || d.publicId}
+                            </td>
+                            <td className="py-3">
+                              <span className="font-bold text-teal-950 block">{d.donorName}</span>
+                              {meta.pan && (
+                                <span className="font-mono text-[10px] text-teal-800 font-bold">PAN: {meta.pan}</span>
+                              )}
+                            </td>
+                            <td className="py-3 text-teal-950/70">
+                              <span className="block">{d.donorEmail}</span>
+                              {d.donorPhone && <span className="text-[11px]">{d.donorPhone}</span>}
+                            </td>
+                            <td className="py-3 font-bold text-teal-900 text-sm">
+                              <div>{formatINR(d.amount)}</div>
+                              <span className="rounded bg-teal-900/10 px-1.5 py-0.2 text-[9px] font-mono text-teal-950 uppercase font-semibold">
+                                {d.mode || "razorpay"}
+                              </span>
+                            </td>
+                            <td className="py-3 text-teal-950/70 max-w-[140px] truncate">
+                              {dedication.occasion || "Direct Seva"}
+                            </td>
+                            <td className="py-3">
+                              <span
+                                className={`rounded-lg px-2 py-0.5 font-mono text-[10px] font-bold ${
+                                  d.status === "paid"
+                                      ? "bg-emerald-100 text-emerald-800"
+                                      : d.status === "demo"
+                                      ? "bg-amber-100 text-amber-800"
+                                      : "bg-gray-100 text-gray-700"
+                                }`}
+                              >
+                                {d.status.toUpperCase()}
+                              </span>
+                            </td>
+                            <td className="py-3 text-right space-x-1 whitespace-nowrap">
+                              <button
+                                type="button"
+                                onClick={() => setSelectedDonation(d)}
+                                className="rounded-lg bg-teal-900 px-2.5 py-1 text-[11px] font-bold text-white hover:bg-teal-800 transition cursor-pointer"
+                              >
+                                Details
+                              </button>
+                              {d.status !== "paid" && (
+                                <button
+                                  type="button"
+                                  onClick={() => updateDonationStatus(d.id, "paid")}
+                                  className="rounded-lg bg-emerald-700 px-2.5 py-1 text-[11px] font-bold text-white hover:bg-emerald-800 transition cursor-pointer"
+                                >
+                                  Mark Paid
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteDonation(d.id)}
+                                className="rounded-lg bg-red-600/15 border border-red-500/25 px-2 py-1 text-[11px] font-bold text-red-700 hover:bg-red-600/25 transition cursor-pointer"
+                                title="Delete record"
+                              >
+                                Delete
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Mobile View: High-Legibility Touch Cards */}
+                <div className="md:hidden space-y-3">
+                  {donations.map((d) => {
+                    const meta = d.meta || {};
+                    const dedication = meta.dedication || {};
+                    return (
+                      <div
+                        key={d.id}
+                        className="rounded-2xl border border-teal-900/10 bg-white p-3.5 shadow-2xs space-y-2.5 transition"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <span className="font-bold text-teal-950 text-sm block truncate">{d.donorName}</span>
+                            <span className="text-[11px] text-teal-900/60 font-mono">
+                              {d.createdAt ? new Date(d.createdAt).toLocaleDateString("en-IN") : "-"} · {d.receiptNo || d.publicId}
                             </span>
-                          </td>
-                          <td className="py-3 text-teal-950/70 max-w-[140px] truncate">
-                            {dedication.occasion || "Direct Seva"}
-                          </td>
-                          <td className="py-3">
+                          </div>
+                          <div className="text-right shrink-0">
+                            <span className="font-bold text-teal-900 text-sm block">{formatINR(d.amount)}</span>
                             <span
-                              className={`rounded-lg px-2 py-0.5 font-mono text-[10px] font-bold ${
+                              className={`inline-block rounded-md px-1.5 py-0.5 font-mono text-[9px] font-bold ${
                                 d.status === "paid"
-                                    ? "bg-emerald-100 text-emerald-800"
-                                    : d.status === "demo"
-                                    ? "bg-amber-100 text-amber-800"
-                                    : "bg-gray-100 text-gray-700"
+                                  ? "bg-emerald-100 text-emerald-800"
+                                  : d.status === "demo"
+                                  ? "bg-amber-100 text-amber-800"
+                                  : "bg-gray-100 text-gray-700"
                               }`}
                             >
                               {d.status.toUpperCase()}
                             </span>
-                          </td>
-                          <td className="py-3 text-right space-x-1 whitespace-nowrap">
+                          </div>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-teal-950/70 border-t border-teal-900/5 pt-2">
+                          {d.donorPhone && (
+                            <a href={`tel:${d.donorPhone}`} className="text-teal-800 font-medium">
+                              📞 {d.donorPhone}
+                            </a>
+                          )}
+                          {d.donorEmail && (
+                            <a href={`mailto:${d.donorEmail}`} className="text-teal-800 truncate max-w-[180px]">
+                              ✉️ {d.donorEmail}
+                            </a>
+                          )}
+                          {meta.pan && (
+                            <span className="font-mono text-[10px] text-teal-900/70">PAN: {meta.pan}</span>
+                          )}
+                        </div>
+
+                        <div className="flex items-center justify-between gap-2 border-t border-teal-900/5 pt-2">
+                          <span className="text-[11px] text-teal-900/70 truncate">
+                            {dedication.occasion ? `🎯 ${dedication.occasion}` : `Mode: ${d.mode || "razorpay"}`}
+                          </span>
+                          <div className="flex items-center gap-1.5 shrink-0">
                             <button
                               type="button"
                               onClick={() => setSelectedDonation(d)}
-                              className="rounded-lg bg-teal-900 px-2.5 py-1 text-[11px] font-bold text-white hover:bg-teal-800 transition cursor-pointer"
+                              className="rounded-lg bg-teal-900 px-2.5 py-1 text-xs font-bold text-white hover:bg-teal-800 cursor-pointer"
                             >
                               Details
                             </button>
@@ -2058,7 +2211,7 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
                               <button
                                 type="button"
                                 onClick={() => updateDonationStatus(d.id, "paid")}
-                                className="rounded-lg bg-emerald-700 px-2.5 py-1 text-[11px] font-bold text-white hover:bg-emerald-800 transition cursor-pointer"
+                                className="rounded-lg bg-emerald-700 px-2 py-1 text-xs font-bold text-white cursor-pointer"
                               >
                                 Mark Paid
                               </button>
@@ -2066,18 +2219,18 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
                             <button
                               type="button"
                               onClick={() => handleDeleteDonation(d.id)}
-                              className="rounded-lg bg-red-600/15 border border-red-500/25 px-2 py-1 text-[11px] font-bold text-red-700 hover:bg-red-600/25 transition cursor-pointer"
+                              className="rounded-lg bg-red-100 px-2 py-1 text-xs font-bold text-red-700 hover:bg-red-200 cursor-pointer"
                               title="Delete record"
                             >
-                              Delete
+                              ✕
                             </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
             )}
           </div>
 
@@ -2969,101 +3122,178 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
             ) : celebrations.length === 0 ? (
               <p className="text-xs text-teal-900/60 py-6 text-center">No celebration bookings match this filter.</p>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead>
-                    <tr className="border-b border-teal-900/10 text-teal-900/70 font-semibold">
-                      <th className="py-2.5">Date &amp; Ref</th>
-                      <th className="py-2.5">Celebrant &amp; Occasion</th>
-                      <th className="py-2.5">Package &amp; Amount</th>
-                      <th className="py-2.5">Attendance Mode</th>
-                      <th className="py-2.5">Donor / WhatsApp</th>
-                      <th className="py-2.5">Status</th>
-                      <th className="py-2.5 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-teal-900/5">
-                    {celebrations.map((c) => (
-                      <tr key={c.id} className="hover:bg-cream/40">
-                        <td className="py-3">
-                          <span className="font-bold text-teal-950 block">{c.celebrationDate}</span>
-                          <span className="font-mono text-[10px] text-teal-900/60">{c.reference}</span>
-                        </td>
-                        <td className="py-3">
-                          <span className="font-bold text-teal-950 block">{c.celebrantName}</span>
-                          <div className="flex flex-wrap items-center gap-1 mt-0.5">
-                            <span className="rounded bg-gold/20 px-1.5 py-0.5 text-[10px] font-bold text-teal-950 inline-block">
-                              {c.occasion}
-                            </span>
-                            {c.wishVideoUrl ? (
-                              <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-800 inline-block">
-                                🎥 Wish Video Attached
+              <>
+                {/* Desktop View: Wide Data Table */}
+                <div className="hidden md:block overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="border-b border-teal-900/10 text-teal-900/70 font-semibold">
+                        <th className="py-2.5">Date &amp; Ref</th>
+                        <th className="py-2.5">Celebrant &amp; Occasion</th>
+                        <th className="py-2.5">Package &amp; Amount</th>
+                        <th className="py-2.5">Attendance Mode</th>
+                        <th className="py-2.5">Donor / WhatsApp</th>
+                        <th className="py-2.5">Status</th>
+                        <th className="py-2.5 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-teal-900/5">
+                      {celebrations.map((c) => (
+                        <tr key={c.id} className="hover:bg-cream/40">
+                          <td className="py-3">
+                            <span className="font-bold text-teal-950 block">{c.celebrationDate}</span>
+                            <span className="font-mono text-[10px] text-teal-900/60">{c.reference}</span>
+                          </td>
+                          <td className="py-3">
+                            <span className="font-bold text-teal-950 block">{c.celebrantName}</span>
+                            <div className="flex flex-wrap items-center gap-1 mt-0.5">
+                              <span className="rounded bg-gold/20 px-1.5 py-0.5 text-[10px] font-bold text-teal-950 inline-block">
+                                {c.occasion}
                               </span>
-                            ) : (
-                              <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-800 inline-block">
-                                ⏳ Wish Video Pending
+                              {c.wishVideoUrl ? (
+                                <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-800 inline-block">
+                                  🎥 Wish Video Attached
+                                </span>
+                              ) : (
+                                <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-800 inline-block">
+                                  ⏳ Wish Video Pending
+                                </span>
+                              )}
+                            </div>
+                            {c.blessingMessage && (
+                              <p className="text-[10px] text-teal-950/60 mt-0.5 max-w-xs truncate italic">
+                                &ldquo;{c.blessingMessage}&rdquo;
+                              </p>
+                            )}
+                          </td>
+                          <td className="py-3">
+                            <span className="font-bold text-teal-900 block">{formatINR(c.amount)}</span>
+                            <span className="text-[11px] text-teal-950/70">{c.packageName}</span>
+                          </td>
+                          <td className="py-3">
+                            <span className="font-semibold text-teal-950 block">
+                              {c.visitMode === "in_person" ? "In-Person Visit" : "Remote Seva"}
+                            </span>
+                            {c.visitMode === "in_person" && (
+                              <span className="text-[10px] text-teal-950/60">
+                                {c.timeSlot === "morning" ? "Morning (11:30 AM)" : c.timeSlot === "evening" ? "Evening (4:30 PM)" : c.timeSlot} &bull; {c.guestCount} guests
                               </span>
                             )}
-                          </div>
-                          {c.blessingMessage && (
-                            <p className="text-[10px] text-teal-950/60 mt-0.5 max-w-xs truncate italic">
-                              &ldquo;{c.blessingMessage}&rdquo;
-                            </p>
-                          )}
-                        </td>
-                        <td className="py-3">
-                          <span className="font-bold text-teal-900 block">{formatINR(c.amount)}</span>
-                          <span className="text-[11px] text-teal-950/70">{c.packageName}</span>
-                        </td>
-                        <td className="py-3">
-                          <span className="font-semibold text-teal-950 block">
-                            {c.visitMode === "in_person" ? "In-Person Visit" : "Remote Seva"}
-                          </span>
-                          {c.visitMode === "in_person" && (
-                            <span className="text-[10px] text-teal-950/60">
-                              {c.timeSlot === "morning" ? "Morning (11:30 AM)" : c.timeSlot === "evening" ? "Evening (4:30 PM)" : c.timeSlot} &bull; {c.guestCount} guests
+                          </td>
+                          <td className="py-3">
+                            <span className="font-bold text-teal-950 block">{c.donorName}</span>
+                            <a
+                              href={`https://wa.me/91${c.donorPhone.replace(/\D/g, "").slice(-10)}?text=${encodeURIComponent(`Namaste ${c.donorName}! Regarding your celebration booking for ${c.celebrantName} at Janaseva Ashrama on ${c.celebrationDate}...`)}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="font-mono text-[11px] text-emerald-700 hover:underline inline-flex items-center gap-1 font-bold"
+                            >
+                              <span>WhatsApp: {c.donorPhone}</span>
+                            </a>
+                          </td>
+                          <td className="py-3">
+                            <select
+                              value={c.celebrationStatus}
+                              onChange={(e) => updateCelebrationStatus(c.id, e.target.value)}
+                              className="rounded-lg border border-teal-900/15 bg-cream px-2 py-1 text-[11px] font-bold text-teal-950"
+                            >
+                              <option value="PENDING">PENDING</option>
+                              <option value="CONFIRMED">CONFIRMED</option>
+                              <option value="FOOD_PREPARED">FOOD PREPARED</option>
+                              <option value="CELEBRATED">CELEBRATED</option>
+                              <option value="PHOTOS_SENT">PHOTOS SENT</option>
+                              <option value="CANCELLED">CANCELLED</option>
+                            </select>
+                          </td>
+                          <td className="py-3 text-right space-x-1">
+                            <button
+                              type="button"
+                              onClick={() => setProofModalCeleb(c)}
+                              className="rounded-lg bg-teal-900 px-2.5 py-1 text-[11px] font-bold text-white hover:bg-teal-800 transition"
+                            >
+                              {c.photoProofUrl ? "View/Edit Proof" : "Attach Proof"}
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Mobile View: High-Legibility Touch Cards */}
+                <div className="md:hidden space-y-3">
+                  {celebrations.map((c) => (
+                    <div
+                      key={c.id}
+                      className="rounded-2xl border border-teal-900/10 bg-white p-3.5 shadow-2xs space-y-2.5 transition"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <span className="font-bold text-teal-950 text-sm block truncate">{c.celebrantName}</span>
+                          <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+                            <span className="rounded bg-gold/20 px-1.5 py-0.5 text-[10px] font-bold text-teal-950">
+                              {c.occasion}
                             </span>
+                            <span className="text-[11px] text-teal-900/60 font-semibold">
+                              📅 {c.celebrationDate}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <span className="font-bold text-teal-900 text-sm block">{formatINR(c.amount)}</span>
+                          <span className="text-[10px] text-teal-950/60 block">{c.packageName}</span>
+                        </div>
+                      </div>
+
+                      <div className="text-xs text-teal-950/70 border-t border-teal-900/5 pt-2 space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span>Donor: <strong className="text-teal-950">{c.donorName}</strong></span>
+                          {c.donorPhone && (
+                            <a
+                              href={`https://wa.me/91${c.donorPhone.replace(/\D/g, "").slice(-10)}?text=${encodeURIComponent(`Namaste ${c.donorName}! Regarding your celebration booking for ${c.celebrantName} at Janaseva Ashrama on ${c.celebrationDate}...`)}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="font-mono text-[11px] text-emerald-700 hover:underline inline-flex items-center gap-1 font-bold"
+                            >
+                              <span>💬 WhatsApp</span>
+                            </a>
                           )}
-                        </td>
-                        <td className="py-3">
-                          <span className="font-bold text-teal-950 block">{c.donorName}</span>
-                          <a
-                            href={`https://wa.me/91${c.donorPhone.replace(/\D/g, "").slice(-10)}?text=${encodeURIComponent(`Namaste ${c.donorName}! Regarding your celebration booking for ${c.celebrantName} at Janaseva Ashrama on ${c.celebrationDate}...`)}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="font-mono text-[11px] text-emerald-700 hover:underline inline-flex items-center gap-1 font-bold"
-                          >
-                            <span>WhatsApp: {c.donorPhone}</span>
-                          </a>
-                        </td>
-                        <td className="py-3">
-                          <select
-                            value={c.celebrationStatus}
-                            onChange={(e) => updateCelebrationStatus(c.id, e.target.value)}
-                            className="rounded-lg border border-teal-900/15 bg-cream px-2 py-1 text-[11px] font-bold text-teal-950"
-                          >
-                            <option value="PENDING">PENDING</option>
-                            <option value="CONFIRMED">CONFIRMED</option>
-                            <option value="FOOD_PREPARED">FOOD PREPARED</option>
-                            <option value="CELEBRATED">CELEBRATED</option>
-                            <option value="PHOTOS_SENT">PHOTOS SENT</option>
-                            <option value="CANCELLED">CANCELLED</option>
-                          </select>
-                        </td>
-                        <td className="py-3 text-right space-x-1">
-                          <button
-                            type="button"
-                            onClick={() => setProofModalCeleb(c)}
-                            className="rounded-lg bg-teal-900 px-2.5 py-1 text-[11px] font-bold text-white hover:bg-teal-800 transition"
-                          >
-                            {c.photoProofUrl ? "View/Edit Proof" : "Attach Proof"}
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                        </div>
+                        {c.visitMode === "in_person" && (
+                          <div className="text-[11px] text-teal-900/70">
+                            🏛️ In-Person · {c.timeSlot === "morning" ? "Morning (11:30 AM)" : c.timeSlot === "evening" ? "Evening (4:30 PM)" : c.timeSlot} · {c.guestCount} guests
+                          </div>
+                        )}
+                        {c.blessingMessage && (
+                          <p className="text-[11px] italic text-teal-900/70 truncate">&ldquo;{c.blessingMessage}&rdquo;</p>
+                        )}
+                      </div>
+
+                      <div className="flex items-center justify-between gap-2 border-t border-teal-900/5 pt-2">
+                        <select
+                          value={c.celebrationStatus}
+                          onChange={(e) => updateCelebrationStatus(c.id, e.target.value)}
+                          className="rounded-lg border border-teal-900/15 bg-cream px-2 py-1 text-xs font-bold text-teal-950"
+                        >
+                          <option value="PENDING">PENDING</option>
+                          <option value="CONFIRMED">CONFIRMED</option>
+                          <option value="FOOD_PREPARED">FOOD PREPARED</option>
+                          <option value="CELEBRATED">CELEBRATED</option>
+                          <option value="PHOTOS_SENT">PHOTOS SENT</option>
+                          <option value="CANCELLED">CANCELLED</option>
+                        </select>
+                        <button
+                          type="button"
+                          onClick={() => setProofModalCeleb(c)}
+                          className="rounded-lg bg-teal-900 px-3 py-1 text-xs font-bold text-white hover:bg-teal-800 transition cursor-pointer"
+                        >
+                          {c.photoProofUrl ? "Proof Attached ✓" : "+ Attach Proof"}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
             )}
           </div>
 
@@ -3460,14 +3690,14 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
 
       {/* ==================== 3. WEBSITE CONTENT & TEXT CMS TAB ==================== */}
       {activeTab === "content" && (
-        <div className="space-y-6">
+        <div className="space-y-6 pb-20 sm:pb-0">
           {/* Subtab Navigator */}
-          <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-3 rounded-2xl ring-1 ring-teal-900/10 shadow-2xs">
-            <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3 rounded-2xl ring-1 ring-teal-900/10 shadow-2xs">
+            <div className="flex overflow-x-auto no-scrollbar scrollbar-none gap-1.5 py-1 -mx-1 px-1 sm:mx-0 sm:px-0 sm:flex-wrap">
               {[
                 { id: "hero", label: "🌟 Hero & Video" },
                 { id: "shagun", label: "🪙 Divine Shagun & Daily Seva" },
-                { id: "celebrations", label: "🎂 Celebration Packages & Video Cost" },
+                { id: "celebrations", label: "🎂 Celebrations & Video" },
                 { id: "wishes", label: "📱 Delivered WhatsApp Wishes" },
                 { id: "meals", label: "🍲 Today Live Meals Tracker" },
                 { id: "tiers", label: "🏷️ 5 Official Support Tiers" },
@@ -3482,7 +3712,7 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
                   key={st.id}
                   type="button"
                   onClick={() => setContentSubtab(st.id as any)}
-                  className={`rounded-xl px-3 py-1.5 text-xs font-bold transition cursor-pointer ${
+                  className={`shrink-0 whitespace-nowrap rounded-xl px-3 py-1.5 text-xs font-bold transition cursor-pointer active:scale-95 ${
                     contentSubtab === st.id
                       ? "bg-teal-950 text-white shadow-xs"
                       : "bg-cream/40 text-teal-950/70 hover:bg-cream border border-teal-900/10"
@@ -3497,7 +3727,7 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
               type="button"
               disabled={contentSaving || !contentForm}
               onClick={() => void handleSaveContent()}
-              className="rounded-xl bg-saffron px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-saffron-dark transition disabled:opacity-50 cursor-pointer"
+              className="hidden sm:inline-flex shrink-0 rounded-xl bg-saffron px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-saffron-dark transition disabled:opacity-50 cursor-pointer"
             >
               {contentSaving ? "Saving Live..." : "💾 Quick Save Changes"}
             </button>
@@ -5210,6 +5440,19 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
               </div>
             </form>
           )}
+
+          {/* Floating Sticky Mobile Quick-Save Bar */}
+          <div className="fixed bottom-3 inset-x-3 z-40 sm:hidden">
+            <button
+              type="button"
+              disabled={contentSaving || !contentForm}
+              onClick={() => void handleSaveContent()}
+              className="w-full flex items-center justify-center gap-2 rounded-2xl bg-saffron py-3.5 px-4 text-xs font-black text-white shadow-2xl hover:bg-saffron-dark active:scale-98 transition ring-2 ring-white/20 disabled:opacity-50 cursor-pointer"
+            >
+              <span>💾</span>
+              <span>{contentSaving ? "Saving & Publishing Live..." : "Save & Publish Changes Live"}</span>
+            </button>
+          </div>
         </div>
       )}
 
@@ -7468,12 +7711,40 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
             <form onSubmit={handlePublishDailyPhoto} className="mt-4 space-y-4">
               {/* Photo Upload & Preview */}
               <div>
-                <label className="block text-xs font-bold text-teal-900 mb-1.5">
-                  Select Photo (Camera or File) *
+                <label className="block text-xs font-bold text-teal-900 mb-2">
+                  Select Photo (Camera or Gallery) *
                 </label>
-                <div className="flex flex-col sm:flex-row items-center gap-3">
-                  <label className="focus-ring w-full sm:w-auto shrink-0 cursor-pointer rounded-xl bg-teal-900 px-4 py-2.5 text-xs font-bold text-white hover:bg-teal-950 transition flex items-center justify-center gap-2 shadow-xs">
-                    <span>📷 Pick Photo</span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <label className="focus-ring cursor-pointer rounded-2xl bg-emerald-700 p-3 text-center text-xs font-bold text-white hover:bg-emerald-800 transition flex items-center justify-center gap-2 shadow-xs active:scale-95">
+                    <span className="text-lg">📸</span>
+                    <div className="text-left">
+                      <span className="block leading-tight">Take Live Photo</span>
+                      <span className="block text-[10px] text-emerald-200 font-normal">Opens phone camera</span>
+                    </div>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        setDailyPhotoFile(file);
+                        const reader = new FileReader();
+                        reader.onload = () => {
+                          setDailyPhotoPreview(reader.result as string);
+                        };
+                        reader.readAsDataURL(file);
+                      }}
+                      className="hidden"
+                    />
+                  </label>
+
+                  <label className="focus-ring cursor-pointer rounded-2xl bg-teal-900 p-3 text-center text-xs font-bold text-white hover:bg-teal-950 transition flex items-center justify-center gap-2 shadow-xs active:scale-95">
+                    <span className="text-lg">🖼️</span>
+                    <div className="text-left">
+                      <span className="block leading-tight">Choose from Gallery</span>
+                      <span className="block text-[10px] text-teal-200 font-normal">Pick saved photo</span>
+                    </div>
                     <input
                       type="file"
                       accept="image/*"
@@ -7490,7 +7761,6 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
                       className="hidden"
                     />
                   </label>
-                  <span className="text-xs text-teal-900/60">or enter image path below</span>
                 </div>
 
                 {dailyPhotoPreview && (

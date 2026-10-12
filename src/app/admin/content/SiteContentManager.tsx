@@ -123,7 +123,7 @@ export function SiteContentManager({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-20 sm:pb-0">
       {/* Top Banner & Quick Save */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-2xl bg-teal-950 p-5 text-white shadow-md border border-amber-400/20">
         <div>
@@ -145,19 +145,19 @@ export function SiteContentManager({
       </div>
 
       {/* Sub-Tabs */}
-      <div className="flex flex-wrap gap-2 border-b border-teal-900/10 pb-3">
+      <div className="flex overflow-x-auto no-scrollbar scrollbar-none gap-2 border-b border-teal-900/10 pb-3 -mx-2 px-2 sm:mx-0 sm:px-0 sm:flex-wrap">
         {[
-          { id: "hero", label: "🎬 Top Hero Video & Visuals" },
-          { id: "tiers", label: "🏛️ 5 Support Tiers & Pricing" },
-          { id: "chapters", label: "📽️ Documentary Chapters (1–5)" },
-          { id: "contact", label: "📞 Contact & Social Channels" },
-          { id: "quotes_faq", label: "💬 Caregiver Quotes & FAQs" },
+          { id: "hero", label: "🎬 Hero Video & Visuals" },
+          { id: "tiers", label: "🏛️ 5 Support Tiers" },
+          { id: "chapters", label: "📽️ Documentary Chapters" },
+          { id: "contact", label: "📞 Contact & Channels" },
+          { id: "quotes_faq", label: "💬 Quotes & FAQs" },
         ].map((t) => (
           <button
             key={t.id}
             type="button"
             onClick={() => setSubTab(t.id as any)}
-            className={`rounded-xl px-3.5 py-2 text-xs font-bold transition cursor-pointer ${
+            className={`shrink-0 whitespace-nowrap rounded-xl px-3.5 py-2 text-xs font-bold transition cursor-pointer active:scale-95 ${
               subTab === t.id
                 ? "bg-teal-900 text-white shadow"
                 : "bg-white text-teal-900/70 hover:bg-cream ring-1 ring-teal-900/10"
@@ -785,6 +785,19 @@ export function SiteContentManager({
           className="focus-ring tap-scale inline-flex items-center gap-2 rounded-xl bg-saffron px-6 py-3 text-xs font-black text-white hover:bg-saffron-dark transition shadow-md disabled:opacity-50 cursor-pointer"
         >
           {saving ? "Publishing to Website…" : "💾 Save Changes & Publish to Live Website"}
+        </button>
+      </div>
+
+      {/* Floating Sticky Mobile Save Bar */}
+      <div className="fixed bottom-3 inset-x-3 z-40 sm:hidden">
+        <button
+          type="button"
+          onClick={() => void handleSave()}
+          disabled={saving}
+          className="w-full flex items-center justify-center gap-2 rounded-2xl bg-saffron py-3.5 px-4 text-xs font-black text-white shadow-2xl hover:bg-saffron-dark active:scale-98 transition ring-2 ring-white/20 disabled:opacity-50 cursor-pointer"
+        >
+          <span>💾</span>
+          <span>{saving ? "Publishing to Website…" : "Save & Publish Live"}</span>
         </button>
       </div>
     </div>

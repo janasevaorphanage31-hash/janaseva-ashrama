@@ -139,26 +139,26 @@ export default function AdminContentClient() {
   return (
     <div className="space-y-6">
       {/* Tab Navigation */}
-      <div className="flex flex-wrap gap-2">
+      <div className="flex overflow-x-auto no-scrollbar scrollbar-none gap-2 pb-2.5 pt-1 -mx-2 px-2 sm:mx-0 sm:px-0 sm:flex-wrap">
         {[
-          { id: "siteContent", label: "🌐 Site Media & Content" },
-          { id: "catalogs", label: "Impact Catalogs (E-Com)" },
-          { id: "celebrations", label: "Special Day Celebrations" },
-          { id: "wishes", label: "WhatsApp Wish Videos" },
-          { id: "today", label: "Today Moments & Photos" },
-          { id: "metrics", label: "Section Numbers & Stats" },
-          { id: "documents", label: "Audit Reports & PDFs" },
-          { id: "campaigns", label: "Campaigns" },
-          { id: "volunteers", label: "Volunteers" },
-          { id: "media", label: "Media & Safeguarding" },
+          { id: "siteContent", label: "🌐 Site Content" },
+          { id: "catalogs", label: "🛍️ Catalogs" },
+          { id: "celebrations", label: "🎂 Celebrations" },
+          { id: "wishes", label: "📱 Wish Videos" },
+          { id: "today", label: "📸 Today Photos" },
+          { id: "metrics", label: "📊 Key Metrics" },
+          { id: "documents", label: "📜 Audit PDFs" },
+          { id: "campaigns", label: "📢 Campaigns" },
+          { id: "volunteers", label: "🤝 Volunteers" },
+          { id: "media", label: "🎥 Media" },
         ].map((t) => (
           <button
             key={t.id}
             type="button"
             onClick={() => setTab(t.id as Tab)}
-            className={`rounded-xl px-4 py-2.5 text-xs sm:text-sm font-bold transition cursor-pointer ${
+            className={`shrink-0 whitespace-nowrap rounded-xl px-3.5 py-2 text-xs sm:text-sm font-bold transition cursor-pointer active:scale-95 ${
               tab === t.id
-                ? "bg-teal-950 text-white shadow"
+                ? "bg-teal-950 text-white shadow ring-2 ring-saffron/40"
                 : "bg-white text-teal-950 ring-1 ring-teal-900/10 hover:bg-cream"
             }`}
           >
