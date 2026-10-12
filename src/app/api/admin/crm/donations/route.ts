@@ -38,12 +38,17 @@ export async function GET(req: Request) {
 
   const whereClause = conditions.length > 1 ? and(...conditions) : conditions[0];
 
+  const page = Math.max(1, parseInt(url.searchParams.get("page") || "1", 10));
+  const limit = Math.min(100, Math.max(1, parseInt(url.searchParams.get("limit") || "50", 10)));
+  const offset = (page - 1) * limit;
+
   const donationRows = await db
     .select()
     .from(donations)
     .where(whereClause || sql`true`)
-    .orderBy(desc(donations.createdAt))
-    .limit(100);
+    .orderBy(desc(donations.createdAt), desc(donations.id))
+    .limit(limit)
+    .offset(offset);
 
   // Fetch donation lines for these rows
   const ids = donationRows.map((d) => d.id);

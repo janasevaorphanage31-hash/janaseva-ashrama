@@ -605,9 +605,19 @@ export function CommunityV2Section({ standalone = false }: { standalone?: boolea
                 <button
                   type="submit"
                   disabled={busy}
-                  className="focus-ring tap-scale flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-600 hover:to-orange-600 px-6 py-3 text-xs sm:text-sm font-black text-white shadow-md transition disabled:opacity-60 w-full sm:w-auto shrink-0 cursor-pointer"
+                  className="focus-ring tap-scale flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-600 hover:to-orange-600 px-6 py-3 text-xs sm:text-sm font-black text-white shadow-md transition disabled:opacity-75 disabled:cursor-not-allowed w-full sm:w-auto shrink-0 cursor-pointer"
                 >
-                  {busy ? "Submitting..." : currentPathway.submitButtonText}
+                  {busy ? (
+                    <>
+                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                      </svg>
+                      <span>Submitting Application...</span>
+                    </>
+                  ) : (
+                    currentPathway.submitButtonText
+                  )}
                 </button>
               </div>
             </form>

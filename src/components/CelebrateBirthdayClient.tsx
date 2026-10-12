@@ -938,9 +938,19 @@ export function CelebrateBirthdayClient({
                   <button
                     type="submit"
                     disabled={submitting}
-                    className="focus-ring tap-scale w-full rounded-2xl bg-gradient-celebrate px-6 py-4 font-black uppercase tracking-wider text-white shadow-xl glow-saffron hover:opacity-95 transition text-xs sm:text-sm active:scale-95 disabled:opacity-60 cursor-pointer animate-shimmer"
+                    className="focus-ring tap-scale flex items-center justify-center gap-2 w-full rounded-2xl bg-gradient-celebrate px-6 py-4 font-black uppercase tracking-wider text-white shadow-xl glow-saffron hover:opacity-95 transition text-xs sm:text-sm active:scale-95 disabled:opacity-75 disabled:cursor-not-allowed cursor-pointer animate-shimmer"
                   >
-                    {submitting ? "Reserving Slot..." : `Reserve Celebration Slot (${formatINR(activePackage.price)}) →`}
+                    {submitting ? (
+                      <>
+                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                        </svg>
+                        <span>Reserving Celebration Slot...</span>
+                      </>
+                    ) : (
+                      `Reserve Celebration Slot (${formatINR(activePackage.price)}) →`
+                    )}
                   </button>
                   <p className="mt-2 text-center text-[11px] text-teal-950/60 font-medium">
                     Reserve your date now; you can contribute online via UPI/Card or at the Ashrama during your visit.

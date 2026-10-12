@@ -86,6 +86,7 @@ export function VerticalSectionRail({
               type="button"
               onClick={() => handleJump(target)}
               title={`Jump to ${target.label}`}
+              aria-label={`Jump to ${target.label}`}
               className={`group relative flex h-9 w-9 items-center justify-center rounded-full text-base transition-all duration-200 cursor-pointer ${
                 isActive
                   ? "bg-saffron text-white scale-110 shadow-md ring-2 ring-white/50"

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAdminApi, getAdminSession } from "@/lib/admin-auth";
 import { writeAudit } from "@/lib/audit";
-import { asc, count, desc, eq, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { donations, impactMissions, missionContributions } from "@/db/schema";
 import { clean, clientIp, publicToken, rateLimit, slugify } from "@/lib/server-utils";
@@ -10,15 +10,27 @@ const STATUS = new Set(["DRAFT", "ACTIVE", "PAUSED", "COMPLETED", "EXPIRED", "AR
 
 export async function GET() {
   if (!(await requireAdminApi(["SUPER_ADMIN", "STAFF_ADMIN", "CSR_ADMIN"]))) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
-  const rows = await db.select().from(impactMissions).orderBy(desc(impactMissions.createdAt));
-  const out = await Promise.all(rows.map(async (m) => {
-    const [s] = await db
-      .select({ raised: sql<number>`coalesce(sum(${missionContributions.allocatedAmount}),0)::int`, supporters: count() })
-      .from(missionContributions)
-      .innerJoin(donations, eq(donations.id, missionContributions.donationId))
-      .where(sql`${missionContributions.missionId}=${m.id} and ${donations.status}='paid'`);
-    return { ...m, raised: s.raised, supporters: s.supporters };
-  }));
+  const rows = await db.select().from(impactMissions).orderBy(desc(impactMissions.createdAt), desc(impactMissions.id));
+  if (rows.length === 0) return NextResponse.json({ missions: [] });
+
+  const missionIds = rows.map((m) => m.id);
+  const stats = await db
+    .select({
+      missionId: missionContributions.missionId,
+      raised: sql<number>`coalesce(sum(${missionContributions.allocatedAmount}),0)::int`,
+      supporters: count(),
+    })
+    .from(missionContributions)
+    .innerJoin(donations, eq(donations.id, missionContributions.donationId))
+    .where(and(inArray(missionContributions.missionId, missionIds), eq(donations.status, "paid")))
+    .groupBy(missionContributions.missionId);
+
+  const statsMap = new Map(stats.map((s) => [s.missionId, s]));
+  const out = rows.map((m) => {
+    const s = statsMap.get(m.id);
+    return { ...m, raised: s?.raised || 0, supporters: s?.supporters || 0 };
+  });
+
   return NextResponse.json({ missions: out });
 }
 

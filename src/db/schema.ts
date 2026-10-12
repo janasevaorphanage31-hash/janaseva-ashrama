@@ -168,18 +168,26 @@ export const donations = pgTable(
     index("donations_campaign_idx").on(t.campaignId),
     index("donations_status_idx").on(t.status),
     index("donations_subscription_idx").on(t.subscriptionId),
+    index("donations_paid_at_idx").on(t.paidAt),
+    index("donations_created_at_idx").on(t.createdAt),
   ],
 );
 
-export const donationLines = pgTable("donation_lines", {
-  id: serial("id").primaryKey(),
-  donationId: integer("donation_id")
-    .references(() => donations.id, { onDelete: "cascade" }),
-  itemSlug: text("item_slug"),
-  label: text("label").notNull(),
-  unitPrice: integer("unit_price").notNull(),
-  qty: integer("qty").notNull(),
-});
+export const donationLines = pgTable(
+  "donation_lines",
+  {
+    id: serial("id").primaryKey(),
+    donationId: integer("donation_id")
+      .references(() => donations.id, { onDelete: "cascade" }),
+    itemSlug: text("item_slug"),
+    label: text("label").notNull(),
+    unitPrice: integer("unit_price").notNull(),
+    qty: integer("qty").notNull(),
+  },
+  (t) => [
+    index("don_lines_donation_idx").on(t.donationId),
+  ],
+);
 
 /** Donation support tagged to missions; only paid non-refunded donations count. */
 export const missionContributions = pgTable(

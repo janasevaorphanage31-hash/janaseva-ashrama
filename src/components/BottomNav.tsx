@@ -148,9 +148,11 @@ export function BottomNav() {
     sec.items.some((m) => path.startsWith(m.href.split("#")[0]))
   );
 
-  const navItems: NavItem[] = [
+  const leftNavItems: NavItem[] = [
     { href: "/", label: "HOME", icon: <HomeIcon /> },
     { href: "/#celebrate", label: "BIRTHDAYS", icon: <BirthdayNavIcon /> },
+  ];
+  const rightNavItems: NavItem[] = [
     { href: "/#volunteer", label: "VOLUNTEER", icon: <VolunteerIcon /> },
   ];
 
@@ -297,8 +299,8 @@ export function BottomNav() {
       >
         <ul className="mx-auto flex h-16 max-w-md items-center justify-around px-1">
 
-          {/* LEFT NAV ITEMS */}
-          {navItems.map((item) => {
+          {/* LEFT NAV ITEMS (HOME, BIRTHDAYS) */}
+          {leftNavItems.map((item) => {
             const isActive =
               item.href === "/"
                 ? path === "/"
@@ -328,7 +330,7 @@ export function BottomNav() {
             );
           })}
 
-          {/* CENTER IMPACT BUTTON */}
+          {/* CENTER IMPACT BUTTON (DONATE) */}
           <li className="flex-1 text-center">
             <button
               type="button"
@@ -358,6 +360,34 @@ export function BottomNav() {
               </span>
             </button>
           </li>
+
+          {/* RIGHT NAV ITEMS (VOLUNTEER) */}
+          {rightNavItems.map((item) => {
+            const isActive = active(item.href);
+            return (
+              <li key={item.href} className="flex-1 text-center">
+                <Link
+                  href={item.href}
+                  aria-current={isActive ? "page" : undefined}
+                  className={`focus-ring tap-scale flex min-h-[52px] w-full flex-col items-center justify-center gap-0.5 py-1 transition-colors duration-200 ${
+                    isActive ? "text-teal-900" : "text-teal-950/45 hover:text-teal-950/70"
+                  }`}
+                >
+                  <span
+                    className={`transition-transform duration-200 ${
+                      isActive ? "scale-110" : "scale-100"
+                    }`}
+                  >
+                    {item.icon}
+                  </span>
+                  <span className={`text-[9px] font-bold tracking-wide ${isActive ? "text-teal-900" : ""}`}>
+                    {item.label}
+                  </span>
+                  {isActive && <span className="h-1 w-3 rounded-full bg-saffron mt-0.5" />}
+                </Link>
+              </li>
+            );
+          })}
 
           {/* MORE */}
           <li className="flex-1 text-center">

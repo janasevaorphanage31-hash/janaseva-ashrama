@@ -105,9 +105,13 @@ export async function POST(req: Request) {
   });
 }
 
-export async function GET() {
+export async function GET(req: Request) {
   // Public feed of recent and upcoming celebrations (safeguarded: no phone/email/PAN exposed)
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const url = new URL(req.url);
+  const page = Math.max(1, parseInt(url.searchParams.get("page") || "1", 10));
+  const limit = Math.min(50, Math.max(1, parseInt(url.searchParams.get("limit") || "20", 10)));
+  const offset = (page - 1) * limit;
+
   const rows = await db
     .select({
       id: celebrationBookings.id,
@@ -121,8 +125,9 @@ export async function GET() {
     })
     .from(celebrationBookings)
     .where(gte(celebrationBookings.celebrationDate, sql`to_char(now() - interval '30 days', 'YYYY-MM-DD')`))
-    .orderBy(desc(celebrationBookings.celebrationDate))
-    .limit(20);
+    .orderBy(desc(celebrationBookings.celebrationDate), desc(celebrationBookings.id))
+    .limit(limit)
+    .offset(offset);
 
-  return NextResponse.json({ celebrations: rows });
+  return NextResponse.json({ celebrations: rows, page, limit });
 }

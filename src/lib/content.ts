@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/db";
 import {
   campaigns,
@@ -244,9 +244,59 @@ export const getApprovedCampaigns = () =>
       .select()
       .from(campaigns)
       .where(and(eq(campaigns.status, "approved"), eq(campaigns.isSample, false), sql`(${campaigns.endDate} is null or ${campaigns.endDate} >= now())`))
-      .orderBy(desc(campaigns.createdAt))
+      .orderBy(desc(campaigns.createdAt), desc(campaigns.id))
       .limit(24);
-    return Promise.all(rows.map(async (c) => ({ ...c, ...(await campaignStats(c.id)) })));
+
+    if (rows.length === 0) return [];
+    const campaignIds = rows.map((c) => c.id);
+
+    // Batch query 1: Campaign donation totals (eliminates N+1)
+    const totals = await db
+      .select({
+        campaignId: donations.campaignId,
+        raised: sql<number>`coalesce(sum(${donations.amount}),0)::int`,
+        supporters: count(),
+      })
+      .from(donations)
+      .where(and(inArray(donations.campaignId, campaignIds), eq(donations.status, "paid")))
+      .groupBy(donations.campaignId);
+
+    // Batch query 2: Campaign donation units (eliminates N+1)
+    const units = await db
+      .select({
+        campaignId: donations.campaignId,
+        label: donationLines.label,
+        qty: sql<number>`sum(${donationLines.qty})::int`,
+      })
+      .from(donationLines)
+      .innerJoin(donations, eq(donations.id, donationLines.donationId))
+      .where(
+        and(
+          inArray(donations.campaignId, campaignIds),
+          eq(donations.status, "paid"),
+          sql`${donationLines.itemSlug} is not null`,
+        ),
+      )
+      .groupBy(donations.campaignId, donationLines.label);
+
+    const totalsMap = new Map(totals.map((t) => [t.campaignId, t]));
+    const unitsMap = new Map<number, { label: string; qty: number }[]>();
+    for (const u of units) {
+      if (!u.campaignId) continue;
+      const arr = unitsMap.get(u.campaignId) || [];
+      arr.push({ label: u.label, qty: u.qty });
+      unitsMap.set(u.campaignId, arr);
+    }
+
+    return rows.map((c) => {
+      const t = totalsMap.get(c.id);
+      return {
+        ...c,
+        raised: t?.raised || 0,
+        supporters: t?.supporters || 0,
+        units: unitsMap.get(c.id) || [],
+      };
+    });
   }, []);
 
 export const getCampaign = (slug: string) =>
@@ -258,17 +308,32 @@ export const getCampaign = (slug: string) =>
 
 export const getMissions = () =>
   safe(async () => {
-    const rows = await db.select().from(impactMissions).where(eq(impactMissions.status, "ACTIVE")).orderBy(desc(impactMissions.createdAt));
-    return Promise.all(
-      rows.map(async (m) => {
-        const [s] = await db
-          .select({ raised: sql<number>`coalesce(sum(${missionContributions.allocatedAmount}),0)::int`, supporters: count() })
-          .from(missionContributions)
-          .innerJoin(donations, eq(donations.id, missionContributions.donationId))
-          .where(and(eq(missionContributions.missionId, m.id), eq(donations.status, "paid")));
-        return { ...m, raised: s.raised, supporters: s.supporters };
-      }),
-    );
+    const rows = await db
+      .select()
+      .from(impactMissions)
+      .where(eq(impactMissions.status, "ACTIVE"))
+      .orderBy(desc(impactMissions.createdAt), desc(impactMissions.id));
+
+    if (rows.length === 0) return [];
+    const missionIds = rows.map((m) => m.id);
+
+    // Batch query: aggregated raised and supporters for all missions (eliminates N+1)
+    const stats = await db
+      .select({
+        missionId: missionContributions.missionId,
+        raised: sql<number>`coalesce(sum(${missionContributions.allocatedAmount}),0)::int`,
+        supporters: count(),
+      })
+      .from(missionContributions)
+      .innerJoin(donations, eq(donations.id, missionContributions.donationId))
+      .where(and(inArray(missionContributions.missionId, missionIds), eq(donations.status, "paid")))
+      .groupBy(missionContributions.missionId);
+
+    const statsMap = new Map(stats.map((s) => [s.missionId, s]));
+    return rows.map((m) => {
+      const s = statsMap.get(m.id);
+      return { ...m, raised: s?.raised || 0, supporters: s?.supporters || 0 };
+    });
   }, []);
 
 export const getImpactWall = () =>
@@ -300,7 +365,7 @@ export const getImpactWall = () =>
       })
       .from(donations)
       .where(eq(donations.status, "paid"))
-      .orderBy(desc(donations.paidAt))
+      .orderBy(desc(donations.paidAt), desc(donations.id))
       .limit(12);
 
     const latestSupporters = recentDonations.map((d) => ({

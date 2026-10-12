@@ -179,14 +179,19 @@ export async function GET(req: Request) {
 
     const whereClause = conditions.length > 1 ? and(...conditions) : conditions[0];
 
+    const page = Math.max(1, parseInt(url.searchParams.get("page") || "1", 10));
+    const limit = Math.min(100, Math.max(1, parseInt(url.searchParams.get("limit") || "50", 10)));
+    const offset = (page - 1) * limit;
+
     const rows = await db
       .select()
       .from(communityMembers)
       .where(whereClause)
-      .orderBy(desc(communityMembers.createdAt))
-      .limit(100);
+      .orderBy(desc(communityMembers.createdAt), desc(communityMembers.id))
+      .limit(limit)
+      .offset(offset);
 
-    return NextResponse.json({ members: rows });
+    return NextResponse.json({ members: rows, page, limit });
   } catch (err: any) {
     console.error("Community members fetch error:", err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
