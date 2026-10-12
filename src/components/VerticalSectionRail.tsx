@@ -11,12 +11,12 @@ export interface VerticalNavTarget {
 }
 
 const VERTICAL_TARGETS: VerticalNavTarget[] = [
+  { id: "life-in-motion", label: "Life in Motion", icon: "🎬", mode: "life" },
   { id: "official-tiers", label: "5 Tiers", icon: "🏛️", mode: "tiers" },
   { id: "celebrate", label: "Birthday", icon: "🎂", mode: "celebrate" },
   { id: "impact", label: "Basket", icon: "🛒", mode: "annadana" },
   { id: "boys-gallery", label: "Gallery", icon: "📸", mode: "life" },
-  { id: "activities", label: "Seva", icon: "🤝", mode: "life" },
-  { id: "volunteer", label: "Volunteer", icon: "🙋", mode: "community" },
+  { id: "volunteer", label: "Volunteer", icon: "🤝", mode: "community" },
   { id: "transparency", label: "80G Docs", icon: "📜", mode: "trust" },
   { id: "trust", label: "Bank", icon: "🏦", mode: "trust" },
   { id: "faq", label: "FAQ", icon: "❓", mode: "trust" },

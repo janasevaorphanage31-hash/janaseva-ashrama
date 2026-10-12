@@ -4,7 +4,6 @@ import { useEffect, useState, useRef } from "react";
 import { track } from "@/lib/track";
 import { VerticalSectionRail } from "./VerticalSectionRail";
 import { OfficialSupportTiersSection } from "./sections/OfficialSupportTiersSection";
-import { HorizontalMovingReel } from "./HorizontalMovingReel";
 import { ImpactCart } from "./ImpactCart";
 import { TrendingBirthdaySection } from "./sections/TrendingBirthdaySection";
 import { EmotionalQuotesSection } from "./sections/EmotionalQuotesSection";
@@ -114,6 +113,8 @@ const HASH_MODE_MAP: Record<string, HomeMode> = {
   needs: "annadana",
   basket: "annadana",
   "today-meals": "annadana",
+  "life-in-motion": "life",
+  "ashrama-life": "life",
   "boys-gallery": "life",
   life: "life",
   gallery: "life",
@@ -331,10 +332,7 @@ export function HomeSectionsHub({
         {/* 4. Categorized Daily Needs & Direct Giving Basket */}
         <ImpactCart />
 
-        {/* 5. Horizontal Moving Reel (Video Clips & Photos) */}
-        <HorizontalMovingReel />
-
-        {/* 6. Real Boys Visual Gallery (Curated 60 Photos & Videos) */}
+        {/* 5. Real Boys Visual Gallery (Curated 60 Photos & Videos) */}
         <RealBoysGallerySection customMedia={approvedMedia} />
 
         {/* 7. On-Ground NGO Activities & Community Outreach (Field Initiatives) */}

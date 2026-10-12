@@ -12,7 +12,7 @@ const primaryNavLinks = [
   { href: "/#celebrate", label: "Celebrate Special Day", trending: true },
   { href: "/#impact", label: "Annadana Needs" },
   { href: "/#volunteer", label: "Volunteer", badge: "Join" },
-  { href: "/#boys-gallery", label: "Ashrama Life" },
+  { href: "/#life-in-motion", label: "Ashrama Life" },
   { href: "/#transparency", label: "80G Transparency" },
 ];
 
@@ -66,7 +66,7 @@ const mobileMenuLinks = [
   { href: "/#official-tiers", label: "Sponsor Tiers (₹1,501 - ₹7,501)", icon: "document", highlight: true },
   { href: "/#celebrate", label: "Celebrate Birthday & Milestones", icon: "star", highlight: true },
   { href: "/#impact", label: "Annadana Needs & Basket", icon: "heart", highlight: true },
-  { href: "/#boys-gallery", label: "Ashrama Life & Boys Gallery", icon: "sparkle" },
+  { href: "/#life-in-motion", label: "Ashrama Life & Boys Gallery", icon: "sparkle" },
   { href: "/#volunteer", label: "Community, Influencers & WhatsApp", icon: "users" },
   { href: "/#transparency", label: "80G Transparency & Trust", icon: "shield" },
   { href: "/supporter-form", label: "Official Supporter Form", icon: "document" },

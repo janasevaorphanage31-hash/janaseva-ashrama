@@ -117,16 +117,34 @@ export function HorizontalMovingReel() {
   // Duplicate items for a continuous seamless marquee loop
   const displayItems = [...REEL_ITEMS, ...REEL_ITEMS];
 
+  const handleScrollLeft = () => {
+    if (scrollerRef.current) {
+      scrollerRef.current.scrollBy({ left: -320, behavior: "smooth" });
+    }
+  };
+
+  const handleScrollRight = () => {
+    if (scrollerRef.current) {
+      scrollerRef.current.scrollBy({ left: 320, behavior: "smooth" });
+    }
+  };
+
   return (
-    <div className="w-full max-w-full overflow-hidden bg-teal-950 py-5 sm:py-7 border-y border-white/10 select-none">
+    <section
+      id="life-in-motion"
+      aria-label="Life in Motion at Janaseva Ashrama"
+      className="relative w-full max-w-full overflow-hidden bg-teal-950 py-5 sm:py-7 border-y border-white/10 select-none scroll-mt-20"
+    >
+      <div id="ashrama-life" className="scroll-mt-24" />
+
       {/* Header Bar */}
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 mb-3 flex items-center justify-between">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 mb-3.5 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="relative flex h-2.5 w-2.5">
             <span className="animate-beacon absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
             <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
           </span>
-          <span className="text-xs font-bold uppercase tracking-wider text-amber-300">
+          <span className="text-xs sm:text-sm font-black uppercase tracking-wider text-amber-300">
             Life in Motion at Janaseva Ashrama
           </span>
           <span className="hidden sm:inline text-xs text-white/50">·</span>
@@ -135,19 +153,42 @@ export function HorizontalMovingReel() {
           </span>
         </div>
 
-        <button
-          type="button"
-          onClick={() => openBottomDonate(4500, "food_one_day")}
-          className="text-[11px] font-bold text-amber-300 hover:text-white underline underline-offset-4 cursor-pointer"
-        >
-          Sponsor a Day (₹4,500) →
-        </button>
+        <div className="flex items-center gap-2 sm:gap-3">
+          {/* Desktop Left/Right Manual Scroll Buttons */}
+          <div className="hidden md:flex items-center gap-1">
+            <button
+              type="button"
+              onClick={handleScrollLeft}
+              aria-label="Scroll left"
+              className="flex h-7 w-7 items-center justify-center rounded-full bg-white/10 text-white/80 hover:bg-white/20 hover:text-white transition cursor-pointer text-xs"
+            >
+              ←
+            </button>
+            <button
+              type="button"
+              onClick={handleScrollRight}
+              aria-label="Scroll right"
+              className="flex h-7 w-7 items-center justify-center rounded-full bg-white/10 text-white/80 hover:bg-white/20 hover:text-white transition cursor-pointer text-xs"
+            >
+              →
+            </button>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => openBottomDonate(4500, "food_one_day")}
+            className="focus-ring tap-scale rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 hover:text-white border border-amber-400/40 px-3 py-1.5 text-xs font-extrabold tracking-wide cursor-pointer transition flex items-center gap-1.5 shadow-xs"
+          >
+            <span>Sponsor a Day (₹4,500)</span>
+            <span>→</span>
+          </button>
+        </div>
       </div>
 
       {/* Moving Marquee Container */}
       <div
         ref={scrollerRef}
-        className="relative w-full overflow-hidden"
+        className="relative w-full overflow-x-auto no-scrollbar scrollbar-none"
         aria-label="Horizontal moving reel of photos and videos of Janaseva boys"
       >
         <div className="animate-marquee flex gap-4 pl-4 hover:[animation-play-state:paused] focus-within:[animation-play-state:paused]">
@@ -215,7 +256,7 @@ export function HorizontalMovingReel() {
                       e.stopPropagation();
                       openBottomDonate(item.sponsorAmount);
                     }}
-                    className="focus-ring tap-scale rounded-lg bg-amber-500 hover:bg-amber-400 px-2.5 py-1 text-[10px] font-black uppercase text-teal-950 shadow transition cursor-pointer"
+                    className="focus-ring tap-scale rounded-lg bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 px-2.5 py-1 text-[10px] font-black uppercase text-teal-950 shadow-md hover:shadow-lg transition cursor-pointer"
                   >
                     Sponsor 💝
                   </button>
@@ -225,6 +266,6 @@ export function HorizontalMovingReel() {
           ))}
         </div>
       </div>
-    </div>
+    </section>
   );
 }

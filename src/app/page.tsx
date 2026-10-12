@@ -1,4 +1,5 @@
 import { CinematicHero } from "@/components/CinematicHero";
+import { HorizontalMovingReel } from "@/components/HorizontalMovingReel";
 import { HomeSectionsHub } from "@/components/HomeSectionsHub";
 import { Track } from "@/components/Track";
 import {
@@ -30,7 +31,10 @@ export default async function Home() {
       {/* 1. Cinematic Opening (Awareness & Emotional Hook: 25 Boys Residential Orphanage) */}
       <CinematicHero content={siteContent} />
 
-      {/* 2. Organized Vertical Sections Hub (Drastically Cuts Mobile Scrolling Time & Gives App-Like Multi-Section Navigation) */}
+      {/* 2. Life in Motion at Janaseva Ashrama (A Day in the Life of 25 Orphaned Boys in Bengaluru) */}
+      <HorizontalMovingReel />
+
+      {/* 3. Organized Vertical Sections Hub (Drastically Cuts Mobile Scrolling Time & Gives App-Like Multi-Section Navigation) */}
       <HomeSectionsHub
         updates={updates}
         docs={docs}

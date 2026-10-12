@@ -262,17 +262,19 @@ export function ImpactCart({
         <button
           type="button"
           onClick={() => cart.openBottomDonate(101, "food_one_day")}
-          className="focus-ring block w-full rounded-xl px-5 py-3.5 sm:py-4 text-center text-xs sm:text-sm font-bold tracking-wide text-white bg-saffron shadow-md hover:bg-saffron-dark transition active:scale-95 cursor-pointer animate-heartbeat"
+          className="focus-ring flex items-center justify-center gap-1.5 w-full rounded-2xl px-3 sm:px-4 py-3 sm:py-3.5 text-center text-xs sm:text-sm font-extrabold tracking-wide text-white bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 shadow-md hover:from-amber-600 hover:to-orange-600 transition active:scale-95 cursor-pointer animate-heartbeat"
         >
-          QUICK SPONSOR 25 BOYS (₹101 / ₹2,501) 💝
+          <span>QUICK SPONSOR 25 BOYS</span>
+          <span className="text-[11px] font-bold opacity-95 shrink-0">(₹101+) 💝</span>
         </button>
       ) : (
         <Link
           href={checkoutHref}
           onClick={() => track("checkout_start", { total })}
-          className="focus-ring block rounded-xl px-5 py-3.5 sm:py-4 text-center text-xs sm:text-sm font-bold tracking-wide text-white bg-saffron shadow-md hover:bg-saffron-dark transition active:scale-95 animate-heartbeat"
+          className="focus-ring flex items-center justify-center gap-1.5 w-full rounded-2xl px-4 py-3 sm:py-3.5 text-center text-xs sm:text-sm font-extrabold tracking-wide text-white bg-gradient-to-r from-emerald-600 to-teal-700 shadow-md hover:from-emerald-700 hover:to-teal-800 transition active:scale-95 animate-heartbeat"
         >
-          PROCEED TO IMPACT CHECKOUT ({formatINR(total)}) →
+          <span>PROCEED TO IMPACT CHECKOUT</span>
+          <span className="shrink-0 font-mono">({formatINR(total)}) →</span>
         </Link>
       )}
 
