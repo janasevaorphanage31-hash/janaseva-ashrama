@@ -179,6 +179,17 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
   const [todayUpdatesLoading, setTodayUpdatesLoading] = useState(false);
   const [editingTodayUpdate, setEditingTodayUpdate] = useState<any | null>(null);
 
+  // Media editing & customization state
+  const [editingDbMedia, setEditingDbMedia] = useState<any | null>(null);
+  const [customizingCuratedItem, setCustomizingCuratedItem] = useState<any | null>(null);
+  const [customizingSaving, setCustomizingSaving] = useState(false);
+
+  // Impact Metrics state
+  const [impactMetricsList, setImpactMetricsList] = useState<any[]>([]);
+  const [impactMetricsLoading, setImpactMetricsLoading] = useState(false);
+  const [editingMetric, setEditingMetric] = useState<any | null>(null);
+  const [newMetricModalOpen, setNewMetricModalOpen] = useState(false);
+
   // Content CMS subtab
   const [contentSubtab, setContentSubtab] = useState<
     | "hero"
@@ -193,6 +204,7 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
     | "quotes"
     | "faqs"
     | "about_contact"
+    | "metrics"
   >("hero");
 
   // Volunteers state
@@ -620,6 +632,190 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
     } catch {
       setNotification("Network error deleting media.");
     }
+  }
+
+  // Patch / Update existing live DB media asset
+  async function handlePatchDbMedia(id: number, patch: Record<string, any>) {
+    try {
+      const res = await fetch("/api/admin/media", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, ...patch }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setNotification("Media text and details updated successfully!");
+        setEditingDbMedia(null);
+        await loadMediaAssets();
+      } else {
+        setNotification(data.error || "Failed to update media.");
+      }
+    } catch {
+      setNotification("Network error updating media.");
+    }
+  }
+
+  // Save customized Curated Gallery item to live DB
+  async function handleSaveCustomizedCurated(customized: {
+    url: string;
+    posterUrl?: string;
+    kind: string;
+    caption: string;
+    altText: string;
+    credit: string;
+  }) {
+    setCustomizingSaving(true);
+    try {
+      const res = await fetch("/api/admin/media", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          kind: customized.kind || "image",
+          publicUrl: customized.url,
+          posterUrl: customized.posterUrl || null,
+          caption: customized.caption,
+          altText: customized.altText,
+          credit: customized.credit || "Janaseva Ashrama",
+          status: "LIVE",
+          consentStatus: "CONSENTED",
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setNotification(`Saved "${customized.caption}" to Live Media Gallery!`);
+        setCustomizingCuratedItem(null);
+        await loadMediaAssets();
+      } else {
+        setNotification(data.error || "Failed to customize gallery item.");
+      }
+    } catch {
+      setNotification("Network error saving customized gallery item.");
+    } finally {
+      setCustomizingSaving(false);
+    }
+  }
+
+  // Load Impact Metrics
+  async function loadImpactMetrics() {
+    setImpactMetricsLoading(true);
+    try {
+      const res = await fetch("/api/admin/metrics", { cache: "no-store" });
+      const data = await res.json();
+      if (res.ok && data.metrics) {
+        setImpactMetricsList(data.metrics);
+      }
+    } catch {
+      // silent
+    }
+    setImpactMetricsLoading(false);
+  }
+
+  // Patch Impact Metric
+  async function handlePatchMetric(id: number, patch: Record<string, any>) {
+    try {
+      const res = await fetch("/api/admin/metrics", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, ...patch }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setNotification("Impact metric updated successfully!");
+        setEditingMetric(null);
+        await loadImpactMetrics();
+      } else {
+        setNotification(data.error || "Failed to update metric.");
+      }
+    } catch {
+      setNotification("Network error updating metric.");
+    }
+  }
+
+  // Create Impact Metric
+  async function handleCreateMetric(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const fd = new FormData(e.currentTarget);
+    const key = String(fd.get("key") || "").trim().toLowerCase().replace(/[^a-z0-9_]/g, "_");
+    const label = String(fd.get("label") || "").trim();
+    const value = Math.floor(Number(fd.get("value")) || 0);
+    const unit = String(fd.get("unit") || "").trim() || null;
+    const source = String(fd.get("source") || "").trim() || null;
+    const periodLabel = String(fd.get("periodLabel") || "").trim() || null;
+    const sortOrder = Math.floor(Number(fd.get("sortOrder")) || 0);
+    const published = fd.get("published") === "on";
+
+    if (!key || !label) {
+      setNotification("Unique key and label are required for impact metrics.");
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/admin/metrics", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          key,
+          label,
+          value,
+          unit,
+          source,
+          periodLabel,
+          sortOrder,
+          published,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setNotification("New impact metric created successfully!");
+        setNewMetricModalOpen(false);
+        await loadImpactMetrics();
+      } else {
+        setNotification(data.error || "Failed to create metric.");
+      }
+    } catch {
+      setNotification("Network error creating metric.");
+    }
+  }
+
+  // Delete Impact Metric
+  async function handleDeleteMetric(id: number, label: string) {
+    if (!confirm(`Are you sure you want to delete impact metric "${label}"?`)) return;
+    try {
+      const res = await fetch(`/api/admin/metrics?id=${id}`, { method: "DELETE" });
+      const data = await res.json();
+      if (res.ok) {
+        setNotification(`Impact metric "${label}" deleted.`);
+        await loadImpactMetrics();
+      } else {
+        setNotification(data.error || "Failed to delete metric.");
+      }
+    } catch {
+      setNotification("Network error deleting metric.");
+    }
+  }
+
+  // Seed standard 5 default impact metrics into database
+  async function handleSeedDefaultMetrics() {
+    const defaults = [
+      { key: "resident_boys", label: "Children in Foster Care", value: 25, unit: "Resident Boys", source: "Govt JJ Act KA18CH0242", periodLabel: "Boys Ages 07–18", sortOrder: 1, published: true },
+      { key: "meals_served", label: "Annadana Meals Served", value: 27375, unit: "Meals / Year", source: "Ashrama Kitchen Log", periodLabel: "3 Fresh Meals Daily", sortOrder: 2, published: true },
+      { key: "school_enrollment", label: "School & Vidya Enrollment", value: 100, unit: "% In School", source: "Bangalore School Records", periodLabel: "100% Attendance", sortOrder: 3, published: true },
+      { key: "health_screenings", label: "Pediatric Health Screenings", value: 12, unit: "Doctor Camps", source: "Volunteer Doctor Log", periodLabel: "Continuous Care", sortOrder: 4, published: true },
+      { key: "tax_exemption", label: "Section 80G Tax Exemption", value: 50, unit: "% Tax Exemption", source: "IT Dept Form 10AC", periodLabel: "AY 2024-25 to 2026-27", sortOrder: 5, published: true },
+    ];
+    let createdCount = 0;
+    for (const item of defaults) {
+      try {
+        const res = await fetch("/api/admin/metrics", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(item),
+        });
+        if (res.ok) createdCount++;
+      } catch {}
+    }
+    setNotification(`Initialized ${createdCount} audited impact metrics in database!`);
+    await loadImpactMetrics();
   }
 
   // Today Live Meals Tracker handlers
@@ -1057,8 +1253,12 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
       imageUrl: finalImage,
       gallery: fd.get("gallery") || null,
       schemes: fd.get("schemes") || null,
+      accountingMeaning: fd.get("accountingMeaning") || null,
+      operationalMeaning: fd.get("operationalMeaning") || null,
       todayNeed: fd.get("todayNeed") === "on",
       featured: fd.get("featured") === "on",
+      futureFlag: fd.get("futureFlag") === "on",
+      sortOrder: Number(fd.get("sortOrder")) || 0,
       financeApproval: "approved",
     };
 
@@ -1548,6 +1748,7 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
       else if (activeTab === "analytics") void loadAnalytics();
       else if (activeTab === "content" || activeTab === "media") {
         void loadSiteContent();
+        void loadImpactMetrics();
         if (activeTab === "media") {
           void loadTodayUpdatesList();
           void loadMediaAssets();
@@ -3707,6 +3908,7 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
                 { id: "quotes", label: "💬 Caregiver Voices & Quotes" },
                 { id: "faqs", label: "❓ FAQs Manager" },
                 { id: "about_contact", label: "🏛️ Mission & Contact Info" },
+                { id: "metrics", label: "📊 Key Impact Numbers & Metrics" },
               ].map((st) => (
                 <button
                   key={st.id}
@@ -5428,6 +5630,149 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
                 </div>
               )}
 
+              {/* SUBTAB: KEY IMPACT NUMBERS & METRICS MANAGER */}
+              {contentSubtab === "metrics" && (
+                <div className="space-y-6">
+                  <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-teal-900/10 space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-teal-900/10 pb-4">
+                      <div>
+                        <div className="inline-flex items-center gap-2 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200 px-2.5 py-1 text-xs font-bold uppercase tracking-wider mb-1.5">
+                          <span>📊 Live Impact Counters &amp; Audited Metrics</span>
+                        </div>
+                        <h3 className="font-display text-base font-bold text-teal-900">
+                          Platform Impact Numbers ({impactMetricsList.length} Metrics Configured)
+                        </h3>
+                        <p className="text-xs text-teal-950/60 max-w-2xl">
+                          These numbers power the &ldquo;Verified Impact&rdquo; section on the homepage and transparency counters across the site (e.g. 25 Resident Boys, 27,375 Meals/Year, 100% In School, 12 Doctor Camps, 50% Tax Exemption).
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => void loadImpactMetrics()}
+                          className="rounded-xl border border-teal-900/20 bg-cream/50 px-3 py-2 text-xs font-bold text-teal-900 hover:bg-cream transition cursor-pointer"
+                        >
+                          🔄 Refresh
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setNewMetricModalOpen(true)}
+                          className="rounded-xl bg-saffron px-4 py-2 text-xs font-bold text-white hover:bg-saffron-dark transition shadow-xs cursor-pointer flex items-center gap-1.5"
+                        >
+                          <span>+ Add New Metric</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {impactMetricsLoading && impactMetricsList.length === 0 ? (
+                      <p className="text-xs font-semibold text-teal-900/60 py-6 text-center">Loading impact numbers...</p>
+                    ) : impactMetricsList.length === 0 ? (
+                      <div className="rounded-2xl border border-dashed border-teal-900/25 bg-cream/20 p-6 text-center space-y-3">
+                        <p className="text-xs font-medium text-teal-950/70">
+                          No custom impact metrics stored in the database yet. The live website is currently displaying the default audited statistics.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => void handleSeedDefaultMetrics()}
+                          className="rounded-xl bg-teal-900 px-4 py-2 text-xs font-bold text-white hover:bg-teal-950 transition cursor-pointer"
+                        >
+                          ⚡ Initialize Default Audited Metrics in DB (5 Standard Metrics)
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
+                        {impactMetricsList.map((m) => (
+                          <div
+                            key={m.id}
+                            className={`rounded-2xl border p-4 transition flex flex-col justify-between space-y-3 ${
+                              m.published
+                                ? "border-teal-900/15 bg-cream/20 hover:bg-cream/40"
+                                : "border-gray-200 bg-gray-50/70 opacity-80"
+                            }`}
+                          >
+                            <div className="space-y-1.5">
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="font-mono text-[10px] text-teal-900/50 font-bold uppercase tracking-wider">
+                                  #{m.sortOrder} · {m.key}
+                                </span>
+                                <span
+                                  className={`rounded-md px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${
+                                    m.published
+                                      ? "bg-emerald-100 text-emerald-800 border border-emerald-300"
+                                      : "bg-gray-200 text-gray-700"
+                                  }`}
+                                >
+                                  {m.published ? "Published / Live" : "Draft / Hidden"}
+                                </span>
+                              </div>
+
+                              <div className="flex items-baseline gap-1.5">
+                                <span className="font-display text-2xl font-black text-teal-950">
+                                  {m.value !== null && m.value !== undefined ? Number(m.value).toLocaleString("en-IN") : "0"}
+                                </span>
+                                {m.unit && (
+                                  <span className="text-xs font-bold text-saffron-dark truncate">
+                                    {m.unit}
+                                  </span>
+                                )}
+                              </div>
+
+                              <h4 className="font-bold text-xs text-teal-900 leading-snug">
+                                {m.label}
+                              </h4>
+
+                              {m.source && (
+                                <p className="text-[11px] text-teal-900/70">
+                                  <span className="font-bold text-teal-950/80">Source:</span> {m.source}
+                                </p>
+                              )}
+
+                              {m.periodLabel && (
+                                <p className="text-[11px] text-teal-900/60">
+                                  <span className="font-bold text-teal-950/80">Period / Cohort:</span> {m.periodLabel}
+                                </p>
+                              )}
+                            </div>
+
+                            <div className="pt-2.5 border-t border-teal-900/10 flex items-center justify-between gap-1.5 flex-wrap">
+                              <button
+                                type="button"
+                                onClick={() => setEditingMetric(m)}
+                                className="rounded-xl bg-teal-900 text-white px-3 py-1.5 text-xs font-bold hover:bg-teal-950 transition cursor-pointer"
+                              >
+                                ✏️ Edit Text &amp; Value
+                              </button>
+                              <div className="flex items-center gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => void handlePatchMetric(m.id, { published: !m.published })}
+                                  className={`rounded-xl px-2.5 py-1.5 text-[11px] font-bold transition cursor-pointer ${
+                                    m.published
+                                      ? "bg-amber-100 text-amber-800 hover:bg-amber-200"
+                                      : "bg-emerald-100 text-emerald-800 hover:bg-emerald-200"
+                                  }`}
+                                  title="Toggle Live Published status"
+                                >
+                                  {m.published ? "Hide" : "Publish"}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => void handleDeleteMetric(m.id, m.label)}
+                                  className="rounded-xl bg-red-100 text-red-700 hover:bg-red-200 px-2 py-1.5 text-[11px] font-bold transition cursor-pointer"
+                                  title="Delete this metric"
+                                >
+                                  🗑️
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* SAVE BUTTON AT BOTTOM */}
               <div className="flex justify-end pt-2">
                 <button
@@ -6152,7 +6497,7 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
                           </div>
                         </div>
 
-                        <div className="pt-2 mt-2 border-t border-teal-900/10 flex items-center justify-between gap-1">
+                        <div className="pt-2 mt-2 border-t border-teal-900/10 flex items-center justify-between gap-1 flex-wrap">
                           <button
                             type="button"
                             onClick={() => {
@@ -6161,14 +6506,21 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
                                 setNotification("Copied media URL to clipboard!");
                               }
                             }}
-                            className="rounded-lg bg-teal-900/10 px-2 py-1 text-[10px] font-bold text-teal-900 hover:bg-teal-900/20 transition"
+                            className="rounded-lg bg-teal-900/10 px-2 py-1 text-[10px] font-bold text-teal-900 hover:bg-teal-900/20 transition cursor-pointer"
                           >
                             Copy URL
                           </button>
                           <button
                             type="button"
+                            onClick={() => setEditingDbMedia(asset)}
+                            className="rounded-lg bg-teal-900 text-white px-2 py-1 text-[10px] font-bold hover:bg-teal-950 transition cursor-pointer"
+                          >
+                            ✏️ Edit Details
+                          </button>
+                          <button
+                            type="button"
                             onClick={() => handleDeleteMediaAsset(asset.id)}
-                            className="rounded-lg bg-red-100 px-2 py-1 text-[10px] font-bold text-red-600 hover:bg-red-200 transition"
+                            className="rounded-lg bg-red-100 px-2 py-1 text-[10px] font-bold text-red-600 hover:bg-red-200 transition cursor-pointer"
                           >
                             Delete
                           </button>
@@ -6343,6 +6695,25 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
                             {item.type === "video" ? "▶ Play" : "🔍 Preview"}
                           </button>
                         </div>
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setCustomizingCuratedItem({
+                              id: item.id,
+                              semanticName: item.semanticName,
+                              title: item.title,
+                              kannada: item.kannada,
+                              description: item.description,
+                              category: item.category,
+                              url: item.url,
+                              type: item.type,
+                            })
+                          }
+                          className="rounded-lg bg-gold/90 hover:bg-gold text-teal-950 py-1 px-1.5 text-[9.5px] font-bold transition flex items-center justify-center gap-1 shadow-2xs cursor-pointer"
+                        >
+                          <span>✏️ Customize Text &amp; Details</span>
+                        </button>
 
                         {/* Quick 1-Click Assignment Actions */}
                         {item.type === "video" ? (
@@ -6674,12 +7045,23 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
                   <label className="block text-xs font-bold text-teal-900/70 mb-1">Gallery Media URLs (comma-separated):</label>
                   <input name="gallery" placeholder="/media/meals.jpg, /media/fruits.jpg" className="w-full rounded-xl border p-2 text-xs font-mono" />
                 </div>
-                <div className="sm:col-span-2 flex items-center gap-4 pt-1">
-                  <label className="flex items-center gap-2 text-xs font-bold text-teal-950">
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-bold text-teal-900/70 mb-1">Accounting / Allocation Meaning:</label>
+                  <textarea name="accountingMeaning" rows={2} placeholder="e.g. 100% groceries & child nutrition ledger" className="w-full rounded-xl border p-2 text-xs" />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-bold text-teal-900/70 mb-1">On-Ground Operational Meaning:</label>
+                  <textarea name="operationalMeaning" rows={2} placeholder="e.g. Direct kitchen inventory, grocery purchase vouchers & cook salary" className="w-full rounded-xl border p-2 text-xs" />
+                </div>
+                <div className="sm:col-span-2 flex flex-wrap items-center gap-4 pt-1">
+                  <label className="flex items-center gap-2 text-xs font-bold text-teal-950 cursor-pointer">
                     <input type="checkbox" name="todayNeed" className="rounded" /> Today Need (Urgent Flag)
                   </label>
-                  <label className="flex items-center gap-2 text-xs font-bold text-teal-950">
+                  <label className="flex items-center gap-2 text-xs font-bold text-teal-950 cursor-pointer">
                     <input type="checkbox" name="featured" className="rounded" /> Featured Product
+                  </label>
+                  <label className="flex items-center gap-2 text-xs font-bold text-teal-950 cursor-pointer">
+                    <input type="checkbox" name="futureFlag" className="rounded" /> Future Project
                   </label>
                 </div>
               </div>
@@ -6786,6 +7168,13 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
                       imageUrl: fd.get("imageUrl"),
                       gallery: fd.get("gallery") || null,
                       schemes: fd.get("schemes") || null,
+                      accountingMeaning: fd.get("accountingMeaning") || null,
+                      operationalMeaning: fd.get("operationalMeaning") || null,
+                      todayNeed: fd.get("todayNeed") === "on",
+                      featured: fd.get("featured") === "on",
+                      futureFlag: fd.get("futureFlag") === "on",
+                      active: fd.get("active") === "on",
+                      sortOrder: Number(fd.get("sortOrder") || 0),
                     });
                   }}
                   className="space-y-3"
@@ -6883,6 +7272,51 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
                     <div>
                       <label className="block text-xs font-bold text-teal-900/70 mb-1">Gallery Media URLs:</label>
                       <input name="gallery" defaultValue={editingCatalog.gallery || ""} placeholder="/media/meals.jpg, /media/fruits.jpg" className="w-full rounded-xl border p-2 text-xs font-mono" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-teal-900/70 mb-1">Display Sort Order:</label>
+                      <input name="sortOrder" type="number" defaultValue={editingCatalog.sortOrder ?? 0} className="w-full rounded-xl border p-2 text-xs font-mono" />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label className="block text-xs font-bold text-teal-900/70 mb-1">Accounting / Allocation Meaning:</label>
+                      <textarea
+                        name="accountingMeaning"
+                        rows={2}
+                        defaultValue={editingCatalog.accountingMeaning || ""}
+                        placeholder="e.g. 100% groceries & child nutrition ledger"
+                        className="w-full rounded-xl border p-2 text-xs"
+                      />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label className="block text-xs font-bold text-teal-900/70 mb-1">On-Ground Operational Meaning:</label>
+                      <textarea
+                        name="operationalMeaning"
+                        rows={2}
+                        defaultValue={editingCatalog.operationalMeaning || ""}
+                        placeholder="e.g. Direct kitchen inventory, grocery purchase vouchers & cook salary"
+                        className="w-full rounded-xl border p-2 text-xs"
+                      />
+                    </div>
+                    <div className="sm:col-span-2 rounded-2xl bg-teal-900/5 p-3.5 border border-teal-900/10">
+                      <label className="block text-xs font-bold text-teal-900 mb-2">Display Badges &amp; Status Flags:</label>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                        <label className="flex items-center gap-2 text-xs font-bold text-teal-950 cursor-pointer">
+                          <input type="checkbox" name="todayNeed" defaultChecked={!!editingCatalog.todayNeed} className="rounded text-saffron" />
+                          <span>Today Need</span>
+                        </label>
+                        <label className="flex items-center gap-2 text-xs font-bold text-teal-950 cursor-pointer">
+                          <input type="checkbox" name="featured" defaultChecked={!!editingCatalog.featured} className="rounded text-saffron" />
+                          <span>Featured</span>
+                        </label>
+                        <label className="flex items-center gap-2 text-xs font-bold text-teal-950 cursor-pointer">
+                          <input type="checkbox" name="futureFlag" defaultChecked={!!editingCatalog.futureFlag} className="rounded text-saffron" />
+                          <span>Future Project</span>
+                        </label>
+                        <label className="flex items-center gap-2 text-xs font-bold text-teal-950 cursor-pointer">
+                          <input type="checkbox" name="active" defaultChecked={editingCatalog.active !== false} className="rounded text-emerald-600" />
+                          <span>Active / Live</span>
+                        </label>
+                      </div>
                     </div>
                     <div className="sm:col-span-2">
                       <label className="block text-xs font-bold text-teal-900/70 mb-1">Marketing Schemes JSON / Tiers:</label>
@@ -8040,6 +8474,618 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
                   className="rounded-xl bg-saffron px-5 py-2 text-xs font-bold text-white hover:bg-saffron-dark transition shadow-sm cursor-pointer"
                 >
                   Publish to Website Gallery
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ==================== EDIT DB MEDIA ASSET MODAL ==================== */}
+      {editingDbMedia && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl ring-1 ring-teal-900/10 space-y-4">
+            <div className="flex items-center justify-between border-b pb-3">
+              <div>
+                <h4 className="font-display text-base font-bold text-teal-950">
+                  Edit Media Asset Details &amp; Text
+                </h4>
+                <p className="text-xs text-teal-950/60">
+                  Update caption, credit, URL, and child consent details in the database.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingDbMedia(null)}
+                className="font-bold text-gray-500 hover:text-black cursor-pointer text-base"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Media Preview Thumbnail */}
+            <div className="aspect-video w-full rounded-2xl overflow-hidden bg-teal-950/5 border border-teal-900/10 flex items-center justify-center">
+              {editingDbMedia.kind === "video" || editingDbMedia.publicUrl?.match(/\.(mp4|webm|mov)$/i) ? (
+                <video src={editingDbMedia.publicUrl} controls className="h-full w-full object-cover" />
+              ) : (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={editingDbMedia.publicUrl} alt={editingDbMedia.altText || "Media preview"} className="h-full w-full object-cover" />
+              )}
+            </div>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                const fd = new FormData(e.currentTarget);
+                void handlePatchDbMedia(editingDbMedia.id, {
+                  caption: fd.get("caption") || null,
+                  altText: fd.get("altText") || null,
+                  credit: fd.get("credit") || null,
+                  publicUrl: fd.get("publicUrl"),
+                  posterUrl: fd.get("posterUrl") || null,
+                  kind: fd.get("kind") || "image",
+                  status: fd.get("status") || "LIVE",
+                  consentStatus: fd.get("consentStatus") || "CONSENTED",
+                  restrictions: fd.get("restrictions") || null,
+                });
+              }}
+              className="space-y-3"
+            >
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-bold text-teal-900/70 mb-1">
+                    Title / Caption:
+                  </label>
+                  <input
+                    name="caption"
+                    defaultValue={editingDbMedia.caption || ""}
+                    placeholder="e.g. Daily Annadana Feast with 25 Children"
+                    className="w-full rounded-xl border p-2 text-xs font-semibold text-teal-950"
+                  />
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-bold text-teal-900/70 mb-1">
+                    Alt Text (Accessibility &amp; SEO):
+                  </label>
+                  <input
+                    name="altText"
+                    defaultValue={editingDbMedia.altText || ""}
+                    placeholder="e.g. Janaseva resident boys smiling during wholesome lunch in Bengaluru"
+                    className="w-full rounded-xl border p-2 text-xs text-teal-950"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-teal-900/70 mb-1">
+                    Category / Credit:
+                  </label>
+                  <input
+                    name="credit"
+                    defaultValue={editingDbMedia.credit || "Our 25 Boys"}
+                    className="w-full rounded-xl border p-2 text-xs text-teal-950"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-teal-900/70 mb-1">
+                    Media Kind:
+                  </label>
+                  <select
+                    name="kind"
+                    defaultValue={editingDbMedia.kind || "image"}
+                    className="w-full rounded-xl border p-2 text-xs text-teal-950 bg-white"
+                  >
+                    <option value="image">Photo / Image</option>
+                    <option value="video">Cinematic Video (.mp4)</option>
+                  </select>
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-bold text-teal-900/70 mb-1">
+                    Media File URL / Path:
+                  </label>
+                  <input
+                    name="publicUrl"
+                    defaultValue={editingDbMedia.publicUrl || ""}
+                    required
+                    className="w-full rounded-xl border p-2 text-xs font-mono text-teal-950"
+                  />
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-bold text-teal-900/70 mb-1">
+                    Video Fallback Poster URL (Optional for Videos):
+                  </label>
+                  <input
+                    name="posterUrl"
+                    defaultValue={editingDbMedia.posterUrl || ""}
+                    placeholder="/media/poster.jpg"
+                    className="w-full rounded-xl border p-2 text-xs font-mono text-teal-950"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-teal-900/70 mb-1">
+                    Live Status:
+                  </label>
+                  <select
+                    name="status"
+                    defaultValue={editingDbMedia.status || "LIVE"}
+                    className="w-full rounded-xl border p-2 text-xs text-teal-950 bg-white"
+                  >
+                    <option value="LIVE">LIVE (Visible on Website)</option>
+                    <option value="NEEDS_REVIEW">Needs Review (Hidden)</option>
+                    <option value="ARCHIVED">Archived (Hidden)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-teal-900/70 mb-1">
+                    Child Protection Consent:
+                  </label>
+                  <select
+                    name="consentStatus"
+                    defaultValue={editingDbMedia.consentStatus || "CONSENTED"}
+                    className="w-full rounded-xl border p-2 text-xs text-teal-950 bg-white"
+                  >
+                    <option value="CONSENTED">CONSENTED (Verified)</option>
+                    <option value="EXEMPT">EXEMPT (Activity / Campus)</option>
+                    <option value="PENDING">PENDING Consent</option>
+                  </select>
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-bold text-teal-900/70 mb-1">
+                    Consent Restrictions / Safety Notes:
+                  </label>
+                  <input
+                    name="restrictions"
+                    defaultValue={editingDbMedia.restrictions || ""}
+                    placeholder="e.g. Approved for general public website display"
+                    className="w-full rounded-xl border p-2 text-xs text-teal-950"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-2 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingDbMedia(null)}
+                  className="rounded-xl px-4 py-2 text-xs font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="rounded-xl bg-saffron px-5 py-2 text-xs font-bold text-white hover:bg-saffron-dark transition cursor-pointer"
+                >
+                  Save Media Changes
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ==================== CUSTOMIZE CURATED GALLERY ITEM MODAL ==================== */}
+      {customizingCuratedItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl ring-1 ring-teal-900/10 space-y-4">
+            <div className="flex items-center justify-between border-b pb-3">
+              <div>
+                <h4 className="font-display text-base font-bold text-teal-950">
+                  Customize Curated Gallery Asset
+                </h4>
+                <p className="text-xs text-teal-950/60">
+                  Edit titles, Kannada description, or replace media path. Saves directly to the live website DB gallery.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCustomizingCuratedItem(null)}
+                className="font-bold text-gray-500 hover:text-black cursor-pointer text-base"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Media Preview Thumbnail */}
+            <div className="aspect-video w-full rounded-2xl overflow-hidden bg-teal-950/5 border border-teal-900/10 flex items-center justify-center">
+              {customizingCuratedItem.type === "video" ? (
+                <video src={customizingCuratedItem.url} controls className="h-full w-full object-cover" />
+              ) : (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={customizingCuratedItem.url} alt={customizingCuratedItem.title} className="h-full w-full object-cover" />
+              )}
+            </div>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                const fd = new FormData(e.currentTarget);
+                const caption = String(fd.get("caption") || customizingCuratedItem.title).trim();
+                const kannada = String(fd.get("kannada") || "").trim();
+                const desc = String(fd.get("description") || "").trim();
+                const alt = kannada ? `${caption} - ${kannada}` : caption;
+                void handleSaveCustomizedCurated({
+                  url: String(fd.get("url") || customizingCuratedItem.url),
+                  kind: customizingCuratedItem.type || "image",
+                  caption,
+                  altText: alt,
+                  credit: String(fd.get("category") || customizingCuratedItem.category),
+                });
+              }}
+              className="space-y-3"
+            >
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-bold text-teal-900/70 mb-1">
+                    English Title / Caption:
+                  </label>
+                  <input
+                    name="caption"
+                    defaultValue={customizingCuratedItem.title}
+                    required
+                    className="w-full rounded-xl border p-2 text-xs font-semibold text-teal-950"
+                  />
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-bold text-teal-900/70 mb-1">
+                    Kannada Title / Inscription:
+                  </label>
+                  <input
+                    name="kannada"
+                    defaultValue={customizingCuratedItem.kannada}
+                    className="w-full rounded-xl border p-2 text-xs text-teal-950"
+                  />
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-bold text-teal-900/70 mb-1">
+                    Detailed Meaning / Description:
+                  </label>
+                  <textarea
+                    name="description"
+                    rows={2}
+                    defaultValue={customizingCuratedItem.description}
+                    className="w-full rounded-xl border p-2 text-xs text-teal-950"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-teal-900/70 mb-1">
+                    Category:
+                  </label>
+                  <select
+                    name="category"
+                    defaultValue={customizingCuratedItem.category}
+                    className="w-full rounded-xl border p-2 text-xs text-teal-950 bg-white"
+                  >
+                    <option value="Our 25 Boys">👦 Our 25 Resident Boys</option>
+                    <option value="Annadana & Meals">🍲 Annadana &amp; Pure Satvik Meals</option>
+                    <option value="Vidya & Education">📚 Vidya &amp; Gurukula Education</option>
+                    <option value="Birthdays & Celebrations">🎂 Birthday Seva &amp; Anniversaries</option>
+                    <option value="Festivals & Spiritual">🪔 Festivals &amp; Sandhyavandana</option>
+                    <option value="Yoga & Health">🧘 Morning Yoga &amp; Arogya</option>
+                    <option value="Sports & Play">🏏 Sports, Ground &amp; Childhood</option>
+                    <option value="Patriotic & National">🇮🇳 Independence Day &amp; National</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-teal-900/70 mb-1">
+                    Media File URL / Path:
+                  </label>
+                  <input
+                    name="url"
+                    defaultValue={customizingCuratedItem.url}
+                    required
+                    className="w-full rounded-xl border p-2 text-xs font-mono text-teal-950"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-2 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setCustomizingCuratedItem(null)}
+                  className="rounded-xl px-4 py-2 text-xs font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={customizingSaving}
+                  className="rounded-xl bg-saffron px-5 py-2 text-xs font-bold text-white hover:bg-saffron-dark transition cursor-pointer disabled:opacity-50"
+                >
+                  {customizingSaving ? "Saving..." : "Save & Publish to Live Gallery"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ==================== EDIT IMPACT METRIC MODAL ==================== */}
+      {editingMetric && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl ring-1 ring-teal-900/10 space-y-4">
+            <div className="flex items-center justify-between border-b pb-3">
+              <div>
+                <h4 className="font-display text-base font-bold text-teal-950">
+                  Edit Impact Metric: {editingMetric.label}
+                </h4>
+                <p className="text-xs text-teal-950/60">
+                  Update number, label, audit source, or published status.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingMetric(null)}
+                className="font-bold text-gray-500 hover:text-black cursor-pointer text-base"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                const fd = new FormData(e.currentTarget);
+                void handlePatchMetric(editingMetric.id, {
+                  label: fd.get("label"),
+                  value: Math.floor(Number(fd.get("value")) || 0),
+                  unit: fd.get("unit") || null,
+                  source: fd.get("source") || null,
+                  periodLabel: fd.get("periodLabel") || null,
+                  sortOrder: Math.floor(Number(fd.get("sortOrder")) || 0),
+                  published: fd.get("published") === "on",
+                });
+              }}
+              className="space-y-3"
+            >
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="block text-xs font-bold text-teal-900/70 mb-1">
+                    Metric Value (Integer Number):
+                  </label>
+                  <input
+                    name="value"
+                    type="number"
+                    defaultValue={editingMetric.value ?? 0}
+                    required
+                    className="w-full rounded-xl border p-2 text-xs font-display font-bold text-teal-950"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-teal-900/70 mb-1">
+                    Unit / Suffix:
+                  </label>
+                  <input
+                    name="unit"
+                    defaultValue={editingMetric.unit || ""}
+                    placeholder="e.g. Resident Boys, Meals / Year, % In School"
+                    className="w-full rounded-xl border p-2 text-xs text-teal-950"
+                  />
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-bold text-teal-900/70 mb-1">
+                    Metric Headline / Label:
+                  </label>
+                  <input
+                    name="label"
+                    defaultValue={editingMetric.label}
+                    required
+                    placeholder="e.g. Children in Foster Care"
+                    className="w-full rounded-xl border p-2 text-xs font-semibold text-teal-950"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-teal-900/70 mb-1">
+                    Audited Source Reference:
+                  </label>
+                  <input
+                    name="source"
+                    defaultValue={editingMetric.source || ""}
+                    placeholder="e.g. Govt JJ Act KA18CH0242"
+                    className="w-full rounded-xl border p-2 text-xs text-teal-950"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-teal-900/70 mb-1">
+                    Period / Cohort Label:
+                  </label>
+                  <input
+                    name="periodLabel"
+                    defaultValue={editingMetric.periodLabel || ""}
+                    placeholder="e.g. Boys Ages 07–18"
+                    className="w-full rounded-xl border p-2 text-xs text-teal-950"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-teal-900/70 mb-1">
+                    Display Sort Order:
+                  </label>
+                  <input
+                    name="sortOrder"
+                    type="number"
+                    defaultValue={editingMetric.sortOrder ?? 0}
+                    className="w-full rounded-xl border p-2 text-xs font-mono text-teal-950"
+                  />
+                </div>
+
+                <div className="flex items-center pt-5">
+                  <label className="flex items-center gap-2 text-xs font-bold text-teal-950 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      name="published"
+                      defaultChecked={editingMetric.published !== false}
+                      className="rounded text-emerald-600"
+                    />
+                    <span>Publish Live on Website</span>
+                  </label>
+                </div>
+              </div>
+
+              <div className="pt-2 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingMetric(null)}
+                  className="rounded-xl px-4 py-2 text-xs font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="rounded-xl bg-saffron px-5 py-2 text-xs font-bold text-white hover:bg-saffron-dark transition cursor-pointer"
+                >
+                  Save Metric Changes
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ==================== CREATE NEW IMPACT METRIC MODAL ==================== */}
+      {newMetricModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl ring-1 ring-teal-900/10 space-y-4">
+            <div className="flex items-center justify-between border-b pb-3">
+              <div>
+                <h4 className="font-display text-base font-bold text-teal-950">
+                  Add New Verified Impact Metric
+                </h4>
+                <p className="text-xs text-teal-950/60">
+                  Create a new statutory counter or impact statistic for the website.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setNewMetricModalOpen(false)}
+                className="font-bold text-gray-500 hover:text-black cursor-pointer text-base"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateMetric} className="space-y-3">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="block text-xs font-bold text-teal-900/70 mb-1">
+                    Unique Key (lowercase_identifier):
+                  </label>
+                  <input
+                    name="key"
+                    required
+                    placeholder="e.g. computer_lab_kits"
+                    className="w-full rounded-xl border p-2 text-xs font-mono text-teal-950"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-teal-900/70 mb-1">
+                    Metric Value (Integer Number):
+                  </label>
+                  <input
+                    name="value"
+                    type="number"
+                    defaultValue={10}
+                    required
+                    className="w-full rounded-xl border p-2 text-xs font-display font-bold text-teal-950"
+                  />
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-bold text-teal-900/70 mb-1">
+                    Metric Headline / Label:
+                  </label>
+                  <input
+                    name="label"
+                    required
+                    placeholder="e.g. Digital Coding Lab Certifications"
+                    className="w-full rounded-xl border p-2 text-xs font-semibold text-teal-950"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-teal-900/70 mb-1">
+                    Unit / Suffix:
+                  </label>
+                  <input
+                    name="unit"
+                    placeholder="e.g. Boys Certified"
+                    className="w-full rounded-xl border p-2 text-xs text-teal-950"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-teal-900/70 mb-1">
+                    Audited Source:
+                  </label>
+                  <input
+                    name="source"
+                    placeholder="e.g. Computer Science Instructor Log"
+                    className="w-full rounded-xl border p-2 text-xs text-teal-950"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-teal-900/70 mb-1">
+                    Period / Cohort Label:
+                  </label>
+                  <input
+                    name="periodLabel"
+                    placeholder="e.g. 2024-25 Academic Year"
+                    className="w-full rounded-xl border p-2 text-xs text-teal-950"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-teal-900/70 mb-1">
+                    Display Sort Order:
+                  </label>
+                  <input
+                    name="sortOrder"
+                    type="number"
+                    defaultValue={impactMetricsList.length + 1}
+                    className="w-full rounded-xl border p-2 text-xs font-mono text-teal-950"
+                  />
+                </div>
+
+                <div className="sm:col-span-2 flex items-center pt-2">
+                  <label className="flex items-center gap-2 text-xs font-bold text-teal-950 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      name="published"
+                      defaultChecked={true}
+                      className="rounded text-emerald-600"
+                    />
+                    <span>Publish Immediately on Live Website</span>
+                  </label>
+                </div>
+              </div>
+
+              <div className="pt-2 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setNewMetricModalOpen(false)}
+                  className="rounded-xl px-4 py-2 text-xs font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="rounded-xl bg-saffron px-5 py-2 text-xs font-bold text-white hover:bg-saffron-dark transition cursor-pointer"
+                >
+                  Create Impact Metric
                 </button>
               </div>
             </form>

@@ -136,6 +136,9 @@ export async function PATCH(req: Request) {
   if (b?.altText !== undefined) patch.altText = clean(b.altText, 500);
   if (b?.caption !== undefined) patch.caption = clean(b.caption, 1000) || null;
   if (b?.credit !== undefined) patch.credit = clean(b.credit, 200) || null;
+  if (b?.publicUrl !== undefined) patch.publicUrl = clean(b.publicUrl, 1000);
+  if (b?.posterUrl !== undefined) patch.posterUrl = clean(b.posterUrl, 1000) || null;
+  if (b?.kind !== undefined) patch.kind = clean(b.kind, 20) || "image";
 
   if (Object.keys(patch).length > 0) {
     await db.update(mediaAssets).set(patch).where(eq(mediaAssets.id, id));

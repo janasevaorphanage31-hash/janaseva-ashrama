@@ -112,3 +112,34 @@ export async function PATCH(req: Request) {
 
   return NextResponse.json({ ok: true, metric: row });
 }
+
+export async function DELETE(req: Request) {
+  const session = await requireAdminApi([...ROLES]);
+  if (!session) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+
+  const url = new URL(req.url);
+  const id = Number(url.searchParams.get("id"));
+  if (!Number.isInteger(id)) return NextResponse.json({ error: "Invalid metric id." }, { status: 400 });
+
+  const [before] = await db.select().from(impactMetrics).where(eq(impactMetrics.id, id)).limit(1);
+  if (!before) return NextResponse.json({ error: "Metric not found." }, { status: 404 });
+
+  await db.delete(impactMetrics).where(eq(impactMetrics.id, id));
+
+  await writeAudit({
+    actorAdminUserId: session.user.id,
+    action: "delete",
+    entity: "impact_metric",
+    entityId: id,
+    beforeState: before,
+    ipAddress: clientIp(req),
+  });
+
+  try {
+    revalidatePath("/", "layout");
+    revalidatePath("/");
+    revalidatePath("/admin/content");
+  } catch {}
+
+  return NextResponse.json({ ok: true, deletedId: id });
+}
