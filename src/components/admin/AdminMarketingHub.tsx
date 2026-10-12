@@ -3,10 +3,11 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { formatINR } from "@/lib/site";
-import type {
-  MarketingConfig,
-  GeneratedCampaign,
-} from "@/lib/marketing-agent";
+import {
+  generateCampaignBlueprint,
+  type MarketingConfig,
+  type GeneratedCampaign,
+} from "@/lib/marketing-blueprints";
 
 interface AdminMarketingHubProps {
   campaignsList: any[];
@@ -21,6 +22,7 @@ interface AdminMarketingHubProps {
 
 type MarketingSubtab =
   | "generator"
+  | "utm_builder"
   | "meta"
   | "google"
   | "geo_aeo"
@@ -43,13 +45,23 @@ export function AdminMarketingHub({
   const [loadingConfig, setLoadingConfig] = useState(true);
   const [savingConfig, setSavingConfig] = useState(false);
 
-  // AI Campaign Generator State
+  // AI Campaign Generator State (Pre-filled with rich initial birthday campaign)
   const [selectedAngle, setSelectedAngle] = useState<
     "birthday" | "annadana" | "shagun" | "tax80g" | "education" | "festival"
   >("birthday");
   const [customPrompt, setCustomPrompt] = useState("");
   const [generatingCampaign, setGeneratingCampaign] = useState(false);
-  const [activeCampaign, setActiveCampaign] = useState<GeneratedCampaign | null>(null);
+  const [activeCampaign, setActiveCampaign] = useState<GeneratedCampaign>(() =>
+    generateCampaignBlueprint("birthday"),
+  );
+
+  // UTM Tracking Link Builder State
+  const [utmBasePage, setUtmBasePage] = useState("/celebrate-birthday");
+  const [utmCustomPage, setUtmCustomPage] = useState("");
+  const [utmSource, setUtmSource] = useState("meta_ads");
+  const [utmMedium, setUtmMedium] = useState("paid_social");
+  const [utmCampaignName, setUtmCampaignName] = useState("birthday_blessing_feast");
+  const [utmTerm, setUtmTerm] = useState("");
 
   // Meta CAPI Testing State
   const [testingCapi, setTestingCapi] = useState(false);
@@ -79,7 +91,7 @@ export function AdminMarketingHub({
       if (res.ok) {
         const data = await res.json();
         setConfig(data.config);
-        if (data.config?.savedCampaigns?.length > 0 && !activeCampaign) {
+        if (data.config?.savedCampaigns?.length > 0) {
           setActiveCampaign(data.config.savedCampaigns[0]);
         }
       }
@@ -105,7 +117,7 @@ export function AdminMarketingHub({
       if (res.ok) {
         const data = await res.json();
         setConfig(data.config);
-        setNotification("✓ Marketing API keys and configuration saved successfully!");
+        setNotification("✓ Marketing API keys and tracking configuration saved successfully!");
       } else {
         setNotification("✕ Failed to save configuration. Please try again.");
       }
@@ -137,7 +149,7 @@ export function AdminMarketingHub({
             savedCampaigns: [data.campaign, ...(config.savedCampaigns || [])],
           });
         }
-        setNotification("✓ Campaign generated successfully with copy, targeting & visuals!");
+        setNotification("✓ Omnichannel campaign blueprint generated!");
       } else {
         setNotification("✕ Failed to generate campaign.");
       }
@@ -167,7 +179,7 @@ export function AdminMarketingHub({
           });
         }
         if (activeCampaign?.id === campId) {
-          setActiveCampaign(config?.savedCampaigns?.[0] || null);
+          setActiveCampaign(config?.savedCampaigns?.[0] || generateCampaignBlueprint("birthday"));
         }
         setNotification("✓ Campaign removed.");
       }
@@ -192,7 +204,7 @@ export function AdminMarketingHub({
       if (data.ok) {
         setNotification("✓ Meta CAPI test executed! Verified standard 'Donate' event.");
       } else {
-        setNotification("⚠️ Meta CAPI responded with notice: " + (data.error || "Check payload"));
+        setNotification("⚠️ Meta CAPI notice: " + (data.error || "Check payload"));
       }
     } catch (e: any) {
       setCapiResult({ ok: false, error: e?.message || "Network test failed" });
@@ -217,36 +229,85 @@ export function AdminMarketingHub({
     calcMonthlySpend > 0 ? (totalProjectedDonations / calcMonthlySpend).toFixed(2) : "0.00";
   const netRaised = totalProjectedDonations - calcMonthlySpend;
 
+  // Build current dynamic UTM URL
+  const selectedBase = utmBasePage === "custom" ? (utmCustomPage || "/") : utmBasePage;
+  const targetCleanPage = selectedBase.startsWith("http")
+    ? selectedBase
+    : `https://www.janasevaorphanage.org${selectedBase.startsWith("/") ? "" : "/"}${selectedBase}`;
+  const utmParams = new URLSearchParams({
+    utm_source: utmSource,
+    utm_medium: utmMedium,
+    utm_campaign: utmCampaignName,
+  });
+  if (utmTerm.trim()) utmParams.set("utm_term", utmTerm.trim());
+  const finalUtmUrl = `${targetCleanPage}${targetCleanPage.includes("?") ? "&" : "?"}${utmParams.toString()}`;
+
+  // Build clean text package for Meta Ads Manager / Google Ads Editor
+  function formatCleanAdPackage(c: GeneratedCampaign): string {
+    return `=== JANASEVA ASHRAMA CAMPAIGN: ${c.campaignName.toUpperCase()} ===
+Objective: ${c.objective}
+Target ROAS: ${c.targetRoas}x | Recommended Daily Budget: ₹${c.metaStrategy.budget.dailyInr}/day
+
+--- 1. META ADS (FACEBOOK & INSTAGRAM) ---
+[Primary Text 1]:
+${c.metaStrategy.primaryTexts[0] || ""}
+
+[Primary Text 2]:
+${c.metaStrategy.primaryTexts[1] || ""}
+
+[Primary Text 3]:
+${c.metaStrategy.primaryTexts[2] || ""}
+
+[Headlines]:
+${c.metaStrategy.headlines.map((h, i) => `${i + 1}. ${h}`).join("\n")}
+
+[Call to Action]: ${c.metaStrategy.callToAction}
+[Targeting Locations]: ${c.metaStrategy.targeting.locations.join(" · ")}
+[Targeting Ages]: ${c.metaStrategy.targeting.ageRange}
+[Targeting Interests]: ${c.metaStrategy.targeting.interests.join(", ")}
+[Destination URL]: ${c.tracking.destinationUrl}
+
+--- 2. GOOGLE SEARCH ADS (15 RESPONSIVE SEARCH HEADLINES) ---
+${c.googleStrategy.rsaHeadlines.map((h, i) => `${i + 1}. ${h}`).join("\n")}
+
+[Google RSA Descriptions]:
+${c.googleStrategy.rsaDescriptions.map((d, i) => `${i + 1}. ${d}`).join("\n")}
+
+[High Intent Keywords]:
+${[...c.googleStrategy.keywords.phrase, ...c.googleStrategy.keywords.exact].join(", ")}
+
+[Negative Keywords]:
+${c.googleStrategy.negativeKeywords.join(", ")}
+
+--- 3. VISUAL CREATIVE DIRECTIVES ---
+AI Image Prompt: ${c.creativeDirectives.aiImagePrompts[0] || ""}
+Recommended Site Assets: ${c.creativeDirectives.recommendedSiteImages.map((img) => `${img.title} (${img.path})`).join(" · ")}
+Video Hook: ${c.creativeDirectives.videoHookConcept}
+`;
+  }
+
   return (
     <div className="space-y-6">
       {/* ================= HEADER & KPI OVERVIEW ================= */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <div className="inline-flex items-center gap-1.5 rounded-md bg-saffron/20 px-2.5 py-0.5 text-xs font-bold text-saffron-dark uppercase tracking-wider mb-1">
-            <span>Autonomous AI Growth Engine</span>
+            <span>Staff Growth Suite</span>
           </div>
           <h3 className="font-display text-xl sm:text-2xl font-bold text-teal-900">
-            Marketing Agent &amp; FinTech Ad Operations Hub
+            Marketing Agent &amp; Ad Operations Center
           </h3>
           <p className="text-xs text-teal-950/70 max-w-3xl mt-0.5">
-            Full nonprofit advertising suite powered by{" "}
-            <a
-              href="https://meta-ads.si/how-do-meta-ads-work-for-nonprofits/"
-              target="_blank"
-              rel="noreferrer"
-              className="text-emerald-700 underline font-semibold hover:text-emerald-900"
-            >
-              Meta Ads for Nonprofits Strategy
-            </a>
-            , Google $10K/mo Ad Grants, Local Bangalore GEO citations, AEO Engine Optimization, and
-            automated CAPI server-to-server tracking.
+            Omnichannel donor acquisition engine: Meta Ads (standard Donate event + CAPI), Google
+            $10K/mo Ad Grants, Local Bangalore GEO citations, AEO Answer Engine Optimization, and
+            instant UTM tracking link generator.
           </p>
         </div>
         <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={() => setNewCampaignModalOpen(true)}
-            className="rounded-xl bg-saffron px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-saffron-dark transition flex items-center gap-1.5 cursor-pointer"
+            className="rounded-xl bg-saffron px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-saffron-dark transition flex items-center gap-1.5 cursor-pointer active:scale-95"
           >
             <span>+ New Crowd Campaign</span>
           </button>
@@ -254,21 +315,22 @@ export function AdminMarketingHub({
       </div>
 
       {/* ================= SUBTAB NAVIGATION ================= */}
-      <div className="flex items-center gap-1 border-b border-teal-900/10 overflow-x-auto pb-1 scrollbar-none">
+      <div className="flex items-center gap-1.5 border-b border-teal-900/10 overflow-x-auto pb-2 scrollbar-none">
         {[
           { id: "generator", label: "🤖 AI Campaign Generator", badge: "Live" },
-          { id: "meta", label: "📘 Meta Ads Playbook & ROAS", badge: "meta-ads.si" },
+          { id: "utm_builder", label: "🔗 1-Click UTM Builder", badge: "Tracking" },
+          { id: "meta", label: "📘 Meta Ads & ROAS", badge: "meta-ads.si" },
           { id: "google", label: "🎯 Google Ads & $10K Grants", badge: "Free Grant" },
           { id: "geo_aeo", label: "🌐 Local Bangalore GEO & AEO", badge: "Perplexity/AI" },
-          { id: "apis", label: "⚙️ Ad APIs & CAPI Tracking", badge: "Meta & Google" },
-          { id: "whatsapp", label: "💬 1-Click WhatsApp Hub", badge: "Instant" },
-          { id: "campaigns", label: `📁 Crowd Campaigns (${campaignsList.length})` },
+          { id: "apis", label: "⚙️ Ad APIs & Tracking Tokens", badge: "Meta & Google" },
+          { id: "whatsapp", label: "💬 WhatsApp Broadcasts", badge: "Viral" },
+          { id: "campaigns", label: `📁 Crowd Causes (${campaignsList.length})` },
         ].map((tab) => (
           <button
             key={tab.id}
             type="button"
             onClick={() => setSubtab(tab.id as MarketingSubtab)}
-            className={`flex items-center gap-1.5 whitespace-nowrap rounded-xl px-3.5 py-2 text-xs font-bold transition cursor-pointer ${
+            className={`flex items-center gap-1.5 whitespace-nowrap rounded-xl px-3.5 py-2 text-xs font-bold transition cursor-pointer active:scale-95 ${
               subtab === tab.id
                 ? "bg-teal-900 text-white shadow-sm"
                 : "text-teal-900/70 hover:bg-teal-900/10 hover:text-teal-950"
@@ -299,9 +361,8 @@ export function AdminMarketingHub({
                   Select Cause Angle &amp; Generate Omnichannel Ad Blueprint
                 </h4>
                 <p className="text-xs text-teal-950/65">
-                  Generates psychological ad copies, 15 Google RSA headlines, targeted Bangalore
-                  audiences, Midjourney/Flux visual creative prompts, and real Ashrama matching
-                  media.
+                  Produces 3 psychological ad copies, 15 Google RSA headlines, targeted Bangalore
+                  audiences, Midjourney/Flux visual prompts, and real Ashrama matching media.
                 </p>
               </div>
               <span className="text-[11px] font-bold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
@@ -314,44 +375,44 @@ export function AdminMarketingHub({
               <label className="block text-xs font-bold text-teal-950 mb-2">
                 Choose Campaign Angle:
               </label>
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
                 {[
                   {
                     id: "birthday",
-                    label: "🎂 Birthday Feast & Video Blessing",
-                    desc: "₹2k - ₹5.5k lunch with video greeting",
+                    label: "🎂 Birthday Feast",
+                    desc: "Lunch + Video Blessing",
                   },
                   {
                     id: "shagun",
-                    label: "🍛 Sacred Shagun Annadana",
-                    desc: "₹11 milk, ₹51 breakfast, ₹101 lunch",
+                    label: "🍛 Shagun Annadana",
+                    desc: "₹11 milk, ₹101 lunch",
                   },
                   {
                     id: "tax80g",
-                    label: "🛡️ Section 80G Tax Deductions",
-                    desc: "50% tax off, Form 10AC verified",
+                    label: "🛡️ Section 80G Tax",
+                    desc: "50% off taxable income",
                   },
                   {
                     id: "education",
-                    label: "📚 Vidya Kits & Schooling",
-                    desc: "₹251 notebooks, uniforms & tuition",
+                    label: "📚 Vidya Schooling",
+                    desc: "₹251 notebooks & tuition",
                   },
                   {
                     id: "annadana",
-                    label: "🍚 Monthly Ration & Groceries",
-                    desc: "Sona Masoori rice, pulses & ghee",
+                    label: "🍚 Monthly Ration",
+                    desc: "Groceries & Cow Milk",
                   },
                   {
                     id: "festival",
-                    label: "🎉 Festival Sweets & Special Meals",
-                    desc: "Ugadi, Diwali, Deepotsava celebrations",
+                    label: "🎉 Festival Sweets",
+                    desc: "Payasam & celebrations",
                   },
                 ].map((item) => (
                   <button
                     key={item.id}
                     type="button"
                     onClick={() => setSelectedAngle(item.id as any)}
-                    className={`rounded-2xl p-3 text-left transition cursor-pointer border ${
+                    className={`rounded-2xl p-3 text-left transition cursor-pointer border active:scale-95 ${
                       selectedAngle === item.id
                         ? "bg-teal-900 text-white border-teal-900 shadow-sm"
                         : "bg-cream/30 text-teal-950 border-teal-900/10 hover:bg-cream/60"
@@ -375,26 +436,26 @@ export function AdminMarketingHub({
               <label className="block text-xs font-bold text-teal-950 mb-1">
                 Custom Directives / Specific Instructions (Optional):
               </label>
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <input
                   type="text"
                   value={customPrompt}
                   onChange={(e) => setCustomPrompt(e.target.value)}
                   placeholder="e.g. Highlight upcoming Ugadi festival, emphasize South Bangalore donors near Banashankari, mention hot Payasam..."
-                  className="w-full rounded-xl border border-teal-900/20 px-3.5 py-2 text-xs text-teal-950 placeholder:text-teal-950/40 focus:border-teal-900 focus:outline-none"
+                  className="w-full rounded-xl border border-teal-900/20 px-3.5 py-2.5 text-xs text-teal-950 placeholder:text-teal-950/40 focus:border-teal-900 focus:outline-none"
                 />
                 <button
                   type="button"
                   onClick={handleGenerateCampaign}
                   disabled={generatingCampaign}
-                  className="rounded-xl bg-teal-900 px-5 py-2 text-xs font-bold text-white hover:bg-teal-800 transition disabled:opacity-50 cursor-pointer whitespace-nowrap shadow-xs flex items-center gap-1.5"
+                  className="rounded-xl bg-teal-900 px-5 py-2.5 text-xs font-bold text-white hover:bg-teal-800 transition disabled:opacity-50 cursor-pointer whitespace-nowrap shadow-xs flex items-center justify-center gap-1.5 active:scale-95"
                 >
                   {generatingCampaign ? (
                     <span>Generating...</span>
                   ) : (
                     <>
                       <span>✨</span>
-                      <span>Generate Omnichannel Blueprint</span>
+                      <span>Generate Blueprint</span>
                     </>
                   )}
                 </button>
@@ -403,406 +464,413 @@ export function AdminMarketingHub({
           </div>
 
           {/* Render Active Generated Campaign */}
-          {activeCampaign ? (
-            <div className="space-y-6">
-              {/* Campaign Summary Bar */}
-              <div className="rounded-3xl bg-gradient-to-r from-teal-900 via-emerald-950 to-teal-900 p-5 text-white shadow-md flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="rounded-md bg-gold/20 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-gold">
-                      {activeCampaign.angleLabel}
-                    </span>
-                    <span className="text-xs text-white/70">
-                      Target ROAS:{" "}
-                      <strong className="text-emerald-300">{activeCampaign.targetRoas}x</strong>
-                    </span>
-                  </div>
-                  <h4 className="font-display text-lg font-bold text-white">
-                    {activeCampaign.campaignName}
-                  </h4>
-                  <p className="text-xs text-white/75 mt-0.5">
-                    Objective: {activeCampaign.objective} · Recommended Budget: ₹
-                    {activeCampaign.metaStrategy.budget.dailyInr}/day
-                  </p>
+          <div className="space-y-6">
+            {/* Campaign Summary Bar */}
+            <div className="rounded-3xl bg-gradient-to-r from-teal-900 via-emerald-950 to-teal-900 p-5 text-white shadow-md flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="rounded-md bg-gold/20 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-gold">
+                    {activeCampaign.angleLabel}
+                  </span>
+                  <span className="text-xs text-white/70">
+                    Target ROAS:{" "}
+                    <strong className="text-emerald-300">{activeCampaign.targetRoas}x</strong>
+                  </span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      copyToClipboard(
-                        JSON.stringify(activeCampaign, null, 2),
-                        "all_json",
-                        "Complete Campaign Blueprint JSON",
-                      )
-                    }
-                    className="rounded-xl bg-white/10 px-3 py-1.5 text-xs font-bold text-white hover:bg-white/20 transition cursor-pointer"
-                  >
-                    {copiedKey === "all_json" ? "✓ Copied!" : "📋 Copy Full Blueprint"}
-                  </button>
+                <h4 className="font-display text-lg font-bold text-white">
+                  {activeCampaign.campaignName}
+                </h4>
+                <p className="text-xs text-white/75 mt-0.5">
+                  Objective: {activeCampaign.objective} · Recommended Budget: ₹
+                  {activeCampaign.metaStrategy.budget.dailyInr}/day
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() =>
+                    copyToClipboard(
+                      formatCleanAdPackage(activeCampaign),
+                      "clean_ad_package",
+                      "Full Ad Package for Ads Manager",
+                    )
+                  }
+                  className="rounded-xl bg-gold text-teal-950 px-3.5 py-2 text-xs font-bold hover:bg-gold-light transition cursor-pointer shadow-xs active:scale-95"
+                >
+                  {copiedKey === "clean_ad_package"
+                    ? "✓ Copied Package!"
+                    : "📋 Copy Clean Package for Ads Manager"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    copyToClipboard(
+                      JSON.stringify(activeCampaign, null, 2),
+                      "all_json",
+                      "Blueprint JSON",
+                    )
+                  }
+                  className="rounded-xl bg-white/10 px-3 py-2 text-xs font-bold text-white hover:bg-white/20 transition cursor-pointer active:scale-95"
+                >
+                  {copiedKey === "all_json" ? "✓ Copied JSON" : "JSON"}
+                </button>
+                {config?.savedCampaigns?.some((c) => c.id === activeCampaign.id) && (
                   <button
                     type="button"
                     onClick={() => handleDeleteSavedCampaign(activeCampaign.id)}
-                    className="rounded-xl bg-red-500/20 px-3 py-1.5 text-xs font-bold text-red-300 hover:bg-red-500/30 transition cursor-pointer"
+                    className="rounded-xl bg-red-500/20 px-3 py-2 text-xs font-bold text-red-300 hover:bg-red-500/30 transition cursor-pointer active:scale-95"
                   >
                     Delete
                   </button>
-                </div>
+                )}
               </div>
+            </div>
 
-              {/* Grid: Meta Ads Copy & Google RSA Copy */}
-              <div className="grid gap-6 lg:grid-cols-2">
-                {/* META ADS STRATEGY */}
-                <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-teal-900/10 space-y-4">
-                  <div className="flex items-center justify-between border-b border-teal-900/10 pb-2">
-                    <div className="flex items-center gap-2">
-                      <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-blue-600 text-xs font-black text-white">
-                        f
-                      </span>
-                      <h5 className="font-display text-sm font-bold text-teal-950">
-                        Meta Ads (Instagram &amp; Facebook)
-                      </h5>
-                    </div>
-                    <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md">
-                      CTA: {activeCampaign.metaStrategy.callToAction}
-                    </span>
-                  </div>
-
-                  {/* Primary Texts */}
-                  <div className="space-y-2">
-                    <label className="block text-xs font-bold text-teal-950">
-                      Primary Ad Texts (3 Variations):
-                    </label>
-                    {activeCampaign.metaStrategy.primaryTexts.map((txt, idx) => (
-                      <div
-                        key={idx}
-                        className="rounded-2xl bg-cream/30 p-3 border border-teal-900/10 text-xs text-teal-950 relative group"
-                      >
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="font-bold text-[10px] text-teal-900/60 uppercase">
-                            Variation {idx + 1}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              copyToClipboard(txt, `primary_${idx}`, `Primary Text ${idx + 1}`)
-                            }
-                            className="text-[10px] font-bold text-teal-900 hover:text-saffron-dark cursor-pointer"
-                          >
-                            {copiedKey === `primary_${idx}` ? "✓ Copied" : "Copy"}
-                          </button>
-                        </div>
-                        <p className="leading-relaxed whitespace-pre-line">{txt}</p>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Headlines */}
-                  <div>
-                    <label className="block text-xs font-bold text-teal-950 mb-1.5">
-                      Ad Headlines (High CTR Hooks):
-                    </label>
-                    <div className="flex flex-wrap gap-1.5">
-                      {activeCampaign.metaStrategy.headlines.map((hl, idx) => (
-                        <button
-                          key={idx}
-                          type="button"
-                          onClick={() => copyToClipboard(hl, `hl_${idx}`, `Headline "${hl}"`)}
-                          className="rounded-lg bg-teal-900/5 px-2.5 py-1 text-xs text-teal-950 font-semibold hover:bg-teal-900/10 transition cursor-pointer border border-teal-900/10 flex items-center gap-1"
-                        >
-                          <span>{hl}</span>
-                          <span className="text-[9px] text-teal-900/40">
-                            {copiedKey === `hl_${idx}` ? "✓" : "📋"}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Audience Targeting */}
-                  <div className="rounded-2xl bg-teal-950 p-4 text-white text-xs space-y-2">
-                    <h6 className="font-bold text-gold text-[11px] uppercase tracking-wider">
-                      🎯 Meta Audience Parameters:
-                    </h6>
-                    <div className="grid grid-cols-2 gap-2 text-[11px]">
-                      <div>
-                        <span className="text-white/60">Ages:</span>{" "}
-                        <strong className="text-white">
-                          {activeCampaign.metaStrategy.targeting.ageRange}
-                        </strong>
-                      </div>
-                      <div>
-                        <span className="text-white/60">Gender:</span>{" "}
-                        <strong className="text-white">
-                          {activeCampaign.metaStrategy.targeting.gender}
-                        </strong>
-                      </div>
-                    </div>
-                    <div>
-                      <span className="text-white/60">Locations:</span>
-                      <p className="font-semibold text-white/90 mt-0.5">
-                        {activeCampaign.metaStrategy.targeting.locations.join(" · ")}
-                      </p>
-                    </div>
-                    <div>
-                      <span className="text-white/60">Interests:</span>
-                      <p className="font-semibold text-emerald-300 mt-0.5">
-                        {activeCampaign.metaStrategy.targeting.interests.join(", ")}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* GOOGLE ADS STRATEGY */}
-                <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-teal-900/10 space-y-4">
-                  <div className="flex items-center justify-between border-b border-teal-900/10 pb-2">
-                    <div className="flex items-center gap-2">
-                      <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-amber-500 text-xs font-black text-white">
-                        G
-                      </span>
-                      <h5 className="font-display text-sm font-bold text-teal-950">
-                        Google Ads &amp; Ad Grants (Search RSAs)
-                      </h5>
-                    </div>
-                    <span className="text-[10px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-md">
-                      Search Network
-                    </span>
-                  </div>
-
-                  {/* RSA Headlines */}
-                  <div>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <label className="text-xs font-bold text-teal-950">
-                        15 RSA Headlines (Click to Copy):
-                      </label>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          copyToClipboard(
-                            activeCampaign.googleStrategy.rsaHeadlines.join("\n"),
-                            "all_rsa_hl",
-                            "All RSA Headlines",
-                          )
-                        }
-                        className="text-[10px] font-bold text-teal-900 hover:text-saffron-dark cursor-pointer"
-                      >
-                        {copiedKey === "all_rsa_hl" ? "✓ Copied All" : "Copy All 15"}
-                      </button>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                      {activeCampaign.googleStrategy.rsaHeadlines.map((hl, idx) => (
-                        <button
-                          key={idx}
-                          type="button"
-                          onClick={() => copyToClipboard(hl, `rsa_hl_${idx}`, `Headline "${hl}"`)}
-                          className="rounded-lg bg-cream/30 p-2 text-left text-xs font-semibold text-teal-950 hover:bg-cream/60 transition cursor-pointer border border-teal-900/10 flex items-center justify-between"
-                        >
-                          <span className="truncate">{hl}</span>
-                          <span className="text-[9px] text-teal-900/40 ml-1">
-                            {copiedKey === `rsa_hl_${idx}` ? "✓" : `${hl.length}c`}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* RSA Descriptions */}
-                  <div className="space-y-2">
-                    <label className="block text-xs font-bold text-teal-950">
-                      RSA Descriptions (4 Variations):
-                    </label>
-                    {activeCampaign.googleStrategy.rsaDescriptions.map((desc, idx) => (
-                      <div
-                        key={idx}
-                        className="rounded-xl bg-cream/30 p-2.5 text-xs text-teal-950 border border-teal-900/10 relative"
-                      >
-                        <div className="flex items-center justify-between mb-0.5">
-                          <span className="text-[10px] font-bold text-teal-900/60">
-                            Description {idx + 1} ({desc.length} chars)
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              copyToClipboard(desc, `rsa_desc_${idx}`, `Description ${idx + 1}`)
-                            }
-                            className="text-[10px] font-bold text-teal-900 cursor-pointer"
-                          >
-                            {copiedKey === `rsa_desc_${idx}` ? "✓" : "Copy"}
-                          </button>
-                        </div>
-                        <p>{desc}</p>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* High Intent Keywords */}
-                  <div className="rounded-2xl bg-amber-950/5 border border-amber-900/20 p-3.5 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-amber-950">
-                        High-Intent Keyword Match:
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          copyToClipboard(
-                            [
-                              ...activeCampaign.googleStrategy.keywords.phrase,
-                              ...activeCampaign.googleStrategy.keywords.exact,
-                            ].join("\n"),
-                            "keywords",
-                            "Google Keywords",
-                          )
-                        }
-                        className="text-[10px] font-bold text-amber-900 underline cursor-pointer"
-                      >
-                        {copiedKey === "keywords" ? "✓ Copied" : "Copy Keywords"}
-                      </button>
-                    </div>
-                    <div className="flex flex-wrap gap-1">
-                      {activeCampaign.googleStrategy.keywords.phrase.map((kw, i) => (
-                        <span
-                          key={i}
-                          className="rounded-md bg-white px-2 py-0.5 text-[11px] font-mono text-teal-950 border border-amber-900/10 shadow-2xs"
-                        >
-                          {kw}
-                        </span>
-                      ))}
-                      {activeCampaign.googleStrategy.keywords.exact.map((kw, i) => (
-                        <span
-                          key={i}
-                          className="rounded-md bg-white px-2 py-0.5 text-[11px] font-mono text-emerald-900 border border-emerald-900/20 shadow-2xs"
-                        >
-                          {kw}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Visual Creative Directives & Real Ashrama Assets */}
+            {/* Grid: Meta Ads Copy & Google RSA Copy */}
+            <div className="grid gap-6 lg:grid-cols-2">
+              {/* META ADS STRATEGY */}
               <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-teal-900/10 space-y-4">
-                <div className="border-b border-teal-900/10 pb-2">
-                  <h5 className="font-display text-sm font-bold text-teal-950">
-                    🎨 Visual Creative Directives &amp; Real Media Gallery Matches
-                  </h5>
-                  <p className="text-xs text-teal-950/65">
-                    Recommended photos from our live gallery plus AI generation prompts for Midjourney /
-                    Flux / DALL-E to maintain dignified, authentic Indian ashrama imagery.
-                  </p>
+                <div className="flex items-center justify-between border-b border-teal-900/10 pb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-blue-600 text-xs font-black text-white">
+                      f
+                    </span>
+                    <h5 className="font-display text-sm font-bold text-teal-950">
+                      Meta Ads (Instagram &amp; Facebook)
+                    </h5>
+                  </div>
+                  <span className="text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md">
+                    CTA: {activeCampaign.metaStrategy.callToAction}
+                  </span>
                 </div>
 
-                <div className="grid gap-4 md:grid-cols-3">
-                  {activeCampaign.creativeDirectives.recommendedSiteImages.map((img, idx) => (
-                    <div
-                      key={idx}
-                      className="rounded-2xl border border-teal-900/15 overflow-hidden bg-cream/20 flex flex-col justify-between"
-                    >
-                      <div className="relative aspect-video bg-teal-950/10">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={img.path}
-                          alt={img.title}
-                          className="h-full w-full object-cover"
-                          onError={(e) => {
-                            (e.target as HTMLElement).style.display = "none";
-                          }}
-                        />
-                      </div>
-                      <div className="p-3 space-y-1">
-                        <span className="text-[10px] font-bold text-saffron-dark uppercase tracking-wider">
-                          Recommended Ashrama Asset
-                        </span>
-                        <h6 className="text-xs font-bold text-teal-950">{img.title}</h6>
-                        <p className="text-[11px] text-teal-950/70">{img.rationale}</p>
-                        <button
-                          type="button"
-                          onClick={() => copyToClipboard(img.path, `img_path_${idx}`, "Image Path")}
-                          className="mt-2 text-[10px] font-bold text-teal-900 underline block cursor-pointer"
-                        >
-                          {copiedKey === `img_path_${idx}` ? "✓ Copied Path" : `Copy: ${img.path}`}
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* AI Generation Prompts */}
-                <div className="space-y-2 pt-2">
+                {/* Primary Texts */}
+                <div className="space-y-2">
                   <label className="block text-xs font-bold text-teal-950">
-                    AI Photorealistic Image Prompts (Midjourney v6 / Flux):
+                    Primary Ad Texts (3 Variations):
                   </label>
-                  {activeCampaign.creativeDirectives.aiImagePrompts.map((p, idx) => (
+                  {activeCampaign.metaStrategy.primaryTexts.map((txt, idx) => (
                     <div
                       key={idx}
-                      className="rounded-2xl bg-teal-950/5 p-3 border border-teal-900/15 text-xs text-teal-950 font-mono"
+                      className="rounded-2xl bg-cream/30 p-3 border border-teal-900/10 text-xs text-teal-950 relative group"
                     >
                       <div className="flex items-center justify-between mb-1">
-                        <span className="font-sans font-bold text-[10px] text-teal-900/60 uppercase">
-                          Prompt {idx + 1}
+                        <span className="font-bold text-[10px] text-teal-900/60 uppercase">
+                          Variation {idx + 1}
                         </span>
                         <button
                           type="button"
-                          onClick={() => copyToClipboard(p, `ai_prompt_${idx}`, `AI Prompt ${idx + 1}`)}
-                          className="font-sans text-[10px] font-bold text-teal-900 underline cursor-pointer"
+                          onClick={() =>
+                            copyToClipboard(txt, `primary_${idx}`, `Primary Text ${idx + 1}`)
+                          }
+                          className="text-[10px] font-bold text-teal-900 hover:text-saffron-dark cursor-pointer active:scale-95"
                         >
-                          {copiedKey === `ai_prompt_${idx}` ? "✓ Copied" : "Copy Prompt"}
+                          {copiedKey === `primary_${idx}` ? "✓ Copied" : "Copy"}
                         </button>
                       </div>
-                      <p className="leading-relaxed">{p}</p>
+                      <p className="leading-relaxed whitespace-pre-line">{txt}</p>
                     </div>
                   ))}
                 </div>
 
-                {/* Video Hook Concept */}
-                <div className="rounded-2xl bg-emerald-950 p-4 text-white text-xs space-y-1">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-emerald-300">
-                    🎬 3-Second Video Hook Storyboard Concept
-                  </span>
-                  <p className="leading-relaxed text-white/90">
-                    {activeCampaign.creativeDirectives.videoHookConcept}
-                  </p>
+                {/* Headlines */}
+                <div>
+                  <label className="block text-xs font-bold text-teal-950 mb-1.5">
+                    Ad Headlines (High CTR Hooks):
+                  </label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {activeCampaign.metaStrategy.headlines.map((hl, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => copyToClipboard(hl, `hl_${idx}`, `Headline "${hl}"`)}
+                        className="rounded-lg bg-teal-900/5 px-2.5 py-1 text-xs text-teal-950 font-semibold hover:bg-teal-900/10 transition cursor-pointer border border-teal-900/10 flex items-center gap-1 active:scale-95"
+                      >
+                        <span>{hl}</span>
+                        <span className="text-[9px] text-teal-900/40">
+                          {copiedKey === `hl_${idx}` ? "✓" : "📋"}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Audience Targeting */}
+                <div className="rounded-2xl bg-teal-950 p-4 text-white text-xs space-y-2">
+                  <h6 className="font-bold text-gold text-[11px] uppercase tracking-wider">
+                    🎯 Meta Audience Parameters:
+                  </h6>
+                  <div className="grid grid-cols-2 gap-2 text-[11px]">
+                    <div>
+                      <span className="text-white/60">Ages:</span>{" "}
+                      <strong className="text-white">
+                        {activeCampaign.metaStrategy.targeting.ageRange}
+                      </strong>
+                    </div>
+                    <div>
+                      <span className="text-white/60">Gender:</span>{" "}
+                      <strong className="text-white">
+                        {activeCampaign.metaStrategy.targeting.gender}
+                      </strong>
+                    </div>
+                  </div>
+                  <div>
+                    <span className="text-white/60">Locations:</span>
+                    <p className="font-semibold text-white/90 mt-0.5">
+                      {activeCampaign.metaStrategy.targeting.locations.join(" · ")}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-white/60">Interests:</span>
+                    <p className="font-semibold text-emerald-300 mt-0.5">
+                      {activeCampaign.metaStrategy.targeting.interests.join(", ")}
+                    </p>
+                  </div>
                 </div>
               </div>
 
-              {/* UTM Campaign URL & Tracking */}
-              <div className="rounded-3xl bg-cream/40 p-5 border border-teal-900/15 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div>
+              {/* GOOGLE ADS STRATEGY */}
+              <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-teal-900/10 space-y-4">
+                <div className="flex items-center justify-between border-b border-teal-900/10 pb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-amber-500 text-xs font-black text-white">
+                      G
+                    </span>
                     <h5 className="font-display text-sm font-bold text-teal-950">
-                      🔗 Live Campaign Destination URL with UTM Tags
+                      Google Ads &amp; Ad Grants (Search RSAs)
                     </h5>
-                    <p className="text-xs text-teal-950/65">
-                      Paste this URL into Meta Ads Manager or Google Ads destination field.
-                    </p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      copyToClipboard(
-                        activeCampaign.tracking.destinationUrl,
-                        "dest_url",
-                        "Destination URL",
-                      )
-                    }
-                    className="rounded-xl bg-teal-900 text-white px-3 py-1.5 text-xs font-bold hover:bg-teal-800 transition cursor-pointer"
-                  >
-                    {copiedKey === "dest_url" ? "✓ Copied" : "Copy URL"}
-                  </button>
+                  <span className="text-[10px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-md">
+                    Search Network
+                  </span>
                 </div>
-                <div className="rounded-xl bg-white p-3 font-mono text-xs text-teal-950 border border-teal-900/20 break-all select-all">
-                  {activeCampaign.tracking.destinationUrl}
+
+                {/* RSA Headlines */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-xs font-bold text-teal-950">
+                      15 RSA Headlines (Click to Copy):
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        copyToClipboard(
+                          activeCampaign.googleStrategy.rsaHeadlines.join("\n"),
+                          "all_rsa_hl",
+                          "All RSA Headlines",
+                        )
+                      }
+                      className="text-[10px] font-bold text-teal-900 hover:text-saffron-dark cursor-pointer active:scale-95"
+                    >
+                      {copiedKey === "all_rsa_hl" ? "✓ Copied All" : "Copy All 15"}
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                    {activeCampaign.googleStrategy.rsaHeadlines.map((hl, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => copyToClipboard(hl, `rsa_hl_${idx}`, `Headline "${hl}"`)}
+                        className="rounded-lg bg-cream/30 p-2 text-left text-xs font-semibold text-teal-950 hover:bg-cream/60 transition cursor-pointer border border-teal-900/10 flex items-center justify-between active:scale-95"
+                      >
+                        <span className="truncate">{hl}</span>
+                        <span className="text-[9px] text-teal-900/40 ml-1">
+                          {copiedKey === `rsa_hl_${idx}` ? "✓" : `${hl.length}c`}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* RSA Descriptions */}
+                <div className="space-y-2">
+                  <label className="block text-xs font-bold text-teal-950">
+                    RSA Descriptions (4 Variations):
+                  </label>
+                  {activeCampaign.googleStrategy.rsaDescriptions.map((desc, idx) => (
+                    <div
+                      key={idx}
+                      className="rounded-xl bg-cream/30 p-2.5 text-xs text-teal-950 border border-teal-900/10 relative"
+                    >
+                      <div className="flex items-center justify-between mb-0.5">
+                        <span className="text-[10px] font-bold text-teal-900/60">
+                          Description {idx + 1} ({desc.length} chars)
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            copyToClipboard(desc, `rsa_desc_${idx}`, `Description ${idx + 1}`)
+                          }
+                          className="text-[10px] font-bold text-teal-900 cursor-pointer active:scale-95"
+                        >
+                          {copiedKey === `rsa_desc_${idx}` ? "✓" : "Copy"}
+                        </button>
+                      </div>
+                      <p>{desc}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* High Intent Keywords */}
+                <div className="rounded-2xl bg-amber-950/5 border border-amber-900/20 p-3.5 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-amber-950">
+                      High-Intent Keyword Match:
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        copyToClipboard(
+                          [
+                            ...activeCampaign.googleStrategy.keywords.phrase,
+                            ...activeCampaign.googleStrategy.keywords.exact,
+                          ].join("\n"),
+                          "keywords",
+                          "Google Keywords",
+                        )
+                      }
+                      className="text-[10px] font-bold text-amber-900 underline cursor-pointer active:scale-95"
+                    >
+                      {copiedKey === "keywords" ? "✓ Copied" : "Copy Keywords"}
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {activeCampaign.googleStrategy.keywords.phrase.map((kw, i) => (
+                      <span
+                        key={i}
+                        className="rounded-md bg-white px-2 py-0.5 text-[11px] font-mono text-teal-950 border border-amber-900/10 shadow-2xs"
+                      >
+                        {kw}
+                      </span>
+                    ))}
+                    {activeCampaign.googleStrategy.keywords.exact.map((kw, i) => (
+                      <span
+                        key={i}
+                        className="rounded-md bg-white px-2 py-0.5 text-[11px] font-mono text-emerald-900 border border-emerald-900/20 shadow-2xs"
+                      >
+                        {kw}
+                      </span>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
-          ) : (
-            <div className="rounded-3xl bg-cream/30 p-8 text-center border border-teal-900/10 space-y-2">
-              <p className="text-sm font-bold text-teal-950">No campaign generated yet.</p>
-              <p className="text-xs text-teal-950/60 max-w-md mx-auto">
-                Select an angle above (such as Birthday Feast or Sacred Shagun) and click &ldquo;Generate
-                Omnichannel Blueprint&rdquo; to launch complete ads, copy, and visuals.
-              </p>
+
+            {/* Visual Creative Directives & Real Ashrama Assets */}
+            <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-teal-900/10 space-y-4">
+              <div className="border-b border-teal-900/10 pb-2">
+                <h5 className="font-display text-sm font-bold text-teal-950">
+                  🎨 Visual Creative Directives &amp; Real Media Gallery Matches
+                </h5>
+                <p className="text-xs text-teal-950/65">
+                  Recommended photos from our live gallery plus AI generation prompts for Midjourney /
+                  Flux / DALL-E to maintain dignified, authentic Indian ashrama imagery.
+                </p>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-3">
+                {activeCampaign.creativeDirectives.recommendedSiteImages.map((img, idx) => (
+                  <div
+                    key={idx}
+                    className="rounded-2xl border border-teal-900/15 overflow-hidden bg-cream/20 flex flex-col justify-between"
+                  >
+                    <div className="relative aspect-video bg-teal-950/10">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={img.path}
+                        alt={img.title}
+                        className="h-full w-full object-cover"
+                        onError={(e) => {
+                          (e.target as HTMLElement).style.display = "none";
+                        }}
+                      />
+                    </div>
+                    <div className="p-3 space-y-1">
+                      <span className="text-[10px] font-bold text-saffron-dark uppercase tracking-wider">
+                        Recommended Ashrama Asset
+                      </span>
+                      <h6 className="text-xs font-bold text-teal-950">{img.title}</h6>
+                      <p className="text-[11px] text-teal-950/70">{img.rationale}</p>
+                      <button
+                        type="button"
+                        onClick={() => copyToClipboard(img.path, `img_path_${idx}`, "Image Path")}
+                        className="mt-2 text-[10px] font-bold text-teal-900 underline block cursor-pointer active:scale-95"
+                      >
+                        {copiedKey === `img_path_${idx}` ? "✓ Copied Path" : `Copy: ${img.path}`}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* AI Generation Prompts */}
+              <div className="space-y-2 pt-2">
+                <label className="block text-xs font-bold text-teal-950">
+                  AI Photorealistic Image Prompts (Midjourney v6 / Flux):
+                </label>
+                {activeCampaign.creativeDirectives.aiImagePrompts.map((p, idx) => (
+                  <div
+                    key={idx}
+                    className="rounded-2xl bg-teal-950/5 p-3 border border-teal-900/15 text-xs text-teal-950 font-mono"
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-sans font-bold text-[10px] text-teal-900/60 uppercase">
+                        Prompt {idx + 1}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => copyToClipboard(p, `ai_prompt_${idx}`, `AI Prompt ${idx + 1}`)}
+                        className="font-sans text-[10px] font-bold text-teal-900 underline cursor-pointer active:scale-95"
+                      >
+                        {copiedKey === `ai_prompt_${idx}` ? "✓ Copied" : "Copy Prompt"}
+                      </button>
+                    </div>
+                    <p className="leading-relaxed">{p}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Video Hook Concept */}
+              <div className="rounded-2xl bg-emerald-950 p-4 text-white text-xs space-y-1">
+                <span className="text-[10px] font-black uppercase tracking-wider text-emerald-300">
+                  🎬 3-Second Video Hook Storyboard Concept
+                </span>
+                <p className="leading-relaxed text-white/90">
+                  {activeCampaign.creativeDirectives.videoHookConcept}
+                </p>
+              </div>
             </div>
-          )}
+
+            {/* UTM Campaign URL & Tracking */}
+            <div className="rounded-3xl bg-cream/40 p-5 border border-teal-900/15 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h5 className="font-display text-sm font-bold text-teal-950">
+                    🔗 Campaign Destination URL with Pre-Built UTM Tags
+                  </h5>
+                  <p className="text-xs text-teal-950/65">
+                    Paste this directly into Meta Ads Manager or Google Ads destination field.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() =>
+                    copyToClipboard(
+                      activeCampaign.tracking.destinationUrl,
+                      "dest_url",
+                      "Destination URL",
+                    )
+                  }
+                  className="rounded-xl bg-teal-900 text-white px-3 py-1.5 text-xs font-bold hover:bg-teal-800 transition cursor-pointer active:scale-95"
+                >
+                  {copiedKey === "dest_url" ? "✓ Copied" : "Copy URL"}
+                </button>
+              </div>
+              <div className="rounded-xl bg-white p-3 font-mono text-xs text-teal-950 border border-teal-900/20 break-all select-all">
+                {activeCampaign.tracking.destinationUrl}
+              </div>
+            </div>
+          </div>
 
           {/* Saved Campaigns History */}
           {config?.savedCampaigns && config.savedCampaigns.length > 0 && (
@@ -815,7 +883,7 @@ export function AdminMarketingHub({
                   <div
                     key={sc.id}
                     onClick={() => setActiveCampaign(sc)}
-                    className={`rounded-2xl p-3 border transition cursor-pointer flex flex-col justify-between ${
+                    className={`rounded-2xl p-3 border transition cursor-pointer flex flex-col justify-between active:scale-95 ${
                       activeCampaign?.id === sc.id
                         ? "bg-teal-900/5 border-teal-900 shadow-xs"
                         : "bg-cream/20 border-teal-900/10 hover:bg-cream/40"
@@ -834,7 +902,9 @@ export function AdminMarketingHub({
                     </div>
                     <div className="mt-2 pt-2 border-t border-teal-900/10 flex items-center justify-between text-[11px]">
                       <span className="font-bold text-teal-900">Click to View Blueprint →</span>
-                      <span className="text-teal-900/40">{new Date(sc.createdAt).toLocaleDateString()}</span>
+                      <span className="text-teal-900/40">
+                        {new Date(sc.createdAt).toLocaleDateString()}
+                      </span>
                     </div>
                   </div>
                 ))}
@@ -844,7 +914,188 @@ export function AdminMarketingHub({
         </div>
       )}
 
-      {/* ================= 2. META ADS PLAYBOOK & ROAS ================= */}
+      {/* ================= 2. 1-CLICK UTM TRACKING LINK BUILDER ================= */}
+      {subtab === "utm_builder" && (
+        <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-teal-900/10 space-y-6">
+          <div className="border-b border-teal-900/10 pb-3">
+            <div className="inline-flex items-center gap-1.5 rounded-md bg-emerald-100 px-2.5 py-0.5 text-xs font-bold text-emerald-800 uppercase tracking-wider mb-1">
+              <span>Traffic Attribution Utility</span>
+            </div>
+            <h4 className="font-display text-lg font-bold text-teal-950">
+              1-Click UTM Tracking URL &amp; Campaign Link Builder
+            </h4>
+            <p className="text-xs text-teal-950/65 mt-0.5">
+              Create instant, error-free tracking URLs with attribution tags for Meta Ads, Google Ads,
+              WhatsApp blasts, Instagram bio, newspaper print QR codes, and YouTube videos.
+            </p>
+          </div>
+
+          <div className="grid gap-5 md:grid-cols-2">
+            {/* Form Inputs */}
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-teal-950 mb-1">
+                  1. Target Landing Page:
+                </label>
+                <select
+                  value={utmBasePage}
+                  onChange={(e) => setUtmBasePage(e.target.value)}
+                  className="w-full rounded-xl border border-teal-900/20 p-2.5 text-xs font-semibold text-teal-950 bg-white"
+                >
+                  <option value="/celebrate-birthday">🎂 Birthday Celebrations (/celebrate-birthday)</option>
+                  <option value="/">🏠 Website Home (/)</option>
+                  <option value="/#tiers">🍛 Sacred Shagun Giving Tiers (/#tiers)</option>
+                  <option value="/#impact">🛒 Annadana Need Cart (/#impact)</option>
+                  <option value="/transparency">🛡️ 80G Tax Exemption &amp; Audited Trust (/transparency)</option>
+                  <option value="/supporter-form">📝 Supporter &amp; Volunteer Form (/supporter-form)</option>
+                  <option value="custom">🌐 Custom Page URL</option>
+                </select>
+                {utmBasePage === "custom" && (
+                  <input
+                    type="text"
+                    value={utmCustomPage}
+                    onChange={(e) => setUtmCustomPage(e.target.value)}
+                    placeholder="e.g. /c/student-vidya-fund"
+                    className="w-full mt-2 rounded-xl border border-teal-900/20 p-2 text-xs font-mono"
+                  />
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-teal-950 mb-1">
+                    2. Traffic Source:
+                  </label>
+                  <select
+                    value={utmSource}
+                    onChange={(e) => setUtmSource(e.target.value)}
+                    className="w-full rounded-xl border border-teal-900/20 p-2 text-xs font-semibold text-teal-950 bg-white"
+                  >
+                    <option value="meta_ads">Meta Ads (FB/IG)</option>
+                    <option value="google_grants">Google Ad Grants</option>
+                    <option value="whatsapp_broadcast">WhatsApp Broadcast</option>
+                    <option value="instagram_bio">Instagram Bio</option>
+                    <option value="youtube_video">YouTube Video</option>
+                    <option value="newspaper_print_qr">Newspaper Print QR</option>
+                    <option value="influencer_collab">Influencer Partner</option>
+                    <option value="email_newsletter">Email Newsletter</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-teal-950 mb-1">
+                    3. Medium:
+                  </label>
+                  <select
+                    value={utmMedium}
+                    onChange={(e) => setUtmMedium(e.target.value)}
+                    className="w-full rounded-xl border border-teal-900/20 p-2 text-xs font-semibold text-teal-950 bg-white"
+                  >
+                    <option value="paid_social">paid_social</option>
+                    <option value="cpc">cpc (Search Ad)</option>
+                    <option value="broadcast">broadcast (WhatsApp)</option>
+                    <option value="profile_bio">profile_bio</option>
+                    <option value="print_qr">print_qr</option>
+                    <option value="video_desc">video_desc</option>
+                    <option value="referral">referral</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-teal-950 mb-1">
+                  4. Campaign Name:
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={utmCampaignName}
+                    onChange={(e) => setUtmCampaignName(e.target.value)}
+                    placeholder="e.g. birthday_blessing_feast"
+                    className="w-full rounded-xl border border-teal-900/20 p-2 text-xs font-mono"
+                  />
+                </div>
+                <div className="flex flex-wrap gap-1 mt-1.5">
+                  {[
+                    "birthday_blessing_feast",
+                    "shagun_annadana",
+                    "tax_saving_80g_blr",
+                    "vidya_schooling",
+                    "ugadi_festival",
+                  ].map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => setUtmCampaignName(preset)}
+                      className="text-[10px] font-semibold text-teal-900/70 hover:text-teal-950 bg-teal-900/5 px-2 py-0.5 rounded cursor-pointer"
+                    >
+                      +{preset}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-teal-950 mb-1">
+                  5. Ad Keyword / Term (Optional):
+                </label>
+                <input
+                  type="text"
+                  value={utmTerm}
+                  onChange={(e) => setUtmTerm(e.target.value)}
+                  placeholder="e.g. south_bangalore_food_donation"
+                  className="w-full rounded-xl border border-teal-900/20 p-2 text-xs font-mono"
+                />
+              </div>
+            </div>
+
+            {/* Generated Output Card */}
+            <div className="rounded-2xl bg-cream/40 p-5 border border-teal-900/15 flex flex-col justify-between space-y-4">
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-wider text-emerald-800">
+                  Ready Tracking Link
+                </span>
+                <h5 className="font-display text-sm font-bold text-teal-950 mt-1">
+                  Generated Campaign URL:
+                </h5>
+                <div className="mt-2 rounded-xl bg-white p-3 font-mono text-xs text-teal-950 border border-teal-900/20 break-all select-all leading-relaxed">
+                  {finalUtmUrl}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => copyToClipboard(finalUtmUrl, "built_utm", "UTM Tracking URL")}
+                    className="flex-1 rounded-xl bg-teal-900 text-white py-2.5 text-xs font-bold hover:bg-teal-800 transition cursor-pointer shadow-xs active:scale-95"
+                  >
+                    {copiedKey === "built_utm" ? "✓ Copied to Clipboard!" : "📋 Copy Tracking URL"}
+                  </button>
+                  <a
+                    href={finalUtmUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="rounded-xl bg-white border border-teal-900/20 text-teal-950 px-4 py-2.5 text-xs font-bold hover:bg-teal-900/5 transition"
+                  >
+                    Test Link ↗
+                  </a>
+                </div>
+
+                <div className="rounded-xl bg-white/70 p-3 text-[11px] text-teal-950/70 border border-teal-900/10 space-y-1">
+                  <span className="font-bold text-teal-950 block">💡 Offline QR Code Tip:</span>
+                  <p>
+                    For printed Kannada/English banners or temple noticeboards, paste this URL into a QR
+                    generator to track exactly how many donors came from physical banners!
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ================= 3. META ADS PLAYBOOK & ROAS ================= */}
       {subtab === "meta" && (
         <div className="space-y-6">
           {/* Executive Strategy Banner */}
@@ -871,7 +1122,7 @@ export function AdminMarketingHub({
             <div className="grid gap-4 md:grid-cols-2">
               <div className="rounded-2xl bg-white/10 p-4 border border-white/10 space-y-2">
                 <h5 className="text-xs font-bold text-gold uppercase tracking-wider">
-                  1. The Standard 'Donate' Event + ROAS
+                  1. The Standard &apos;Donate&apos; Event + ROAS
                 </h5>
                 <p className="text-xs text-white/80 leading-relaxed">
                   Most NGOs make the mistake of optimizing for link clicks or generic page views.
@@ -887,7 +1138,7 @@ export function AdminMarketingHub({
 
               <div className="rounded-2xl bg-white/10 p-4 border border-white/10 space-y-2">
                 <h5 className="text-xs font-bold text-gold uppercase tracking-wider">
-                  2. Evading the 'Social Issues / Politics' Restriction
+                  2. Evading the &apos;Social Issues / Politics&apos; Restriction
                 </h5>
                 <p className="text-xs text-white/80 leading-relaxed">
                   Ads categorized under &ldquo;Social Issues, Elections or Politics&rdquo; face intense
@@ -966,7 +1217,7 @@ export function AdminMarketingHub({
                   <select
                     value={calcAvgDonation}
                     onChange={(e) => setCalcAvgDonation(Number(e.target.value))}
-                    className="w-full rounded-xl border border-teal-900/20 p-2 text-xs font-bold text-teal-950"
+                    className="w-full rounded-xl border border-teal-900/20 p-2 text-xs font-bold text-teal-950 bg-white"
                   >
                     <option value={101}>₹101 (Micro Shagun Seva)</option>
                     <option value={500}>₹500 (Arogya / Health Checkup)</option>
@@ -1019,7 +1270,7 @@ export function AdminMarketingHub({
                     <span className="text-[10px] font-bold uppercase text-saffron-dark">
                       Net Funds for 25 Boys
                     </span>
-                    <p className="font-display text-xl font-bold text-teal-900 mt-1">
+                    <p className="font-display text-xl font-bold text-teal-950 mt-1">
                       {formatINR(netRaised)}
                     </p>
                   </div>
@@ -1039,7 +1290,7 @@ export function AdminMarketingHub({
         </div>
       )}
 
-      {/* ================= 3. GOOGLE ADS & $10K GRANTS ================= */}
+      {/* ================= 4. GOOGLE ADS & $10K GRANTS ================= */}
       {subtab === "google" && (
         <div className="space-y-6">
           <div className="rounded-3xl bg-amber-950 text-white p-6 shadow-md border border-amber-800 space-y-4">
@@ -1152,7 +1403,7 @@ export function AdminMarketingHub({
                           `Cluster "${grp.cluster}"`,
                         )
                       }
-                      className="text-[10px] font-bold text-teal-900 underline cursor-pointer"
+                      className="text-[10px] font-bold text-teal-900 underline cursor-pointer active:scale-95"
                     >
                       {copiedKey === `kw_grp_${i}` ? "✓ Copied" : "Copy Cluster"}
                     </button>
@@ -1193,7 +1444,7 @@ export function AdminMarketingHub({
                       "Negative Keywords",
                     )
                   }
-                  className="text-[10px] font-bold text-red-900 underline cursor-pointer"
+                  className="text-[10px] font-bold text-red-900 underline cursor-pointer active:scale-95"
                 >
                   {copiedKey === "neg_kws" ? "✓ Copied" : "Copy Negative List"}
                 </button>
@@ -1207,7 +1458,7 @@ export function AdminMarketingHub({
         </div>
       )}
 
-      {/* ================= 4. LOCAL GEO & AEO ENGINE ================= */}
+      {/* ================= 5. LOCAL GEO & AEO ENGINE ================= */}
       {subtab === "geo_aeo" && (
         <div className="space-y-6">
           <div className="rounded-3xl bg-teal-950 text-white p-6 shadow-md border border-teal-800 space-y-4">
@@ -1270,7 +1521,7 @@ export function AdminMarketingHub({
                     "Canonical NAP",
                   )
                 }
-                className="w-full rounded-xl bg-teal-900 text-white py-2 text-xs font-bold hover:bg-teal-800 transition cursor-pointer"
+                className="w-full rounded-xl bg-teal-900 text-white py-2 text-xs font-bold hover:bg-teal-800 transition cursor-pointer active:scale-95"
               >
                 {copiedKey === "nap" ? "✓ Copied Canonical NAP" : "📋 Copy NAP Citation for Google Maps"}
               </button>
@@ -1301,7 +1552,7 @@ export function AdminMarketingHub({
                     "AEO Fact Snippet",
                   )
                 }
-                className="w-full rounded-xl bg-teal-900 text-white py-2 text-xs font-bold hover:bg-teal-800 transition cursor-pointer"
+                className="w-full rounded-xl bg-teal-900 text-white py-2 text-xs font-bold hover:bg-teal-800 transition cursor-pointer active:scale-95"
               >
                 {copiedKey === "aeo_fact" ? "✓ Copied Fact Snippet" : "📋 Copy AEO Fact Snippet"}
               </button>
@@ -1310,7 +1561,7 @@ export function AdminMarketingHub({
         </div>
       )}
 
-      {/* ================= 5. AD APIS & CAPI CONFIG ================= */}
+      {/* ================= 6. AD APIS, PIXEL CODE & CAPI CONFIG ================= */}
       {subtab === "apis" && (
         <div className="space-y-6">
           <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-teal-900/10 space-y-4">
@@ -1328,7 +1579,7 @@ export function AdminMarketingHub({
                 type="button"
                 onClick={handleSaveConfig}
                 disabled={savingConfig || loadingConfig}
-                className="rounded-xl bg-emerald-700 px-5 py-2 text-xs font-bold text-white hover:bg-emerald-600 transition disabled:opacity-50 cursor-pointer shadow-xs flex items-center gap-1.5 self-start sm:self-auto"
+                className="rounded-xl bg-emerald-700 px-5 py-2 text-xs font-bold text-white hover:bg-emerald-600 transition disabled:opacity-50 cursor-pointer shadow-xs flex items-center gap-1.5 self-start sm:self-auto active:scale-95"
               >
                 {savingConfig ? "Saving Changes..." : "💾 Save API Configuration"}
               </button>
@@ -1445,6 +1696,64 @@ export function AdminMarketingHub({
             ) : null}
           </div>
 
+          {/* Client-side Pixel Snippet Generator */}
+          {config?.metaPixelId && (
+            <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-teal-900/10 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h5 className="font-display text-sm font-bold text-teal-950">
+                    📋 Meta Pixel HTML Snippet (Populated with Pixel ID {config.metaPixelId})
+                  </h5>
+                  <p className="text-xs text-teal-950/65">
+                    Copy and paste into your Google Tag Manager or header tags if setting up client-side
+                    redundancy.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() =>
+                    copyToClipboard(
+                      `<!-- Meta Pixel Code -->
+<script>
+!function(f,b,e,v,n,t,s)
+{if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+n.queue=[];t=b.createElement(e);t.async=!0;
+t.src=v;s=b.getElementsByTagName(e)[0];
+s.parentNode.insertBefore(t,s)}(window, document,'script',
+'https://connect.facebook.net/en_US/fbevents.js');
+fbq('init', '${config.metaPixelId}');
+fbq('track', 'PageView');
+</script>
+<!-- End Meta Pixel Code -->`,
+                      "pixel_code",
+                      "Meta Pixel Code Snippet",
+                    )
+                  }
+                  className="rounded-xl bg-teal-900 text-white px-3 py-1.5 text-xs font-bold hover:bg-teal-800 transition cursor-pointer active:scale-95"
+                >
+                  {copiedKey === "pixel_code" ? "✓ Copied Snippet!" : "Copy Pixel Code"}
+                </button>
+              </div>
+              <pre className="rounded-xl bg-teal-950 p-3 font-mono text-[11px] text-emerald-300 overflow-x-auto leading-relaxed">
+{`<!-- Meta Pixel Code -->
+<script>
+!function(f,b,e,v,n,t,s)
+{if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+n.queue=[];t=b.createElement(e);t.async=!0;
+t.src=v;s=b.getElementsByTagName(e)[0];
+s.parentNode.insertBefore(t,s)}(window, document,'script',
+'https://connect.facebook.net/en_US/fbevents.js');
+fbq('init', '${config.metaPixelId}');
+fbq('track', 'PageView');
+</script>`}
+              </pre>
+            </div>
+          )}
+
           {/* Test Meta CAPI Section */}
           <div className="rounded-3xl bg-teal-950 p-6 text-white space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-white/10 pb-3">
@@ -1461,7 +1770,7 @@ export function AdminMarketingHub({
                 type="button"
                 onClick={handleTestCapi}
                 disabled={testingCapi}
-                className="rounded-xl bg-gold text-teal-950 px-4 py-2 text-xs font-bold hover:bg-gold-light transition disabled:opacity-50 cursor-pointer shadow-xs self-start sm:self-auto"
+                className="rounded-xl bg-gold text-teal-950 px-4 py-2 text-xs font-bold hover:bg-gold-light transition disabled:opacity-50 cursor-pointer shadow-xs self-start sm:self-auto active:scale-95"
               >
                 {testingCapi ? "Sending Test Event..." : "🚀 Test CAPI 'Donate' Event"}
               </button>
@@ -1485,7 +1794,7 @@ export function AdminMarketingHub({
         </div>
       )}
 
-      {/* ================= 6. 1-CLICK WHATSAPP BROADCAST ================= */}
+      {/* ================= 7. 1-CLICK WHATSAPP BROADCAST ================= */}
       {subtab === "whatsapp" && (
         <div className="rounded-3xl bg-gradient-to-br from-emerald-950 via-teal-950 to-emerald-950 p-6 text-white shadow-lg border border-emerald-800 space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-white/10 pb-3">
@@ -1516,7 +1825,7 @@ export function AdminMarketingHub({
                     key={tpl.id}
                     type="button"
                     onClick={() => setWaTemplate(tpl.id)}
-                    className={`w-full text-left rounded-xl px-3 py-2 text-xs font-semibold transition cursor-pointer ${
+                    className={`w-full text-left rounded-xl px-3 py-2 text-xs font-semibold transition cursor-pointer active:scale-95 ${
                       waTemplate === tpl.id
                         ? "bg-white text-teal-950 font-bold shadow-xs"
                         : "bg-white/10 text-white/80 hover:bg-white/15"
@@ -1564,7 +1873,7 @@ export function AdminMarketingHub({
                       <button
                         type="button"
                         onClick={() => copyToClipboard(activeMsg, "wa_msg", "WhatsApp Message")}
-                        className="rounded-xl bg-gold text-teal-950 px-4 py-2 text-xs font-bold hover:bg-gold-light transition cursor-pointer shadow-xs"
+                        className="rounded-xl bg-gold text-teal-950 px-4 py-2 text-xs font-bold hover:bg-gold-light transition cursor-pointer shadow-xs active:scale-95"
                       >
                         {copiedKey === "wa_msg" ? "✓ Copied!" : "📋 Copy Message & Link"}
                       </button>
@@ -1572,14 +1881,14 @@ export function AdminMarketingHub({
                         href={waUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="rounded-xl bg-emerald-600 text-white px-4 py-2 text-xs font-bold hover:bg-emerald-500 transition cursor-pointer flex items-center gap-1.5 shadow-xs"
+                        className="rounded-xl bg-emerald-600 text-white px-4 py-2 text-xs font-bold hover:bg-emerald-500 transition cursor-pointer flex items-center gap-1.5 shadow-xs active:scale-95"
                       >
                         <span>💬 Open in WhatsApp Broadcast</span>
                       </a>
                       <button
                         type="button"
                         onClick={() => setWaCustomMsg("")}
-                        className="rounded-xl bg-white/10 text-white/70 px-3 py-2 text-xs font-semibold hover:bg-white/20 transition cursor-pointer"
+                        className="rounded-xl bg-white/10 text-white/70 px-3 py-2 text-xs font-semibold hover:bg-white/20 transition cursor-pointer active:scale-95"
                       >
                         Reset Template
                       </button>
@@ -1592,7 +1901,7 @@ export function AdminMarketingHub({
         </div>
       )}
 
-      {/* ================= 7. CROWD CAMPAIGNS DIRECTORY ================= */}
+      {/* ================= 8. CROWD CAMPAIGNS DIRECTORY ================= */}
       {subtab === "campaigns" && (
         <div className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-teal-900/10 space-y-4">
           <div className="flex items-center justify-between">
@@ -1607,7 +1916,7 @@ export function AdminMarketingHub({
             <button
               type="button"
               onClick={() => void loadCampaigns()}
-              className="rounded-xl bg-teal-900/10 px-3 py-1.5 text-xs font-bold text-teal-900 hover:bg-teal-900/20 transition cursor-pointer"
+              className="rounded-xl bg-teal-900/10 px-3 py-1.5 text-xs font-bold text-teal-900 hover:bg-teal-900/20 transition cursor-pointer active:scale-95"
             >
               Refresh
             </button>
@@ -1681,7 +1990,7 @@ export function AdminMarketingHub({
                               status: isApproved ? "paused" : "approved",
                             })
                           }
-                          className={`rounded-lg px-2 py-1 text-[11px] font-bold transition cursor-pointer ${
+                          className={`rounded-lg px-2 py-1 text-[11px] font-bold transition cursor-pointer active:scale-95 ${
                             isApproved
                               ? "bg-amber-100 text-amber-800 hover:bg-amber-200"
                               : "bg-emerald-100 text-emerald-800 hover:bg-emerald-200"
@@ -1692,14 +2001,14 @@ export function AdminMarketingHub({
                         <button
                           type="button"
                           onClick={() => setEditingCampaign(c)}
-                          className="rounded-lg bg-teal-900 px-2.5 py-1 text-[11px] font-bold text-white hover:bg-teal-800 transition cursor-pointer"
+                          className="rounded-lg bg-teal-900 px-2.5 py-1 text-[11px] font-bold text-white hover:bg-teal-800 transition cursor-pointer active:scale-95"
                         >
                           Edit
                         </button>
                         <button
                           type="button"
                           onClick={() => handleDeleteCampaign(c.id)}
-                          className="rounded-lg bg-red-600/15 border border-red-500/25 px-2 py-1 text-[11px] font-bold text-red-700 hover:bg-red-600/25 transition cursor-pointer"
+                          className="rounded-lg bg-red-600/15 border border-red-500/25 px-2 py-1 text-[11px] font-bold text-red-700 hover:bg-red-600/25 transition cursor-pointer active:scale-95"
                         >
                           Delete
                         </button>

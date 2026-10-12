@@ -3,14 +3,7 @@ import type { ReactNode } from "react";
 import Script from "next/script";
 import "./globals.css";
 import { CartProvider } from "@/components/CartProvider";
-import { SiteHeader } from "@/components/SiteHeader";
-import { BottomNav } from "@/components/BottomNav";
-import { ScrollToTopButton } from "@/components/ScrollToTopButton";
-import { SiteFooter } from "@/components/SiteFooter";
-import { FloatingSocials } from "@/components/FloatingSocials";
-import { BottomDonationDrawer } from "@/components/BottomDonationDrawer";
-import { UrgentDonationBar } from "@/components/UrgentDonationBar";
-import { LiveDonationToast } from "@/components/LiveDonationToast";
+import { PublicSiteChrome } from "@/components/PublicSiteChrome";
 import { getImpactItems } from "@/lib/content";
 import { PWARegister } from "@/components/PWARegister";
 import { FAQ_ITEMS } from "@/lib/faq";
@@ -335,15 +328,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
       <body className="antialiased min-h-screen w-full max-w-full overflow-x-hidden">
         <CartProvider catalog={catalog}>
           <PWARegister />
-          <SiteHeader />
-          <main className="w-full max-w-full min-w-0 overflow-x-hidden">{children}</main>
-          <SiteFooter />
-          <FloatingSocials />
-          <ScrollToTopButton />
-          <UrgentDonationBar />
-          <LiveDonationToast />
-          <BottomDonationDrawer />
-          <BottomNav />
+          <PublicSiteChrome>{children}</PublicSiteChrome>
         </CartProvider>
       </body>
     </html>
