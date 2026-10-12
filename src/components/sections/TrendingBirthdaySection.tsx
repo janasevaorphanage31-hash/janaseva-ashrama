@@ -654,7 +654,7 @@ export function TrendingBirthdaySection({
                     <span>🎂 Evening Cake Slot</span>
                   </p>
                   <p className="text-[11px] text-white/80 mt-1">
-                    4:30 PM – 6:30 PM: Cake cutting, snacks &amp; child games
+                    4:30 PM – 8:00 PM: Cake cutting, playtime snacks &amp; celebration
                   </p>
                 </div>
               </div>

@@ -806,8 +806,8 @@ export function CelebrateBirthdayClient({
                         onChange={(e) => setSlot(e.target.value)}
                         className="focus-ring w-full rounded-xl border border-teal-900/20 bg-white px-3 py-1.5 text-xs font-semibold text-teal-950"
                       >
-                        <option value="morning">Morning (11:00 AM - 1:30 PM Lunch Seva)</option>
-                        <option value="evening">Evening (4:30 PM - 6:30 PM Snacks & Cake)</option>
+                        <option value="morning">Morning (11:30 AM - 1:00 PM Lunch Seva)</option>
+                        <option value="evening">Evening (4:30 PM - 8:00 PM Snacks &amp; Cake)</option>
                         <option value="full_day">Full Day Attendance</option>
                       </select>
                     </div>

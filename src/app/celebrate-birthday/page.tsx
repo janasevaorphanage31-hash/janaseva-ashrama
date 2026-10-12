@@ -65,7 +65,7 @@ const BIRTHDAY_FAQS = [
   },
   {
     q: "What are the recommended visiting slots for birthday celebrations?",
-    a: "We offer two convenient visiting slots daily: Morning Slot (10:30 AM to 1:00 PM) for lunch celebrations, and Evening Slot (4:30 PM to 6:30 PM) for evening cake cutting, games, and snack distribution.",
+    a: "We offer two convenient visiting slots daily: Morning Slot (11:30 AM to 1:00 PM) for lunchtime celebrations, and Evening Slot (4:30 PM to 8:00 PM) for evening cake cutting, playtime snacks, games, and celebration.",
   },
   {
     q: "Will I get an 80G tax exemption receipt for sponsoring a birthday feast?",

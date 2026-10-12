@@ -3174,8 +3174,8 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
                         name="timeSlot"
                         className="w-full rounded-xl border border-teal-900/15 px-3 py-2 text-xs bg-white"
                       >
-                        <option value="morning">Morning (11:30 AM - 1:30 PM)</option>
-                        <option value="evening">Evening (4:30 PM - 6:30 PM)</option>
+                        <option value="morning">Morning (11:30 AM - 1:00 PM)</option>
+                        <option value="evening">Evening (4:30 PM - 8:00 PM)</option>
                         <option value="full_day">Full Day Attendance</option>
                       </select>
                     </div>
