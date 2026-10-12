@@ -295,7 +295,7 @@ export function BottomNav() {
       {/* ── BOTTOM NAV BAR ── */}
       <nav
         aria-label="Mobile Bottom Navigation"
-        className="fixed inset-x-0 bottom-0 z-40 border-t border-teal-900/10 bg-white/97 pb-[env(safe-area-inset-bottom)] shadow-[0_-6px_24px_rgba(6,49,47,0.09)] backdrop-blur-xl md:hidden no-print"
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-teal-900/10 bg-white/98 pb-[max(0.6rem,env(safe-area-inset-bottom))] shadow-[0_-6px_24px_rgba(6,49,47,0.09)] backdrop-blur-xl md:hidden no-print"
       >
         <ul className="mx-auto flex h-16 max-w-md items-center justify-around px-1">
 

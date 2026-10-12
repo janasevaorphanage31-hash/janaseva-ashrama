@@ -129,5 +129,8 @@ export async function GET(req: Request) {
     .limit(limit)
     .offset(offset);
 
-  return NextResponse.json({ celebrations: rows, page, limit });
+  return NextResponse.json(
+    { celebrations: rows, page, limit },
+    { headers: { "Cache-Control": "public, s-maxage=30, stale-while-revalidate=120" } }
+  );
 }

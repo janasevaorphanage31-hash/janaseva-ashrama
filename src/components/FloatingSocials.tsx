@@ -41,10 +41,10 @@ export function FloatingSocials() {
         />
       )}
 
-      {/* ── FLOATING SPEED-DIAL SOCIAL CHANNELS CONTAINER ── */}
+      {/* ── FLOATING SPEED-DIAL SOCIAL CHANNELS CONTAINER (DESKTOP ONLY TO PREVENT MOBILE CLUTTER) ── */}
       <aside
         aria-label="Direct Social Media, WhatsApp and Calling Channels"
-        className={`fixed z-40 flex flex-col items-end gap-2.5 no-print transition-all duration-300 pointer-events-auto ${positionClass}`}
+        className={`hidden md:flex fixed z-40 flex-col items-end gap-2.5 no-print transition-all duration-300 pointer-events-auto ${positionClass}`}
       >
         {/* Expanded Speed-Dial Stack */}
         {open && (

@@ -359,28 +359,28 @@ export function TrendingBirthdaySection({
           </div>
         </div>
 
-        {/* ── 3. CHOOSE HOW YOU WANT TO CELEBRATE (GRID WITH AUTHENTIC ASHRAMA BACKGROUND IMAGE & PREMIUM UI/UX) ── */}
-        <div className="mt-10 sm:mt-14 relative rounded-3xl sm:rounded-[36px] overflow-hidden border border-amber-500/30 shadow-2xl p-4 sm:p-7 md:p-10 my-8 sm:my-12">
-          {/* Authentic Ashrama Background Image Layer */}
-          <div className="absolute inset-0 -z-20">
+        {/* ── 3. CHOOSE HOW YOU WANT TO CELEBRATE (GRID WITH AUTHENTIC ASHRAMA BACKGROUND IMAGE & HIGH CONTRAST SATVIK THEME) ── */}
+        <div className="mt-10 sm:mt-14 relative rounded-3xl sm:rounded-[36px] overflow-hidden border border-amber-500/30 shadow-2xl p-4 sm:p-7 md:p-10 my-8 sm:my-12 bg-teal-950 text-white isolate">
+          {/* Authentic Ashrama Background Image Layer with Dark Satvik Overlay */}
+          <div className="absolute inset-0 pointer-events-none z-0">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/media/annadana-hall-hd.jpg"
               alt="Janaseva Ashrama 25 resident boys dining and prayer hall Bengaluru"
-              className="h-full w-full object-cover object-center filter saturate-110"
+              className="h-full w-full object-cover object-center filter saturate-110 opacity-30"
             />
+            <div className="absolute inset-0 bg-gradient-to-b from-teal-950/95 via-teal-950/85 to-teal-950/98" />
+            <div className="absolute -top-32 -right-32 h-80 w-80 rounded-full bg-amber-500/15 blur-3xl" />
+            <div className="absolute -bottom-32 -left-32 h-80 w-80 rounded-full bg-rose-500/15 blur-3xl" />
           </div>
 
-          {/* Deep Satvik Gradient Vignette & Frosted Aura */}
-          <div className="absolute inset-0 -z-10 bg-gradient-to-b from-teal-950/93 via-teal-950/96 to-teal-950/98 backdrop-blur-xs pointer-events-none" />
-          <div className="absolute -top-32 -right-32 -z-10 h-80 w-80 rounded-full bg-amber-500/20 blur-3xl pointer-events-none" />
-          <div className="absolute -bottom-32 -left-32 -z-10 h-80 w-80 rounded-full bg-rose-500/15 blur-3xl pointer-events-none" />
-
-          {/* Header Inside Background Card */}
-          <div className="text-center max-w-3xl mx-auto mb-7 sm:mb-10">
-            <div className="inline-flex items-center gap-2 rounded-full bg-amber-500/20 border border-amber-400/40 px-3.5 sm:px-4.5 py-1.5 text-xs font-black uppercase tracking-wider text-amber-300 shadow-md backdrop-blur-md mb-3">
-              <span>✨ 100% Direct Seva · 25 Boys in Turahalli, Bengaluru</span>
-            </div>
+          {/* High-Contrast Foreground Content Layer */}
+          <div className="relative z-10">
+            {/* Header Inside Background Card */}
+            <div className="text-center max-w-3xl mx-auto mb-7 sm:mb-10">
+              <div className="inline-flex items-center gap-2 rounded-full bg-amber-400/20 border border-amber-300/40 px-3.5 sm:px-4.5 py-1.5 text-xs font-black uppercase tracking-wider text-amber-300 shadow-md backdrop-blur-md mb-3">
+                <span>✨ 100% Direct Seva · 25 Boys in Turahalli, Bengaluru</span>
+              </div>
 
             <h3 className="font-display text-2xl sm:text-3xl md:text-4xl font-black text-white leading-tight">
               Choose How You Want to Celebrate
@@ -538,6 +538,7 @@ export function TrendingBirthdaySection({
             ))}
           </div>
         </div>
+      </div>
 
         {/* ── 4. REAL DELIVERED WHATSAPP VIDEO MEMORIES ── */}
         <div className="mt-12 sm:mt-16 relative w-full">

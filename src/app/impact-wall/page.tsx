@@ -36,53 +36,56 @@ export default async function ImpactWallPage() {
             <Card t="Approved volunteers" v={wall.volunteerCount.toLocaleString("en-IN")} />
           </div>
 
-          {/* Latest Verified Supporters */}
+          {/* Collective Impact & Transparency Guarantees */}
           <div className="mt-8 rounded-3xl bg-white p-6 ring-1 ring-teal-900/10 md:p-8">
             <div className="flex flex-wrap items-center justify-between gap-4 border-b border-teal-900/10 pb-4">
               <div>
-                <h2 className="font-display text-2xl font-bold text-teal-900">Latest supporters</h2>
+                <h2 className="font-display text-2xl font-bold text-teal-900">Collective Care for 25 Resident Boys</h2>
                 <p className="mt-1 text-xs text-teal-950/65">
-                  Real contributions verified on our server. Donors choose whether their name appears or stays anonymous.
+                  100% direct allocation model. We honor donor privacy and celebrate collective participation without competitive rankings.
                 </p>
               </div>
               <Link
                 href="/impact"
-                className="rounded-xl bg-saffron px-5 py-2 text-xs font-bold uppercase tracking-wider text-white shadow hover:bg-saffron-dark"
+                className="rounded-xl bg-saffron px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-white shadow hover:bg-saffron-dark transition"
               >
-                Make an impact
+                Sponsor a Need 💝
               </Link>
             </div>
 
-            {wall.latestSupporters.length > 0 ? (
-              <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {wall.latestSupporters.map((s) => (
-                  <div
-                    key={s.id}
-                    className="flex items-center justify-between rounded-2xl bg-cream/70 p-4 ring-1 ring-teal-900/5"
-                  >
-                    <div>
-                      <p className="text-sm font-bold text-teal-900">{s.displayName}</p>
-                      <p className="text-xs text-teal-950/60">
-                        {s.paidAt
-                          ? new Date(s.paidAt).toLocaleDateString("en-IN", {
-                              day: "numeric",
-                              month: "short",
-                              year: "numeric",
-                            })
-                          : "Verified"}
-                      </p>
-                    </div>
-                    <span className="font-mono text-sm font-bold text-teal-800">
-                      {formatINR(s.amount)}
-                    </span>
-                  </div>
-                ))}
+            <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="rounded-2xl bg-cream/70 p-4 border border-teal-900/10">
+                <span className="text-2xl mb-2 block">🍲</span>
+                <p className="text-sm font-bold text-teal-900">4 Wholesome Meals Daily</p>
+                <p className="mt-1 text-xs text-teal-950/65">
+                  Fresh milk, breakfast, balanced festival lunch, evening snacks, and warm dinner prepared fresh on campus.
+                </p>
               </div>
-            ) : (
-              <p className="mt-6 text-center text-sm text-teal-950/60">
-                Verified community contributions will be reflected here in real time.
-              </p>
-            )}
+
+              <div className="rounded-2xl bg-cream/70 p-4 border border-teal-900/10">
+                <span className="text-2xl mb-2 block">📚</span>
+                <p className="text-sm font-bold text-teal-900">100% School Enrollment</p>
+                <p className="mt-1 text-xs text-teal-950/65">
+                  Full tuition, textbooks, uniforms, daily homework coaching, and Spoken English mentorship for all 25 boys.
+                </p>
+              </div>
+
+              <div className="rounded-2xl bg-cream/70 p-4 border border-teal-900/10">
+                <span className="text-2xl mb-2 block">🩺</span>
+                <p className="text-sm font-bold text-teal-900">Arogya &amp; Healthcare</p>
+                <p className="mt-1 text-xs text-teal-950/65">
+                  Bi-monthly doctor checkups, essential medicines, clean drinking water, and safe hygienic dormitory living.
+                </p>
+              </div>
+
+              <div className="rounded-2xl bg-cream/70 p-4 border border-teal-900/10">
+                <span className="text-2xl mb-2 block">📜</span>
+                <p className="text-sm font-bold text-teal-900">100% Tax Deductible (80G)</p>
+                <p className="mt-1 text-xs text-teal-950/65">
+                  Every verified contribution receives an instant Form 10AC tax exemption certificate download.
+                </p>
+              </div>
+            </div>
           </div>
 
           {/* Verified Field Metrics */}
