@@ -11,8 +11,8 @@ export interface VerticalNavTarget {
 }
 
 const VERTICAL_TARGETS: VerticalNavTarget[] = [
+  { id: "official-tiers", label: "Sponsor 25 Boys", icon: "🏛️", mode: "tiers" },
   { id: "celebrate", label: "Birthdays", icon: "🎂", mode: "celebrate" },
-  { id: "official-tiers", label: "5 Tiers", icon: "🏛️", mode: "tiers" },
   { id: "impact", label: "Basket", icon: "🛒", mode: "annadana" },
   { id: "boys-gallery", label: "Gallery", icon: "📸", mode: "life" },
   { id: "volunteer", label: "Volunteer", icon: "🤝", mode: "community" },
@@ -28,7 +28,7 @@ export function VerticalSectionRail({
   currentMode?: string;
   onSelectMode?: (mode: string, targetId?: string) => void;
 }) {
-  const [activeTarget, setActiveTarget] = useState<string>("celebrate");
+  const [activeTarget, setActiveTarget] = useState<string>("official-tiers");
 
   // Monitor active target on scroll
   useEffect(() => {

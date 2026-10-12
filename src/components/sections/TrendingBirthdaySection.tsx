@@ -27,6 +27,7 @@ export interface BirthdayPackage {
   popular?: boolean;
   starter?: boolean;
   icon: string;
+  image: string;
   features: string[];
   menuTags: string[];
 }
@@ -43,6 +44,7 @@ export const TRENDING_BIRTHDAY_PACKAGES: BirthdayPackage[] = [
     description: "All 25 boys hold a custom name placard, sing 'Happy Birthday' in English & Kannada, and chant sacred Ayu Suktam shlokas for your health and long life.",
     servings: "25 boys singing video on WhatsApp",
     icon: "📱",
+    image: "/media/birthday-wishes-orange.jpg",
     features: [
       "Custom name placard held by 25 boys",
       "Happy Birthday song & Vedic Ayu Suktam prayer",
@@ -61,6 +63,7 @@ export const TRENDING_BIRTHDAY_PACKAGES: BirthdayPackage[] = [
     description: "Fresh 1kg eggless bakery cake with celebrant's name written in icing. 25 boys gather around, sing, cut cake, and share joyous sweets.",
     servings: "25 boys cake celebration",
     icon: "🎂",
+    image: "/media/birthday-cake-celebration.jpg",
     features: [
       "Custom name on fresh 1kg eggless cake",
       "25 boys singing Happy Birthday video on WhatsApp",
@@ -80,6 +83,7 @@ export const TRENDING_BIRTHDAY_PACKAGES: BirthdayPackage[] = [
     description: "Traditional South Indian Banana Leaf (Bale Ele Oota) festival lunch served hot to all 25 boys in honour of your special day.",
     servings: "Full satvik feast for all 25 boys",
     icon: "🍛",
+    image: "/media/banana-leaf-feast.jpg",
     features: [
       "Full banana leaf satvik feast for 25 boys",
       "Sweet Payasam, Pooris, Sagu, Sambar, Rice & Curd",
@@ -98,6 +102,7 @@ export const TRENDING_BIRTHDAY_PACKAGES: BirthdayPackage[] = [
     description: "Gift school notebooks, pens, drawing kits, and geometry sets to all 25 school-going boys in the celebrant's honor.",
     servings: "25 boys complete school stationery",
     icon: "📚",
+    image: "/media/art-drawings.jpg",
     features: [
       "Class notebooks & pens for all 25 boys",
       "Art & geometry stationery sets",
@@ -116,6 +121,7 @@ export const TRENDING_BIRTHDAY_PACKAGES: BirthdayPackage[] = [
     description: "Steaming hot badam milk, evening savouries, and 10kg fresh apple & banana baskets for a joyful evening celebration party.",
     servings: "Evening celebration for 25 boys",
     icon: "🍎",
+    image: "/media/fruits.jpg",
     features: [
       "Warm nutritious Badam Milk for all 25 boys",
       "10kg fresh apple & banana crates",
@@ -134,6 +140,7 @@ export const TRENDING_BIRTHDAY_PACKAGES: BirthdayPackage[] = [
     description: "Sponsor breakfast, cake, festive lunch with sweets, evening fruits, and dinner for the entire 24-hour cycle for all 25 boys.",
     servings: "Full 24-hour Ashrama coverage for 25 boys",
     icon: "👑",
+    image: "/media/birthday-feast-annadana.jpg",
     features: [
       "All 3 meals + evening fruits + birthday cake",
       "Entire day dedicated in celebrant's name",
@@ -234,6 +241,18 @@ export function TrendingBirthdaySection({
           popular: p.highlight,
           starter: p.price <= 700,
           icon: p.price <= 700 ? "📱" : p.price === 1500 ? "🎂" : "🍛",
+          image:
+            p.price <= 700
+              ? "/media/birthday-wishes-orange.jpg"
+              : p.price === 1500
+              ? "/media/birthday-cake-celebration.jpg"
+              : p.price === 3501 || p.price === 3500
+              ? "/media/banana-leaf-feast.jpg"
+              : p.price === 2100
+              ? "/media/art-drawings.jpg"
+              : p.price === 2501 || p.price === 2500
+              ? "/media/fruits.jpg"
+              : "/media/birthday-feast-annadana.jpg",
           features: [
             p.servings,
             "Personalized WhatsApp Video Blessing",
@@ -340,105 +359,176 @@ export function TrendingBirthdaySection({
           </div>
         </div>
 
-        {/* ── 3. MOBILE-FIRST RESPONSIVE GRID OF BIRTHDAY PACKAGES ── */}
-        <div className="mt-8 sm:mt-12">
-          <div className="text-center mb-6">
-            <span className="rounded-full bg-amber-500/15 px-3 py-1 text-[11px] font-black uppercase tracking-wider text-amber-800 border border-amber-500/30">
-              Choose How You Want to Celebrate
-            </span>
-            <h3 className="mt-2 font-display text-xl sm:text-2xl md:text-3xl font-extrabold text-teal-950">
-              Transparent Birthday Packages for 25 Boys
-            </h3>
-            <p className="mt-1 text-xs text-teal-950/70 max-w-xl mx-auto">
-              Every package includes hot meal preparation, sweet distribution, WhatsApp video proof, and an instant 80G tax receipt.
-            </p>
+        {/* ── 3. CHOOSE HOW YOU WANT TO CELEBRATE (GRID WITH AUTHENTIC ASHRAMA BACKGROUND IMAGE & PREMIUM UI/UX) ── */}
+        <div className="mt-10 sm:mt-14 relative rounded-3xl sm:rounded-[36px] overflow-hidden border border-amber-500/30 shadow-2xl p-4 sm:p-7 md:p-10 my-8 sm:my-12">
+          {/* Authentic Ashrama Background Image Layer */}
+          <div className="absolute inset-0 -z-20">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/media/annadana-hall-hd.jpg"
+              alt="Janaseva Ashrama 25 resident boys dining and prayer hall Bengaluru"
+              className="h-full w-full object-cover object-center filter saturate-110"
+            />
           </div>
 
-          {/* Clean Mobile Grid: 1 col on mobile, 2 col on tablet, 3 col on desktop */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4 md:gap-5">
+          {/* Deep Satvik Gradient Vignette & Frosted Aura */}
+          <div className="absolute inset-0 -z-10 bg-gradient-to-b from-teal-950/93 via-teal-950/96 to-teal-950/98 backdrop-blur-xs pointer-events-none" />
+          <div className="absolute -top-32 -right-32 -z-10 h-80 w-80 rounded-full bg-amber-500/20 blur-3xl pointer-events-none" />
+          <div className="absolute -bottom-32 -left-32 -z-10 h-80 w-80 rounded-full bg-rose-500/15 blur-3xl pointer-events-none" />
+
+          {/* Header Inside Background Card */}
+          <div className="text-center max-w-3xl mx-auto mb-7 sm:mb-10">
+            <div className="inline-flex items-center gap-2 rounded-full bg-amber-500/20 border border-amber-400/40 px-3.5 sm:px-4.5 py-1.5 text-xs font-black uppercase tracking-wider text-amber-300 shadow-md backdrop-blur-md mb-3">
+              <span>✨ 100% Direct Seva · 25 Boys in Turahalli, Bengaluru</span>
+            </div>
+
+            <h3 className="font-display text-2xl sm:text-3xl md:text-4xl font-black text-white leading-tight">
+              Choose How You Want to Celebrate
+            </h3>
+
+            <p className="mt-1 font-display text-lg sm:text-xl md:text-2xl font-extrabold text-amber-300">
+              Transparent Birthday Packages for 25 Boys
+            </p>
+
+            <p className="mt-1.5 text-[11px] sm:text-xs font-bold text-amber-200/80 uppercase tracking-widest">
+              ಜನ್ಮದಿನದ ಪವಿತ್ರ ಅನ್ನದಾನ ಹಾಗೂ ಹರಕೆ ಸೇವೆ · Janaseva Ashrama Turahalli
+            </p>
+
+            <p className="mt-3 text-xs sm:text-sm text-teal-100/85 max-w-2xl mx-auto leading-relaxed">
+              Every package feeds, nurtures, and brings pure smiles to our 25 resident boys.
+              Includes verified WhatsApp video proof of boys chanting your name + instant 80G tax exemption receipt.
+            </p>
+
+            {/* Quick Trust Chips */}
+            <div className="mt-4 flex flex-wrap items-center justify-center gap-2 text-[10px] sm:text-[11px] font-bold text-white">
+              <span className="rounded-full bg-white/10 px-3 py-1 border border-white/20 backdrop-blur-md">
+                ✓ 25 Resident Boys
+              </span>
+              <span className="rounded-full bg-white/10 px-3 py-1 border border-white/20 backdrop-blur-md">
+                ✓ Direct WhatsApp Video Blessing
+              </span>
+              <span className="rounded-full bg-white/10 px-3 py-1 border border-white/20 backdrop-blur-md">
+                ✓ Instant Form 10AC 80G Receipt
+              </span>
+              <span className="rounded-full bg-white/10 px-3 py-1 border border-white/20 backdrop-blur-md">
+                ✓ In-Person Campus Visits Welcome
+              </span>
+            </div>
+          </div>
+
+          {/* Clean Mobile-First Grid of Birthday Packages */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 md:gap-6">
             {birthdayPackages.map((pkg) => (
               <div
                 key={pkg.id}
-                className={`group relative rounded-3xl p-4 sm:p-5 md:p-6 transition-all duration-300 flex flex-col justify-between border bg-white ${
+                className={`group relative rounded-3xl overflow-hidden flex flex-col justify-between transition-all duration-300 hover:-translate-y-1 bg-white border ${
                   pkg.popular
-                    ? "shadow-xl ring-2 ring-amber-500 border-amber-500"
+                    ? "shadow-2xl ring-2 ring-amber-400 border-amber-400"
                     : pkg.starter
-                    ? "shadow-md ring-1 ring-emerald-500/40 border-emerald-500/30"
-                    : "shadow-sm hover:shadow-lg border-amber-500/20 hover:border-amber-400"
+                    ? "shadow-xl ring-2 ring-emerald-500 border-emerald-500"
+                    : "shadow-lg border-teal-900/15 hover:border-amber-400"
                 }`}
               >
                 <div>
-                  {/* Badge & Icon Header */}
-                  <div className="flex items-center justify-between gap-2 mb-2.5">
-                    <span
-                      className={`rounded-full px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider ${
-                        pkg.popular
-                          ? "bg-gradient-to-r from-amber-500 to-rose-500 text-white shadow-xs"
-                          : pkg.starter
-                          ? "bg-emerald-600 text-white shadow-xs"
-                          : "bg-teal-950/10 text-teal-900"
-                      }`}
-                    >
-                      {pkg.tag}
-                    </span>
-                    <span className="text-xl sm:text-2xl">{pkg.icon}</span>
-                  </div>
+                  {/* Card Authentic Photo Banner */}
+                  <div className="relative aspect-[16/10] w-full overflow-hidden bg-teal-950">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={pkg.image}
+                      alt={pkg.title}
+                      className="h-full w-full object-cover object-center group-hover:scale-105 transition-transform duration-500"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-teal-950 via-teal-950/30 to-transparent pointer-events-none" />
 
-                  {/* Title & Kannada subtitle */}
-                  <h4 className="font-display text-base sm:text-lg font-extrabold text-teal-950 leading-snug">
-                    {pkg.title}
-                  </h4>
-                  <p className="text-[10px] sm:text-[11px] text-amber-800/80 font-bold mt-0.5">
-                    {pkg.kannada}
-                  </p>
-
-                  {/* Price Tag */}
-                  <div className="my-3 flex items-baseline gap-1.5">
-                    <span className="font-display text-2xl sm:text-3xl font-black text-amber-600">
-                      {formatINR(pkg.cost)}
-                    </span>
-                    <span className="text-[11px] text-teal-950/60 font-semibold">
-                      / {pkg.cost <= 700 ? "custom video" : "all 25 boys"}
-                    </span>
-                  </div>
-
-                  <p className="text-xs text-teal-950/75 leading-relaxed line-clamp-3">
-                    {pkg.description}
-                  </p>
-
-                  {/* Checklist */}
-                  <ul className="mt-3.5 space-y-1.5 text-[11px] text-teal-950/85">
-                    {pkg.features.map((feat, fIdx) => (
-                      <li key={fIdx} className="flex items-start gap-1.5">
-                        <span className="flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 text-[9px] font-black mt-0.5">
-                          ✓
-                        </span>
-                        <span className="line-clamp-1">{feat}</span>
-                      </li>
-                    ))}
-                  </ul>
-
-                  {/* Tags */}
-                  {pkg.menuTags && (
-                    <div className="mt-3 flex flex-wrap gap-1 pt-2.5 border-t border-teal-900/10">
-                      {pkg.menuTags.map((menu, mIdx) => (
-                        <span
-                          key={mIdx}
-                          className="rounded-lg bg-cream px-2 py-0.5 text-[9px] font-semibold text-teal-900"
-                        >
-                          {menu}
-                        </span>
-                      ))}
+                    {/* Top Tag Badges */}
+                    <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5 z-10">
+                      <span
+                        className={`rounded-full px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider ${
+                          pkg.popular
+                            ? "bg-gradient-to-r from-amber-500 to-rose-500 text-white shadow-md"
+                            : pkg.starter
+                            ? "bg-emerald-600 text-white shadow-md"
+                            : "bg-teal-950/85 backdrop-blur-md text-amber-300 border border-white/20"
+                        }`}
+                      >
+                        {pkg.tag}
+                      </span>
                     </div>
-                  )}
+
+                    {/* Icon Bubble */}
+                    <span className="absolute top-2.5 right-2.5 flex h-8 w-8 items-center justify-center rounded-full bg-black/60 backdrop-blur-md text-base text-white border border-white/20 z-10">
+                      {pkg.icon}
+                    </span>
+
+                    {/* Bottom Servings Tag on Photo */}
+                    <div className="absolute bottom-2 left-2.5 right-2.5 flex items-center justify-between z-10 text-[10px] text-white font-semibold">
+                      <span className="truncate rounded-md bg-black/60 px-2 py-0.5 backdrop-blur-md border border-white/10">
+                        👥 {pkg.servings}
+                      </span>
+                      <span className="rounded-md bg-emerald-600/90 px-2 py-0.5 backdrop-blur-md font-bold text-white">
+                        80G Tax Free
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Card Body Content */}
+                  <div className="p-4 sm:p-5">
+                    {/* Title & Kannada subtitle */}
+                    <h4 className="font-display text-base sm:text-lg font-extrabold text-teal-950 leading-snug">
+                      {pkg.title}
+                    </h4>
+                    <p className="text-[10px] sm:text-[11px] text-amber-800 font-bold mt-0.5">
+                      {pkg.kannada}
+                    </p>
+
+                    {/* Price Tag */}
+                    <div className="my-3 flex items-baseline gap-1.5">
+                      <span className="font-display text-2xl sm:text-3xl font-black text-amber-600">
+                        {formatINR(pkg.cost)}
+                      </span>
+                      <span className="text-[11px] text-teal-950/60 font-semibold">
+                        / {pkg.cost <= 700 ? "custom video" : "all 25 boys"}
+                      </span>
+                    </div>
+
+                    <p className="text-xs text-teal-950/75 leading-relaxed line-clamp-3">
+                      {pkg.description}
+                    </p>
+
+                    {/* Checklist */}
+                    <ul className="mt-3.5 space-y-1.5 text-[11px] text-teal-950/85">
+                      {pkg.features.map((feat, fIdx) => (
+                        <li key={fIdx} className="flex items-start gap-1.5">
+                          <span className="flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 text-[9px] font-black mt-0.5">
+                            ✓
+                          </span>
+                          <span className="line-clamp-1">{feat}</span>
+                        </li>
+                      ))}
+                    </ul>
+
+                    {/* Menu Tags */}
+                    {pkg.menuTags && (
+                      <div className="mt-3 flex flex-wrap gap-1 pt-2.5 border-t border-teal-900/10">
+                        {pkg.menuTags.map((menu, mIdx) => (
+                          <span
+                            key={mIdx}
+                            className="rounded-lg bg-cream px-2 py-0.5 text-[9px] font-semibold text-teal-900"
+                          >
+                            {menu}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* 1-Tap Sponsor CTA Button */}
-                <div className="mt-5 pt-1">
+                <div className="p-4 sm:p-5 pt-0">
                   <button
                     type="button"
                     onClick={() => handleSponsorPackage(pkg)}
-                    className="focus-ring tap-scale w-full rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-600 hover:to-orange-600 py-3 text-center text-xs font-black uppercase tracking-wider text-white shadow-md shadow-orange-500/20 transition active:scale-95 cursor-pointer flex items-center justify-center gap-1.5"
+                    className="focus-ring tap-scale w-full rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-600 hover:to-orange-600 py-3 text-center text-xs sm:text-sm font-black uppercase tracking-wider text-white shadow-md shadow-orange-500/25 transition active:scale-95 cursor-pointer flex items-center justify-center gap-1.5"
                   >
                     <span>Sponsor ({formatINR(pkg.cost)})</span>
                     <span>💝 →</span>

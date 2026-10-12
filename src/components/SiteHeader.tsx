@@ -8,8 +8,8 @@ import { useCart } from "./CartProvider";
 import { track } from "@/lib/track";
 
 const primaryNavLinks = [
+  { href: "/#official-tiers", label: "Sponsor 25 Boys", badge: "Form 28" },
   { href: "/#celebrate", label: "Birthday Celebrations", trending: true },
-  { href: "/#official-tiers", label: "Sponsor Tiers" },
   { href: "/#volunteer", label: "Volunteer", badge: "2.5h/wk" },
   { href: "/#impact", label: "Annadana Needs" },
   { href: "/#life-in-motion", label: "Ashrama Life" },

@@ -34,20 +34,20 @@ interface ModeItem {
 
 const MODES: ModeItem[] = [
   {
+    id: "tiers",
+    label: "Sponsor 25 Boys",
+    icon: "🍲",
+    badge: "Form 28",
+    targetId: "official-tiers",
+    description: "Form 28 JJ Act registered 5 official sponsorship tiers",
+  },
+  {
     id: "celebrate",
     label: "Birthdays",
     icon: "🎂",
     badge: "Hot",
     targetId: "celebrate",
-    description: "Sponsor cake, sweets & get a personal video song blessing",
-  },
-  {
-    id: "tiers",
-    label: "Sponsor",
-    icon: "🍲",
-    badge: "Tiers",
-    targetId: "official-tiers",
-    description: "Form 28 JJ Act registered sponsorship tiers",
+    description: "Celebrate birthday with 25 boys, cake & WhatsApp video wish",
   },
   {
     id: "community",
@@ -206,7 +206,7 @@ export function HomeSectionsHub({
       } else if (tierEl && tierEl.offsetTop <= scrollPos) {
         setActiveMode("tiers");
       } else {
-        setActiveMode("celebrate");
+        setActiveMode("tiers");
       }
     };
 
@@ -316,15 +316,15 @@ export function HomeSectionsHub({
 
       {/* ── UNIFIED FULL-LENGTH COMPREHENSIVE STORY (NEVER UNMOUNTS) ── */}
       <div className="space-y-0">
-        {/* 1. Birthday Celebrations with 25 Boys in Bengaluru (WhatsApp Wish, Cakes & Feasts) */}
+        {/* 1. Sponsor 25 Boys: Exact 5 Official Support Tiers & Pricing (Form 28 JJ Act Registered) */}
+        <OfficialSupportTiersSection tiers={siteContent?.supportTiers} />
+
+        {/* 2. Celebrate Your Birthday with 25 Orphaned Boys in Bengaluru (WhatsApp Wish, Cakes & Feasts) */}
         <TrendingBirthdaySection
           packages={siteContent?.celebrationPackages}
           wishVideos={siteContent?.wishVideos}
           content={siteContent}
         />
-
-        {/* 2. Exact 5 Official Support Tiers & Pricing (Form 28 JJ Act Registered) */}
-        <OfficialSupportTiersSection tiers={siteContent?.supportTiers} />
 
         {/* 3. Real-Time Daily Updates & Live Meals Tracker (Kitchen Feed) */}
         <TodaySection updates={updates} mealsStatus={siteContent?.todayMealsStatus} />
