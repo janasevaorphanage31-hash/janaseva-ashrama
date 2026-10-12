@@ -4,21 +4,29 @@ import { CommunityV2Section } from "@/components/sections/CommunityV2Section";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 
 export const metadata: Metadata = {
-  title: "Get Involved & Community Network | Janaseva Ashrama",
+  title: "Volunteer in Bangalore - Give 2.5 Hours a Week | Janaseva Ashrama",
   description:
-    "Join the Janaseva family as a weekend volunteer mentor, content creator/influencer, corporate CSR partner, or official WhatsApp network member.",
+    "Give 2.5 hours a week on weekends to teach, mentor, or coach 25 orphaned boys at Janaseva Ashrama in Turahalli, Bangalore South. Earn a verified NGO certificate.",
+  keywords: [
+    "volunteer bangalore",
+    "volunteer in orphanage bangalore",
+    "weekend volunteering bangalore",
+    "teach kids bangalore ngo",
+    "janaseva ashrama volunteer",
+    "2.5 hours week volunteer",
+  ],
 };
 
 export default function GetInvolvedPage() {
   return (
     <>
-      <Breadcrumbs items={[{ label: "Get Involved" }]} />
+      <Breadcrumbs items={[{ label: "Volunteer & Mentor" }]} />
       <PageHero
-        eyebrow="Community & Volunteer Network"
-        title="Give your time, voice, or corporate partnership."
-        lead="Love, mentorship, and guidance cannot be bought. Join as a volunteer tutor, visit as a content creator, partner through company CSR, or stay connected via WhatsApp."
+        eyebrow="Weekend Mentorship · 2.5 Hours / Week"
+        title="Give 2.5 hours a week. Change a child's story forever."
+        lead="Love, mentorship, and brotherhood cannot be bought. Join us on weekends to teach Spoken English, coach sports, guide art, or partner through corporate CSR at Janaseva Ashrama in Turahalli, Bangalore South."
       />
-      <CommunityV2Section />
+      <CommunityV2Section standalone />
     </>
   );
 }

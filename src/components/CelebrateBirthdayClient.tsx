@@ -45,6 +45,19 @@ interface FeastPackage {
 
 const PACKAGES: FeastPackage[] = [
   {
+    id: "video-wish",
+    name: "Personalized WhatsApp Video Song Blessing",
+    price: 700,
+    badge: "📱 ₹700 Accessible Seva",
+    menu: [
+      "Custom Name Placard held by 25 resident boys",
+      "Happy Birthday Song in English & Kannada",
+      "Sacred Vedic Ayu Suktam Long-Life Shloka Chanting",
+      "Video delivered directly on WhatsApp within 3 hours",
+    ],
+    servings: "25 boys personalized video song on WhatsApp",
+  },
+  {
     id: "breakfast",
     name: "Morning Energy Breakfast",
     price: 1500,

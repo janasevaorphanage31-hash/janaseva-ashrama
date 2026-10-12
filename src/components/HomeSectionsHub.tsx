@@ -34,12 +34,12 @@ interface ModeItem {
 
 const MODES: ModeItem[] = [
   {
-    id: "all",
-    label: "Story",
-    icon: "🌟",
-    badge: "All",
-    targetId: "hub-top",
-    description: "Complete continuous journey of Janaseva Ashrama",
+    id: "celebrate",
+    label: "Birthdays",
+    icon: "🎂",
+    badge: "Hot",
+    targetId: "celebrate",
+    description: "Sponsor cake, sweets & get a personal video song blessing",
   },
   {
     id: "tiers",
@@ -50,20 +50,12 @@ const MODES: ModeItem[] = [
     description: "Form 28 JJ Act registered sponsorship tiers",
   },
   {
-    id: "celebrate",
-    label: "Birthdays",
-    icon: "🎂",
-    badge: "Hot",
-    targetId: "celebrate",
-    description: "Sponsor cake, sweets & get a personal video song blessing",
-  },
-  {
     id: "community",
     label: "Volunteer",
     icon: "🤝",
-    badge: "Join",
+    badge: "2.5h",
     targetId: "volunteer",
-    description: "Volunteers, influencers, corporate CSR & WhatsApp network",
+    description: "Give 2.5 hrs/week mentoring, coaching & life skills",
   },
   {
     id: "annadana",
@@ -88,6 +80,14 @@ const MODES: ModeItem[] = [
     badge: "80G",
     targetId: "transparency",
     description: "Form 10AC, CSR-1, Axis Bank wire & FAQs",
+  },
+  {
+    id: "all",
+    label: "Story",
+    icon: "🌟",
+    badge: "All",
+    targetId: "hub-top",
+    description: "Complete continuous journey of Janaseva Ashrama",
   },
 ];
 
@@ -206,7 +206,7 @@ export function HomeSectionsHub({
       } else if (tierEl && tierEl.offsetTop <= scrollPos) {
         setActiveMode("tiers");
       } else {
-        setActiveMode("all");
+        setActiveMode("celebrate");
       }
     };
 
@@ -316,15 +316,15 @@ export function HomeSectionsHub({
 
       {/* ── UNIFIED FULL-LENGTH COMPREHENSIVE STORY (NEVER UNMOUNTS) ── */}
       <div className="space-y-0">
-        {/* 1. Exact 5 Official Support Tiers & Pricing (Form 28 JJ Act Registered) */}
-        <OfficialSupportTiersSection tiers={siteContent?.supportTiers} />
-
-        {/* 2. Birthday & Milestone Feasts (Celebrate Birthday with 25 Boys) */}
+        {/* 1. Birthday Celebrations with 25 Boys in Bengaluru (WhatsApp Wish, Cakes & Feasts) */}
         <TrendingBirthdaySection
           packages={siteContent?.celebrationPackages}
           wishVideos={siteContent?.wishVideos}
           content={siteContent}
         />
+
+        {/* 2. Exact 5 Official Support Tiers & Pricing (Form 28 JJ Act Registered) */}
+        <OfficialSupportTiersSection tiers={siteContent?.supportTiers} />
 
         {/* 3. Real-Time Daily Updates & Live Meals Tracker (Kitchen Feed) */}
         <TodaySection updates={updates} mealsStatus={siteContent?.todayMealsStatus} />
@@ -335,13 +335,13 @@ export function HomeSectionsHub({
         {/* 5. Real Boys Visual Gallery (Curated 60 Photos & Videos) */}
         <RealBoysGallerySection customMedia={approvedMedia} />
 
+        {/* 6. Weekend Mentorship & Volunteer Network (U&I Concept: 2.5 hrs/week) */}
+        <CommunityV2Section />
+
         {/* 7. On-Ground NGO Activities & Community Outreach (Field Initiatives) */}
         <CommunityActivitiesSection activities={siteContent?.ngoActivities} />
 
-        {/* 8. Share Your Talent & Reach: Volunteers, Creators, Corporate CSR & WhatsApp Network V2 */}
-        <CommunityV2Section />
-
-        {/* 9. Documentary Video Chapters */}
+        {/* 8. Documentary Video Chapters */}
         <DocumentaryVideoSection chapters={siteContent?.docChapters} />
 
         {/* 10. Emotional Voices & Reflections ("Every child deserves a warm plate...") */}

@@ -1,101 +1,118 @@
 "use client";
 
 import { useState } from "react";
-import { Container, Head, Section } from "../ui";
+import { Container, Section } from "../ui";
 import { SITE } from "@/lib/site";
 import { track } from "@/lib/track";
 
 type CommunityRole = "VOLUNTEER" | "INFLUENCER" | "COMPANY_CSR" | "WHATSAPP_AMBASSADOR";
 
-interface RoleOption {
+interface RolePathway {
   id: CommunityRole;
   badge: string;
+  badgeColor: string;
   title: string;
   titleKn: string;
+  timeCommitment: string;
   tagline: string;
   icon: string;
   skills: string[];
-  placeholderHandle: string;
   handleLabel: string;
+  placeholderHandle: string;
+  submitButtonText: string;
 }
 
-const ROLES: RoleOption[] = [
+const PATHWAYS: RolePathway[] = [
   {
     id: "VOLUNTEER",
-    badge: "Youth & Mentors",
-    title: "Weekend Volunteer",
-    titleKn: "ಸ್ವಯಂಸೇವಕರು",
-    tagline: "Teach, tutor, play sports, or serve wholesome meals to 25 resident boys on weekends.",
-    icon: "🤝",
+    badge: "Most Needed",
+    badgeColor: "bg-emerald-600 text-white",
+    title: "Academic Mentor",
+    titleKn: "ವಿದ್ಯಾ ಮಾರ್ಗದರ್ಶಕರು",
+    timeCommitment: "2.5 Hours / Weekend",
+    tagline: "Teach Spoken English, simplify Math, guide Science, or mentor daily homework for 25 resident boys.",
+    icon: "📚",
     skills: [
-      "📐 Math & Science Tutoring",
       "🗣️ Spoken English & Reading",
-      "🎨 Arts, Drawing & Crafts",
-      "⚽ Sports & Yoga Coaching",
+      "📐 School Math & Tables",
+      "🔬 Science & Experiments",
+      "📝 School Homework Help",
       "💻 Computer Basics & Coding",
-      "🍲 Kitchen & Annadana Seva",
-      "🩺 Health & Dental Camps",
+      "📅 Saturday Morning (10:30 AM – 1:00 PM)",
+      "📅 Sunday Morning (10:30 AM – 1:00 PM)",
     ],
-    placeholderHandle: "College / Workplace (e.g. RV College, Infosys)",
-    handleLabel: "College or Company",
+    handleLabel: "College or Workplace",
+    placeholderHandle: "e.g. RV College, BMSCE, Infosys, Cisco, Student",
+    submitButtonText: "Sign Up as Academic Mentor (2.5 hrs/wk) 💛",
+  },
+  {
+    id: "VOLUNTEER",
+    badge: "Joy & Energy",
+    badgeColor: "bg-amber-600 text-white",
+    title: "Life Skills & Sports Coach",
+    titleKn: "ಕ್ರೀಡೆ & ಜೀವನ ಕೌಶಲ್ಯ",
+    timeCommitment: "2.5 Hours / Weekend",
+    tagline: "Coach weekend cricket, teach yoga, lead chess games, art & drawing, or guide public speaking workshops.",
+    icon: "⚽",
+    skills: [
+      "🏏 Cricket & Sports Coaching",
+      "🧘 Yoga & Meditation",
+      "🎨 Art, Sketching & Crafts",
+      "♟️ Chess Strategy & Carrom",
+      "🎵 Vocal Music & Shloka Chanting",
+      "🎤 Public Speaking & Confidence",
+      "📅 Sunday Evening (4:30 PM – 7:00 PM)",
+    ],
+    handleLabel: "Sport / Hobby Expertise",
+    placeholderHandle: "e.g. Yoga Instructor, Cricket Club, Artist, Chess player",
+    submitButtonText: "Sign Up as Sports & Life Skills Coach ⚽",
   },
   {
     id: "INFLUENCER",
-    badge: "Creators & Media",
-    title: "Content Creator / Influencer",
-    titleKn: "ಕಂಟೆಂಟ್ ಕ್ರಿಯೇಟರ್ಸ್",
-    tagline: "Visit our Bangalore ashrama, film authentic reels, and share our children's stories with your audience.",
+    badge: "Media & Voice",
+    badgeColor: "bg-rose-600 text-white",
+    title: "Changemaker & Storyteller",
+    titleKn: "ಸಮುದಾಯ ಧ್ವನಿ",
+    timeCommitment: "Flexible / Campus Visits",
+    tagline: "Visit our Turahalli campus, capture respectful photos/reels, write stories, and lead ration drives in your network.",
     icon: "📸",
     skills: [
-      "🎥 Instagram Reels & Stories",
+      "🎥 Instagram Reels & Video",
       "📸 Photography & Portraits",
-      "📱 YouTube Vlogs & Documentaries",
-      "🎙️ Podcasts & Live Sessions",
-      "✍️ Blog Posts & Social Articles",
-      "📢 Community Fundraiser Host",
+      "✍️ LinkedIn & Social Stories",
+      "📦 College / Society Grocery Drive",
+      "🤝 Community Fundraiser Lead",
+      "📢 WhatsApp Ambassador",
     ],
-    placeholderHandle: "@yourhandle (Instagram / YouTube link)",
-    handleLabel: "Social Media Handle",
+    handleLabel: "Social Media / Portfolio",
+    placeholderHandle: "e.g. @yourhandle on Instagram, YouTube link, or blog",
+    submitButtonText: "Join as Storyteller & Changemaker 📢",
   },
   {
     id: "COMPANY_CSR",
-    badge: "Corporate & NGO",
-    title: "Corporate CSR Partner",
+    badge: "Corporate & Teams",
+    badgeColor: "bg-teal-700 text-white",
+    title: "Corporate CSR & Team Seva",
     titleKn: "ಕಾರ್ಪೊರೇಟ್ ಸಿಎಸ್ಆರ್",
-    tagline: "Organize employee volunteering drives, matching grant programs, and Form 28 / CSR-1 compliant projects.",
+    timeCommitment: "Group Drives & MOUs",
+    tagline: "Bring your company team for an impactful employee volunteering day, payroll giving, or CSR grant partnership.",
     icon: "🏢",
     skills: [
       "🏢 Employee Volunteering Day",
-      "💼 Payroll Giving Program",
-      "📦 Bulk Grocery & Ration Drive",
-      "💻 Digital Lab Sponsorship",
-      "🏗️ Ashrama Facility Upgrades",
-      "📄 CSR-1 Grant / Annual MOU",
+      "📦 Monthly Ration & Grocery Drive",
+      "💻 Digital Computer Lab Sponsorship",
+      "📄 Form 28 / CSR-1 Annual MOU",
+      "💼 Payroll Giving Matching Program",
+      "🩺 Health & Pediatric Dental Camp",
     ],
-    placeholderHandle: "Company Name (e.g. Wipro Cares, Biocon)",
     handleLabel: "Company / Foundation Name",
-  },
-  {
-    id: "WHATSAPP_AMBASSADOR",
-    badge: "Daily Updates",
-    title: "WhatsApp Sevak Network",
-    titleKn: "ವಾಟ್ಸಾಪ್ ಸಮುದಾಯ",
-    tagline: "Get direct WhatsApp updates on ashrama grocery shortages, child exam results, and festive seva calls.",
-    icon: "💬",
-    skills: [
-      "📢 Urgent Ration Alerts",
-      "🎂 Special Birthday Blessing Calls",
-      "🎉 Festival Annadana Updates",
-      "🏆 Child Academic Milestone Reports",
-      "🕊️ Prayer & Daily Routine Broadcasts",
-    ],
-    placeholderHandle: "Your City / Area (e.g. Bangalore South, Jayanagar)",
-    handleLabel: "Residential Area / City",
+    placeholderHandle: "e.g. Wipro Cares, Biocon Foundation, TCS, Startup",
+    submitButtonText: "Partner with Janaseva CSR 🏢",
   },
 ];
 
 export function CommunityV2Section({ standalone = false }: { standalone?: boolean }) {
-  const [selectedRole, setSelectedRole] = useState<CommunityRole>("VOLUNTEER");
+  const [activePathwayIndex, setActivePathwayIndex] = useState(0);
   const [form, setForm] = useState({
     name: "",
     phone: "",
@@ -114,7 +131,7 @@ export function CommunityV2Section({ standalone = false }: { standalone?: boolea
     whatsappUrl: string;
   } | null>(null);
 
-  const activeRoleConfig = ROLES.find((r) => r.id === selectedRole) || ROLES[0];
+  const currentPathway = PATHWAYS[activePathwayIndex];
 
   const toggleSkill = (skill: string) => {
     if (selectedSkills.includes(skill)) {
@@ -124,11 +141,11 @@ export function CommunityV2Section({ standalone = false }: { standalone?: boolea
     }
   };
 
-  const handleRoleChange = (role: CommunityRole) => {
-    setSelectedRole(role);
+  const handlePathwayChange = (index: number) => {
+    setActivePathwayIndex(index);
     setSelectedSkills([]);
     setError("");
-    track("community_role_tab_click", { role });
+    track("volunteer_pathway_tab_click", { title: PATHWAYS[index].title });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -136,34 +153,34 @@ export function CommunityV2Section({ standalone = false }: { standalone?: boolea
     setError("");
 
     if (!form.name.trim() || form.name.trim().length < 2) {
-      setError("Please enter your full name (at least 2 letters).");
+      setError("Please enter your full name (minimum 2 characters).");
       return;
     }
     if (!form.phone.trim()) {
-      setError("Please enter your WhatsApp mobile number for community coordination.");
+      setError("Please enter your WhatsApp phone number so the coordinator can message you.");
       return;
     }
     if (!form.email.trim() || !form.email.includes("@")) {
-      setError("Please enter a valid email address.");
+      setError("Please enter a valid email address for certificate and schedule updates.");
       return;
     }
 
     setBusy(true);
-    track("community_form_submit", { role: selectedRole });
+    track("volunteer_form_submit", { role: currentPathway.id, pathway: currentPathway.title });
 
     try {
       const res = await fetch("/api/community", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          role: selectedRole,
+          role: currentPathway.id,
           name: form.name.trim(),
           phone: form.phone.trim(),
           email: form.email.trim(),
-          city: form.city.trim(),
+          city: form.city.trim() || "Bengaluru",
           handleOrOrg: form.handleOrOrg.trim(),
           reach: form.reach.trim(),
-          skills: selectedSkills.join(", "),
+          skills: [currentPathway.title, ...selectedSkills].join(", "),
           message: form.message.trim(),
           whatsappOptIn: true,
         }),
@@ -178,127 +195,230 @@ export function CommunityV2Section({ standalone = false }: { standalone?: boolea
       };
 
       if (!res.ok || data.error) {
-        throw new Error(data.error || "Submission failed. Please check your details.");
+        throw new Error(data.error || "Could not complete registration. Please check your information.");
       }
 
       setSuccessData({
-        name: data.name,
-        role: data.role,
+        name: data.name || form.name,
+        role: currentPathway.title,
         whatsappUrl: data.whatsappUrl,
       });
-      track("community_form_success", { role: selectedRole });
+      track("volunteer_form_success", { role: currentPathway.id, pathway: currentPathway.title });
     } catch (err: any) {
-      setError(err?.message || "Could not complete registration. Please try again or WhatsApp us directly.");
+      setError(err?.message || "Could not complete registration. Please WhatsApp us directly.");
     } finally {
       setBusy(false);
     }
   };
 
   return (
-    <Section id="volunteer" tone="white" className="py-12 md:py-20 relative overflow-hidden">
-      {/* Background Subtle Accent Gradients */}
-      <div className="absolute top-0 right-0 -z-10 h-96 w-96 rounded-full bg-saffron/5 blur-3xl" />
-      <div className="absolute bottom-0 left-0 -z-10 h-96 w-96 rounded-full bg-teal-900/5 blur-3xl" />
+    <Section
+      id="volunteer"
+      tone="white"
+      className="py-10 sm:py-14 md:py-16 relative overflow-hidden bg-gradient-to-b from-white via-cream/40 to-sand/30 scroll-mt-20"
+    >
+      {/* Decorative Aura */}
+      <div className="absolute top-0 right-0 -z-10 h-80 w-80 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
+      <div className="absolute bottom-0 left-0 -z-10 h-80 w-80 rounded-full bg-teal-900/10 blur-3xl pointer-events-none" />
 
       <Container>
-        {/* Section Header */}
-        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-10">
-          <div>
-            <div className="inline-flex items-center gap-2 rounded-full bg-saffron/10 border border-saffron/30 px-3.5 py-1 text-xs font-black uppercase tracking-wider text-saffron-dark mb-3">
-              <span>🌟 Community Network V2 · ಸ್ವಯಂಸೇವಕರು &amp; ಪಾಲುದಾರರು</span>
-            </div>
-            <Head
-              eyebrow="Join The Janaseva Family"
-              title="Give Your Time, Voice, or Company Support"
-              lead="Love and guidance cannot be bought. Whether you are a college student teaching math, a creator filming stories, a corporate team planning CSR, or a donor wanting daily WhatsApp updates—there is a special place for you."
-            />
+        {/* ── 1. EMOTIONAL U&I INSPIRED HEADER ── */}
+        <div className="text-center max-w-3xl mx-auto mb-8 sm:mb-12">
+          <div className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-amber-500/15 via-rose-500/15 to-teal-900/10 border border-amber-500/30 px-3.5 sm:px-4 py-1.5 text-xs font-black uppercase tracking-wider text-teal-950 mb-3 shadow-2xs">
+            <span className="text-sm">🌟</span>
+            <span>Join as a Weekend Mentor · 2.5 Hours / Week</span>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+          <h2 className="font-display text-2xl sm:text-3xl md:text-4xl font-extrabold text-teal-950 leading-tight">
+            Give 2.5 Hours a Week. Change a Child’s Story in Bengaluru.
+          </h2>
+
+          <p className="mt-1.5 text-xs sm:text-sm font-bold text-amber-800 uppercase tracking-wider">
+            ವಾರಾಂತ್ಯದ 2.5 ಗಂಟೆಗಳು — ನಮ್ಮ 25 ಮಕ್ಕಳ ಭವಿಷ್ಯದಲ್ಲಿ ಹೊಸ ಬೆಳಕು ಮೂಡಿಸಿ
+          </p>
+
+          <p className="mt-3 text-xs sm:text-sm md:text-base text-teal-950/75 leading-relaxed max-w-2xl mx-auto">
+            You don’t need a teaching certificate or superpowers. All it takes is 2.5 hours on a weekend, an open heart,
+            and the warmth to show up for 25 orphaned boys growing up at Janaseva Ashrama in Turahalli, Bangalore South.
+            Be the elder brother, tutor, or coach they look forward to meeting every week.
+          </p>
+
+          {/* Quick Helplines */}
+          <div className="mt-5 flex flex-wrap items-center justify-center gap-2.5">
             <a
-              href={`https://wa.me/${SITE.whatsapp}?text=${encodeURIComponent("Namaste! I would like to know how I can volunteer or partner with Janaseva Ashrama.")}`}
+              href={`https://wa.me/${SITE.whatsapp}?text=${encodeURIComponent(
+                "Namaste! I would like to volunteer 2.5 hours a week at Janaseva Ashrama in Turahalli. Please guide me on next weekend's orientation."
+              )}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="focus-ring tap-scale inline-flex items-center gap-2 rounded-2xl bg-emerald-700 px-5 py-3 text-xs font-black text-white shadow-md hover:bg-emerald-800 transition cursor-pointer"
+              className="focus-ring tap-scale inline-flex items-center gap-2 rounded-2xl bg-[#25D366] hover:bg-[#20ba59] px-4.5 py-2.5 text-xs font-black text-teal-950 shadow-md transition cursor-pointer"
             >
-              <span>💬 Direct WhatsApp Helpline</span>
+              <span>💬 WhatsApp Volunteer Lead (+91 94481 05663)</span>
             </a>
             <a
               href="#contact"
-              className="focus-ring tap-scale inline-flex items-center gap-2 rounded-2xl border border-teal-900/20 bg-cream px-4 py-3 text-xs font-bold text-teal-950 hover:bg-sand transition cursor-pointer"
+              className="focus-ring tap-scale inline-flex items-center gap-2 rounded-2xl border border-teal-900/20 bg-white px-4 py-2.5 text-xs font-bold text-teal-950 hover:bg-cream transition cursor-pointer"
             >
-              <span>📍 Visit Ashrama Campus</span>
+              <span>📍 Directions to Turahalli Ashrama</span>
             </a>
           </div>
         </div>
 
-        {/* ── 4 TABS: VOLUNTEER | CREATOR | CORPORATE | WHATSAPP ── */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-3.5 mb-8">
-          {ROLES.map((r) => {
-            const isSelected = selectedRole === r.id;
-            return (
-              <button
-                key={r.id}
-                type="button"
-                onClick={() => handleRoleChange(r.id)}
-                className={`relative flex flex-col items-start p-4 rounded-3xl text-left transition-all cursor-pointer border ${
-                  isSelected
-                    ? "bg-teal-950 text-white border-teal-900 shadow-xl shadow-teal-950/15 ring-2 ring-saffron/40"
-                    : "bg-cream/70 hover:bg-cream text-teal-950/80 border-teal-900/10 hover:border-teal-900/20"
-                }`}
-              >
-                <div className="flex items-center justify-between w-full mb-2">
-                  <span className="text-2xl">{r.icon}</span>
-                  <span
-                    className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${
-                      isSelected ? "bg-saffron text-teal-950" : "bg-teal-900/10 text-teal-900"
-                    }`}
-                  >
-                    {r.badge}
-                  </span>
-                </div>
-                <h3 className={`font-bold text-sm ${isSelected ? "text-white" : "text-teal-950"}`}>{r.title}</h3>
-                <p className={`text-[11px] line-clamp-1 mt-0.5 ${isSelected ? "text-teal-200/80" : "text-teal-950/60"}`}>
-                  {r.titleKn}
+        {/* ── 2. THE 3-STEP JOURNEY (U&I CONCEPT) ── */}
+        <div className="mb-10 sm:mb-14">
+          <div className="text-center mb-5">
+            <span className="text-[11px] font-black uppercase tracking-widest text-teal-900/70">
+              Simple &amp; Clear Process · How It Works
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 sm:gap-4 max-w-4xl mx-auto">
+            <div className="rounded-2xl bg-white border border-teal-900/10 p-4 sm:p-5 shadow-xs relative">
+              <span className="absolute -top-3 left-4 flex h-6 w-6 items-center justify-center rounded-full bg-amber-500 text-[11px] font-black text-white shadow-xs">
+                1
+              </span>
+              <div className="pt-1">
+                <p className="font-display font-black text-sm text-teal-950">60-Second Signup</p>
+                <p className="text-[11px] text-teal-950/70 mt-1 leading-relaxed">
+                  Choose your interest: Academic Mentoring, Sports &amp; Life Skills, Storytelling, or Corporate CSR.
                 </p>
-                {isSelected && (
-                  <span className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-teal-950 rotate-45 border-r border-b border-teal-900 hidden md:block" />
-                )}
-              </button>
-            );
-          })}
+              </div>
+            </div>
+
+            <div className="rounded-2xl bg-white border border-teal-900/10 p-4 sm:p-5 shadow-xs relative">
+              <span className="absolute -top-3 left-4 flex h-6 w-6 items-center justify-center rounded-full bg-teal-800 text-[11px] font-black text-white shadow-xs">
+                2
+              </span>
+              <div className="pt-1">
+                <p className="font-display font-black text-sm text-teal-950">Sunday Campus Visit &amp; Prasadam</p>
+                <p className="text-[11px] text-teal-950/70 mt-1 leading-relaxed">
+                  Visit our green campus at Turahalli, Bangalore South. Meet the 25 boys, the warden, and share satvik lunch.
+                </p>
+              </div>
+            </div>
+
+            <div className="rounded-2xl bg-white border border-teal-900/10 p-4 sm:p-5 shadow-xs relative">
+              <span className="absolute -top-3 left-4 flex h-6 w-6 items-center justify-center rounded-full bg-emerald-600 text-[11px] font-black text-white shadow-xs">
+                3
+              </span>
+              <div className="pt-1">
+                <p className="font-display font-black text-sm text-teal-950">2.5 Hrs/Wk + Official Certificate</p>
+                <p className="text-[11px] text-teal-950/70 mt-1 leading-relaxed">
+                  Mentor on your chosen weekend slot. Earn an official verified NGO Volunteer Certificate for college &amp; career.
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* ── INTERACTIVE COMMUNITY FILING CARD ── */}
-        <div className="rounded-3xl bg-white border border-teal-900/10 shadow-xl shadow-teal-950/5 p-6 sm:p-8 md:p-10">
+        {/* ── 3. 4 KEY REASONS TO VOLUNTEER WITH US ── */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3.5 mb-10 max-w-5xl mx-auto text-xs">
+          <div className="rounded-2xl bg-white/95 p-3 sm:p-3.5 border border-amber-500/20 shadow-2xs">
+            <span className="text-xl">👦</span>
+            <p className="font-extrabold text-teal-950 mt-1">25 Real Resident Boys</p>
+            <p className="text-[10px] text-teal-950/60 mt-0.5 leading-snug">
+              Direct 1-on-1 impact. They know your name and smile when you arrive.
+            </p>
+          </div>
+
+          <div className="rounded-2xl bg-white/95 p-3 sm:p-3.5 border border-emerald-500/20 shadow-2xs">
+            <span className="text-xl">📜</span>
+            <p className="font-extrabold text-teal-950 mt-1">Verified Certificate</p>
+            <p className="text-[10px] text-teal-950/60 mt-0.5 leading-snug">
+              Registered Form 10AC trust experience certificate for college &amp; LinkedIn.
+            </p>
+          </div>
+
+          <div className="rounded-2xl bg-white/95 p-3 sm:p-3.5 border border-rose-500/20 shadow-2xs">
+            <span className="text-xl">🍛</span>
+            <p className="font-extrabold text-teal-950 mt-1">Satvik Anna Prasadam</p>
+            <p className="text-[10px] text-teal-950/60 mt-0.5 leading-snug">
+              Enjoy warm traditional ashrama lunch served together after weekend sessions.
+            </p>
+          </div>
+
+          <div className="rounded-2xl bg-white/95 p-3 sm:p-3.5 border border-teal-500/20 shadow-2xs">
+            <span className="text-xl">📍</span>
+            <p className="font-extrabold text-teal-950 mt-1">Turahalli, South Bangalore</p>
+            <p className="text-[10px] text-teal-950/60 mt-0.5 leading-snug">
+              Next to Turahalli Forest (clean air, calm campus, 10 mins from Kanakapura Rd Metro).
+            </p>
+          </div>
+        </div>
+
+        {/* ── 4. PATHWAY TABS (SELECT YOUR ROLE) ── */}
+        <div className="max-w-4xl mx-auto mb-6">
+          <div className="text-center mb-3">
+            <span className="text-xs font-bold text-teal-950/80 uppercase tracking-wider">
+              Step 1: Choose Your Volunteer Pathway
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-2.5">
+            {PATHWAYS.map((p, idx) => {
+              const isSelected = activePathwayIndex === idx;
+              return (
+                <button
+                  key={p.title}
+                  type="button"
+                  onClick={() => handlePathwayChange(idx)}
+                  className={`relative flex flex-col items-start p-3 sm:p-3.5 rounded-2xl text-left transition-all cursor-pointer border ${
+                    isSelected
+                      ? "bg-teal-950 text-white border-teal-900 shadow-md ring-2 ring-amber-400/50"
+                      : "bg-white hover:bg-cream text-teal-950/80 border-teal-900/10 hover:border-teal-900/25"
+                  }`}
+                >
+                  <div className="flex items-center justify-between w-full mb-1.5">
+                    <span className="text-xl">{p.icon}</span>
+                    <span
+                      className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-md ${
+                        isSelected ? "bg-amber-400 text-teal-950" : p.badgeColor
+                      }`}
+                    >
+                      {p.badge}
+                    </span>
+                  </div>
+                  <h3 className={`font-bold text-xs sm:text-sm leading-snug ${isSelected ? "text-white" : "text-teal-950"}`}>
+                    {p.title}
+                  </h3>
+                  <p className={`text-[10px] mt-0.5 line-clamp-1 ${isSelected ? "text-teal-200" : "text-teal-950/60"}`}>
+                    {p.timeCommitment}
+                  </p>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* ── 5. INTERACTIVE REGISTRATION CARD ── */}
+        <div className="max-w-4xl mx-auto rounded-3xl bg-white border border-teal-900/10 shadow-xl shadow-teal-950/5 p-5 sm:p-7 md:p-9">
           {successData ? (
-            /* SUCCESS STATE WITH DIRECT 1-CLICK WHATSAPP JOIN */
-            <div className="text-center py-8 max-w-xl mx-auto space-y-5 animate-in fade-in duration-300">
-              <div className="inline-flex h-20 w-20 items-center justify-center rounded-full bg-emerald-100 text-emerald-800 text-4xl shadow-inner">
+            /* SUCCESS VIEW */
+            <div className="text-center py-6 sm:py-8 max-w-xl mx-auto space-y-4 animate-in fade-in duration-300">
+              <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-800 text-3xl shadow-inner">
                 🎉
               </div>
               <div>
                 <span className="inline-block rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-800 mb-2">
-                  Registration Successfully Recorded in Database ✅
+                  Volunteer Application Received ✅
                 </span>
                 <h3 className="font-display text-2xl sm:text-3xl font-extrabold text-teal-950">
-                  Welcome to Janaseva, {successData.name}!
+                  Welcome to the Family, {successData.name}!
                 </h3>
-                <p className="mt-2 text-sm text-teal-950/70 leading-relaxed">
-                  Your filing as a <strong>{activeRoleConfig.title}</strong> has been saved. Join our official WhatsApp
-                  Sevak Group below for direct updates, visit timings, and coordinator contact.
+                <p className="mt-2 text-xs sm:text-sm text-teal-950/70 leading-relaxed">
+                  Thank you for stepping up as an <strong>{successData.role}</strong>. The 25 boys at Turahalli are excited to meet you!
+                  Join our official WhatsApp Volunteer Community below to receive orientation schedules, lesson plans, and ashrama visit details.
                 </p>
               </div>
 
-              <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+              <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-2.5">
                 <a
                   href={successData.whatsappUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="focus-ring tap-scale flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-6 py-4 text-sm font-extrabold text-white shadow-lg hover:bg-emerald-700 transition w-full sm:w-auto cursor-pointer"
+                  className="focus-ring tap-scale flex items-center justify-center gap-2 rounded-2xl bg-[#25D366] hover:bg-[#20ba59] px-6 py-3.5 text-xs sm:text-sm font-black text-teal-950 shadow-md transition w-full sm:w-auto cursor-pointer"
                 >
-                  <span className="text-lg">💬</span>
-                  <span>Join Official WhatsApp Community Group →</span>
+                  <span>💬 Join Volunteer WhatsApp Group →</span>
                 </a>
                 <button
                   type="button"
@@ -315,48 +435,48 @@ export function CommunityV2Section({ standalone = false }: { standalone?: boolea
                     });
                     setSelectedSkills([]);
                   }}
-                  className="rounded-2xl border border-teal-900/20 px-5 py-3.5 text-xs font-bold text-teal-950 hover:bg-cream transition cursor-pointer"
+                  className="rounded-2xl border border-teal-900/20 px-4 py-3 text-xs font-bold text-teal-950 hover:bg-cream transition cursor-pointer"
                 >
-                  Register Another Person
+                  Register Another Volunteer
                 </button>
               </div>
             </div>
           ) : (
-            /* FILING FORM */
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Role Header Banner */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-5 border-b border-teal-900/10 gap-3">
+            /* APPLICATION FORM */
+            <form onSubmit={handleSubmit} className="space-y-5">
+              {/* Pathway Banner */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-teal-900/10 gap-2">
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="text-xl">{activeRoleConfig.icon}</span>
-                    <h3 className="font-display text-lg sm:text-xl font-black text-teal-950">
-                      {activeRoleConfig.title} Registration
+                    <span className="text-2xl">{currentPathway.icon}</span>
+                    <h3 className="font-display text-base sm:text-lg font-black text-teal-950">
+                      {currentPathway.title} Registration
                     </h3>
                   </div>
-                  <p className="text-xs sm:text-sm text-teal-950/70 mt-1">{activeRoleConfig.tagline}</p>
+                  <p className="text-xs text-teal-950/70 mt-0.5">{currentPathway.tagline}</p>
                 </div>
-                <div className="text-xs text-emerald-800 font-bold bg-emerald-50 rounded-xl px-3 py-1.5 border border-emerald-200/60 self-start sm:self-center shrink-0">
-                  🔒 Saved to NGO Database &amp; WhatsApp Verified
+                <div className="text-[11px] text-emerald-800 font-bold bg-emerald-50 rounded-xl px-2.5 py-1 border border-emerald-200/60 self-start sm:self-center shrink-0">
+                  ⏱️ {currentPathway.timeCommitment}
                 </div>
               </div>
 
-              {/* Skill / Focus Pill Selectors */}
+              {/* Skill / Activity Selection Chips */}
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-teal-950/70 mb-2.5">
-                  Select Your Skill / Seva Interest (Tap to choose):
+                <label className="block text-xs font-bold uppercase tracking-wider text-teal-950/70 mb-2">
+                  Select Your Skills or Preferred Slots (Tap to choose):
                 </label>
-                <div className="flex flex-wrap gap-2">
-                  {activeRoleConfig.skills.map((skill) => {
+                <div className="flex flex-wrap gap-1.5 sm:gap-2">
+                  {currentPathway.skills.map((skill) => {
                     const isSelected = selectedSkills.includes(skill);
                     return (
                       <button
                         key={skill}
                         type="button"
                         onClick={() => toggleSkill(skill)}
-                        className={`text-xs px-3.5 py-2 rounded-xl font-bold transition cursor-pointer border ${
+                        className={`text-xs px-3 py-1.5 rounded-xl font-bold transition cursor-pointer border ${
                           isSelected
-                            ? "bg-saffron text-teal-950 border-saffron-dark shadow-xs"
-                            : "bg-cream text-teal-950/80 border-teal-900/10 hover:border-teal-900/30"
+                            ? "bg-amber-500 text-teal-950 border-amber-600 shadow-2xs"
+                            : "bg-cream/80 text-teal-950/80 border-teal-900/10 hover:border-teal-900/30"
                         }`}
                       >
                         {skill}
@@ -366,11 +486,11 @@ export function CommunityV2Section({ standalone = false }: { standalone?: boolea
                 </div>
               </div>
 
-              {/* Core Input Fields Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pt-2">
+              {/* Core Input Fields */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 pt-1">
                 <div>
-                  <label className="block text-xs font-bold text-teal-950 mb-1.5">
-                    Your Full Name <span className="text-saffron-dark">*</span>
+                  <label className="block text-xs font-bold text-teal-950 mb-1">
+                    Your Full Name <span className="text-amber-600">*</span>
                   </label>
                   <input
                     type="text"
@@ -378,16 +498,16 @@ export function CommunityV2Section({ standalone = false }: { standalone?: boolea
                     placeholder="e.g. Ramesh Kumar"
                     value={form.name}
                     onChange={(e) => setForm({ ...form, name: e.target.value })}
-                    className="w-full rounded-xl border border-teal-900/20 bg-white px-3.5 py-2.5 text-sm text-teal-950 placeholder-teal-950/40 focus:border-teal-900 focus:ring-2 focus:ring-teal-900/10 outline-none"
+                    className="w-full rounded-xl border border-teal-900/20 bg-white px-3 py-2 text-xs sm:text-sm text-teal-950 placeholder-teal-950/40 focus:border-teal-900 focus:ring-1 focus:ring-teal-900/20 outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-teal-950 mb-1.5">
-                    WhatsApp Mobile Number <span className="text-saffron-dark">*</span>
+                  <label className="block text-xs font-bold text-teal-950 mb-1">
+                    WhatsApp Mobile Number <span className="text-amber-600">*</span>
                   </label>
                   <div className="relative">
-                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-teal-950/50">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-teal-950/50">
                       +91
                     </span>
                     <input
@@ -396,14 +516,14 @@ export function CommunityV2Section({ standalone = false }: { standalone?: boolea
                       placeholder="98765 43210"
                       value={form.phone}
                       onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                      className="w-full rounded-xl border border-teal-900/20 bg-white pl-12 pr-3.5 py-2.5 text-sm text-teal-950 placeholder-teal-950/40 focus:border-teal-900 focus:ring-2 focus:ring-teal-900/10 outline-none"
+                      className="w-full rounded-xl border border-teal-900/20 bg-white pl-11 pr-3 py-2 text-xs sm:text-sm text-teal-950 placeholder-teal-950/40 focus:border-teal-900 focus:ring-1 focus:ring-teal-900/20 outline-none"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-teal-950 mb-1.5">
-                    Email Address <span className="text-saffron-dark">*</span>
+                  <label className="block text-xs font-bold text-teal-950 mb-1">
+                    Email Address <span className="text-amber-600">*</span>
                   </label>
                   <input
                     type="email"
@@ -411,91 +531,83 @@ export function CommunityV2Section({ standalone = false }: { standalone?: boolea
                     placeholder="name@example.com"
                     value={form.email}
                     onChange={(e) => setForm({ ...form, email: e.target.value })}
-                    className="w-full rounded-xl border border-teal-900/20 bg-white px-3.5 py-2.5 text-sm text-teal-950 placeholder-teal-950/40 focus:border-teal-900 focus:ring-2 focus:ring-teal-900/10 outline-none"
+                    className="w-full rounded-xl border border-teal-900/20 bg-white px-3 py-2 text-xs sm:text-sm text-teal-950 placeholder-teal-950/40 focus:border-teal-900 focus:ring-1 focus:ring-teal-900/20 outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-teal-950 mb-1.5">
-                    City / Location
+                  <label className="block text-xs font-bold text-teal-950 mb-1">
+                    City / Locality
                   </label>
                   <input
                     type="text"
-                    placeholder="e.g. Bengaluru, Mysore, Tumkur"
+                    placeholder="e.g. Bengaluru (South, Jayanagar, etc.)"
                     value={form.city}
                     onChange={(e) => setForm({ ...form, city: e.target.value })}
-                    className="w-full rounded-xl border border-teal-900/20 bg-white px-3.5 py-2.5 text-sm text-teal-950 placeholder-teal-950/40 focus:border-teal-900 focus:ring-2 focus:ring-teal-900/10 outline-none"
+                    className="w-full rounded-xl border border-teal-900/20 bg-white px-3 py-2 text-xs sm:text-sm text-teal-950 placeholder-teal-950/40 focus:border-teal-900 focus:ring-1 focus:ring-teal-900/20 outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-teal-950 mb-1.5">
-                    {activeRoleConfig.handleLabel}
+                  <label className="block text-xs font-bold text-teal-950 mb-1">
+                    {currentPathway.handleLabel}
                   </label>
                   <input
                     type="text"
-                    placeholder={activeRoleConfig.placeholderHandle}
+                    placeholder={currentPathway.placeholderHandle}
                     value={form.handleOrOrg}
                     onChange={(e) => setForm({ ...form, handleOrOrg: e.target.value })}
-                    className="w-full rounded-xl border border-teal-900/20 bg-white px-3.5 py-2.5 text-sm text-teal-950 placeholder-teal-950/40 focus:border-teal-900 focus:ring-2 focus:ring-teal-900/10 outline-none"
+                    className="w-full rounded-xl border border-teal-900/20 bg-white px-3 py-2 text-xs sm:text-sm text-teal-950 placeholder-teal-950/40 focus:border-teal-900 focus:ring-1 focus:ring-teal-900/20 outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-teal-950 mb-1.5">
-                    Audience / Team Size / Availability
+                  <label className="block text-xs font-bold text-teal-950 mb-1">
+                    Weekend Slot Preference
                   </label>
                   <input
                     type="text"
-                    placeholder="e.g. Weekends only, 20k followers, 50 employees"
+                    placeholder="e.g. Saturday Mornings, Sunday Afternoons"
                     value={form.reach}
                     onChange={(e) => setForm({ ...form, reach: e.target.value })}
-                    className="w-full rounded-xl border border-teal-900/20 bg-white px-3.5 py-2.5 text-sm text-teal-950 placeholder-teal-950/40 focus:border-teal-900 focus:ring-2 focus:ring-teal-900/10 outline-none"
+                    className="w-full rounded-xl border border-teal-900/20 bg-white px-3 py-2 text-xs sm:text-sm text-teal-950 placeholder-teal-950/40 focus:border-teal-900 focus:ring-1 focus:ring-teal-900/20 outline-none"
                   />
                 </div>
               </div>
 
-              {/* Message Box */}
+              {/* Message / Motivation */}
               <div>
-                <label className="block text-xs font-bold text-teal-950 mb-1.5">
-                  How would you like to contribute? (Optional notes)
+                <label className="block text-xs font-bold text-teal-950 mb-1">
+                  Tell us a bit about why you want to volunteer (Optional):
                 </label>
                 <textarea
                   rows={2}
-                  placeholder="Share any specific ideas, dates you wish to visit, or questions..."
+                  placeholder="e.g. I want to help kids learn Spoken English and build confidence. I am free on Sundays..."
                   value={form.message}
                   onChange={(e) => setForm({ ...form, message: e.target.value })}
-                  className="w-full rounded-xl border border-teal-900/20 bg-white px-3.5 py-2 text-sm text-teal-950 placeholder-teal-950/40 focus:border-teal-900 focus:ring-2 focus:ring-teal-900/10 outline-none resize-none"
+                  className="w-full rounded-xl border border-teal-900/20 bg-white px-3 py-2 text-xs sm:text-sm text-teal-950 placeholder-teal-950/40 focus:border-teal-900 focus:ring-1 focus:ring-teal-900/20 outline-none resize-none"
                 />
               </div>
 
-              {/* Error Message */}
+              {/* Error Alert */}
               {error && (
-                <div className="rounded-xl bg-red-50 p-3 text-xs font-bold text-red-800 border border-red-200">
+                <div className="rounded-xl bg-red-50 p-2.5 text-xs font-bold text-red-800 border border-red-200">
                   {error}
                 </div>
               )}
 
               {/* Submit CTA */}
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1">
                 <p className="text-[11px] text-teal-950/60 leading-relaxed">
-                  By joining, you agree to receive official Janaseva Ashrama seva updates. We never share your phone
-                  number with third parties.
+                  We respect your privacy. Your phone number is only used for Janaseva Ashrama volunteer coordination.
                 </p>
 
                 <button
                   type="submit"
                   disabled={busy}
-                  className="focus-ring tap-scale flex items-center justify-center gap-2 rounded-2xl bg-saffron px-8 py-3.5 text-sm font-black text-white shadow-lg hover:bg-saffron-dark transition disabled:opacity-60 w-full sm:w-auto shrink-0 cursor-pointer"
+                  className="focus-ring tap-scale flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-600 hover:to-orange-600 px-6 py-3 text-xs sm:text-sm font-black text-white shadow-md transition disabled:opacity-60 w-full sm:w-auto shrink-0 cursor-pointer"
                 >
-                  {busy ? (
-                    "Filing to Community Database..."
-                  ) : (
-                    <>
-                      <span>Join as {activeRoleConfig.title}</span>
-                      <span>→</span>
-                    </>
-                  )}
+                  {busy ? "Submitting..." : currentPathway.submitButtonText}
                 </button>
               </div>
             </form>

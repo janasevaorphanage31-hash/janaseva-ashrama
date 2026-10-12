@@ -61,7 +61,7 @@ const BIRTHDAY_FAQS = [
   },
   {
     q: "How much does it cost to sponsor a birthday meal for all children?",
-    a: "A wholesome morning breakfast package is ₹1,500. A grand festive birthday lunch with traditional sweet payasam, pooris, and vegetable curries is ₹3,500. Evening snacks with fresh fruit platters is ₹2,500. Full-day nourishment covering breakfast, lunch, snacks, and dinner is ₹7,500.",
+    a: "A personalized WhatsApp Video Song Blessing with 25 boys singing your name and chanting Vedic Ayu Suktam shlokas is ₹700. A wholesome morning breakfast package is ₹1,500. A grand festive birthday lunch with traditional sweet payasam, pooris, and vegetable curries for all 25 boys is ₹3,500. Evening snacks with fresh fruit platters is ₹2,500. Full-day nourishment covering breakfast, lunch, snacks, and dinner is ₹7,500.",
   },
   {
     q: "What are the recommended visiting slots for birthday celebrations?",

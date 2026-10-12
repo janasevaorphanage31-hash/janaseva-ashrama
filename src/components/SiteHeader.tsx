@@ -8,12 +8,12 @@ import { useCart } from "./CartProvider";
 import { track } from "@/lib/track";
 
 const primaryNavLinks = [
-  { href: "/#official-tiers", label: "Sponsor Tiers" },
   { href: "/#celebrate", label: "Birthday Celebrations", trending: true },
+  { href: "/#official-tiers", label: "Sponsor Tiers" },
+  { href: "/#volunteer", label: "Volunteer", badge: "2.5h/wk" },
   { href: "/#impact", label: "Annadana Needs" },
-  { href: "/#volunteer", label: "Volunteer", badge: "Join" },
   { href: "/#life-in-motion", label: "Ashrama Life" },
-  { href: "/#transparency", label: "80G Transparency" },
+  { href: "/#transparency", label: "80G Trust" },
 ];
 
 const moreMenuLinks = [
