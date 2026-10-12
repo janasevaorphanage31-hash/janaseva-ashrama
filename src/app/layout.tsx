@@ -259,6 +259,23 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         publisher: { "@id": `${SITE.url}/#organization` },
       },
       {
+        "@type": "WebPage",
+        "@id": `${SITE.url}/#webpage`,
+        url: SITE.url,
+        name: "Janaseva Ashrama: Orphanage & Children's Home in Bangalore",
+        description:
+          "Official website of Janaseva Ashrama, a registered children's home & orphanage in Bengaluru, Karnataka nurturing 25 resident boys with meals, shelter, education, and 80G tax exemption.",
+        primaryImageOfPage: {
+          "@type": "ImageObject",
+          "@id": `${SITE.url}/#primaryimage`,
+          url: `${SITE.url}/media/janaseva-ashrama-original.jpg`,
+          contentUrl: `${SITE.url}/media/janaseva-ashrama-original.jpg`,
+          width: 1200,
+          height: 675,
+          caption: "Janaseva Ashrama Children's Home & Orphanage Campus in Turahalli, Bengaluru",
+        },
+      },
+      {
         "@type": "FAQPage",
         "@id": `${SITE.url}/#faq`,
         mainEntity: FAQ_ITEMS.map((item) => ({
