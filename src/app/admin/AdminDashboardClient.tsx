@@ -1890,6 +1890,36 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
           <span className="font-display text-sm font-bold mt-1 text-white">Upload 80G Doc</span>
           <span className="text-[11px] text-white/85 leading-tight">Audit PDFs &amp; orders</span>
         </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab("marketing");
+          }}
+          className="group relative flex flex-col items-start gap-1 rounded-2xl bg-gradient-to-br from-teal-700 to-emerald-900 p-3.5 text-left text-white shadow-md active:scale-95 transition cursor-pointer overflow-hidden"
+        >
+          <div className="flex w-full items-center justify-between">
+            <span className="text-2xl drop-shadow-xs">🤖</span>
+            <span className="rounded-full bg-white/25 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider">Growth</span>
+          </div>
+          <span className="font-display text-sm font-bold mt-1 text-white">AI Ad Agent</span>
+          <span className="text-[11px] text-white/85 leading-tight">Meta &amp; Google Ads</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab("marketing");
+          }}
+          className="group relative flex flex-col items-start gap-1 rounded-2xl bg-gradient-to-br from-emerald-600 to-green-700 p-3.5 text-left text-white shadow-md active:scale-95 transition cursor-pointer overflow-hidden"
+        >
+          <div className="flex w-full items-center justify-between">
+            <span className="text-2xl drop-shadow-xs">💬</span>
+            <span className="rounded-full bg-white/25 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider">Viral</span>
+          </div>
+          <span className="font-display text-sm font-bold mt-1 text-white">WhatsApp Blast</span>
+          <span className="text-[11px] text-white/85 leading-tight">1-tap donor appeals</span>
+        </button>
       </div>
 
       {/* Main Tab Controller - Horizontally Scrollable on Mobile for Native App Feel */}
@@ -1898,7 +1928,7 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
           { id: "analytics", label: "📊 Analytics" },
           { id: "crm", label: "💳 Donor CRM" },
           { id: "subscriptions", label: "🔁 Subscriptions" },
-          { id: "marketing", label: "📢 Campaigns" },
+          { id: "marketing", label: "🤖 AI Marketing & Ads" },
           { id: "celebrations", label: "🎂 Celebrations" },
           { id: "content", label: "📝 Website Content" },
           { id: "media", label: "🎥 Media & Today" },
