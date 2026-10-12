@@ -9,7 +9,7 @@ import { track } from "@/lib/track";
 
 const primaryNavLinks = [
   { href: "/#official-tiers", label: "Sponsor Tiers" },
-  { href: "/#celebrate", label: "Celebrate Special Day", trending: true },
+  { href: "/#celebrate", label: "Birthday Celebrations", trending: true },
   { href: "/#impact", label: "Annadana Needs" },
   { href: "/#volunteer", label: "Volunteer", badge: "Join" },
   { href: "/#life-in-motion", label: "Ashrama Life" },
@@ -25,8 +25,8 @@ const moreMenuLinks = [
   },
   {
     href: "/#celebrate",
-    label: "Celebrate Special Day",
-    desc: "Dedicate a birthday, anniversary or milestone with the 25 boys",
+    label: "Birthday Celebrations",
+    desc: "Sponsor cake, festive meals & receive a personalized singing blessing video",
     icon: "gift",
   },
   {
@@ -64,14 +64,14 @@ const moreMenuLinks = [
 const mobileMenuLinks = [
   { href: "/", label: "Home (All Stories)", icon: "home" },
   { href: "/#official-tiers", label: "Sponsor Tiers (₹1,501 - ₹7,501)", icon: "document", highlight: true },
-  { href: "/#celebrate", label: "Celebrate Birthday & Milestones", icon: "star", highlight: true },
+  { href: "/#celebrate", label: "🎂 Birthday Celebrations (Trending)", icon: "star", highlight: true },
   { href: "/#impact", label: "Annadana Needs & Basket", icon: "heart", highlight: true },
   { href: "/#life-in-motion", label: "Ashrama Life & Boys Gallery", icon: "sparkle" },
   { href: "/#volunteer", label: "Community, Influencers & WhatsApp", icon: "users" },
   { href: "/#transparency", label: "80G Transparency & Trust", icon: "shield" },
   { href: "/supporter-form", label: "Official Supporter Form", icon: "document" },
   { href: "/stories", label: "Stories of Hope", icon: "book" },
-  { href: "/celebrate-special-day", label: "Custom Celebration Booking", icon: "gift" },
+  { href: "/celebrate-birthday", label: "Custom Birthday Booking Portal", icon: "gift" },
   { href: "/corporate", label: "Corporate / CSR", icon: "building" },
   { href: "/contact", label: "Contact & Location", icon: "pin" },
 ];
@@ -323,11 +323,11 @@ export function SiteHeader() {
             <Link
               href="/impact"
               onClick={() => track("cta_make_impact", { where: "header" })}
-              className="focus-ring tap-scale relative flex items-center justify-center gap-1.5 rounded-xl bg-saffron px-3.5 sm:px-4 py-2.5 text-xs font-bold tracking-wide text-white shadow-md transition hover:bg-saffron-dark active:scale-95"
+              className="focus-ring tap-scale relative flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-600 hover:to-orange-600 px-3.5 sm:px-4 py-2.5 text-xs font-black tracking-wide text-white shadow-md shadow-orange-500/25 transition active:scale-95"
             >
-              <span>MAKE AN IMPACT</span>
+              <span>DONATE NOW 💝</span>
               {count > 0 && (
-                <span className="grid h-5 min-w-5 place-items-center rounded-md bg-gold px-1 text-[10px] font-extrabold text-teal-950 shadow-sm">
+                <span className="grid h-5 min-w-5 place-items-center rounded-md bg-teal-950 px-1 text-[10px] font-extrabold text-gold shadow-sm">
                   {count}
                 </span>
               )}

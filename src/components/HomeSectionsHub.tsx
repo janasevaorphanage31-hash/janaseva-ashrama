@@ -51,11 +51,11 @@ const MODES: ModeItem[] = [
   },
   {
     id: "celebrate",
-    label: "Birthday",
+    label: "Birthdays",
     icon: "🎂",
-    badge: "Seva",
+    badge: "Hot",
     targetId: "celebrate",
-    description: "Sponsor cake, sweets & get a video song blessing",
+    description: "Sponsor cake, sweets & get a personal video song blessing",
   },
   {
     id: "community",

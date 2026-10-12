@@ -85,10 +85,10 @@ function StoriesIcon() {
     </svg>
   );
 }
-function OccasionsIcon() {
+function BirthdayNavIcon() {
   return (
     <svg className="h-[22px] w-[22px] fill-current" viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M20 6h-2.18c.11-.31.18-.65.18-1 0-1.66-1.34-3-3-3-1.05 0-1.96.54-2.5 1.35l-.5.65-.5-.65C10.96 2.54 10.05 2 9 2 7.34 2 6 3.34 6 5c0 .35.07.69.18 1H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2z" />
+      <path d="M12 6c1.11 0 2-.9 2-2 0-.38-.1-.73-.29-1.03L12 1l-1.71 1.97C10.1 3.27 10 3.62 10 4c0 1.1.89 2 2 2zm6 5h-1V9c0-1.1-.9-2-2-2h-6c-1.1 0-2 .9-2 2v2H6c-1.66 0-3 1.34-3 3v7c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-7c0-1.66-1.34-3-3-3zm-9-2h6v2H9V9zm10 11H5v-5c0-.55.45-1 1-1h12c.55 0 1 .45 1 1v5z" />
     </svg>
   );
 }
@@ -150,8 +150,8 @@ export function BottomNav() {
 
   const navItems: NavItem[] = [
     { href: "/", label: "HOME", icon: <HomeIcon /> },
+    { href: "/#celebrate", label: "BIRTHDAYS", icon: <BirthdayNavIcon /> },
     { href: "/#volunteer", label: "VOLUNTEER", icon: <VolunteerIcon /> },
-    { href: "/make-a-day-matter", label: "OCCASIONS", icon: <OccasionsIcon /> },
   ];
 
   return (
