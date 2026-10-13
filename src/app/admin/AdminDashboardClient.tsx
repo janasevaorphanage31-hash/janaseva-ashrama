@@ -17,10 +17,11 @@ import { ValidationErrorModal } from "@/components/ValidationErrorModal";
 import { BusinessPlanModal } from "@/components/BusinessPlanModal";
 import { AdminSubscriptionsTab } from "@/components/admin/AdminSubscriptionsTab";
 import { AdminMarketingHub } from "@/components/admin/AdminMarketingHub";
+import { AdminTelecallerCRM } from "@/components/admin/AdminTelecallerCRM";
 import { CURATED_GALLERY, type GalleryItem } from "@/data/ashrama-curated-gallery";
 import type { TodayMealStatusItem } from "@/lib/site-content";
 
-type Tab = "analytics" | "crm" | "subscriptions" | "marketing" | "celebrations" | "content" | "media" | "catalogs" | "documents" | "community" | "team";
+type Tab = "analytics" | "crm" | "telecallers" | "subscriptions" | "marketing" | "celebrations" | "content" | "media" | "catalogs" | "documents" | "community" | "team";
 
 interface AdminDashboardProps {
   initialSession: {
@@ -1927,6 +1928,7 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
         {[
           { id: "analytics", label: "📊 Analytics" },
           { id: "crm", label: "💳 Donor CRM" },
+          { id: "telecallers", label: "📞 Telecaller CRM (15)" },
           { id: "subscriptions", label: "🔁 Subscriptions" },
           { id: "marketing", label: "🤖 AI Marketing & Ads" },
           { id: "celebrations", label: "🎂 Celebrations" },
@@ -2728,6 +2730,11 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
             </div>
           )}
         </div>
+      )}
+
+      {/* ==================== ANTIGRAVITY 15 TELECALLER CRM TAB ==================== */}
+      {activeTab === "telecallers" && (
+        <AdminTelecallerCRM />
       )}
 
       {/* ==================== RECURRING AUTO-PAY & MRR TAB ==================== */}

@@ -520,4 +520,84 @@ export const communityMembers = pgTable(
   ],
 );
 
+/**
+ * ============================================================================
+ * ANTIGRAVITY CRM: 15 TELECALLERS & BIRTHDAY LEAD ATTRIBUTION SYSTEM
+ * ============================================================================
+ */
+
+export const agTelecallers = pgTable("ag_telecallers", {
+  callerId: text("caller_id").primaryKey(), // e.g. "TC01", "TC02" ... "TC15"
+  name: text("name").notNull(),
+  whatsappNumber: text("whatsapp_number").notNull(),
+  email: text("email").notNull().unique(),
+  passwordHash: text("password_hash").notNull(),
+  dailyQuota: integer("daily_quota").notNull().default(50),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const agLeads = pgTable(
+  "ag_leads",
+  {
+    leadId: serial("lead_id").primaryKey(),
+    name: text("name").notNull(),
+    phone: text("phone").notNull(),
+    email: text("email"),
+    dobDay: integer("dob_day").notNull(), // 1 - 31
+    dobMonth: integer("dob_month").notNull(), // 1 - 12 (leap-year agnostic)
+    assignedCallerId: text("assigned_caller_id").references(() => agTelecallers.callerId, { onDelete: "set null" }),
+    status: text("status").notNull().default("Pending"), // Pending | Interested | Rejected | Reschedule | Donated
+    rescheduleDate: timestamp("reschedule_date"),
+    lastContactedAt: timestamp("last_contacted_at"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => [
+    index("ag_leads_dob_idx").on(t.dobMonth, t.dobDay),
+    index("ag_leads_assigned_idx").on(t.assignedCallerId, t.status),
+    index("ag_leads_phone_idx").on(t.phone),
+  ],
+);
+
+export const agCallLogs = pgTable(
+  "ag_call_logs",
+  {
+    logId: serial("log_id").primaryKey(),
+    leadId: integer("lead_id").notNull().references(() => agLeads.leadId, { onDelete: "cascade" }),
+    callerId: text("caller_id").notNull().references(() => agTelecallers.callerId, { onDelete: "cascade" }),
+    disposition: text("disposition").notNull(), // Interested | Rejected | Reschedule | No_Answer | Wrong_Number
+    callbackTime: timestamp("callback_time"),
+    notes: text("notes"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [
+    index("ag_call_logs_lead_idx").on(t.leadId),
+    index("ag_call_logs_caller_idx").on(t.callerId, t.createdAt),
+  ],
+);
+
+export const agDonations = pgTable(
+  "ag_donations",
+  {
+    txnId: text("txn_id").primaryKey(), // Gateway payment_id e.g. 'pay_Plq982...'
+    gatewayOrderId: text("gateway_order_id").notNull(),
+    amount: integer("amount").notNull(), // Amount in INR whole rupees
+    currency: text("currency").notNull().default("INR"),
+    paymentStatus: text("payment_status").notNull().default("captured"),
+    callerRefId: text("caller_ref_id").references(() => agTelecallers.callerId, { onDelete: "set null" }),
+    leadId: integer("lead_id").references(() => agLeads.leadId, { onDelete: "set null" }),
+    donorName: text("donor_name"),
+    donorPhone: text("donor_phone"),
+    donorEmail: text("donor_email"),
+    metadata: jsonb("metadata"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [
+    index("ag_donations_caller_idx").on(t.callerRefId, t.createdAt),
+    index("ag_donations_order_idx").on(t.gatewayOrderId),
+  ],
+);
+
 

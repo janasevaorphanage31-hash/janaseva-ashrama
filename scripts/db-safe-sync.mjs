@@ -165,9 +165,64 @@ const statements = [
     updated_at TIMESTAMP NOT NULL DEFAULT NOW()
   )`,
   `ALTER TABLE celebration_bookings ADD COLUMN IF NOT EXISTS wish_video_url TEXT`,
-  `ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS video_url TEXT`,
   `CREATE INDEX IF NOT EXISTS celebration_date_idx ON celebration_bookings(celebration_date)`,
   `CREATE INDEX IF NOT EXISTS celebration_status_idx ON celebration_bookings(celebration_status)`,
+
+  // 13. Antigravity Telecaller CRM Tables
+  `CREATE TABLE IF NOT EXISTS ag_telecallers (
+    caller_id VARCHAR(20) PRIMARY KEY,
+    name TEXT NOT NULL,
+    whatsapp_number TEXT NOT NULL,
+    email TEXT NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL,
+    daily_quota INT NOT NULL DEFAULT 50,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+  )`,
+  `CREATE TABLE IF NOT EXISTS ag_leads (
+    lead_id SERIAL PRIMARY KEY,
+    name TEXT NOT NULL,
+    phone TEXT NOT NULL,
+    email TEXT,
+    dob_day INT NOT NULL,
+    dob_month INT NOT NULL,
+    assigned_caller_id VARCHAR(20) REFERENCES ag_telecallers(caller_id) ON DELETE SET NULL,
+    status TEXT NOT NULL DEFAULT 'Pending',
+    reschedule_date TIMESTAMP,
+    last_contacted_at TIMESTAMP,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+  )`,
+  `CREATE TABLE IF NOT EXISTS ag_call_logs (
+    log_id SERIAL PRIMARY KEY,
+    lead_id INT NOT NULL REFERENCES ag_leads(lead_id) ON DELETE CASCADE,
+    caller_id VARCHAR(20) NOT NULL REFERENCES ag_telecallers(caller_id) ON DELETE CASCADE,
+    disposition TEXT NOT NULL,
+    callback_time TIMESTAMP,
+    notes TEXT,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW()
+  )`,
+  `CREATE TABLE IF NOT EXISTS ag_donations (
+    txn_id TEXT PRIMARY KEY,
+    gateway_order_id TEXT NOT NULL,
+    amount INT NOT NULL,
+    currency TEXT NOT NULL DEFAULT 'INR',
+    payment_status TEXT NOT NULL DEFAULT 'captured',
+    caller_ref_id VARCHAR(20) REFERENCES ag_telecallers(caller_id) ON DELETE SET NULL,
+    lead_id INT REFERENCES ag_leads(lead_id) ON DELETE SET NULL,
+    donor_name TEXT,
+    donor_phone TEXT,
+    donor_email TEXT,
+    metadata JSONB,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW()
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_ag_leads_dob ON ag_leads(dob_month, dob_day)`,
+  `CREATE INDEX IF NOT EXISTS idx_ag_leads_assigned ON ag_leads(assigned_caller_id, status)`,
+  `CREATE INDEX IF NOT EXISTS idx_ag_call_logs_lead ON ag_call_logs(lead_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_ag_call_logs_caller ON ag_call_logs(caller_id, created_at)`,
+  `CREATE INDEX IF NOT EXISTS idx_ag_donations_caller ON ag_donations(caller_ref_id, created_at)`,
+  `CREATE INDEX IF NOT EXISTS idx_ag_donations_order ON ag_donations(gateway_order_id)`,
 ];
 
 try {
