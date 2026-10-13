@@ -35,16 +35,16 @@ export function FloatingSocials() {
       {/* ── TRANSPARENT CLICK-OUTSIDE DISMISS (ZERO SCREEN-DIMMING OVERLAY) ── */}
       {open && (
         <div
-          className="fixed inset-0 z-30 pointer-events-auto cursor-default"
+          className="fixed inset-0 z-40 pointer-events-auto cursor-default"
           onClick={() => setOpen(false)}
           aria-hidden="true"
         />
       )}
 
-      {/* ── FLOATING SPEED-DIAL SOCIAL CHANNELS CONTAINER (DESKTOP ONLY TO PREVENT MOBILE CLUTTER) ── */}
+      {/* ── FLOATING SPEED-DIAL SOCIAL CHANNELS CONTAINER (MOBILE & DESKTOP) ── */}
       <aside
         aria-label="Direct Social Media, WhatsApp and Calling Channels"
-        className={`hidden md:flex fixed z-40 flex-col items-end gap-2.5 no-print transition-all duration-300 pointer-events-auto ${positionClass}`}
+        className={`flex fixed z-50 flex-col items-end gap-2.5 no-print transition-all duration-300 pointer-events-auto ${positionClass}`}
       >
         {/* Expanded Speed-Dial Stack */}
         {open && (
