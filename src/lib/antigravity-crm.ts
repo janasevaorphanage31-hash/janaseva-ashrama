@@ -506,9 +506,9 @@ export async function uploadBulkLeads(
 
   const validLeads = [];
   for (const item of rawLeads) {
-    const rawName = (item.name || "").trim();
+    const rawName = (item.name || "").trim() || "Well-wisher";
     const rawPhone = (item.phone || "").replace(/\D/g, "");
-    if (!rawName || rawPhone.length < 10) continue;
+    if (rawPhone.length < 10) continue;
 
     let day = parseInt(String(item.dobDay || currentDay), 10);
     if (isNaN(day) || day < 1 || day > 31) day = currentDay;

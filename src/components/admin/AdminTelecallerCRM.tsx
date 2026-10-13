@@ -214,53 +214,222 @@ export function AdminTelecallerCRM() {
     }
   };
 
-  // ── PARSE RAW LEADS (CSV / TSV / EXCEL PASTE) ──
+  // ── UNIVERSAL CSV & SPREADSHEET PARSER ──
+  const parseCSVLine = (line: string): string[] => {
+    const result: string[] = [];
+    let current = "";
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
+      if (char === '"' || char === "'") {
+        if (inQuotes && line[i + 1] === char) {
+          current += char;
+          i++;
+        } else {
+          inQuotes = !inQuotes;
+        }
+      } else if ((char === "," || char === "\t" || char === ";") && !inQuotes) {
+        result.push(current.trim());
+        current = "";
+      } else {
+        current += char;
+      }
+    }
+    result.push(current.trim());
+    return result.map((c) => c.replace(/^["']|["']$/g, "").trim());
+  };
+
   const parseRawLeadText = (text: string) => {
-    const lines = text.split(/\r?\n/).map((l) => l.trim()).filter((l) => l.length > 0);
+    if (!text || !text.trim()) {
+      setParsedLeads([]);
+      return;
+    }
+
+    const rawLines = text.split(/\r?\n/).map((l) => l.trim()).filter((l) => l.length > 0);
+    if (rawLines.length === 0) {
+      setParsedLeads([]);
+      return;
+    }
+
     const now = new Date();
     const curDay = now.getDate();
     const curMonth = now.getMonth() + 1;
 
+    // Check if first row is a header
+    const firstRowCells = parseCSVLine(rawLines[0]);
+    let hasHeader = false;
+    let nameCol = -1;
+    let phoneCol = -1;
+    let dayCol = -1;
+    let monthCol = -1;
+    let emailCol = -1;
+    let dateCol = -1;
+
+    firstRowCells.forEach((header, idx) => {
+      const raw = header.toLowerCase().trim();
+      const h = raw.replace(/[^a-z0-9]/g, "");
+
+      // Name column: match 'lead name', 'name', 'donor', 'person', 'contact name'
+      if (h.includes("name") || h.includes("donor") || h.includes("person")) {
+        if (!h.includes("id")) nameCol = idx;
+      } else if (h.includes("lead") && !h.includes("id")) {
+        nameCol = idx;
+      }
+
+      // Phone column: prioritize 'phone', 'mobile', 'whatsapp', 'tel', 'cell'
+      if (
+        h.includes("phone") ||
+        h.includes("mobile") ||
+        h.includes("whatsapp") ||
+        h.includes("tel") ||
+        h.includes("cell")
+      ) {
+        phoneCol = idx;
+      } else if (
+        h.includes("contact") &&
+        !h.includes("date") &&
+        !h.includes("time") &&
+        !h.includes("last") &&
+        phoneCol === -1
+      ) {
+        phoneCol = idx;
+      }
+
+      // Month column: must have 'month'
+      if (h.includes("month")) {
+        monthCol = idx;
+      }
+
+      // Day column: check 'day' but NOT 'birthday month'
+      if (
+        h.includes("dobday") ||
+        h.includes("birthdayday") ||
+        h.endsWith("day") ||
+        h === "day" ||
+        (h.includes("day") && !h.includes("month") && (h.includes("birth") ? h.includes("birthdayday") || raw.includes("day") : true))
+      ) {
+        if (!h.includes("month")) {
+          dayCol = idx;
+        }
+      }
+
+      // Email column
+      if (h.includes("email") || h.includes("mail")) {
+        emailCol = idx;
+      }
+
+      // Combined birthday or date column (e.g. Birthday, DOB, Birthdate)
+      if (
+        (h.includes("birthday") || h.includes("dob") || h.includes("birthdate") || h.includes("date")) &&
+        !h.includes("day") &&
+        !h.includes("month") &&
+        !h.includes("contact") &&
+        !h.includes("create")
+      ) {
+        dateCol = idx;
+      }
+    });
+
+    if (nameCol !== -1 || phoneCol !== -1 || dayCol !== -1) {
+      hasHeader = true;
+    }
+
+    const startLine = hasHeader ? 1 : 0;
     const leads: Array<{ name: string; phone: string; dobDay: number; dobMonth: number; email?: string }> = [];
 
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
-      // Skip header lines
-      if (i === 0 && (line.toLowerCase().includes("name") || line.toLowerCase().includes("phone"))) {
-        continue;
+    for (let i = startLine; i < rawLines.length; i++) {
+      const line = rawLines[i];
+      const cells = parseCSVLine(line);
+      if (cells.length === 0 || cells.every((c) => c === "")) continue;
+
+      let leadName = "";
+      let leadPhone = "";
+      let leadDay = curDay;
+      let leadMonth = curMonth;
+      let leadEmail: string | undefined = undefined;
+
+      if (hasHeader && phoneCol !== -1 && nameCol !== -1) {
+        leadName = cells[nameCol] || "";
+        const rawPhone = cells[phoneCol] || "";
+        const cleanDigits = rawPhone.replace(/\D/g, "");
+        leadPhone = cleanDigits.slice(-10);
+
+        if (dayCol !== -1 && cells[dayCol]) {
+          const d = parseInt(cells[dayCol], 10);
+          if (!isNaN(d) && d >= 1 && d <= 31) leadDay = d;
+        }
+        if (monthCol !== -1 && cells[monthCol]) {
+          const m = parseInt(cells[monthCol], 10);
+          if (!isNaN(m) && m >= 1 && m <= 12) leadMonth = m;
+        }
+        if (emailCol !== -1 && cells[emailCol] && cells[emailCol].includes("@")) {
+          leadEmail = cells[emailCol];
+        }
+        if (dateCol !== -1 && cells[dateCol]) {
+          const parts = cells[dateCol].split(/[-/.]/);
+          if (parts.length >= 2) {
+            const p0 = parseInt(parts[0], 10);
+            const p1 = parseInt(parts[1], 10);
+            if (p0 > 31) {
+              if (p1 >= 1 && p1 <= 12) leadMonth = p1;
+              const p2 = parseInt(parts[2], 10);
+              if (p2 >= 1 && p2 <= 31) leadDay = p2;
+            } else {
+              if (p0 >= 1 && p0 <= 31) leadDay = p0;
+              if (p1 >= 1 && p1 <= 12) leadMonth = p1;
+            }
+          }
+        }
+      } else {
+        // Dynamic Cell Detection across all cells in this row
+        let phoneCellIdx = -1;
+        for (let c = 0; c < cells.length; c++) {
+          const digits = cells[c].replace(/\D/g, "");
+          if (digits.length >= 10 && digits.length <= 13) {
+            leadPhone = digits.slice(-10);
+            phoneCellIdx = c;
+            break;
+          }
+        }
+
+        if (!leadPhone || phoneCellIdx === -1) continue;
+
+        for (let c = 0; c < cells.length; c++) {
+          if (c === phoneCellIdx) continue;
+          const cell = cells[c];
+          if (cell.includes("@")) {
+            leadEmail = cell;
+            continue;
+          }
+          const isNumericOnly = /^\d+$/.test(cell.trim());
+          if (!isNumericOnly && /[a-zA-Z]/.test(cell)) {
+            if (!leadName) {
+              leadName = cell;
+            }
+          } else if (isNumericOnly) {
+            const num = parseInt(cell, 10);
+            if (num >= 1 && num <= 31 && leadDay === curDay) {
+              leadDay = num;
+            } else if (num >= 1 && num <= 12 && leadMonth === curMonth) {
+              leadMonth = num;
+            }
+          }
+        }
       }
 
-      // Support comma, tab, or semicolon separated
-      const parts = line.split(/[,\t;]+/).map((p) => p.trim().replace(/^["']|["']$/g, ""));
-      if (parts.length < 2) continue;
-
-      const name = parts[0];
-      const phoneDigits = parts[1].replace(/\D/g, "");
-      if (!name || phoneDigits.length < 10) continue;
-
-      let day = curDay;
-      let month = curMonth;
-      let email: string | undefined = undefined;
-
-      if (parts.length >= 3) {
-        const d = parseInt(parts[2], 10);
-        if (!isNaN(d) && d >= 1 && d <= 31) day = d;
-      }
-      if (parts.length >= 4) {
-        const m = parseInt(parts[3], 10);
-        if (!isNaN(m) && m >= 1 && m <= 12) month = m;
-      }
-      if (parts.length >= 5 && parts[4].includes("@")) {
-        email = parts[4];
+      if (!leadName.trim()) {
+        leadName = `Well-wisher (${leadPhone.slice(-4)})`;
       }
 
-      leads.push({
-        name,
-        phone: phoneDigits.slice(-10),
-        dobDay: day,
-        dobMonth: month,
-        email,
-      });
+      if (leadPhone.length >= 10) {
+        leads.push({
+          name: leadName.trim(),
+          phone: leadPhone,
+          dobDay: leadDay,
+          dobMonth: leadMonth,
+          email: leadEmail,
+        });
+      }
     }
 
     setParsedLeads(leads);
@@ -279,6 +448,19 @@ export function AdminTelecallerCRM() {
       }
     };
     reader.readAsText(file);
+    e.target.value = ""; // Allow re-selecting same file
+  };
+
+  const handleDownloadSampleTemplate = () => {
+    const sample = `Lead Name,Phone Number,Birthday Day,Birthday Month,Email\n"Ramesh Patil","9880123456",14,10,"ramesh@gmail.com"\n"Deepa Rao","9845011002",15,10,"deepa@yahoo.com"\n"Anand Joshi","9845011003",16,10,"anand@gmail.com"`;
+    const blob = new Blob([sample], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", "sample_birthday_leads_template.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const handleExecuteLeadUpload = async () => {
@@ -1180,21 +1362,35 @@ export function AdminTelecallerCRM() {
                 </button>
               </div>
 
-              {/* Format Hint */}
-              <div className="rounded-2xl bg-amber-50/80 p-3 border border-amber-200/80 text-xs text-amber-950 space-y-1">
-                <p className="font-bold flex items-center gap-1.5 text-amber-900">
-                  <span>💡</span> Accepted Columns: Name, Phone (10-digit), Birthday Day (1-31), Birthday Month (1-12), Email (Optional)
-                </p>
-                <p className="text-[11px] text-amber-800/80 font-mono">
-                  Example: Ramesh Patil, 9880123456, 15, 10, ramesh@gmail.com
-                </p>
+              {/* Format Hint & Template Download */}
+              <div className="rounded-2xl bg-amber-50/80 p-3.5 border border-amber-200/80 text-xs text-amber-950 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div className="space-y-1">
+                  <p className="font-bold flex items-center gap-1.5 text-amber-900">
+                    <span>💡</span> Universal Column Support: Name, Phone (10-digit), Birthday Day (1-31), Birthday Month (1-12), Email
+                  </p>
+                  <p className="text-[11px] text-amber-800/80 font-mono">
+                    Works automatically with Janaseva registry exports, Google Sheets, or custom CSV files.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleDownloadSampleTemplate}
+                  className="shrink-0 px-3 py-1.5 rounded-xl bg-white hover:bg-amber-100/60 border border-amber-300 text-amber-900 text-xs font-bold transition shadow-2xs"
+                >
+                  📥 Download Sample CSV
+                </button>
               </div>
 
               {uploadMode === "paste" ? (
                 <div>
-                  <label className="block text-[11px] font-bold text-teal-950 mb-1">
-                    Paste Rows (CSV, TSV, or Tab-Separated from Excel):
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-[11px] font-bold text-teal-950">
+                      Paste Rows (CSV, TSV, or Tab-Separated from Excel):
+                    </label>
+                    <span className="text-[10px] text-teal-950/60 font-semibold">
+                      Auto-detects columns
+                    </span>
+                  </div>
                   <textarea
                     rows={6}
                     value={pastedText}
@@ -1202,12 +1398,35 @@ export function AdminTelecallerCRM() {
                       setPastedText(e.target.value);
                       parseRawLeadText(e.target.value);
                     }}
-                    placeholder={`Vijay Kumar, 9845011001, 14, 10\nDeepa Rao, 9845011002, 15, 10\nAnand Joshi, 9845011003, 16, 10`}
+                    placeholder={`Lead Name, Phone Number, Birthday Day, Birthday Month, Email\nVijay Kumar, 9845011001, 14, 10, vijay@gmail.com\nDeepa Rao, 9845011002, 15, 10, deepa@yahoo.com`}
                     className="w-full rounded-2xl border border-teal-900/20 p-3 font-mono text-xs text-teal-950 focus:ring-2 focus:ring-amber-400 outline-none"
                   />
                 </div>
               ) : (
-                <div className="border-2 border-dashed border-teal-900/20 rounded-2xl p-6 text-center hover:bg-sand/30 transition">
+                <div
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const file = e.dataTransfer.files?.[0];
+                    if (file) {
+                      setUploadedFileName(file.name);
+                      const reader = new FileReader();
+                      reader.onload = (event) => {
+                        const content = event.target?.result as string;
+                        if (content) {
+                          setPastedText(content);
+                          parseRawLeadText(content);
+                        }
+                      };
+                      reader.readAsText(file);
+                    }
+                  }}
+                  className="border-2 border-dashed border-teal-900/20 rounded-2xl p-6 text-center hover:bg-sand/30 transition cursor-pointer"
+                >
                   <input
                     type="file"
                     accept=".csv,.txt,.tsv"
@@ -1216,14 +1435,29 @@ export function AdminTelecallerCRM() {
                     id="csv-file-input"
                   />
                   <label htmlFor="csv-file-input" className="cursor-pointer block">
-                    <span className="text-3xl block mb-2">📄</span>
+                    <span className="text-3xl block mb-2">📁</span>
                     <span className="text-xs font-bold text-teal-950 block">
-                      {uploadedFileName ? `Selected: ${uploadedFileName}` : "Click to select CSV or TXT file"}
+                      {uploadedFileName ? `Selected: ${uploadedFileName}` : "Click to browse or Drag & Drop CSV / Excel file here"}
                     </span>
                     <span className="text-[11px] text-teal-950/60 block mt-1">
-                      UTF-8 formatted Comma/Tab delimited file
+                      Supports comma, tab, or semicolon separated files
                     </span>
                   </label>
+
+                  {/* Dynamic Status Pill */}
+                  {uploadedFileName && (
+                    <div className="mt-3">
+                      {parsedLeads.length > 0 ? (
+                        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold border border-emerald-300">
+                          <span>✓ Successfully detected {parsedLeads.length} leads ready for import</span>
+                        </div>
+                      ) : (
+                        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-100 text-rose-800 text-xs font-bold border border-rose-300">
+                          <span>⚠️ No valid 10-digit phone numbers detected in this file yet</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
 
