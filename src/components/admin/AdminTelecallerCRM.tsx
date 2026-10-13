@@ -54,6 +54,12 @@ export function AdminTelecallerCRM() {
   // 4. Export Menu State
   const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
 
+  // 5. Telecaller Credentials & Access Modal State
+  const [isAccessModalOpen, setIsAccessModalOpen] = useState(false);
+  const [selectedCallerForAccess, setSelectedCallerForAccess] = useState<TelecallerStats | null>(null);
+  const [newPasswordInput, setNewPasswordInput] = useState("");
+  const [resettingPassword, setResettingPassword] = useState(false);
+
   useEffect(() => {
     loadAdminData();
   }, []);
@@ -598,10 +604,61 @@ export function AdminTelecallerCRM() {
   };
 
   // ── EXPORT AGENCY REPORT (CSV) ──
-  const handleTriggerCSVDownload = (type: "performance" | "leads" | "donations") => {
+  const handleTriggerCSVDownload = (type: "performance" | "leads" | "donations" | "roster") => {
     window.open(`/api/v1/admin/telecallers/export?type=${type}`, "_blank");
     setIsExportMenuOpen(false);
     showToast(`✓ Initiated ${type.toUpperCase()} CSV export download`);
+  };
+
+  // ── TELECALLER CREDENTIALS & ACCESS MODAL HANDLERS ──
+  const handleOpenAccessModal = (c: TelecallerStats) => {
+    setSelectedCallerForAccess(c);
+    setNewPasswordInput("");
+    setIsAccessModalOpen(true);
+  };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedCallerForAccess || !newPasswordInput.trim()) return;
+    if (newPasswordInput.trim().length < 4) {
+      alert("New password must be at least 4 characters.");
+      return;
+    }
+    setResettingPassword(true);
+    try {
+      const res = await fetch("/api/v1/admin/telecallers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "reset_password",
+          callerId: selectedCallerForAccess.callerId,
+          newPassword: newPasswordInput.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error || "Failed to reset password");
+      showToast(`✓ Password for ${selectedCallerForAccess.callerId} updated successfully!`);
+      setNewPasswordInput("");
+    } catch (err: any) {
+      alert("Error resetting password: " + err.message);
+    } finally {
+      setResettingPassword(false);
+    }
+  };
+
+  const handleCopyCredentials = (caller: TelecallerStats, pwd?: string) => {
+    const origin = typeof window !== "undefined" ? window.location.origin : "https://janasevaorphanage.org";
+    const text = `🌟 *JANASEVA ASHRAMA TELECALLER PORTAL ACCESS*\n👤 Advisor Name: ${caller.name}\n🆔 Caller ID: ${caller.callerId}\n📧 Login Email: ${caller.email || `${caller.callerId.toLowerCase()}@janaseva.org`}\n🔑 Password: ${pwd || "ashrama@123"}\n🔗 Login Portal: ${origin}/portal\n🎯 Personal Donation Link: ${origin}/donate?ref=${caller.callerId}`;
+    navigator.clipboard.writeText(text);
+    showToast(`✓ Copied login credentials for ${caller.callerId} to clipboard!`);
+  };
+
+  const handleSendWhatsAppCredentials = (caller: TelecallerStats, pwd?: string) => {
+    const origin = typeof window !== "undefined" ? window.location.origin : "https://janasevaorphanage.org";
+    const text = `🌟 *JANASEVA ASHRAMA TELECALLER PORTAL ACCESS*\n\nNamaste ${caller.name},\nHere are your access credentials for our daily birthday donation outreach portal:\n\n👤 *Advisor:* ${caller.name}\n🆔 *Caller ID:* ${caller.callerId}\n📧 *Login Email:* ${caller.email || `${caller.callerId.toLowerCase()}@janaseva.org`}\n🔑 *Password:* ${pwd || "ashrama@123"}\n\n🔗 *Login to Portal:* ${origin}/portal\n🎯 *Your Referral Donation Link:* ${origin}/donate?ref=${caller.callerId}\n\nPlease login and start calling your assigned birthday well-wishers today!`;
+    const cleanNumber = (caller.whatsappNumber || "").replace(/\D/g, "");
+    window.open(`https://wa.me/91${cleanNumber}?text=${encodeURIComponent(text)}`, "_blank");
+    showToast(`✓ Opened WhatsApp to send credentials to ${caller.name}`);
   };
 
   const handleCopyAgencySummary = () => {
@@ -726,6 +783,13 @@ export function AdminTelecallerCRM() {
                     className="w-full text-left px-3 py-2 text-xs font-bold hover:bg-amber-50 rounded-xl transition flex items-center justify-between"
                   >
                     <span>💳 Attributed Donations Ledger</span>
+                    <span className="text-[10px] text-teal-950/50">.CSV</span>
+                  </button>
+                  <button
+                    onClick={() => handleTriggerCSVDownload("roster")}
+                    className="w-full text-left px-3 py-2 text-xs font-bold hover:bg-amber-50 rounded-xl transition flex items-center justify-between"
+                  >
+                    <span>👥 Telecaller Accounts Roster</span>
                     <span className="text-[10px] text-teal-950/50">.CSV</span>
                   </button>
                   <div className="border-t border-teal-900/10 mt-1 pt-1">
@@ -961,6 +1025,14 @@ export function AdminTelecallerCRM() {
                     </td>
                     <td className="p-3 text-right">
                       <div className="flex items-center justify-end gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenAccessModal(c)}
+                          title="Manage credentials, reset password, and send portal login"
+                          className="rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 px-2 py-1 text-[10px] font-bold transition cursor-pointer"
+                        >
+                          🔑 Access
+                        </button>
                         <button
                           type="button"
                           onClick={() => handleSimulateDonation(c.callerId)}
@@ -1549,6 +1621,116 @@ export function AdminTelecallerCRM() {
                 className="rounded-xl bg-teal-950 hover:bg-teal-900 text-gold px-5 py-2 text-xs font-black shadow-xs transition cursor-pointer disabled:opacity-50"
               >
                 {actionLoading ? "Importing..." : `Import & Distribute ${parsedLeads.length} Leads`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── 5. TELECALLER CREDENTIALS & ACCESS MODAL ── */}
+      {isAccessModalOpen && selectedCallerForAccess && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-teal-950/60 backdrop-blur-xs p-4 animate-fadeIn">
+          <div className="w-full max-w-lg rounded-3xl bg-white p-6 sm:p-7 shadow-2xl border border-teal-900/10 text-teal-950 space-y-5">
+            <div className="flex items-center justify-between border-b border-teal-900/10 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="grid h-10 w-10 place-items-center rounded-xl bg-teal-950 text-gold font-display font-black text-sm">
+                  {selectedCallerForAccess.callerId}
+                </div>
+                <div>
+                  <h3 className="font-display text-base font-bold text-teal-950 flex items-center gap-2">
+                    {selectedCallerForAccess.name}
+                    <span
+                      className={`text-[10px] px-2 py-0.5 rounded-full font-black uppercase ${
+                        selectedCallerForAccess.isActive
+                          ? "bg-emerald-100 text-emerald-800"
+                          : "bg-slate-200 text-slate-700"
+                      }`}
+                    >
+                      {selectedCallerForAccess.isActive ? "Active" : "Paused"}
+                    </span>
+                  </h3>
+                  <p className="text-xs text-teal-950/60 font-mono">
+                    ID: {selectedCallerForAccess.callerId} · Quota: {selectedCallerForAccess.dailyQuota || 50}/day
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsAccessModalOpen(false)}
+                className="text-teal-950/50 hover:text-teal-950 text-sm font-bold cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Portal & Login Credentials Info */}
+            <div className="rounded-2xl bg-cream/70 p-4 border border-teal-900/10 space-y-2.5 text-xs">
+              <div className="flex justify-between items-center py-1 border-b border-teal-900/5">
+                <span className="font-bold text-teal-950/70">Login Identifier:</span>
+                <span className="font-mono font-bold text-teal-950">{selectedCallerForAccess.callerId}</span>
+              </div>
+              <div className="flex justify-between items-center py-1 border-b border-teal-900/5">
+                <span className="font-bold text-teal-950/70">Registered Email:</span>
+                <span className="font-mono text-teal-900 font-semibold">
+                  {selectedCallerForAccess.email || `${selectedCallerForAccess.callerId.toLowerCase()}@janaseva.org`}
+                </span>
+              </div>
+              <div className="flex justify-between items-center py-1 border-b border-teal-900/5">
+                <span className="font-bold text-teal-950/70">WhatsApp Mobile:</span>
+                <span className="font-mono text-teal-900 font-semibold">+91 {selectedCallerForAccess.whatsappNumber}</span>
+              </div>
+              <div className="flex justify-between items-center py-1 border-b border-teal-900/5">
+                <span className="font-bold text-teal-950/70">Telecaller Portal:</span>
+                <span className="font-mono text-teal-950 font-bold">/portal</span>
+              </div>
+              <div className="flex justify-between items-center py-1">
+                <span className="font-bold text-teal-950/70">Referral Link:</span>
+                <span className="font-mono font-bold text-amber-900">/donate?ref={selectedCallerForAccess.callerId}</span>
+              </div>
+            </div>
+
+            {/* Reset Password Section */}
+            <form onSubmit={handleResetPassword} className="space-y-3">
+              <label className="block text-xs font-bold text-teal-950">
+                Set / Reset Portal Password
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={newPasswordInput}
+                  onChange={(e) => setNewPasswordInput(e.target.value)}
+                  placeholder="Enter new password (e.g. ashrama@2026)"
+                  className="flex-1 rounded-xl border border-teal-900/20 px-3 py-2 text-xs font-semibold text-teal-950 focus:border-amber-500 outline-none"
+                />
+                <button
+                  type="submit"
+                  disabled={resettingPassword || !newPasswordInput.trim()}
+                  className="rounded-xl bg-teal-950 hover:bg-teal-900 text-gold px-4 py-2 text-xs font-black shadow-xs transition cursor-pointer disabled:opacity-50"
+                >
+                  {resettingPassword ? "Saving..." : "Save Password"}
+                </button>
+              </div>
+              <p className="text-[11px] text-teal-950/60">
+                Default password for seeded accounts: <code className="font-mono font-bold text-amber-900">ashrama@123</code>. Advisors can also change their password directly in their portal.
+              </p>
+            </form>
+
+            {/* Quick 1-Click Share & Copy Actions */}
+            <div className="flex flex-col sm:flex-row items-center gap-2.5 pt-3 border-t border-teal-900/10">
+              <button
+                type="button"
+                onClick={() => handleCopyCredentials(selectedCallerForAccess, newPasswordInput || undefined)}
+                className="w-full sm:w-auto flex-1 focus-ring tap-scale inline-flex items-center justify-center gap-1.5 rounded-xl bg-sand hover:bg-amber-100 border border-teal-900/15 text-teal-950 px-3.5 py-2.5 text-xs font-bold transition cursor-pointer"
+              >
+                <span>📋 Copy Credentials</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleSendWhatsAppCredentials(selectedCallerForAccess, newPasswordInput || undefined)}
+                className="w-full sm:w-auto flex-1 focus-ring tap-scale inline-flex items-center justify-center gap-1.5 rounded-xl bg-[#25D366] hover:brightness-105 text-white px-3.5 py-2.5 text-xs font-bold shadow-xs transition cursor-pointer"
+              >
+                <span>📱 WhatsApp Access Details</span>
               </button>
             </div>
           </div>

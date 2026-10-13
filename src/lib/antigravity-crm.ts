@@ -654,7 +654,9 @@ export async function distributeAllPendingLeads(mode: "balanced" | "round_robin"
 /**
  * 15. Agency-Grade CSV Export Generator
  */
-export async function generateAgencyCSVExport(type: "performance" | "leads" | "donations") {
+export async function generateAgencyCSVExport(
+  type: "performance" | "leads" | "donations" | "roster"
+) {
   if (type === "performance") {
     const data = await getAdminLeaderboard();
     const rows = [
@@ -761,6 +763,52 @@ export async function generateAgencyCSVExport(type: "performance" | "leads" | "d
     };
   }
 
+  if (type === "roster") {
+    const callers = await db.select().from(agTelecallers).orderBy(agTelecallers.callerId);
+    const leaderboard = await getAdminLeaderboard();
+    const statsMap = new Map(leaderboard.callers.map((c) => [c.callerId, c]));
+
+    const rows = [
+      [
+        "Caller ID",
+        "Full Name",
+        "WhatsApp Mobile",
+        "Email Address",
+        "Account Status",
+        "Daily Quota",
+        "Assigned Leads",
+        "Contacted Leads",
+        "Conversions",
+        "Conversion Rate %",
+        "Total Attributed Revenue (INR)",
+        "Created Date",
+      ],
+    ];
+
+    for (const c of callers) {
+      const stat = statsMap.get(c.callerId);
+      rows.push([
+        c.callerId,
+        `"${c.name.replace(/"/g, '""')}"`,
+        `"+91${c.whatsappNumber}"`,
+        `"${c.email.replace(/"/g, '""')}"`,
+        c.isActive ? "Active" : "Paused",
+        String(c.dailyQuota || 50),
+        String(stat?.assignedCount || 0),
+        String(stat?.contactedCount || 0),
+        String(stat?.convertedCount || 0),
+        `${stat?.conversionRate || 0}%`,
+        String(stat?.totalDonationAmount || 0),
+        c.createdAt.toISOString().slice(0, 10),
+      ]);
+    }
+
+    return {
+      filename: `janaseva_telecaller_roster_${new Date().toISOString().slice(0, 10)}.csv`,
+      csv: rows.map((r) => r.join(",")).join("\n"),
+    };
+  }
+
   // type === 'donations'
   const donations = await db.select().from(agDonations).orderBy(desc(agDonations.createdAt));
 
@@ -799,3 +847,25 @@ export async function generateAgencyCSVExport(type: "performance" | "leads" | "d
     csv: rows.map((r) => r.join(",")).join("\n"),
   };
 }
+
+/**
+ * 16. Reset Telecaller Password
+ */
+export async function resetTelecallerPassword(callerId: string, newPassword: string) {
+  const cid = callerId.trim().toUpperCase();
+  if (!newPassword || newPassword.length < 4) {
+    throw new Error("Password must be at least 4 characters.");
+  }
+  const passwordHash = hashPassword(newPassword);
+
+  await db
+    .update(agTelecallers)
+    .set({
+      passwordHash,
+      updatedAt: new Date(),
+    })
+    .where(eq(agTelecallers.callerId, cid));
+
+  return { success: true, callerId: cid };
+}
+

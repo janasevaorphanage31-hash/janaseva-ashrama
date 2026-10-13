@@ -10,6 +10,7 @@ import {
   uploadBulkLeads,
   distributeAllPendingLeads,
   generateAgencyCSVExport,
+  resetTelecallerPassword,
 } from "@/lib/antigravity-crm";
 
 export async function GET() {
@@ -110,6 +111,18 @@ export async function POST(req: Request) {
         message: `Equally distributed ${res.distributed} pending leads using ${mode || "balanced"} algorithm.`,
         distributionResult: res,
         ...updatedLeaderboard,
+      });
+    }
+
+    if (action === "reset_password") {
+      const { callerId, newPassword } = body;
+      if (!callerId || !newPassword) {
+        return NextResponse.json({ error: "Caller ID and new password are required." }, { status: 400 });
+      }
+      await resetTelecallerPassword(callerId, newPassword);
+      return NextResponse.json({
+        success: true,
+        message: `Password for ${callerId} has been successfully updated.`,
       });
     }
 

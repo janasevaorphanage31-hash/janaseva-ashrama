@@ -5,7 +5,10 @@ export async function GET(req: Request) {
   try {
     const url = new URL(req.url);
     const typeParam = url.searchParams.get("type") || "performance";
-    const exportType = typeParam === "leads" || typeParam === "donations" ? typeParam : "performance";
+    const exportType =
+      typeParam === "leads" || typeParam === "donations" || typeParam === "roster"
+        ? (typeParam as "performance" | "leads" | "donations" | "roster")
+        : "performance";
 
     const { filename, csv } = await generateAgencyCSVExport(exportType);
 
