@@ -26,12 +26,13 @@ export function LogoMark({ size = 44, className }: { size?: number; className?: 
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
-      src="/logo/janaseva-mark.png"
+      src="/logo/janaseva-logo.png"
       alt="Janaseva Ashrama Logo"
       width={size}
       height={size}
+      style={{ width: `${size}px`, height: `${size}px` }}
       onError={() => setImgError(true)}
-      className={`shrink-0 rounded-full object-contain shadow-xs aspect-square h-8 w-8 sm:h-10 sm:w-10 ${className || ""}`}
+      className={`shrink-0 rounded-full object-contain shadow-xs aspect-square ${className || ""}`}
       loading="eager"
       // @ts-expect-error fetchpriority is standard in modern HTML
       fetchpriority="high"

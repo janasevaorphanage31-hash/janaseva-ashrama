@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { formatINR } from "@/lib/site";
+import { LogoMark } from "@/components/Logo";
 
 export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string }) {
   const [callerId, setCallerId] = useState<string>(initialCallerId || "TC01");
@@ -181,6 +182,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
       <div className="rounded-3xl bg-white p-5 sm:p-6 shadow-sm border border-teal-900/10">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-teal-900/10 pb-5">
           <div className="flex items-center gap-3">
+            <LogoMark size={48} className="ring-2 ring-amber-400/30" />
             <div className="grid h-12 w-12 place-items-center rounded-2xl bg-teal-950 text-gold font-display font-black text-lg shadow-sm">
               {callerId}
             </div>

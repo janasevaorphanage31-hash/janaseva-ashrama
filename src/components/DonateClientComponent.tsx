@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { formatINR } from "@/lib/site";
+import { LogoMark } from "@/components/Logo";
 
 export function DonateClientComponent() {
   const searchParams = useSearchParams();
@@ -180,6 +181,9 @@ export function DonateClientComponent() {
     <div className="max-w-md mx-auto bg-white rounded-3xl p-6 sm:p-8 shadow-xl border border-teal-900/10 animate-fadeIn">
       {/* Header */}
       <div className="text-center mb-6">
+        <div className="flex justify-center mb-3">
+          <LogoMark size={52} className="shadow-md ring-4 ring-amber-300/30" />
+        </div>
         <span className="rounded-full bg-saffron/15 text-saffron-dark px-3 py-1 text-xs font-black uppercase tracking-wider">
           Auspicious Birthday Seva
         </span>
