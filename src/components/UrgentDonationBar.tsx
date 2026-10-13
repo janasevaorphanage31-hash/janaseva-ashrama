@@ -21,12 +21,13 @@ export function UrgentDonationBar() {
   const [minimized, setMinimized] = useState(false);
   const [activePreset, setActivePreset] = useState<number>(101);
 
-  // Auto-hide on admin, checkout, supporter-form, or when bottom donation drawer is open
+  // Auto-hide on admin, checkout, supporter-form, when bottom donation drawer is open, or when basket is empty (total === 0)
   if (
     pathname?.startsWith("/admin") ||
     pathname === "/checkout" ||
     pathname === "/supporter-form" ||
-    isBottomDonateOpen
+    isBottomDonateOpen ||
+    total === 0
   ) {
     return null;
   }
@@ -68,7 +69,7 @@ export function UrgentDonationBar() {
     <aside
       aria-label="Floating Urgent Donation Bar"
       className={`mobile-urgent-bar no-print transition-all duration-300 ${
-        total > 0 ? "block" : "hidden md:block"
+        total > 0 ? "block" : "hidden"
       }`}
     >
       <div className="relative overflow-hidden rounded-2xl md:rounded-3xl bg-teal-950/98 text-white p-2.5 sm:p-3.5 shadow-[0_12px_40px_rgba(0,0,0,0.45)] ring-1 ring-amber-400/40 backdrop-blur-xl border border-white/15">

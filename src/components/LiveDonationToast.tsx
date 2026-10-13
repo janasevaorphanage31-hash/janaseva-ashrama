@@ -27,11 +27,16 @@ const RECENT_DONATIONS: RecentDonation[] = [
 export function LiveDonationToast() {
   const { openBottomDonate, isBottomDonateOpen } = useCart();
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [visible, setVisible] = useState(true);
+  const [visible, setVisible] = useState(false);
   const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
     if (dismissed) return;
+
+    // Delay first appearance so page load is calm & uncluttered
+    const initialTimer = setTimeout(() => {
+      setVisible(true);
+    }, 4500);
 
     const interval = setInterval(() => {
       // Fade out
@@ -39,10 +44,13 @@ export function LiveDonationToast() {
       setTimeout(() => {
         setCurrentIndex((prev) => (prev + 1) % RECENT_DONATIONS.length);
         setVisible(true);
-      }, 400);
-    }, 7000);
+      }, 800);
+    }, 9000);
 
-    return () => clearInterval(interval);
+    return () => {
+      clearTimeout(initialTimer);
+      clearInterval(interval);
+    };
   }, [dismissed]);
 
   if (dismissed || isBottomDonateOpen) return null;
@@ -61,7 +69,7 @@ export function LiveDonationToast() {
   };
 
   return (
-    <div className="fixed bottom-[calc(4.8rem+env(safe-area-inset-bottom))] left-3 right-auto z-30 max-w-[calc(100vw-5.5rem)] sm:max-w-xs md:bottom-28 md:left-6 no-print pointer-events-auto">
+    <div className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] left-3 right-auto z-30 max-w-[calc(100vw-5.5rem)] sm:max-w-xs md:bottom-6 md:left-6 no-print pointer-events-auto">
       <div
         role="status"
         aria-live="polite"

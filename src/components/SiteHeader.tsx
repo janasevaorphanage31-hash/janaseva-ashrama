@@ -9,7 +9,7 @@ import { track } from "@/lib/track";
 
 const primaryNavLinks = [
   { href: "/#official-tiers", label: "Sponsor 25 Boys", badge: "Form 28" },
-  { href: "/#celebrate", label: "Birthday Celebrations", trending: true },
+  { href: "/#celebrate", label: "Birthdays", trending: true },
   { href: "/#volunteer", label: "Volunteer", badge: "2.5h/wk" },
   { href: "/#impact", label: "Annadana Needs" },
   { href: "/#life-in-motion", label: "Ashrama Life" },
@@ -174,10 +174,10 @@ export function SiteHeader() {
     <>
       {/* ── HEADER ── */}
       <header
-        className={`sticky top-0 z-40 w-full no-print border-b transition-all duration-300 ${
+        className={`sticky top-0 z-40 w-full no-print border-b transition-colors duration-200 h-14 sm:h-16 ${
           scrolled
-            ? "h-14 bg-teal-950/98 border-teal-900/60 shadow-lg"
-            : "h-14 sm:h-16 bg-teal-950/95 border-teal-900/40"
+            ? "bg-teal-950/98 border-teal-900/60 shadow-lg"
+            : "bg-teal-950/95 border-teal-900/40"
         } text-white backdrop-blur-md`}
       >
         <div className="mx-auto flex h-full max-w-7xl items-center justify-between gap-3 px-4 sm:px-6 lg:px-8">
@@ -309,16 +309,8 @@ export function SiteHeader() {
             </div>
           </nav>
 
-          {/* Right Action: Volunteer (Desktop/Tablet only) & Impact CTA */}
+          {/* Right Action: Primary Highlighted Donation CTA */}
           <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
-            <Link
-              href="/#volunteer"
-              className="focus-ring tap-scale hidden sm:inline-flex items-center gap-1.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 px-2.5 sm:px-3 py-2 text-xs font-bold text-emerald-300 hover:text-white transition shadow-xs"
-            >
-              <span>🤝</span>
-              <span>Volunteer</span>
-            </Link>
-
             <Link
               href="/impact"
               onClick={() => track("cta_make_impact", { where: "header" })}

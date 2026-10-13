@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { track } from "@/lib/track";
-import { VerticalSectionRail } from "./VerticalSectionRail";
+
 import { OfficialSupportTiersSection } from "./sections/OfficialSupportTiersSection";
 import { ImpactCart } from "./ImpactCart";
 import { TrendingBirthdaySection } from "./sections/TrendingBirthdaySection";
@@ -258,16 +258,12 @@ export function HomeSectionsHub({
       {/* Target anchor for top of hub */}
       <div id="hub-top" className="scroll-mt-28" />
 
-      {/* ── VERTICAL QUICK-JUMP FLOATING RAIL (Desktop Side Thumb Index) ── */}
-      <VerticalSectionRail
-        currentMode={activeMode}
-        onSelectMode={(mode, targetId) => jumpToSection(mode as HomeMode, targetId)}
-      />
+
 
       {/* ── STICKY TOP SECTION JUMP BAR (Segmented Controller) ── */}
       <nav
         aria-label="Home Section Switcher"
-        className="sticky top-14 z-30 w-full border-b border-teal-900/10 bg-white/95 backdrop-blur-md shadow-xs no-print"
+        className="sticky top-14 sm:top-16 z-30 w-full border-b border-teal-900/10 bg-white/95 backdrop-blur-md shadow-xs no-print"
       >
         <div className="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8 py-2">
           {/* iOS Style Segmented Control Track */}
