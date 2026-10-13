@@ -151,6 +151,67 @@ export async function ensureDbSchema(): Promise<void> {
           CREATE INDEX IF NOT EXISTS donations_created_at_idx ON donations(created_at);
           CREATE INDEX IF NOT EXISTS celebration_date_idx ON celebration_bookings(celebration_date);
           CREATE INDEX IF NOT EXISTS celebration_status_idx ON celebration_bookings(celebration_status);
+
+          -- Antigravity Telecaller CRM & Birthday Lead Attribution Tables
+          CREATE TABLE IF NOT EXISTS ag_telecallers (
+            caller_id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            whatsapp_number TEXT NOT NULL,
+            email TEXT NOT NULL UNIQUE,
+            password_hash TEXT NOT NULL,
+            daily_quota INTEGER NOT NULL DEFAULT 50,
+            is_active BOOLEAN NOT NULL DEFAULT TRUE,
+            created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+          );
+
+          CREATE TABLE IF NOT EXISTS ag_leads (
+            lead_id SERIAL PRIMARY KEY,
+            name TEXT NOT NULL,
+            phone TEXT NOT NULL,
+            email TEXT,
+            dob_day INTEGER NOT NULL,
+            dob_month INTEGER NOT NULL,
+            assigned_caller_id TEXT REFERENCES ag_telecallers(caller_id) ON DELETE SET NULL,
+            status TEXT NOT NULL DEFAULT 'Pending',
+            reschedule_date TIMESTAMP,
+            last_contacted_at TIMESTAMP,
+            created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+          );
+
+          CREATE TABLE IF NOT EXISTS ag_call_logs (
+            log_id SERIAL PRIMARY KEY,
+            lead_id INTEGER NOT NULL REFERENCES ag_leads(lead_id) ON DELETE CASCADE,
+            caller_id TEXT NOT NULL REFERENCES ag_telecallers(caller_id) ON DELETE CASCADE,
+            disposition TEXT NOT NULL,
+            callback_time TIMESTAMP,
+            notes TEXT,
+            created_at TIMESTAMP NOT NULL DEFAULT NOW()
+          );
+
+          CREATE TABLE IF NOT EXISTS ag_donations (
+            txn_id TEXT PRIMARY KEY,
+            gateway_order_id TEXT NOT NULL,
+            amount INTEGER NOT NULL,
+            currency TEXT NOT NULL DEFAULT 'INR',
+            payment_status TEXT NOT NULL DEFAULT 'captured',
+            caller_ref_id TEXT REFERENCES ag_telecallers(caller_id) ON DELETE SET NULL,
+            lead_id INTEGER REFERENCES ag_leads(lead_id) ON DELETE SET NULL,
+            donor_name TEXT,
+            donor_phone TEXT,
+            donor_email TEXT,
+            metadata JSONB,
+            created_at TIMESTAMP NOT NULL DEFAULT NOW()
+          );
+
+          CREATE INDEX IF NOT EXISTS ag_leads_dob_idx ON ag_leads(dob_month, dob_day);
+          CREATE INDEX IF NOT EXISTS ag_leads_assigned_idx ON ag_leads(assigned_caller_id, status);
+          CREATE INDEX IF NOT EXISTS ag_leads_phone_idx ON ag_leads(phone);
+          CREATE INDEX IF NOT EXISTS ag_call_logs_lead_idx ON ag_call_logs(lead_id);
+          CREATE INDEX IF NOT EXISTS ag_call_logs_caller_idx ON ag_call_logs(caller_id, created_at);
+          CREATE INDEX IF NOT EXISTS ag_donations_caller_idx ON ag_donations(caller_ref_id, created_at);
+          CREATE INDEX IF NOT EXISTS ag_donations_order_idx ON ag_donations(gateway_order_id);
         `);
 
       } catch (err) {

@@ -1,4 +1,4 @@
-import { db } from "@/db";
+import { db, ensureDbSchema } from "@/db";
 import { agTelecallers, agLeads, agCallLogs, agDonations } from "@/db/schema";
 import { eq, and, or, sql, desc, inArray, isNull } from "drizzle-orm";
 import { hashPassword } from "@/lib/admin-auth";
@@ -22,6 +22,7 @@ export interface TelecallerStats {
  * 1. Seeds 15 telecallers (TC01 to TC15) and realistic birthday leads if tables are fresh.
  */
 export async function ensureTelecallersAndSeedData() {
+  await ensureDbSchema();
   const existing = await db.select({ count: sql<number>`count(*)` }).from(agTelecallers);
   const count = Number(existing[0]?.count || 0);
 
@@ -110,6 +111,7 @@ export async function ensureTelecallersAndSeedData() {
  * 2. Round-Robin Birthday Lead Routing (Today, Tomorrow, Day+2)
  */
 export async function distributeBirthdayLeads() {
+  await ensureTelecallersAndSeedData();
   const now = new Date();
 
   const targets = [0, 1, 2].map((offset) => {
@@ -168,6 +170,7 @@ export async function distributeBirthdayLeads() {
  * 3. Fetch Assigned Leads for a Telecaller
  */
 export async function getAssignedLeads(callerId: string) {
+  await ensureTelecallersAndSeedData();
   return db
     .select()
     .from(agLeads)
@@ -380,7 +383,10 @@ export async function addTelecaller(data: {
   password?: string;
   dailyQuota?: number;
 }) {
-  const allCallers = await db.select({ callerId: agTelecallers.callerId }).from(agTelecallers);
+  await ensureTelecallersAndSeedData();
+  const allCallers = await db
+    .select({ callerId: agTelecallers.callerId, email: agTelecallers.email })
+    .from(agTelecallers);
 
   let callerId = (data.callerId || "").trim().toUpperCase();
   if (!callerId) {
@@ -402,6 +408,11 @@ export async function addTelecaller(data: {
   }
 
   const email = (data.email || `${callerId.toLowerCase()}@janaseva.org`).trim().toLowerCase();
+  const emailExists = allCallers.some((c) => (c.email || "").toLowerCase() === email);
+  if (emailExists) {
+    throw new Error(`Email address "${email}" is already used by another telecaller. Please specify a unique email.`);
+  }
+
   const rawPassword =
     data.password && data.password.trim().length >= 4 ? data.password.trim() : "ashrama@123";
   const passwordHash = hashPassword(rawPassword);
@@ -423,6 +434,7 @@ export async function addTelecaller(data: {
  * 10. Delete Telecaller (Unassigns leads and optionally redistributes them to active callers)
  */
 export async function deleteTelecaller(callerId: string, redistributeLeads = true) {
+  await ensureTelecallersAndSeedData();
   const cid = callerId.trim().toUpperCase();
 
   // Find all leads assigned to this caller
@@ -459,6 +471,7 @@ export async function deleteTelecaller(callerId: string, redistributeLeads = tru
  * 11. Toggle Telecaller Active Status
  */
 export async function toggleTelecallerStatus(callerId: string, isActive: boolean, redistribute = true) {
+  await ensureTelecallersAndSeedData();
   const cid = callerId.trim().toUpperCase();
   await db
     .update(agTelecallers)
@@ -496,6 +509,7 @@ export async function uploadBulkLeads(
   autoDistribute = true,
   mode: "balanced" | "round_robin" = "balanced"
 ) {
+  await ensureTelecallersAndSeedData();
   if (!rawLeads || rawLeads.length === 0) {
     throw new Error("No lead records provided.");
   }
@@ -852,6 +866,7 @@ export async function generateAgencyCSVExport(
  * 16. Reset Telecaller Password
  */
 export async function resetTelecallerPassword(callerId: string, newPassword: string) {
+  await ensureTelecallersAndSeedData();
   const cid = callerId.trim().toUpperCase();
   if (!newPassword || newPassword.length < 4) {
     throw new Error("Password must be at least 4 characters.");

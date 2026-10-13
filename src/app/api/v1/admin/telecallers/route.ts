@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { ensureDbSchema } from "@/db";
 import {
   getAdminLeaderboard,
   distributeBirthdayLeads,
@@ -15,6 +16,8 @@ import {
 
 export async function GET() {
   try {
+    await ensureDbSchema();
+    await ensureTelecallersAndSeedData();
     const data = await getAdminLeaderboard();
     return NextResponse.json({ success: true, ...data });
   } catch (err: any) {
@@ -24,6 +27,8 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
+    await ensureDbSchema();
+    await ensureTelecallersAndSeedData();
     const body = await req.json();
     const action = body.action;
 
