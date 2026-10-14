@@ -4,10 +4,10 @@ import { useState } from "react";
 import { formatINR, calculateTaxBenefit } from "@/lib/site";
 import { useCart } from "./CartProvider";
 
-const PRESETS = [1000, 2500, 5000, 10000, 25000, 50000];
+const PRESETS = [1001, 2501, 5001, 10001, 25001, 51000];
 
 export function TaxSavingsCalculator() {
-  const [amount, setAmount] = useState<number>(5000);
+  const [amount, setAmount] = useState<number>(5001);
   const [taxSlab, setTaxSlab] = useState<number>(30);
   const cart = useCart();
   const [added, setAdded] = useState(false);
@@ -46,7 +46,7 @@ export function TaxSavingsCalculator() {
       <div className="mt-5 space-y-4">
         <div>
           <label className="block text-xs font-bold uppercase tracking-wider text-teal-900/70 mb-2">
-            Select or Enter Donation Amount:
+            Select or Enter Auspicious Shagun Donation Amount:
           </label>
           <div className="flex flex-wrap gap-2">
             {PRESETS.map((p) => (
@@ -54,7 +54,7 @@ export function TaxSavingsCalculator() {
                 key={p}
                 type="button"
                 onClick={() => setAmount(p)}
-                className={`rounded-xl px-3.5 py-2 text-xs font-bold transition ${
+                className={`rounded-xl px-3.5 py-2 text-xs font-bold transition cursor-pointer ${
                   amount === p
                     ? "bg-teal-950 text-white shadow"
                     : "bg-cream text-teal-950 hover:bg-sand border border-teal-900/10"
@@ -80,8 +80,21 @@ export function TaxSavingsCalculator() {
                 step={100}
                 value={amount}
                 onChange={(e) => setAmount(Math.max(0, Number(e.target.value) || 0))}
-                className="w-full rounded-xl border border-teal-900/15 pl-8 pr-3 py-2 text-sm font-bold text-teal-950 focus:border-teal-900 focus:outline-none"
+                className="w-full rounded-xl border border-teal-900/15 pl-8 pr-3 py-2 text-base sm:text-sm font-bold text-teal-950 focus:border-teal-900 focus:outline-none"
               />
+            </div>
+            {/* Quick Finger Increment Chips */}
+            <div className="flex flex-wrap gap-1.5 pt-2">
+              {[500, 1000, 2500, 5000].map((step) => (
+                <button
+                  key={step}
+                  type="button"
+                  onClick={() => setAmount((prev) => (prev || 0) + step)}
+                  className="rounded-lg bg-teal-900/5 hover:bg-teal-900/10 text-teal-900 text-[11px] font-bold px-2 py-1 transition border border-teal-900/10 active:scale-95 cursor-pointer"
+                >
+                  +{formatINR(step)}
+                </button>
+              ))}
             </div>
           </div>
 

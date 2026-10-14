@@ -182,31 +182,53 @@ export function HomeSectionsHub({
     }
   };
 
-  // Sync activeMode with scroll position as user reads naturally down the page
+  const activeModeRef = useRef<HomeMode>(activeMode);
   useEffect(() => {
-    const handleScroll = () => {
-      const scrollPos = window.scrollY + 220;
-      const tierEl = document.getElementById("official-tiers");
-      const celEl = document.getElementById("celebrate");
-      const impEl = document.getElementById("impact");
-      const galEl = document.getElementById("boys-gallery");
-      const trEl = document.getElementById("transparency") || document.getElementById("trust");
-      const volEl = document.getElementById("volunteer") || document.getElementById("community");
+    activeModeRef.current = activeMode;
+  }, [activeMode]);
 
-      if (trEl && trEl.offsetTop <= scrollPos) {
-        setActiveMode("trust");
-      } else if (volEl && volEl.offsetTop <= scrollPos) {
-        setActiveMode("community");
-      } else if (galEl && galEl.offsetTop <= scrollPos) {
-        setActiveMode("life");
-      } else if (impEl && impEl.offsetTop <= scrollPos) {
-        setActiveMode("annadana");
-      } else if (celEl && celEl.offsetTop <= scrollPos) {
-        setActiveMode("celebrate");
-      } else if (tierEl && tierEl.offsetTop <= scrollPos) {
-        setActiveMode("tiers");
-      } else {
-        setActiveMode("tiers");
+  // Sync activeMode with scroll position as user reads naturally down the page (throttled with rAF)
+  useEffect(() => {
+    let ticking = false;
+
+    const handleScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          const scrollPos = window.scrollY + 220;
+          const tierEl = document.getElementById("official-tiers");
+          const celEl = document.getElementById("celebrate");
+          const impEl = document.getElementById("impact");
+          const galEl = document.getElementById("boys-gallery");
+          const trEl = document.getElementById("transparency") || document.getElementById("trust");
+          const volEl = document.getElementById("volunteer") || document.getElementById("community");
+
+          let detectedMode: HomeMode = "tiers";
+          if (trEl && trEl.offsetTop <= scrollPos) {
+            detectedMode = "trust";
+          } else if (volEl && volEl.offsetTop <= scrollPos) {
+            detectedMode = "community";
+          } else if (galEl && galEl.offsetTop <= scrollPos) {
+            detectedMode = "life";
+          } else if (impEl && impEl.offsetTop <= scrollPos) {
+            detectedMode = "annadana";
+          } else if (celEl && celEl.offsetTop <= scrollPos) {
+            detectedMode = "celebrate";
+          } else if (tierEl && tierEl.offsetTop <= scrollPos) {
+            detectedMode = "tiers";
+          }
+
+          if (detectedMode !== activeModeRef.current) {
+            setActiveMode(detectedMode);
+            // Center the active pill in the horizontal sticky bar
+            const activeBtn = document.getElementById(`mode-pill-${detectedMode}`);
+            if (activeBtn) {
+              activeBtn.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+            }
+          }
+
+          ticking = false;
+        });
+        ticking = true;
       }
     };
 
@@ -273,6 +295,7 @@ export function HomeSectionsHub({
               return (
                 <button
                   key={m.id}
+                  id={`mode-pill-${m.id}`}
                   type="button"
                   onClick={() => jumpToSection(m.id, m.targetId)}
                   className={`focus-ring tap-scale inline-flex items-center gap-1.5 whitespace-nowrap rounded-xl px-3 sm:px-3.5 py-2 text-xs font-bold shrink-0 cursor-pointer transition-all duration-200 ${

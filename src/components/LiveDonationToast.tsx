@@ -20,8 +20,8 @@ const RECENT_DONATIONS: RecentDonation[] = [
   { id: "4", donorName: "Suresh Kumar", amount: 1500, timeAgo: "35 minutes ago", cause: "Morning Breakfast" },
   { id: "5", donorName: "Dr. Sandhya Rao", amount: 9600, timeAgo: "48 minutes ago", cause: "1 Year Education" },
   { id: "6", donorName: "Sneha Reddy", amount: 6000, timeAgo: "1 hour ago", cause: "Monthly Ration Kit" },
-  { id: "7", donorName: "Anand B.", amount: 500, timeAgo: "2 hours ago", cause: "School Books & Kit" },
-  { id: "8", donorName: "Venkatesh Prasad", amount: 2500, timeAgo: "3 hours ago", cause: "Annadana Seva" },
+  { id: "7", donorName: "Anand B.", amount: 501, timeAgo: "2 hours ago", cause: "School Books & Kit" },
+  { id: "8", donorName: "Venkatesh Prasad", amount: 2501, timeAgo: "3 hours ago", cause: "Annadana Seva" },
 ];
 
 export function LiveDonationToast() {

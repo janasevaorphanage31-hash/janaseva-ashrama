@@ -5,7 +5,7 @@ import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useCart } from "./CartProvider";
-import { BANK_DETAILS, SITE, formatINR } from "@/lib/site";
+import { BANK_DETAILS, SITE, FORM_10AC, formatINR } from "@/lib/site";
 import { track } from "@/lib/track";
 import { trackDonationSuccess, trackInitiateCheckout } from "@/lib/tracking";
 import {
@@ -2038,6 +2038,28 @@ export function CheckoutClient() {
             {formatINR(cart.total)}
           </span>
         </div>
+
+        {/* Applied Math: Section 80G Net Effective Cost Psychology */}
+        {cart.total > 0 && (
+          <div className="rounded-xl bg-emerald-50/80 border border-emerald-200/60 p-3 text-xs space-y-1.5">
+            <div className="flex items-center justify-between text-emerald-950 font-semibold">
+              <span className="flex items-center gap-1.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-600 animate-pulse" />
+                Effective Net Cost of Gift
+              </span>
+              <span className="font-bold text-emerald-900">
+                ~{formatINR(Math.round(cart.total * 0.85))}
+              </span>
+            </div>
+            <div className="flex items-center justify-between text-[11px] text-emerald-850">
+              <span className="text-emerald-700">Estimated 80G Tax Relief (30% slab)</span>
+              <span className="font-semibold text-emerald-800">- {formatINR(Math.round(cart.total * 0.15))}</span>
+            </div>
+            <p className="text-[10px] text-emerald-700/80 pt-1 border-t border-emerald-200/50 leading-tight">
+              Eligible for 50% deduction under Section 80G · Form 10AC URN: {FORM_10AC.urn}
+            </p>
+          </div>
+        )}
 
         {/* Primary Checkout Button (Visible on desktop; mobile uses sticky bottom bar) */}
         <button

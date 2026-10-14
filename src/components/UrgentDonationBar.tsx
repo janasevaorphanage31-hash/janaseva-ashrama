@@ -8,11 +8,11 @@ import { formatINR } from "@/lib/site";
 import { track } from "@/lib/track";
 
 const URGENT_PRESETS = [
-  { amount: 11, label: "₹11", sublabel: "Milk" },
-  { amount: 51, label: "₹51", sublabel: "Breakfast" },
-  { amount: 101, label: "₹101", sublabel: "Meal", isPopular: true },
+  { amount: 101, label: "₹101", sublabel: "1 Meal", isPopular: true },
+  { amount: 251, label: "₹251", sublabel: "Day Care" },
   { amount: 501, label: "₹501", sublabel: "Arogya" },
-  { amount: 2501, label: "₹2,501", sublabel: "Feast" },
+  { amount: 1001, label: "₹1,001", sublabel: "Week Ration" },
+  { amount: 2501, label: "₹2,501", sublabel: "Feast 25" },
 ];
 
 export function UrgentDonationBar() {
@@ -21,13 +21,12 @@ export function UrgentDonationBar() {
   const [minimized, setMinimized] = useState(false);
   const [activePreset, setActivePreset] = useState<number>(101);
 
-  // Auto-hide on admin, checkout, supporter-form, when bottom donation drawer is open, or when basket is empty (total === 0)
+  // Auto-hide on admin, checkout, supporter-form, or when bottom donation drawer is open
   if (
     pathname?.startsWith("/admin") ||
     pathname === "/checkout" ||
     pathname === "/supporter-form" ||
-    isBottomDonateOpen ||
-    total === 0
+    isBottomDonateOpen
   ) {
     return null;
   }
@@ -68,9 +67,7 @@ export function UrgentDonationBar() {
   return (
     <aside
       aria-label="Floating Urgent Donation Bar"
-      className={`mobile-urgent-bar no-print transition-all duration-300 ${
-        total > 0 ? "block" : "hidden"
-      }`}
+      className="mobile-urgent-bar no-print transition-all duration-300 block"
     >
       <div className="relative overflow-hidden rounded-2xl md:rounded-3xl bg-teal-950/98 text-white p-2.5 sm:p-3.5 shadow-[0_12px_40px_rgba(0,0,0,0.45)] ring-1 ring-amber-400/40 backdrop-blur-xl border border-white/15">
         {/* Ambient Glow */}

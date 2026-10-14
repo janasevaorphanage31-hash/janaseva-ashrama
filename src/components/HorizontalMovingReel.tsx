@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { formatINR } from "@/lib/site";
 import { useCart } from "./CartProvider";
 
@@ -24,7 +24,7 @@ const REEL_ITEMS: ReelCard[] = [
     title: "Morning Prayer & Chanting of Shlokas",
     kannada: "ಮುಂಜಾನೆಯ ಸಾಮೂಹಿಕ ಪ್ರಾರ್ಥನೆ ಹಾಗೂ ಶಾಂತಿ ಮಂತ್ರ",
     impactTag: "Morning Shloka Prayer",
-    sponsorAmount: 150,
+    sponsorAmount: 151,
   },
   {
     type: "image",
@@ -33,7 +33,7 @@ const REEL_ITEMS: ReelCard[] = [
     title: "25 Resident Boys in Prayer Before Hot Meals",
     kannada: "ಎಲ್ಲಾ 25 ಮಕ್ಕಳಿಗೆ ಪೌಷ್ಟಿಕ ಅನ್ನದಾನ ಪ್ರಾರ್ಥನೆ",
     impactTag: "Hot Annadana Seva",
-    sponsorAmount: 100,
+    sponsorAmount: 101,
   },
   {
     type: "video",
@@ -43,7 +43,7 @@ const REEL_ITEMS: ReelCard[] = [
     title: "Hall Chess Tournament & Intellectual Strategy",
     kannada: "ಚದುರಂಗ ಮತ್ತು ಕ್ಯಾರಮ್ ಆಟದ ಸ್ಪರ್ಧೆ",
     impactTag: "Mind Sports & Chess",
-    sponsorAmount: 250,
+    sponsorAmount: 251,
   },
   {
     type: "image",
@@ -52,7 +52,7 @@ const REEL_ITEMS: ReelCard[] = [
     title: "Real Birthday Cake Cutting with Well-Wisher",
     kannada: "ದಾನಿಗಳ ಜೊತೆ ಹುಟ್ಟುಹಬ್ಬದ ಸಂಭ್ರಮ ಹಾಗೂ ಕೇಕ್ ಕತ್ತರಿಸುವಿಕೆ",
     impactTag: "Birthday Cake & Joy",
-    sponsorAmount: 3500,
+    sponsorAmount: 3501,
   },
   {
     type: "image",
@@ -61,7 +61,7 @@ const REEL_ITEMS: ReelCard[] = [
     title: "Traditional Festival Banana Leaf Feast (Bale Ele Oota)",
     kannada: "ಸಾಂಪ್ರದಾಯಿಕ ಬಾಳೆ ಎಲೆ ಹಬ್ಬದ ಊಟ",
     impactTag: "Traditional Feast",
-    sponsorAmount: 500,
+    sponsorAmount: 501,
   },
   {
     type: "image",
@@ -70,7 +70,7 @@ const REEL_ITEMS: ReelCard[] = [
     title: "Art & Drawing Competition Creations",
     kannada: "ಚಿತ್ರಕಲೆ ಸ್ಪರ್ಧೆ ಹಾಗೂ ಕಲಾ ಪ್ರದರ್ಶನ",
     impactTag: "Art & Drawing Kits",
-    sponsorAmount: 300,
+    sponsorAmount: 251,
   },
   {
     type: "image",
@@ -79,7 +79,7 @@ const REEL_ITEMS: ReelCard[] = [
     title: "International Yoga Day & Sukhasana Meditation",
     kannada: "ಅಂತರರಾಷ್ಟ್ರೀಯ ಯೋಗ ದಿನ ಹಾಗೂ ಧ್ಯಾನ",
     impactTag: "Yoga & Wellness",
-    sponsorAmount: 200,
+    sponsorAmount: 201,
   },
   {
     type: "image",
@@ -88,7 +88,7 @@ const REEL_ITEMS: ReelCard[] = [
     title: "Independence Day Flag Hoisting & Tricolour Rangoli",
     kannada: "ಸ್ವಾತಂತ್ರ್ಯ ದಿನಾಚರಣೆ ಹಾಗೂ ತ್ರಿವರ್ಣ ನಕಾಶೆ ರಂಗೋಲಿ",
     impactTag: "National Pride",
-    sponsorAmount: 1000,
+    sponsorAmount: 1001,
   },
   {
     type: "image",
@@ -97,7 +97,7 @@ const REEL_ITEMS: ReelCard[] = [
     title: "Diwali Deepotsava with Handheld Glowing Clay Lamps",
     kannada: "ದೀಪಾವಳಿ ದೀಪೋತ್ಸವ ಹಾಗೂ ಮಕ್ಕಳ ಸಂಭ್ರಮ",
     impactTag: "Festival of Lights",
-    sponsorAmount: 800,
+    sponsorAmount: 1001,
   },
   {
     type: "image",
@@ -106,16 +106,30 @@ const REEL_ITEMS: ReelCard[] = [
     title: "Academic & Competition Excellence Certificates",
     kannada: "ಪ್ರತಿಭಾ ಪ್ರಶಸ್ತಿ ಹಾಗೂ ಶೈಕ್ಷಣಿಕ ಪ್ರಮಾಣಪತ್ರಗಳು",
     impactTag: "Excellence Awards",
-    sponsorAmount: 600,
+    sponsorAmount: 501,
   },
 ];
 
 export function HorizontalMovingReel() {
   const { openBottomDonate } = useCart();
   const scrollerRef = useRef<HTMLDivElement>(null);
+  const [isPaused, setIsPaused] = useState(false);
+  const resumeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Duplicate items for a continuous seamless marquee loop
   const displayItems = [...REEL_ITEMS, ...REEL_ITEMS];
+
+  const handleTouchStart = () => {
+    if (resumeTimeoutRef.current) clearTimeout(resumeTimeoutRef.current);
+    setIsPaused(true);
+  };
+
+  const handleTouchEnd = () => {
+    if (resumeTimeoutRef.current) clearTimeout(resumeTimeoutRef.current);
+    resumeTimeoutRef.current = setTimeout(() => {
+      setIsPaused(false);
+    }, 2800);
+  };
 
   const handleScrollLeft = () => {
     if (scrollerRef.current) {
@@ -154,6 +168,16 @@ export function HorizontalMovingReel() {
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3">
+          {/* Pause / Play Toggle for Accessibility & Finger Control */}
+          <button
+            type="button"
+            onClick={() => setIsPaused((p) => !p)}
+            aria-label={isPaused ? "Play marquee motion" : "Pause marquee motion"}
+            className="flex items-center gap-1 rounded-full bg-white/10 px-2.5 py-1 text-[11px] font-bold text-white/90 hover:bg-white/20 transition cursor-pointer"
+          >
+            <span>{isPaused ? "▶ Play" : "⏸ Pause"}</span>
+          </button>
+
           {/* Desktop Left/Right Manual Scroll Buttons */}
           <div className="hidden md:flex items-center gap-1">
             <button
@@ -176,10 +200,10 @@ export function HorizontalMovingReel() {
 
           <button
             type="button"
-            onClick={() => openBottomDonate(4500, "food_one_day")}
+            onClick={() => openBottomDonate(2501, "annadana", "Full Day Feast for All 25 Boys (₹2,501)", "Festival / Celebration")}
             className="focus-ring tap-scale rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 hover:text-white border border-amber-400/40 px-3 py-1.5 text-xs font-extrabold tracking-wide cursor-pointer transition flex items-center gap-1.5 shadow-xs"
           >
-            <span>Sponsor a Day (₹4,500)</span>
+            <span>Feast 25 Boys (₹2,501)</span>
             <span>→</span>
           </button>
         </div>
@@ -188,10 +212,15 @@ export function HorizontalMovingReel() {
       {/* Moving Marquee Container */}
       <div
         ref={scrollerRef}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
         className="relative w-full overflow-x-auto no-scrollbar scrollbar-none"
         aria-label="Horizontal moving reel of photos and videos of Janaseva boys"
       >
-        <div className="animate-marquee flex gap-4 pl-4 hover:[animation-play-state:paused] focus-within:[animation-play-state:paused]">
+        <div
+          style={{ animationPlayState: isPaused ? "paused" : "running" }}
+          className="animate-marquee flex gap-4 pl-4 hover:[animation-play-state:paused] focus-within:[animation-play-state:paused]"
+        >
           {displayItems.map((item, idx) => (
             <div
               key={`${item.time}-${idx}`}

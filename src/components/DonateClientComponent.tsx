@@ -619,15 +619,26 @@ export function DonateClientComponent() {
             )}
           </div>
 
-          {/* Real-Time Indian Rupee in Words Reassurance */}
-          {amountWords && (
-            <div className="mt-2.5 px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs font-bold text-teal-950 flex items-center gap-2">
-              <span className="text-amber-600">📜</span>
-              <span>
-                Amount in Words: <strong className="text-teal-950">{amountWords}</strong>
+          {/* Real-Time Indian Rupee in Words & 80G Tax Calculation */}
+          <div className="mt-2.5 space-y-2">
+            {amountWords && (
+              <div className="px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs font-bold text-teal-950 flex items-center gap-2">
+                <span className="text-amber-600">📜</span>
+                <span>
+                  Amount in Words: <strong className="text-teal-950">{amountWords}</strong>
+                </span>
+              </div>
+            )}
+            <div className="rounded-xl bg-emerald-50 px-3 py-2 border border-emerald-200/60 flex items-center justify-between text-xs text-emerald-950">
+              <span className="flex items-center gap-1 font-semibold">
+                <span>🛡️</span>
+                <span>80G Tax Saved: <strong>~{formatINR(Math.round(finalAmount * 0.15))}</strong></span>
+              </span>
+              <span className="text-[11px] text-emerald-800 font-bold">
+                Effective Cost: {formatINR(Math.max(0, finalAmount - Math.round(finalAmount * 0.15)))}
               </span>
             </div>
-          )}
+          </div>
         </div>
 
         {/* ── 3. Donor Details ── */}
@@ -806,6 +817,15 @@ export function DonateClientComponent() {
               </div>
             )}
           </div>
+        </div>
+
+        {/* Instant UPI & Payment Options Trust Strip */}
+        <div className="mb-3 flex flex-wrap items-center justify-center gap-1.5 text-[11px] font-bold text-teal-950/70">
+          <span>⚡ Instant 1-Tap Payment via</span>
+          <span className="rounded bg-teal-900/10 px-1.5 py-0.5 text-[10px] font-black text-teal-900">Google Pay</span>
+          <span className="rounded bg-teal-900/10 px-1.5 py-0.5 text-[10px] font-black text-teal-900">PhonePe</span>
+          <span className="rounded bg-teal-900/10 px-1.5 py-0.5 text-[10px] font-black text-teal-900">Paytm</span>
+          <span className="rounded bg-teal-900/10 px-1.5 py-0.5 text-[10px] font-black text-teal-900">UPI / Cards</span>
         </div>
 
         {/* ── 4. Pay / Donate CTA Button ── */}

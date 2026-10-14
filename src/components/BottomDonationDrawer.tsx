@@ -68,13 +68,19 @@ export function BottomDonationDrawer() {
 
   const [prevInitialAmount, setPrevInitialAmount] = useState(donateInitialAmount);
   const [prevInitialTierId, setPrevInitialTierId] = useState(donateInitialTierId);
+  const [prevIsOpen, setPrevIsOpen] = useState(isBottomDonateOpen);
 
-  // Sync initial amount if passed
-  if (donateInitialAmount !== prevInitialAmount || donateInitialTierId !== prevInitialTierId) {
+  // Sync initial amount if passed or if drawer is opened fresh
+  if (
+    isBottomDonateOpen !== prevIsOpen ||
+    donateInitialAmount !== prevInitialAmount ||
+    donateInitialTierId !== prevInitialTierId
+  ) {
+    setPrevIsOpen(isBottomDonateOpen);
     setPrevInitialAmount(donateInitialAmount);
     setPrevInitialTierId(donateInitialTierId);
 
-    if (donateInitialAmount && donateInitialAmount > 0) {
+    if (isBottomDonateOpen && donateInitialAmount && donateInitialAmount > 0) {
       setSelectedAmount(donateInitialAmount);
       setCustomInput(String(donateInitialAmount));
     }
@@ -403,10 +409,42 @@ export function BottomDonationDrawer() {
                     </button>
                   )}
                 </div>
+
+                {/* Quick Increment Chips */}
+                <div className="flex flex-wrap items-center gap-1.5 mt-2.5">
+                  <span className="text-[10px] font-bold text-teal-950/60 uppercase">Quick Add:</span>
+                  {[100, 500, 1000, 2500].map((inc) => (
+                    <button
+                      key={inc}
+                      type="button"
+                      onClick={() => {
+                        const next = currentAmount + inc;
+                        setSelectedAmount(next);
+                        setCustomInput(String(next));
+                      }}
+                      className="rounded-lg bg-sand/50 hover:bg-teal-950 hover:text-white border border-teal-900/15 px-2.5 py-1 text-xs font-bold text-teal-950 transition cursor-pointer"
+                    >
+                      +{formatINR(inc)}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Amount in words & 80G Tax Benefit */}
                 {currentAmount > 0 && (
-                  <p className="mt-2 text-xs font-semibold text-teal-800 italic">
-                    Amount in words: <span className="font-bold">{amountInWords}</span>
-                  </p>
+                  <div className="mt-3 space-y-1.5">
+                    <p className="text-xs font-semibold text-teal-800 italic">
+                      Amount in words: <span className="font-bold">{amountInWords}</span>
+                    </p>
+                    <div className="rounded-xl bg-emerald-50 p-2.5 border border-emerald-200/60 flex items-center justify-between text-[11px] text-emerald-950">
+                      <span className="flex items-center gap-1 font-semibold">
+                        <span>📜</span>
+                        <span>80G Tax Saving: <strong>~{formatINR(Math.round(currentAmount * 0.15))}</strong></span>
+                      </span>
+                      <span className="text-[10px] text-emerald-800 font-bold">
+                        Effective Net Cost: {formatINR(Math.max(0, currentAmount - Math.round(currentAmount * 0.15)))}
+                      </span>
+                    </div>
+                  </div>
                 )}
               </div>
             </div>

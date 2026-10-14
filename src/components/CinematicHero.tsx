@@ -1,8 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import type { SiteContentMap } from "@/lib/site-content";
 import { track } from "@/lib/track";
+import { useCart } from "./CartProvider";
+import { formatINR } from "@/lib/site";
+import { numberToIndianWords } from "@/lib/number-words";
 
 export interface ShagunTier {
   amount: number;
@@ -13,85 +17,50 @@ export interface ShagunTier {
   isPopular?: boolean;
 }
 
-export const DIVINE_SHAGUN_TIERS: ShagunTier[] = [
+const HERO_SHAGUN_TIERS = [
   {
-    amount: 11,
-    name: "Ekadashi Shagun",
-    kannada: "ಶುಭ ಹಾಲು ಸೇವೆ",
-    meaning: "1 Glass Pure Morning Cow Milk for 1 Boy",
-    icon: "🥛",
+    amt: 101,
+    label: "1 Punya Meal",
+    sub: "Hot meal for 1 boy",
+    impact: "1 steaming hot lunch (rice, dal, sabzi & fresh curd) for 1 boy",
   },
   {
-    amount: 21,
-    name: "Dharma Jyothi",
-    kannada: "ಹಣ್ಣು ಪೋಷಣೆ",
-    meaning: "Fresh Banana & Morning Fruit Nutrition",
-    icon: "🍌",
+    amt: 501,
+    label: "3 Days Care",
+    sub: "Nutrition & doctor visit",
+    impact: "3 full days of meals and pediatric healthcare for 1 boy",
   },
   {
-    amount: 51,
-    name: "Pancha Bhoota",
-    kannada: "ಬೆಳಗಿನ ಬಿಸಿ ತಿಂಡಿ",
-    meaning: "Steaming Hot Idlis & Sambar Breakfast for 1 Boy",
-    icon: "🍲",
+    amt: 1001,
+    label: "Week Ration",
+    sub: "Vegetables & rice sack",
+    impact: "1 week fresh farm vegetables, toor dal & Sona Masoori rice for ashrama kitchen",
   },
   {
-    amount: 101,
-    name: "Punya Annadana",
-    kannada: "ಮಧ್ಯಾಹ್ನದ ಅನ್ನದಾನ",
-    meaning: "Full Hot Lunch (Rice, Dal, Sabzi & Curd) for 1 Boy",
-    icon: "🍛",
-    isPopular: true,
+    amt: 2501,
+    label: "Feast 25 Boys ★",
+    sub: "All 25 boys feast",
+    badge: "Most Chosen",
+    impact: "Full hot dining hall feast with sweet payasam for all 25 resident boys",
   },
   {
-    amount: 251,
-    name: "Saraswati Vidya",
-    kannada: "ವಿದ್ಯಾ ಕಿಟ್ ಸೇವೆ",
-    meaning: "School Notebooks, Geometry & Stationery Kit",
-    icon: "📚",
-  },
-  {
-    amount: 501,
-    name: "Arogya Raksha",
-    kannada: "ಆರೋಗ್ಯ ರಕ್ಷಣೆ",
-    meaning: "Pediatric Health Checkup, Vitamins & Tonic",
-    icon: "🩺",
-  },
-  {
-    amount: 1001,
-    name: "Anna Daata",
-    kannada: "ವಾರದ ರೇಷನ್ ಸೇವೆ",
-    meaning: "1-Week Kitchen Vegetables & Sona Masoori Rice",
-    icon: "🍚",
-  },
-  {
-    amount: 2101,
-    name: "Maha Prasada",
-    kannada: "ಸಿಹಿ ಪಾಯಸದ ಹಬ್ಬ",
-    meaning: "Festival Sweet Payasam Feast for All 25 Boys",
-    icon: "🎉",
-  },
-  {
-    amount: 2501,
-    name: "Sampoorna Bhojana",
-    kannada: "ಎಲ್ಲಾ 25 ಮಕ್ಕಳಿಗೆ ಊಟ",
-    meaning: "1-Time Full Dining Hall Feast for All 25 Boys",
-    icon: "🥘",
-  },
-  {
-    amount: 5001,
-    name: "Sarva Seva",
-    kannada: "ಸಂಪೂರ್ಣ ದಿನದ ಅನ್ನದಾನ",
-    meaning: "Full Day All 3 Meals + Snacks for All 25 Boys",
-    icon: "👑",
+    amt: 5001,
+    label: "Vidya & Kits",
+    sub: "School sets for 5 boys",
+    impact: "Complete school uniform sets, notebooks, geometry kits & evening tuition for 5 boys",
   },
 ];
 
 export function CinematicHero({ content }: { content?: Partial<SiteContentMap> }) {
+  const { openBottomDonate } = useCart();
   const videoRef = useRef<HTMLVideoElement>(null);
   const [videoReady, setVideoReady] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
   const [fitMode, setFitMode] = useState<"cover" | "contain">("cover");
+
+  // Shagun Giving Deck State (Anchored at ₹2,501 for maximum psychological impact & average order value)
+  const [selectedAmt, setSelectedAmt] = useState<number>(2501);
+  const [customAmt, setCustomAmt] = useState<string>("");
 
   const posterSrc = content?.heroPosterUrl || "/media/poster-desktop.jpg";
   const videoSrc = content?.heroVideoUrl || "/media/video-chant-prayer.mp4";
@@ -123,14 +92,32 @@ export function CinematicHero({ content }: { content?: Partial<SiteContentMap> }
     setIsMuted(nextMuted);
   };
 
+  const effectiveAmount = customAmt && Number(customAmt) > 0 ? Number(customAmt) : selectedAmt;
+  const activeTier = HERO_SHAGUN_TIERS.find((t) => t.amt === effectiveAmount);
+  const taxSavings = Math.round(effectiveAmount * 0.15); // Approximate 50% 80G deduction value for 30% tax bracket
+  const amountWords = numberToIndianWords(effectiveAmount);
+
+  const handleHeroDonate = () => {
+    track("hero_quick_donate_click", {
+      amount: effectiveAmount,
+      tier: activeTier?.label || "Custom",
+    });
+    openBottomDonate(
+      effectiveAmount,
+      "annadana",
+      activeTier ? `${activeTier.label} (${formatINR(effectiveAmount)}) for 25 Boys` : `Seva (${formatINR(effectiveAmount)}) for 25 Boys`,
+      "Occasion Giving"
+    );
+  };
+
   return (
     <section
       aria-label="Janaseva Ashrama Introduction and Video"
       className="relative w-full max-w-full overflow-hidden bg-teal-950 flex flex-col text-white"
     >
       {/* ── 1. FULL-WIDTH 100% UNOBSTRUCTED CINEMATIC VIDEO VIEWPORT ── */}
-      <div className="relative w-full aspect-[16/10] sm:aspect-[16/9] md:h-[62svh] lg:h-[70svh] min-h-[260px] max-h-[760px] overflow-hidden bg-black select-none flex items-center justify-center">
-        {/* Background poster (LCP-critical, authentic Ashrama 25 boys in orange prayer) */}
+      <div className="relative w-full aspect-[16/10] sm:aspect-[16/9] md:h-[58svh] lg:h-[65svh] min-h-[250px] max-h-[720px] overflow-hidden bg-black select-none flex items-center justify-center">
+        {/* Background poster */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           key={posterSrc}
@@ -142,7 +129,7 @@ export function CinematicHero({ content }: { content?: Partial<SiteContentMap> }
           }`}
         />
 
-        {/* Autoplay edge-to-edge looping video of real Janaseva Ashrama prayer hall */}
+        {/* Autoplay edge-to-edge looping video */}
         <video
           key={videoSrc}
           ref={videoRef}
@@ -166,7 +153,7 @@ export function CinematicHero({ content }: { content?: Partial<SiteContentMap> }
           <source src="/media/video-chant-prayer.mp4" type="video/mp4" />
         </video>
 
-        {/* Subtle, non-intrusive vignette for contrast */}
+        {/* Vignette Gradients */}
         <div className="absolute inset-x-0 top-0 h-20 sm:h-24 bg-gradient-to-b from-black/70 via-black/30 to-transparent pointer-events-none" />
         <div className="absolute inset-x-0 bottom-0 h-20 sm:h-24 bg-gradient-to-t from-teal-950 via-teal-950/60 to-transparent pointer-events-none" />
 
@@ -212,7 +199,7 @@ export function CinematicHero({ content }: { content?: Partial<SiteContentMap> }
           </div>
         </div>
 
-        {/* Minimal Bottom Location Tag (Does NOT cover the video!) */}
+        {/* Minimal Bottom Location Tag */}
         <div className="absolute inset-x-0 bottom-2.5 sm:bottom-3 z-20 mx-auto max-w-7xl px-3 sm:px-6 lg:px-8 flex items-center justify-between text-[10px] sm:text-xs text-white/80 pointer-events-none">
           <span className="rounded-lg bg-black/60 px-2.5 py-1 backdrop-blur border border-white/10 font-medium truncate max-w-[70%] sm:max-w-none">
             📍 Turahalli, Bangalore · Chanting, Prayer &amp; Pure Annadana
@@ -223,8 +210,8 @@ export function CinematicHero({ content }: { content?: Partial<SiteContentMap> }
         </div>
       </div>
 
-      {/* ── 2. DYNAMIC MISSION HEADLINE & AWARENESS STRIP ── */}
-      <div className="w-full bg-gradient-to-r from-teal-950 via-teal-900 to-teal-950 border-b border-teal-800/60 py-3.5 px-4 text-center">
+      {/* ── 2. DYNAMIC MISSION HEADLINE STRIP ── */}
+      <div className="w-full bg-gradient-to-r from-teal-950 via-teal-900 to-teal-950 border-b border-teal-800/60 py-3 sm:py-3.5 px-4 text-center">
         <div className="mx-auto max-w-5xl">
           <h1 className="font-display text-base sm:text-lg md:text-xl font-black tracking-tight text-white leading-snug">
             {content?.heroHeadline || "Pure Love, Wholesome Food & Education for 25 Boys"}
@@ -234,6 +221,185 @@ export function CinematicHero({ content }: { content?: Partial<SiteContentMap> }
           </p>
         </div>
       </div>
+
+      {/* ── 3. ECOMMERCE DONATION SALES DECK: APPLIED MATH & NUMBER PSYCHOLOGY ── */}
+      <div className="w-full bg-gradient-to-b from-teal-900 via-teal-950 to-teal-950 py-4 sm:py-6 px-3 sm:px-6 lg:px-8 border-b border-white/10">
+        <div className="mx-auto max-w-4xl rounded-3xl bg-white/10 backdrop-blur-xl p-4 sm:p-6 border border-white/20 shadow-2xl">
+          {/* Header Row: Live Needs Urgency & Arithmetic */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-white/15 pb-3">
+            <div className="flex items-center gap-2">
+              <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-amber-500/20 text-amber-400 text-sm">
+                🍲
+              </span>
+              <div>
+                <span className="text-xs font-black uppercase tracking-wider text-amber-300">
+                  Today&apos;s Satvik Annadana Need
+                </span>
+                <p className="text-[11px] text-teal-100/80">
+                  75 Meals Required Today (25 Boys × 3 Meals) · <strong>69 Sponsored</strong>
+                </p>
+              </div>
+            </div>
+
+            <div className="inline-flex items-center gap-1.5 rounded-full bg-rose-500/20 border border-rose-400/40 px-3 py-1 text-[11px] font-black text-rose-300 self-start sm:self-auto">
+              <span className="h-2 w-2 rounded-full bg-rose-400 animate-ping" />
+              <span>Only 6 Evening Meals Remaining Tonight!</span>
+            </div>
+          </div>
+
+          {/* Interactive Shagun Amount Pills (Finger-First, 44px+ Touch Targets) */}
+          <div className="mt-4">
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-xs font-extrabold uppercase tracking-wider text-amber-200">
+                Choose Auspicious Shagun Blessing:
+              </label>
+              <span className="text-[11px] font-semibold text-emerald-300">
+                100% Direct Allocation to 25 Boys
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-2.5">
+              {HERO_SHAGUN_TIERS.map((tier) => {
+                const isSelected = effectiveAmount === tier.amt && !customAmt;
+                return (
+                  <button
+                    key={tier.amt}
+                    type="button"
+                    onClick={() => {
+                      setSelectedAmt(tier.amt);
+                      setCustomAmt("");
+                    }}
+                    className={`relative p-2.5 sm:p-3 rounded-2xl text-left transition-all border cursor-pointer tap-scale flex flex-col justify-between ${
+                      isSelected
+                        ? "bg-gradient-to-b from-amber-500 to-orange-600 text-white border-amber-300 shadow-lg shadow-orange-500/30 ring-2 ring-amber-300 scale-[1.02]"
+                        : "bg-teal-950/60 hover:bg-teal-900/80 text-white border-white/15"
+                    }`}
+                  >
+                    {tier.badge && (
+                      <span className="absolute -top-2 right-2 rounded-full bg-amber-300 px-2 py-0.2 text-[9px] font-black uppercase text-teal-950 shadow">
+                        {tier.badge}
+                      </span>
+                    )}
+                    <div>
+                      <span className="font-display text-base sm:text-lg font-black block">
+                        {formatINR(tier.amt)}
+                      </span>
+                      <span className="text-xs font-bold block leading-tight mt-0.5">
+                        {tier.label}
+                      </span>
+                    </div>
+                    <span className={`text-[10px] mt-1 line-clamp-1 ${isSelected ? "text-amber-100" : "text-white/60"}`}>
+                      {tier.sub}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Custom Amount Field */}
+            <div className="mt-3 flex flex-col sm:flex-row sm:items-center gap-2">
+              <div className="relative flex-1">
+                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-bold text-white/60">₹</span>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="Or enter any custom amount (min ₹10)"
+                  value={customAmt}
+                  onChange={(e) => {
+                    const cleaned = e.target.value.replace(/\D/g, "");
+                    setCustomAmt(cleaned);
+                  }}
+                  className="w-full rounded-xl border border-white/20 bg-teal-950/70 py-2.5 pl-8 pr-3 text-base sm:text-sm font-bold text-white outline-none focus:border-amber-400 placeholder:text-white/40"
+                />
+              </div>
+
+              {/* Quick increment chips */}
+              <div className="flex items-center gap-1.5 shrink-0 overflow-x-auto no-scrollbar py-0.5">
+                {[100, 500, 1000, 2500].map((inc) => (
+                  <button
+                    key={inc}
+                    type="button"
+                    onClick={() => {
+                      const cur = customAmt ? Number(customAmt) || 0 : selectedAmt;
+                      setCustomAmt(String(cur + inc));
+                    }}
+                    className="rounded-lg bg-white/10 hover:bg-white/20 border border-white/15 px-2.5 py-1.5 text-xs font-bold text-amber-200 transition cursor-pointer"
+                  >
+                    +{formatINR(inc)}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Applied Math & Emotional Reality Box */}
+          <div className="mt-3.5 rounded-2xl bg-teal-950/80 p-3 sm:p-4 border border-amber-400/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="space-y-1">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-amber-300">
+                <span>🌸</span>
+                <span>Direct Impact for 25 Resident Boys:</span>
+              </div>
+              <p className="text-xs sm:text-sm text-white font-medium leading-relaxed">
+                {activeTier
+                  ? activeTier.impact
+                  : `Your contribution of ${formatINR(effectiveAmount)} translates directly into essential kitchen groceries, nutrition, and child care.`}
+              </p>
+              {amountWords && (
+                <p className="text-[11px] text-amber-200/80 italic font-mono">
+                  Rupees: {amountWords}
+                </p>
+              )}
+            </div>
+
+            {/* 80G Tax Savings Arithmetic */}
+            <div className="shrink-0 rounded-xl bg-emerald-950/70 border border-emerald-400/30 p-2.5 text-center sm:text-right">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-300 block">
+                Form 10AC Section 80G
+              </span>
+              <span className="font-display text-sm sm:text-base font-extrabold text-white block mt-0.5">
+                Save ~{formatINR(taxSavings)} in Tax
+              </span>
+              <span className="text-[10px] text-emerald-200/70 block">
+                Effective cost: only {formatINR(Math.max(0, effectiveAmount - taxSavings))}
+              </span>
+            </div>
+          </div>
+
+          {/* Finger-First Primary Donation CTA & Secondary Birthday Link */}
+          <div className="mt-4 flex flex-col sm:flex-row items-center gap-3">
+            <button
+              type="button"
+              onClick={handleHeroDonate}
+              className="focus-ring tap-scale w-full sm:flex-1 py-3.5 sm:py-4 px-6 rounded-2xl bg-gradient-to-r from-amber-400 via-orange-500 to-amber-500 hover:from-amber-500 hover:to-orange-600 text-teal-950 font-black text-xs sm:text-sm uppercase tracking-wider shadow-xl shadow-orange-500/30 transition active:scale-95 cursor-pointer flex items-center justify-center gap-2 animate-heartbeat"
+            >
+              <span>FEED 25 BOYS NOW · {formatINR(effectiveAmount)}</span>
+              <span>💝 →</span>
+            </button>
+
+            <Link
+              href="/celebrate-birthday"
+              className="focus-ring tap-scale w-full sm:w-auto py-3.5 sm:py-4 px-5 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/20 text-white font-extrabold text-xs sm:text-sm text-center transition flex items-center justify-center gap-2"
+            >
+              <span>Celebrate Birthday With Boys</span>
+              <span>🎂</span>
+            </Link>
+          </div>
+
+          {/* Trust Guarantees Footer */}
+          <div className="mt-3.5 pt-3 border-t border-white/10 grid grid-cols-3 gap-2 text-center text-[10px] sm:text-xs text-white/80 font-medium">
+            <span className="flex items-center justify-center gap-1">
+              <span className="text-emerald-400">✓</span> Instant WhatsApp Receipt
+            </span>
+            <span className="flex items-center justify-center gap-1">
+              <span className="text-emerald-400">✓</span> Govt Reg: KA18CH0242
+            </span>
+            <span className="flex items-center justify-center gap-1">
+              <span className="text-emerald-400">✓</span> 100% Tax Free 80G
+            </span>
+          </div>
+        </div>
+      </div>
     </section>
   );
 }
+
