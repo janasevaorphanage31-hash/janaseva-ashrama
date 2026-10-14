@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { useCart } from "./CartProvider";
 import { BANK_DETAILS, SITE, formatINR } from "@/lib/site";
 import { track } from "@/lib/track";
-import { trackDonationSuccess } from "@/lib/tracking";
+import { trackDonationSuccess, trackInitiateCheckout } from "@/lib/tracking";
 import {
   validateName,
   validateEmail,
@@ -624,6 +624,12 @@ export function CheckoutClient() {
 
       setBusy(true);
       track("subscription_checkout_submit", { total: cart.total });
+      trackInitiateCheckout({
+        content_name: "Monthly Ashrama Care Seva",
+        value: cart.total,
+        currency: "INR",
+        num_items: 1,
+      });
 
       const monthlyKey = "sub_" + crypto.randomUUID() + "-" + Date.now().toString(36);
 
@@ -749,6 +755,12 @@ export function CheckoutClient() {
 
     setBusy(true);
     track("checkout_submit", { total: cart.total });
+    trackInitiateCheckout({
+      content_name: cart.campaign?.title || "Ashrama Basket Contribution",
+      value: cart.total,
+      currency: "INR",
+      num_items: cart.lines.length || 1,
+    });
 
     const items = cart.lines.map((l) => ({ slug: l.item.slug, qty: l.qty }));
     const missionSlug = search.get("mission") ?? "";

@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useRef, Suspense } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
 import Script from "next/script";
 
 export interface TrackingScriptsProps {
@@ -7,6 +9,51 @@ export interface TrackingScriptsProps {
   googleAdsId?: string;
   googleAdsConversionLabel?: string;
   googleTagManagerId?: string;
+}
+
+/**
+ * Inner component to track SPA route transitions across Next.js client-side navigation.
+ * Wrapped in Suspense to satisfy static prerender constraints.
+ */
+function SpaRouteTracker() {
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const isFirstRender = useRef(true);
+
+  useEffect(() => {
+    // Avoid double firing on initial page load (handled by base script)
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+
+    // 1. Meta Pixel SPA route tracking
+    if (typeof window !== "undefined" && typeof window.fbq === "function") {
+      try {
+        window.fbq("track", "PageView");
+      } catch (err) {
+        if (process.env.NODE_ENV === "development") {
+          console.warn("[Tracking] SPA fbq PageView error:", err);
+        }
+      }
+    }
+
+    // 2. Google Tag / GA4 SPA route tracking
+    if (typeof window !== "undefined" && typeof window.gtag === "function") {
+      try {
+        window.gtag("event", "page_view", {
+          page_path: pathname,
+          page_location: window.location.href,
+        });
+      } catch (err) {
+        if (process.env.NODE_ENV === "development") {
+          console.warn("[Tracking] SPA gtag page_view error:", err);
+        }
+      }
+    }
+  }, [pathname, searchParams]);
+
+  return null;
 }
 
 export function TrackingScripts({
@@ -28,13 +75,25 @@ export function TrackingScripts({
 
   return (
     <>
-      {/* ── Global Defensive Shims: Prevent ReferenceError if scripts are blocked ── */}
+      {/* ── Client-side SPA Route Navigation Tracker ── */}
+      <Suspense fallback={null}>
+        <SpaRouteTracker />
+      </Suspense>
+
+      {/* ── Global Defensive Shims & Google Consent Mode v2 ── */}
       <Script id="tracking-defensive-shims" strategy="afterInteractive">
         {`
           window.dataLayer = window.dataLayer || [];
           if (typeof window.gtag !== 'function') {
             window.gtag = function() { window.dataLayer.push(arguments); };
           }
+          // Google Consent Mode v2 Default Settings
+          window.gtag('consent', 'default', {
+            'ad_storage': 'granted',
+            'ad_user_data': 'granted',
+            'ad_personalization': 'granted',
+            'analytics_storage': 'granted'
+          });
           if (typeof window.fbq !== 'function') {
             var n = function() {
               if (n.callMethod) {

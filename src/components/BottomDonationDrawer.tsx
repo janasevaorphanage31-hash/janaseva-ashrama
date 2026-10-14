@@ -7,6 +7,7 @@ import { formatINR, BANK_DETAILS, SITE } from "@/lib/site";
 import { SUPPORTER_CATEGORIES } from "@/lib/supporter-form";
 import { numberToIndianWords } from "@/lib/number-words";
 import { track } from "@/lib/track";
+import { trackInitiateCheckout } from "@/lib/tracking";
 
 const QUICK_AMOUNTS = [
   { amount: 101, label: "₹101 Punya Meal", subtitle: "Full hot lunch for 1 boy", isPopular: false },
@@ -132,6 +133,12 @@ export function BottomDonationDrawer() {
     setCustom(currentAmount);
     closeBottomDonate();
     track("bottom_donate_proceed_online", { amount: currentAmount, frequency });
+    trackInitiateCheckout({
+      value: currentAmount,
+      currency: "INR",
+      content_name: "Bottom Donation Drawer",
+      num_items: 1,
+    });
     const occasionQuery = donateInitialOccasion ? `&occasion=${encodeURIComponent(donateInitialOccasion)}` : "";
     const purposeQuery = donateInitialPurpose ? `&purpose=${encodeURIComponent(donateInitialPurpose)}` : "";
     router.push(`/checkout?amount=${currentAmount}${frequency === "monthly" ? "&freq=monthly" : ""}${occasionQuery}${purposeQuery}`);

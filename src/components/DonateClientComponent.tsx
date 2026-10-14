@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { formatINR, SITE, FORM_10AC } from "@/lib/site";
 import { LogoMark } from "@/components/Logo";
-import { trackDonationSuccess } from "@/lib/tracking";
+import { trackDonationSuccess, trackViewContent, trackInitiateCheckout } from "@/lib/tracking";
 import { numberToIndianWords } from "@/lib/number-words";
 import {
   validateName,
@@ -160,6 +160,16 @@ export function DonateClientComponent() {
   const finalAmount = customAmount ? parseFloat(customAmount) || 0 : amount;
   const amountWords = finalAmount >= 10 ? numberToIndianWords(finalAmount) : "";
 
+  // Track ViewContent on mount for campaign & donation landing
+  useEffect(() => {
+    trackViewContent({
+      content_name: "Janaseva Ashrama Donation Portal",
+      content_category: "Child Welfare Donation",
+      value: finalAmount || 1000,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Clear specific error field as the user types
   const clearFieldError = (field: keyof typeof formErrors) => {
     if (formErrors[field] || formErrors.general) {
@@ -257,6 +267,14 @@ export function DonateClientComponent() {
       if (!res.ok || !data.success) {
         throw new Error(data.error || "Failed to initialize secure checkout. Please try again.");
       }
+
+      // Funnel Step 2: Track InitiateCheckout
+      trackInitiateCheckout({
+        content_name: selectedOccasionLabel,
+        value: finalAmount,
+        currency: "INR",
+        num_items: 1,
+      });
 
       // Load Razorpay checkout script if missing
       if (typeof window !== "undefined" && !(window as any).Razorpay) {

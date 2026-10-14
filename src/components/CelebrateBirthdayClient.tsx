@@ -6,6 +6,7 @@ import { useCart } from "./CartProvider";
 import { formatINR, SITE } from "@/lib/site";
 import type { WishVideoItem, CelebrationPackageItem, SiteContentMap } from "@/lib/site-content";
 import { track } from "@/lib/track";
+import { trackViewContent, trackLead } from "@/lib/tracking";
 import {
   validateName,
   validateEmail,
@@ -194,6 +195,14 @@ export function CelebrateBirthdayClient({
   const [communityCelebs, setCommunityCelebs] = useState<any[]>([]);
 
   useEffect(() => {
+    trackViewContent({
+      content_name: "Celebrate Birthday with 25 Children",
+      content_category: "Birthday Feasts & Blessings",
+      value: 3500,
+    });
+  }, []);
+
+  useEffect(() => {
     fetch("/api/celebrations")
       .then((r) => r.json())
       .then((d) => {
@@ -312,6 +321,11 @@ export function CelebrateBirthdayClient({
 
       setBookingSuccess(data.booking);
       track("birthday_booking_success", { reference: data.booking.reference });
+      trackLead({
+        content_name: `${occasion} - ${activePackage.name}`,
+        lead_type: "Birthday Celebration Reservation",
+        value: activePackage.price,
+      });
     } catch (err: any) {
       setBookingError(err.message || "Failed to submit reservation.");
     } finally {

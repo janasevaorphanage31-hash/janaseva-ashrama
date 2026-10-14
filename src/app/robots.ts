@@ -10,35 +10,61 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
     host = h.get("x-forwarded-host") || h.get("host") || host;
   } catch {}
   const baseUrl = `https://${host}`;
+  const protectedRoutes = [
+    "/admin",
+    "/admin/*",
+    "/portal",
+    "/portal/*",
+    "/api/*",
+    "/checkout",
+    "/receipt/*",
+    "/certificate/*",
+    "/gift/*",
+    "/my-impact",
+    "/thank-you",
+  ];
+
   return {
     rules: [
       {
         userAgent: "*",
         allow: "/",
-        disallow: [
-          "/admin",
-          "/admin/*",
-          "/api/*",
-          "/checkout",
-          "/receipt/*",
-          "/certificate/*",
-          "/gift/*",
-          "/my-impact",
-        ],
+        disallow: protectedRoutes,
       },
       {
         userAgent: "Googlebot",
         allow: "/",
-        disallow: [
-          "/admin",
-          "/admin/*",
-          "/api/*",
-          "/checkout",
-          "/receipt/*",
-          "/certificate/*",
-          "/gift/*",
-          "/my-impact",
-        ],
+        disallow: protectedRoutes,
+      },
+      {
+        userAgent: "Bingbot",
+        allow: "/",
+        disallow: protectedRoutes,
+      },
+      {
+        userAgent: "OAI-SearchBot",
+        allow: "/",
+        disallow: protectedRoutes,
+      },
+      {
+        userAgent: "GPTBot",
+        allow: "/",
+        disallow: protectedRoutes,
+      },
+      {
+        userAgent: "PerplexityBot",
+        allow: "/",
+        disallow: protectedRoutes,
+      },
+      {
+        userAgent: "ClaudeBot",
+        allow: "/",
+        disallow: protectedRoutes,
+      },
+      {
+        userAgent: "Applebot-Extended",
+        allow: "/",
+        disallow: protectedRoutes,
       },
     ],
     sitemap: `${baseUrl}/sitemap.xml`,
