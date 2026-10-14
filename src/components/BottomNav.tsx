@@ -68,6 +68,7 @@ const LEGAL_LINKS = [
 interface NavItem {
   href: string;
   label: string;
+  sectionKey: "home" | "celebrate" | "volunteer";
   icon: React.ReactNode;
 }
 
@@ -140,20 +141,110 @@ export function BottomNav() {
     };
   }, [open]);
 
+  const [activeSection, setActiveSection] = useState<"home" | "celebrate" | "volunteer">("home");
+
+  // Track active section on the homepage based on user scroll position
+  useEffect(() => {
+    if (path !== "/") return;
+
+    let ticking = false;
+    const updateActiveSection = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          const scrollPos = window.scrollY + 280;
+          const celEl = document.getElementById("celebrate");
+          const volEl = document.getElementById("volunteer") || document.getElementById("community");
+
+          if (volEl && volEl.offsetTop <= scrollPos) {
+            setActiveSection("volunteer");
+          } else if (celEl && celEl.offsetTop <= scrollPos) {
+            setActiveSection("celebrate");
+          } else {
+            setActiveSection("home");
+          }
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+
+    window.addEventListener("scroll", updateActiveSection, { passive: true });
+    updateActiveSection();
+    window.addEventListener("hashchange", updateActiveSection);
+
+    return () => {
+      window.removeEventListener("scroll", updateActiveSection);
+      window.removeEventListener("hashchange", updateActiveSection);
+    };
+  }, [path]);
+
   if (path?.startsWith("/admin") || path === "/checkout") return null;
 
   const active = (href: string) =>
     href === "/" ? path === "/" : path.startsWith(href);
+
+  const isItemActive = (item: NavItem) => {
+    if (path === "/") {
+      return activeSection === item.sectionKey;
+    }
+    if (item.sectionKey === "celebrate") {
+      return path.startsWith("/celebrate");
+    }
+    if (item.sectionKey === "volunteer") {
+      return path.startsWith("/volunteer") || path.startsWith("/janaseva-crew");
+    }
+    if (item.sectionKey === "home") {
+      return path === "/";
+    }
+    return false;
+  };
+
+  const handleItemClick = (
+    e: React.MouseEvent<HTMLAnchorElement>,
+    item: NavItem
+  ) => {
+    if (path === "/") {
+      if (item.sectionKey === "home") {
+        e.preventDefault();
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        setActiveSection("home");
+        return;
+      }
+      if (item.sectionKey === "celebrate") {
+        const el = document.getElementById("celebrate");
+        if (el) {
+          e.preventDefault();
+          const yOffset = -100;
+          const y = el.getBoundingClientRect().top + window.pageYOffset + yOffset;
+          window.scrollTo({ top: y, behavior: "smooth" });
+          setActiveSection("celebrate");
+          return;
+        }
+      }
+      if (item.sectionKey === "volunteer") {
+        const el = document.getElementById("volunteer") || document.getElementById("community");
+        if (el) {
+          e.preventDefault();
+          const yOffset = -100;
+          const y = el.getBoundingClientRect().top + window.pageYOffset + yOffset;
+          window.scrollTo({ top: y, behavior: "smooth" });
+          setActiveSection("volunteer");
+          return;
+        }
+      }
+    }
+  };
+
   const moreActive = MORE_SECTIONS.some((sec) =>
     sec.items.some((m) => path.startsWith(m.href.split("#")[0]))
   );
 
   const leftNavItems: NavItem[] = [
-    { href: "/", label: "HOME", icon: <HomeIcon /> },
-    { href: "/#celebrate", label: "BIRTHDAYS", icon: <BirthdayNavIcon /> },
+    { href: "/", label: "HOME", sectionKey: "home", icon: <HomeIcon /> },
+    { href: "/#celebrate", label: "BIRTHDAYS", sectionKey: "celebrate", icon: <BirthdayNavIcon /> },
   ];
   const rightNavItems: NavItem[] = [
-    { href: "/#volunteer", label: "VOLUNTEER", icon: <VolunteerIcon /> },
+    { href: "/#volunteer", label: "VOLUNTEER", sectionKey: "volunteer", icon: <VolunteerIcon /> },
   ];
 
   return (
@@ -301,14 +392,12 @@ export function BottomNav() {
 
           {/* LEFT NAV ITEMS (HOME, BIRTHDAYS) */}
           {leftNavItems.map((item) => {
-            const isActive =
-              item.href === "/"
-                ? path === "/"
-                : active(item.href);
+            const isActive = isItemActive(item);
             return (
               <li key={item.href} className="flex-1 text-center">
                 <Link
                   href={item.href}
+                  onClick={(e) => handleItemClick(e, item)}
                   aria-current={isActive ? "page" : undefined}
                   className={`focus-ring tap-scale flex min-h-[52px] w-full flex-col items-center justify-center gap-0.5 py-1 transition-colors duration-200 ${
                     isActive ? "text-teal-900" : "text-teal-950/45 hover:text-teal-950/70"
@@ -363,11 +452,12 @@ export function BottomNav() {
 
           {/* RIGHT NAV ITEMS (VOLUNTEER) */}
           {rightNavItems.map((item) => {
-            const isActive = active(item.href);
+            const isActive = isItemActive(item);
             return (
               <li key={item.href} className="flex-1 text-center">
                 <Link
                   href={item.href}
+                  onClick={(e) => handleItemClick(e, item)}
                   aria-current={isActive ? "page" : undefined}
                   className={`focus-ring tap-scale flex min-h-[52px] w-full flex-col items-center justify-center gap-0.5 py-1 transition-colors duration-200 ${
                     isActive ? "text-teal-900" : "text-teal-950/45 hover:text-teal-950/70"

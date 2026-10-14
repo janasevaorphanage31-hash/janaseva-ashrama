@@ -40,6 +40,7 @@ export function ensureSeed(): Promise<void> {
             unitPrice: sql`excluded.unit_price`,
             name: sql`excluded.name`,
             description: sql`excluded.description`,
+            imageUrl: sql`excluded.image_url`,
           },
         });
       const [{ t }] = await db.select({ t: count() }).from(todayUpdates);

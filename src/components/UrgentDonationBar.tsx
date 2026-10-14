@@ -58,7 +58,7 @@ export function UrgentDonationBar() {
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-80" />
             <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-200" />
           </span>
-          <span>⚡ Feed 25 Boys (₹11+)</span>
+          <span>{total > 0 ? `🛒 Basket: ${formatINR(total)}` : "⚡ Feed 25 Boys (₹11+)"}</span>
         </button>
       </aside>
     );

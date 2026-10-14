@@ -265,7 +265,7 @@ export const DEFAULT_CELEBRATION_PACKAGES: CelebrationPackageItem[] = [
     description: "Gift school notebooks, pens, drawing kits, and geometry sets to all 25 school-going boys in the celebrant's honor.",
     servings: "25 boys complete school stationery",
     icon: "📚",
-    image: "/media/art-drawings.jpg",
+    image: "/media/school-kit.jpg",
     features: [
       "Class notebooks & pens for all 25 boys",
       "Art & geometry stationery sets",
@@ -358,7 +358,7 @@ export const DEFAULT_NGO_ACTIVITIES: NgoActivityItem[] = [
     title: "Free Medical Camps & Pediatric Care",
     subtitle: "Healing hands for children and elders",
     cadence: "Monthly Health Camp",
-    image: "/media/ashrama_yoga_terrace.jpg",
+    image: "/media/health.jpg",
     metricBadge: "100% Children Screened",
     emotionalTag: "🩺 Complete paediatric vigilance",
     shortDesc: "Volunteer pediatricians and dentists provide comprehensive growth checkups, blood tests, eye screenings, and medicine kits.",

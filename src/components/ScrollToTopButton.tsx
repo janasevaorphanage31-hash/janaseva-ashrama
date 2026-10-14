@@ -39,8 +39,11 @@ export function ScrollToTopButton() {
 
   if (!visible) return null;
 
-  // Position cleanly on the left side above BottomNav on mobile & desktop
-  const bottomCls = "bottom-[calc(4.85rem+env(safe-area-inset-bottom))] md:bottom-24";
+  // Dynamic clearance: If Giving Basket is active, lift above it so UrgentDonationBar is never covered
+  const bottomCls =
+    total > 0
+      ? "bottom-[calc(9.75rem+env(safe-area-inset-bottom))] md:bottom-24"
+      : "bottom-[calc(5.25rem+env(safe-area-inset-bottom))] md:bottom-24";
 
   return (
     <div

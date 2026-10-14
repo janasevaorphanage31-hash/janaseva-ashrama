@@ -102,7 +102,7 @@ export const TRENDING_BIRTHDAY_PACKAGES: BirthdayPackage[] = [
     description: "Gift school notebooks, pens, drawing kits, and geometry sets to all 25 school-going boys in the celebrant's honor.",
     servings: "25 boys complete school stationery",
     icon: "📚",
-    image: "/media/art-drawings.jpg",
+    image: "/media/school-kit.jpg",
     features: [
       "Class notebooks & pens for all 25 boys",
       "Art & geometry stationery sets",
