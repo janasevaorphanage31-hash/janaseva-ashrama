@@ -33,7 +33,7 @@ export function PublicSiteChrome({ children }: { children: ReactNode }) {
   return (
     <>
       <SiteHeader />
-      <main className="w-full max-w-full min-w-0 overflow-x-hidden">{children}</main>
+      <main className="w-full max-w-full min-w-0 overflow-x-clip">{children}</main>
       <SiteFooter />
       <FloatingSocials />
       <ScrollToTopButton />

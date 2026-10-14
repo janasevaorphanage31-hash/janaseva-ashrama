@@ -214,7 +214,7 @@ export function HorizontalMovingReel() {
         ref={scrollerRef}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
-        className="relative w-full overflow-x-auto no-scrollbar scrollbar-none"
+        className="relative w-full overflow-x-auto no-scrollbar scrollbar-none touch-pan-y"
         aria-label="Horizontal moving reel of photos and videos of Janaseva boys"
       >
         <div

@@ -195,6 +195,7 @@ export function HomeSectionsHub({
       if (!ticking) {
         window.requestAnimationFrame(() => {
           const scrollPos = window.scrollY + 220;
+          const hubEl = hubRef.current;
           const tierEl = document.getElementById("official-tiers");
           const celEl = document.getElementById("celebrate");
           const impEl = document.getElementById("impact");
@@ -202,27 +203,33 @@ export function HomeSectionsHub({
           const trEl = document.getElementById("transparency") || document.getElementById("trust");
           const volEl = document.getElementById("volunteer") || document.getElementById("community");
 
-          let detectedMode: HomeMode = "tiers";
-          if (trEl && trEl.offsetTop <= scrollPos) {
-            detectedMode = "trust";
-          } else if (volEl && volEl.offsetTop <= scrollPos) {
-            detectedMode = "community";
-          } else if (galEl && galEl.offsetTop <= scrollPos) {
-            detectedMode = "life";
-          } else if (impEl && impEl.offsetTop <= scrollPos) {
-            detectedMode = "annadana";
-          } else if (celEl && celEl.offsetTop <= scrollPos) {
-            detectedMode = "celebrate";
-          } else if (tierEl && tierEl.offsetTop <= scrollPos) {
-            detectedMode = "tiers";
+          // Default mode when above the hub sections is "all"
+          let detectedMode: HomeMode = "all";
+
+          if (hubEl && scrollPos >= hubEl.offsetTop - 80) {
+            if (trEl && trEl.offsetTop <= scrollPos) {
+              detectedMode = "trust";
+            } else if (volEl && volEl.offsetTop <= scrollPos) {
+              detectedMode = "community";
+            } else if (galEl && galEl.offsetTop <= scrollPos) {
+              detectedMode = "life";
+            } else if (impEl && impEl.offsetTop <= scrollPos) {
+              detectedMode = "annadana";
+            } else if (celEl && celEl.offsetTop <= scrollPos) {
+              detectedMode = "celebrate";
+            } else if (tierEl && tierEl.offsetTop <= scrollPos) {
+              detectedMode = "tiers";
+            }
           }
 
           if (detectedMode !== activeModeRef.current) {
             setActiveMode(detectedMode);
-            // Center the active pill in the horizontal sticky bar
+            // Center the active pill ONLY within its horizontal container track, NEVER scroll the window!
             const activeBtn = document.getElementById(`mode-pill-${detectedMode}`);
-            if (activeBtn) {
-              activeBtn.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+            const containerTrack = activeBtn?.parentElement;
+            if (containerTrack && activeBtn) {
+              const targetLeft = activeBtn.offsetLeft - containerTrack.clientWidth / 2 + activeBtn.clientWidth / 2;
+              containerTrack.scrollTo({ left: targetLeft, behavior: "smooth" });
             }
           }
 

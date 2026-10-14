@@ -336,7 +336,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
           }}
         />
       </head>
-      <body className="antialiased min-h-screen w-full max-w-full overflow-x-hidden">
+      <body className="antialiased min-h-screen w-full max-w-full overflow-x-clip">
         <CartProvider catalog={catalog}>
           <PWARegister />
           <PublicSiteChrome>{children}</PublicSiteChrome>
