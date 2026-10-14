@@ -12,6 +12,29 @@ export const metadata: Metadata = {
   alternates: {
     canonical: `${SITE.url}/transparency`,
   },
+  openGraph: {
+    title: "Transparency & Governance · Janaseva Ashrama Bangalore",
+    description:
+      "Verify statutory registrations, 80G Form 10AC tax approvals, and financial audits for Janaseva Ashrama.",
+    url: `${SITE.url}/transparency`,
+    siteName: SITE.name,
+    locale: "en_IN",
+    type: "website",
+    images: [
+      {
+        url: `${SITE.url}/media/janaseva-ashrama-original.jpg`,
+        width: 1200,
+        height: 675,
+        alt: "Janaseva Ashrama Legal & Financial Governance",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Transparency & Governance · Janaseva Ashrama Bangalore",
+    description: "Official registration certificates and Form 10AC 80G tax exemptions.",
+    images: [`${SITE.url}/media/janaseva-ashrama-original.jpg`],
+  },
 };
 
 export default async function TransparencyPage() {

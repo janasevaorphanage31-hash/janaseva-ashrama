@@ -11,6 +11,28 @@ export const metadata: Metadata = {
   alternates: {
     canonical: `${SITE.url}/refund-policy`,
   },
+  openGraph: {
+    title: "Refund & Cancellation Policy · Janaseva Ashrama Bangalore",
+    description: "Guidelines on voluntary donations, accidental transaction corrections, and financial governance.",
+    url: `${SITE.url}/refund-policy`,
+    siteName: SITE.name,
+    locale: "en_IN",
+    type: "website",
+    images: [
+      {
+        url: `${SITE.url}/media/janaseva-ashrama-original.jpg`,
+        width: 1200,
+        height: 675,
+        alt: "Janaseva Ashrama Refund Policy",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Refund & Cancellation Policy · Janaseva Ashrama Bangalore",
+    description: "Financial governance and transaction dispute resolution guidelines.",
+    images: [`${SITE.url}/media/janaseva-ashrama-original.jpg`],
+  },
 };
 
 export default function RefundPolicyPage() {

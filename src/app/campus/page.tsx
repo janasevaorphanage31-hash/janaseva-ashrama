@@ -1,10 +1,37 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Container, PageHero, Section } from "@/components/ui";
+import { SITE } from "@/lib/site";
+
 export const metadata: Metadata = {
   title: "Ashrama Campus & Future Facility Plan | Janaseva Ashrama Bangalore",
   description:
     "Explore the Janaseva Ashrama Turahalli, Subramanyapura residential facility and our proposed future campus expansion roadmap for healthcare, learning, and skill development.",
+  alternates: {
+    canonical: `${SITE.url}/campus`,
+  },
+  openGraph: {
+    title: "Ashrama Campus & Facilities · Janaseva Ashrama Bangalore",
+    description: "Explore the Janaseva Ashrama residential home in Turahalli, Bengaluru.",
+    url: `${SITE.url}/campus`,
+    siteName: SITE.name,
+    locale: "en_IN",
+    type: "website",
+    images: [
+      {
+        url: `${SITE.url}/media/janaseva-ashrama-original.jpg`,
+        width: 1200,
+        height: 675,
+        alt: "Janaseva Ashrama Campus Bangalore",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Ashrama Campus · Janaseva Ashrama Bangalore",
+    description: "Residential facility & care for 25 boys in Turahalli, Bangalore.",
+    images: [`${SITE.url}/media/janaseva-ashrama-original.jpg`],
+  },
 };
 
 import { Breadcrumbs } from "@/components/Breadcrumbs";

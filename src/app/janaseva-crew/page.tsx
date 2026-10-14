@@ -11,6 +11,28 @@ export const metadata: Metadata = {
   alternates: {
     canonical: `${SITE.url}/janaseva-crew`,
   },
+  openGraph: {
+    title: "Volunteer with Janaseva Crew · Janaseva Ashrama Bangalore",
+    description: "Contribute teaching, mentorship, or arts to empower 25 boys in Bangalore.",
+    url: `${SITE.url}/janaseva-crew`,
+    siteName: SITE.name,
+    locale: "en_IN",
+    type: "website",
+    images: [
+      {
+        url: `${SITE.url}/media/janaseva-ashrama-original.jpg`,
+        width: 1200,
+        height: 675,
+        alt: "Janaseva Crew Volunteers Bangalore",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Volunteer with Janaseva Crew · Janaseva Ashrama Bangalore",
+    description: "Join weekend mentoring and skill giving for 25 resident boys in Bangalore.",
+    images: [`${SITE.url}/media/janaseva-ashrama-original.jpg`],
+  },
 };
 
 export default function CrewPage() {

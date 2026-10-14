@@ -12,6 +12,29 @@ export const metadata: Metadata = {
   alternates: {
     canonical: `${SITE.url}/impact`,
   },
+  openGraph: {
+    title: "Direct Giving & Impact Areas · Janaseva Ashrama Bangalore",
+    description:
+      "Sponsor essential meal kits, nutritious milk, books, and healthcare for 25 resident boys in Bengaluru with 80G tax benefit.",
+    url: `${SITE.url}/impact`,
+    siteName: SITE.name,
+    locale: "en_IN",
+    type: "website",
+    images: [
+      {
+        url: `${SITE.url}/media/janaseva-ashrama-original.jpg`,
+        width: 1200,
+        height: 675,
+        alt: "Janaseva Ashrama Impact Areas Bangalore",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Direct Giving & Impact Areas · Janaseva Ashrama Bangalore",
+    description: "Sponsor meals and education for 25 resident boys in Bangalore.",
+    images: [`${SITE.url}/media/janaseva-ashrama-original.jpg`],
+  },
 };
 
 export default function ImpactPage() {

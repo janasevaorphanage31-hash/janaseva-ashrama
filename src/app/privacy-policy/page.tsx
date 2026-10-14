@@ -11,6 +11,28 @@ export const metadata: Metadata = {
   alternates: {
     canonical: `${SITE.url}/privacy-policy`,
   },
+  openGraph: {
+    title: "Privacy Policy · Janaseva Ashrama Bangalore",
+    description: "Official Privacy Policy and donor data protection standards.",
+    url: `${SITE.url}/privacy-policy`,
+    siteName: SITE.name,
+    locale: "en_IN",
+    type: "website",
+    images: [
+      {
+        url: `${SITE.url}/media/janaseva-ashrama-original.jpg`,
+        width: 1200,
+        height: 675,
+        alt: "Janaseva Ashrama Privacy Policy",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Privacy Policy · Janaseva Ashrama Bangalore",
+    description: "Donor privacy and data protection policies.",
+    images: [`${SITE.url}/media/janaseva-ashrama-original.jpg`],
+  },
 };
 
 export default function PrivacyPolicyPage() {

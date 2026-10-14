@@ -11,6 +11,28 @@ export const metadata: Metadata = {
   alternates: {
     canonical: `${SITE.url}/corporate`,
   },
+  openGraph: {
+    title: "Corporate & CSR Partnerships · Janaseva Ashrama Bangalore",
+    description: "CSR-1 approved (CSR00078800) employee engagement and grant partnerships.",
+    url: `${SITE.url}/corporate`,
+    siteName: SITE.name,
+    locale: "en_IN",
+    type: "website",
+    images: [
+      {
+        url: `${SITE.url}/media/janaseva-ashrama-original.jpg`,
+        width: 1200,
+        height: 675,
+        alt: "Corporate CSR at Janaseva Ashrama",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Corporate CSR Partnerships · Janaseva Ashrama Bangalore",
+    description: "Form 10AC 80G tax benefit and Section 135 CSR-1 compliance.",
+    images: [`${SITE.url}/media/janaseva-ashrama-original.jpg`],
+  },
 };
 
 export default function CorporatePage() {

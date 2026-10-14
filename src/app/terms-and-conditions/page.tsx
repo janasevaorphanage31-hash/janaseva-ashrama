@@ -11,6 +11,28 @@ export const metadata: Metadata = {
   alternates: {
     canonical: `${SITE.url}/terms-and-conditions`,
   },
+  openGraph: {
+    title: "Terms and Conditions · Janaseva Ashrama Bangalore",
+    description: "Official Terms and Conditions for voluntary donations and institutional policies.",
+    url: `${SITE.url}/terms-and-conditions`,
+    siteName: SITE.name,
+    locale: "en_IN",
+    type: "website",
+    images: [
+      {
+        url: `${SITE.url}/media/janaseva-ashrama-original.jpg`,
+        width: 1200,
+        height: 675,
+        alt: "Janaseva Ashrama Terms & Conditions",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Terms and Conditions · Janaseva Ashrama Bangalore",
+    description: "Voluntary donation policies and institutional legal terms.",
+    images: [`${SITE.url}/media/janaseva-ashrama-original.jpg`],
+  },
 };
 
 export default function TermsAndConditionsPage() {

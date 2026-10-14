@@ -13,6 +13,28 @@ export const metadata: Metadata = {
   alternates: {
     canonical: `${SITE.url}/today`,
   },
+  openGraph: {
+    title: "Today at Janaseva · Daily Life & Real-time Updates",
+    description: "See what 25 boys are doing today at Janaseva Ashrama Bangalore.",
+    url: `${SITE.url}/today`,
+    siteName: SITE.name,
+    locale: "en_IN",
+    type: "website",
+    images: [
+      {
+        url: `${SITE.url}/media/janaseva-ashrama-original.jpg`,
+        width: 1200,
+        height: 675,
+        alt: "Today at Janaseva Ashrama",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Today at Janaseva · Janaseva Ashrama Bangalore",
+    description: "Daily moments and urgent care needs for 25 boys in Bangalore.",
+    images: [`${SITE.url}/media/janaseva-ashrama-original.jpg`],
+  },
 };
 
 export default async function TodayPage() {
