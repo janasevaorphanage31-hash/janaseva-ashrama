@@ -11,6 +11,28 @@ export const metadata: Metadata = {
   alternates: {
     canonical: `${SITE.url}/skill-giving`,
   },
+  openGraph: {
+    title: "Give Your Skill · Skill Volunteering · Janaseva Ashrama Bangalore",
+    description: "Share your professional expertise with 25 resident boys at Janaseva Ashrama. Teaching, technology, arts, and mentoring.",
+    url: `${SITE.url}/skill-giving`,
+    siteName: SITE.name,
+    locale: "en_IN",
+    type: "website",
+    images: [
+      {
+        url: `${SITE.url}/media/janaseva-ashrama-original.jpg`,
+        width: 1200,
+        height: 675,
+        alt: "Skill Volunteering with Children at Janaseva Ashrama",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Skill Volunteering · Janaseva Ashrama Bangalore",
+    description: "Teach, mentor, or guide resident children in Bangalore using your skills.",
+    images: [`${SITE.url}/media/janaseva-ashrama-original.jpg`],
+  },
 };
 
 const skills = [

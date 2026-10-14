@@ -3,11 +3,37 @@ import { Container, PageHero, Section } from "@/components/ui";
 import { CreatorsClient } from "@/components/CreatorsClient";
 
 import { Breadcrumbs } from "@/components/Breadcrumbs";
+import { SITE } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Creator & Influencer Impact Campaigns | Janaseva Ashrama",
   description:
     "Launch an approved Janaseva fundraising campaign for your audience with one shareable page, UPI QR code, and transparent contribution progress.",
+  alternates: {
+    canonical: `${SITE.url}/creators`,
+  },
+  openGraph: {
+    title: "Creator Impact Campaigns · Janaseva Ashrama Bangalore",
+    description: "Launch an approved fundraising campaign for your audience with real-time UPI tracking and 80G tax receipts.",
+    url: `${SITE.url}/creators`,
+    siteName: SITE.name,
+    locale: "en_IN",
+    type: "website",
+    images: [
+      {
+        url: `${SITE.url}/media/janaseva-ashrama-original.jpg`,
+        width: 1200,
+        height: 675,
+        alt: "Creator Impact Campaigns for Janaseva Ashrama",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Creator Impact Campaigns · Janaseva Ashrama Bangalore",
+    description: "Verified community campaigns powered by content creators.",
+    images: [`${SITE.url}/media/janaseva-ashrama-original.jpg`],
+  },
 };
 
 export default function CreatorsPage() {

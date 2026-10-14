@@ -1,15 +1,46 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PageHero, Section, Container } from "@/components/ui";
+import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { getMissions } from "@/lib/content";
-import { formatINR } from "@/lib/site";
+import { formatINR, SITE } from "@/lib/site";
 
-export const metadata: Metadata = { title: "Impact Missions" };
+export const metadata: Metadata = {
+  title: "Impact Missions · Community Challenges & Collective Goals · Janaseva Ashrama",
+  description:
+    "Support verified collective impact missions like meal sponsorship challenges and educational supply drives for 25 boys in Bangalore.",
+  alternates: {
+    canonical: `${SITE.url}/missions`,
+  },
+  openGraph: {
+    title: "Impact Missions · Collective Care Challenges · Janaseva Ashrama",
+    description: "Support shared goals like meal and education challenges with real-time verified progress.",
+    url: `${SITE.url}/missions`,
+    siteName: SITE.name,
+    locale: "en_IN",
+    type: "website",
+    images: [
+      {
+        url: `${SITE.url}/media/janaseva-ashrama-original.jpg`,
+        width: 1200,
+        height: 675,
+        alt: "Janaseva Ashrama Collective Missions",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Impact Missions · Janaseva Ashrama Bangalore",
+    description: "Community challenges and collective impact drives with 80G tax benefit.",
+    images: [`${SITE.url}/media/janaseva-ashrama-original.jpg`],
+  },
+};
 
 export default async function MissionsPage() {
   const missions = await getMissions();
   return (
     <>
+      <Breadcrumbs items={[{ label: "Impact Missions" }]} />
       <PageHero eyebrow="Impact Missions" title="Join a mission" lead="Support shared goals like meal and education challenges with verified progress." />
       <Section tone="cream">
         <Container>

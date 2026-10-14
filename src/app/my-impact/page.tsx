@@ -11,6 +11,28 @@ export const metadata: Metadata = {
   alternates: {
     canonical: `${SITE.url}/my-impact`,
   },
+  openGraph: {
+    title: "Donor Impact & Subscriptions · Janaseva Ashrama Bangalore",
+    description: "Manage monthly sponsorships, download 80G tax receipts, and view contribution history.",
+    url: `${SITE.url}/my-impact`,
+    siteName: SITE.name,
+    locale: "en_IN",
+    type: "website",
+    images: [
+      {
+        url: `${SITE.url}/media/janaseva-ashrama-original.jpg`,
+        width: 1200,
+        height: 675,
+        alt: "Janaseva Ashrama Donor Dashboard",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Donor Impact Dashboard · Janaseva Ashrama",
+    description: "Secure donor portal for Auto-Pay and Form 10AC Section 80G receipts.",
+    images: [`${SITE.url}/media/janaseva-ashrama-original.jpg`],
+  },
 };
 
 export default async function MyImpactPage({ searchParams }: { searchParams: Promise<{ publicId?: string }> }) {

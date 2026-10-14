@@ -12,6 +12,28 @@ export const metadata: Metadata = {
   alternates: {
     canonical: `${SITE.url}/stories`,
   },
+  openGraph: {
+    title: "Documentary Stories & Journal · Janaseva Ashrama Bangalore",
+    description: "Grounded documentary storytelling from daily life at Janaseva Ashrama.",
+    url: `${SITE.url}/stories`,
+    siteName: SITE.name,
+    locale: "en_IN",
+    type: "article",
+    images: [
+      {
+        url: `${SITE.url}/media/janaseva-ashrama-original.jpg`,
+        width: 1200,
+        height: 675,
+        alt: "Stories from Janaseva Ashrama Bangalore",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Stories & Journal · Janaseva Ashrama Bangalore",
+    description: "Nourishment, education, and daily moments of 25 resident boys in Bangalore.",
+    images: [`${SITE.url}/media/janaseva-ashrama-original.jpg`],
+  },
 };
 
 const CHAPTERS = [

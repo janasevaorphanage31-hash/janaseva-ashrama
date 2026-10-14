@@ -12,6 +12,28 @@ export const metadata: Metadata = {
   alternates: {
     canonical: `${SITE.url}/impact-wall`,
   },
+  openGraph: {
+    title: "Live Impact Wall · Verified Community Impact · Janaseva Ashrama",
+    description: "A transparent, collective view of verified contributions supporting 25 boys in Bangalore.",
+    url: `${SITE.url}/impact-wall`,
+    siteName: SITE.name,
+    locale: "en_IN",
+    type: "website",
+    images: [
+      {
+        url: `${SITE.url}/media/janaseva-ashrama-original.jpg`,
+        width: 1200,
+        height: 675,
+        alt: "Janaseva Ashrama Live Impact Wall",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Live Impact Wall · Janaseva Ashrama Bangalore",
+    description: "Verified community contributions and 100% direct allocation for 25 resident boys.",
+    images: [`${SITE.url}/media/janaseva-ashrama-original.jpg`],
+  },
 };
 
 export default async function ImpactWallPage() {

@@ -11,6 +11,28 @@ export const metadata: Metadata = {
   alternates: {
     canonical: `${SITE.url}/make-a-day-matter`,
   },
+  openGraph: {
+    title: "Make a Day Matter · Occasion Giving · Janaseva Ashrama Bangalore",
+    description: "Turn birthdays, anniversaries, or milestones into wholesome meals for 25 boys in Bangalore.",
+    url: `${SITE.url}/make-a-day-matter`,
+    siteName: SITE.name,
+    locale: "en_IN",
+    type: "website",
+    images: [
+      {
+        url: `${SITE.url}/media/janaseva-ashrama-original.jpg`,
+        width: 1200,
+        height: 675,
+        alt: "Make a Day Matter at Janaseva Ashrama",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Make a Day Matter · Janaseva Ashrama Bangalore",
+    description: "Occasion giving and meal dedications with 80G tax benefit.",
+    images: [`${SITE.url}/media/janaseva-ashrama-original.jpg`],
+  },
 };
 
 const OCCASIONS_DATA = [

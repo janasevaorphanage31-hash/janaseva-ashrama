@@ -10,6 +10,28 @@ export const metadata: Metadata = {
   alternates: {
     canonical: `${SITE.url}/partners`,
   },
+  openGraph: {
+    title: "NGO & Community Partners · Janaseva Ashrama Bangalore",
+    description: "Explore NGO collaborations, institutional partners, and community networks working alongside Janaseva Ashrama.",
+    url: `${SITE.url}/partners`,
+    siteName: SITE.name,
+    locale: "en_IN",
+    type: "website",
+    images: [
+      {
+        url: `${SITE.url}/media/janaseva-ashrama-original.jpg`,
+        width: 1200,
+        height: 675,
+        alt: "Janaseva Ashrama Community Partners",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Community & NGO Partners · Janaseva Ashrama Bangalore",
+    description: "Collaborative grassroot partnerships for child welfare in Bangalore South.",
+    images: [`${SITE.url}/media/janaseva-ashrama-original.jpg`],
+  },
 };
 
 export default function PartnersPage() {
