@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { formatINR, BANK_DETAILS, SITE } from "@/lib/site";
 import { SUPPORTER_CATEGORIES, OFFICIAL_FORM_META } from "@/lib/supporter-form";
 import { numberToIndianWords } from "@/lib/number-words";
+import { trackDonationSuccess } from "@/lib/tracking";
 import {
   validateName,
   validateEmail,
@@ -230,7 +231,17 @@ For queries, call: 9980359595 / 9945223232.`;
 
       // If Demo mode (local or Razorpay not configured)
       if (data.mode === "demo") {
-        router.push(`/receipt/${data.publicId}`);
+        trackDonationSuccess({
+          amount: data.amount,
+          donorName: donor.name,
+          donorPhone: donor.phone,
+          donorEmail: donor.email,
+          receiptId: data.publicId,
+          mode: "demo",
+        });
+        window.location.href = `/thank-you?amount=${data.amount}&receipt_id=${encodeURIComponent(
+          data.publicId,
+        )}&demo=true`;
         return;
       }
 
@@ -255,8 +266,20 @@ For queries, call: 9980359595 / 9945223232.`;
         },
         theme: { color: "#06312f" },
         handler: async function (paymentResponse: any) {
+          // 1. Fire Meta Pixel & Google Ads conversion tracking
+          trackDonationSuccess({
+            amount: data.amount,
+            paymentId: paymentResponse.razorpay_payment_id,
+            orderId: paymentResponse.razorpay_order_id,
+            donorName: donor.name,
+            donorPhone: donor.phone,
+            donorEmail: donor.email,
+            receiptId: data.publicId,
+            mode: "live",
+          });
+
           try {
-            const verifyRes = await fetch("/api/donations/verify", {
+            await fetch("/api/donations/verify", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
@@ -266,15 +289,16 @@ For queries, call: 9980359595 / 9945223232.`;
                 razorpay_signature: paymentResponse.razorpay_signature,
               }),
             });
-            const vData = await verifyRes.json();
-            if (verifyRes.ok && vData.ok) {
-              router.push(`/receipt/${data.publicId}`);
-            } else {
-              router.push(`/receipt/${data.publicId}`);
-            }
-          } catch {
-            router.push(`/receipt/${data.publicId}`);
+          } catch (e) {
+            console.warn("Payment verify background call:", e);
           }
+
+          // 2. Redirect to dedicated /thank-you page
+          window.location.href = `/thank-you?amount=${data.amount}&payment_id=${encodeURIComponent(
+            paymentResponse.razorpay_payment_id || "",
+          )}&order_id=${encodeURIComponent(
+            paymentResponse.razorpay_order_id || "",
+          )}&receipt_id=${encodeURIComponent(data.publicId)}`;
         },
         modal: {
           ondismiss: function () {

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { formatINR } from "@/lib/site";
 import { LogoMark } from "@/components/Logo";
+import { trackDonationSuccess } from "@/lib/tracking";
 
 export function DonateClientComponent() {
   const searchParams = useSearchParams();
@@ -86,37 +87,61 @@ export function DonateClientComponent() {
           },
           theme: { color: "#052F2C" },
           handler: async function (response: any) {
-            // Trigger webhook attribution verification
-            await fetch("/api/v1/webhooks/payment", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                event: "payment.captured",
-                payload: {
-                  payment: {
-                    entity: {
-                      id: response.razorpay_payment_id,
-                      order_id: response.razorpay_order_id,
-                      amount: data.amount,
-                      currency: "INR",
-                      status: "captured",
-                      notes: {
-                        caller_ref_id: callerRef,
-                        donor_name: donorName,
-                        donor_phone: donorPhone,
+            // 1. Meta Pixel & Google Ads Tracking (Donate + Purchase + Conversion)
+            trackDonationSuccess({
+              amount: finalAmount,
+              paymentId: response.razorpay_payment_id,
+              orderId: response.razorpay_order_id,
+              donorName,
+              donorPhone,
+              donorEmail,
+              callerRef,
+              mode: "live",
+            });
+
+            // 2. Trigger webhook attribution verification
+            try {
+              await fetch("/api/v1/webhooks/payment", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  event: "payment.captured",
+                  payload: {
+                    payment: {
+                      entity: {
+                        id: response.razorpay_payment_id,
+                        order_id: response.razorpay_order_id,
+                        amount: data.amount,
+                        currency: "INR",
+                        status: "captured",
+                        notes: {
+                          caller_ref_id: callerRef,
+                          donor_name: donorName,
+                          donor_phone: donorPhone,
+                          donor_email: donorEmail,
+                        },
                       },
                     },
                   },
-                },
-              }),
-            });
-            setSuccess(true);
+                }),
+              });
+            } catch (webhookErr) {
+              console.warn("Attribution webhook delivery:", webhookErr);
+            }
+
+            // 3. Redirect to dedicated /thank-you page
+            window.location.href = `/thank-you?amount=${finalAmount}&payment_id=${encodeURIComponent(
+              response.razorpay_payment_id || "",
+            )}&order_id=${encodeURIComponent(
+              response.razorpay_order_id || "",
+            )}&ref=${encodeURIComponent(callerRef)}`;
           },
         };
 
         const rzp = new (window as any).Razorpay(options);
         rzp.open();
       } else {
+        const demoPaymentId = `pay_demo_${Date.now()}`;
         // Instant simulated demo payment verification
         await fetch("/api/v1/webhooks/payment", {
           method: "POST",
@@ -127,10 +152,23 @@ export function DonateClientComponent() {
             amount: finalAmount,
             donorName,
             donorPhone,
-            paymentId: `pay_demo_${Date.now()}`,
+            paymentId: demoPaymentId,
           }),
         });
-        setSuccess(true);
+
+        trackDonationSuccess({
+          amount: finalAmount,
+          paymentId: demoPaymentId,
+          donorName,
+          donorPhone,
+          donorEmail,
+          callerRef,
+          mode: "demo",
+        });
+
+        window.location.href = `/thank-you?amount=${finalAmount}&payment_id=${demoPaymentId}&ref=${encodeURIComponent(
+          callerRef,
+        )}&demo=true`;
       }
     } catch (err: any) {
       alert("Payment processing error: " + err.message);

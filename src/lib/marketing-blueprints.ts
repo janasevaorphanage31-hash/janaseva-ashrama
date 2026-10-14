@@ -5,6 +5,8 @@ export interface MarketingConfig {
   metaCapiToken: string;
   metaCapiTestEventCode: string;
   googleAdsCustomerId: string;
+  googleAdsId?: string;
+  googleAdsConversionLabel?: string;
   googleTagManagerId: string;
   aiApiKey: string;
   aiProvider: "gemini" | "openai" | "internal";
@@ -78,6 +80,8 @@ export const DEFAULT_MARKETING_CONFIG: MarketingConfig = {
   metaCapiToken: "",
   metaCapiTestEventCode: "",
   googleAdsCustomerId: "",
+  googleAdsId: "",
+  googleAdsConversionLabel: "",
   googleTagManagerId: "",
   aiApiKey: "",
   aiProvider: "gemini",

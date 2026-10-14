@@ -1663,6 +1663,42 @@ Video Hook: ${c.creativeDirectives.videoHookConcept}
 
                   <div>
                     <label className="block text-xs font-bold text-teal-950 mb-1">
+                      Google Ads Tag ID (gtag.js):
+                    </label>
+                    <input
+                      type="text"
+                      value={config.googleAdsId || ""}
+                      onChange={(e) =>
+                        setConfig({ ...config, googleAdsId: e.target.value })
+                      }
+                      placeholder="e.g. AW-123456789 or G-XXXXXXXX"
+                      className="w-full rounded-xl border border-teal-900/20 bg-white p-2.5 text-xs font-mono text-teal-950 focus:border-teal-900 focus:outline-none"
+                    />
+                    <span className="text-[10px] text-teal-950/60 mt-0.5 block">
+                      Google Ads Conversion ID (starts with AW-...) or Google Analytics Measurement ID.
+                    </span>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-teal-950 mb-1">
+                      Google Ads Conversion Label:
+                    </label>
+                    <input
+                      type="text"
+                      value={config.googleAdsConversionLabel || ""}
+                      onChange={(e) =>
+                        setConfig({ ...config, googleAdsConversionLabel: e.target.value })
+                      }
+                      placeholder="e.g. AbC-D_efGhIjKlMnOp"
+                      className="w-full rounded-xl border border-teal-900/20 bg-white p-2.5 text-xs font-mono text-teal-950 focus:border-teal-900 focus:outline-none"
+                    />
+                    <span className="text-[10px] text-teal-950/60 mt-0.5 block">
+                      From Google Ads &gt; Goals &gt; Conversions &gt; Tag setup &gt; Snippet.
+                    </span>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-teal-950 mb-1">
                       Google Tag Manager (GTM) Container ID:
                     </label>
                     <input

@@ -8,6 +8,8 @@ import { getImpactItems } from "@/lib/content";
 import { PWARegister } from "@/components/PWARegister";
 import { FAQ_ITEMS } from "@/lib/faq";
 import { SITE } from "@/lib/site";
+import { TrackingScripts } from "@/components/TrackingScripts";
+import { getMarketingConfig } from "@/lib/marketing-agent";
 
 export const dynamic = "force-dynamic";
 
@@ -124,7 +126,10 @@ export const viewport: Viewport = {
 };
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
-  const catalog = await getImpactItems();
+  const [catalog, marketingConfig] = await Promise.all([
+    getImpactItems(),
+    getMarketingConfig().catch(() => null),
+  ]);
 
   const structuredData = {
     "@context": "https://schema.org",
@@ -316,6 +321,12 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png" />
         <link rel="icon" type="image/png" sizes="192x192" href="/icon.png" />
         <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+        <TrackingScripts
+          metaPixelId={marketingConfig?.metaPixelId}
+          googleAdsId={marketingConfig?.googleAdsId || marketingConfig?.googleAdsCustomerId}
+          googleAdsConversionLabel={marketingConfig?.googleAdsConversionLabel}
+          googleTagManagerId={marketingConfig?.googleTagManagerId}
+        />
         <Script
           id="seo-geo-aeo-jsonld"
           type="application/ld+json"

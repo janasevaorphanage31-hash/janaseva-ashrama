@@ -6,6 +6,7 @@ import { validateName, validateEmail, validatePhone, validatePan, sanitizePan } 
 import { ValidationErrorModal } from "@/components/ValidationErrorModal";
 import { formatINR } from "@/lib/site";
 import { track } from "@/lib/track";
+import { trackDonationSuccess } from "@/lib/tracking";
 
 function cleanIndianMobile(val: string): string {
   let digits = val.replace(/\D/g, "");
@@ -117,7 +118,17 @@ export function RecurringGivingClient() {
       if (!res.ok) throw new Error(data.error || "Failed to create monthly subscription.");
 
       if (data.mode === "demo") {
-        router.push(`/my-impact?publicId=${data.publicId}`);
+        trackDonationSuccess({
+          amount: data.amount,
+          donorName: name,
+          donorPhone: phone,
+          donorEmail: email,
+          receiptId: data.publicId,
+          mode: "demo",
+        });
+        window.location.href = `/thank-you?amount=${data.amount}&receipt_id=${encodeURIComponent(
+          data.publicId,
+        )}&demo=true`;
         return;
       }
 
@@ -141,6 +152,17 @@ export function RecurringGivingClient() {
           razorpay_subscription_id: string;
           razorpay_signature: string;
         }) => {
+          // 1. Fire Meta Pixel & Google Ads conversion tracking
+          trackDonationSuccess({
+            amount: data.amount,
+            paymentId: r.razorpay_payment_id,
+            donorName: name,
+            donorPhone: phone,
+            donorEmail: email,
+            receiptId: data.publicId,
+            mode: "recurring",
+          });
+
           try {
             const v = await fetch("/api/subscriptions/verify", {
               method: "POST",
@@ -149,7 +171,11 @@ export function RecurringGivingClient() {
             });
             const vd = await v.json();
             if (!v.ok) throw new Error(vd.error || "Verification failed.");
-            router.push(`/receipt/${vd.donationPublicId || data.publicId}`);
+            
+            // 2. Redirect to dedicated /thank-you page
+            window.location.href = `/thank-you?amount=${data.amount}&payment_id=${encodeURIComponent(
+              r.razorpay_payment_id || "",
+            )}&receipt_id=${encodeURIComponent(vd.donationPublicId || data.publicId)}`;
           } catch (err: any) {
             setError(err.message);
             setLoading(false);

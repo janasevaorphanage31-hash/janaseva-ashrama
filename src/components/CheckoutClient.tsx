@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { useCart } from "./CartProvider";
 import { BANK_DETAILS, SITE, formatINR } from "@/lib/site";
 import { track } from "@/lib/track";
+import { trackDonationSuccess } from "@/lib/tracking";
 import {
   validateName,
   validateEmail,
@@ -651,7 +652,19 @@ export function CheckoutClient() {
         }
 
         if (data.mode === "demo") {
-          return finish(data.publicId);
+          trackDonationSuccess({
+            amount: data.amount,
+            donorName: form.name,
+            donorPhone: form.phone,
+            donorEmail: form.email,
+            receiptId: data.publicId,
+            mode: "demo",
+          });
+          cart.clear();
+          window.location.href = `/thank-you?amount=${data.amount}&receipt_id=${encodeURIComponent(
+            data.publicId,
+          )}&demo=true`;
+          return;
         }
 
         const ok = await loadRazorpay();
@@ -677,6 +690,17 @@ export function CheckoutClient() {
             razorpay_signature: string;
           }) => {
             try {
+              // 1. Fire Meta Pixel & Google Ads conversion tracking
+              trackDonationSuccess({
+                amount: data.amount,
+                paymentId: r.razorpay_payment_id,
+                donorName: form.name,
+                donorPhone: form.phone,
+                donorEmail: form.email,
+                receiptId: data.publicId,
+                mode: "recurring",
+              });
+
               const v = await fetch("/api/subscriptions/verify", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -688,7 +712,12 @@ export function CheckoutClient() {
                 publicId?: string;
               }>(v);
               if (!v.ok || vd.error) throw new Error(vd.error || "Verification failed.");
-              finish(vd.donationPublicId || data.publicId);
+              
+              cart.clear();
+              // 2. Redirect to dedicated /thank-you page
+              window.location.href = `/thank-you?amount=${data.amount}&payment_id=${encodeURIComponent(
+                r.razorpay_payment_id || "",
+              )}&receipt_id=${encodeURIComponent(vd.donationPublicId || data.publicId)}`;
             } catch (err) {
               track("subscription_verify_failed", { error: (err as Error).message });
               setError((err as Error).message || "Mandate verification could not be confirmed immediately. Please check your email.");
@@ -771,7 +800,21 @@ export function CheckoutClient() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ publicId: data.publicId }),
         }).catch(() => {});
-        return finish(data.publicId);
+
+        trackDonationSuccess({
+          amount: data.amount,
+          donorName: form.name,
+          donorPhone: form.phone,
+          donorEmail: form.email,
+          receiptId: data.publicId,
+          mode: "demo",
+        });
+
+        cart.clear();
+        window.location.href = `/thank-you?amount=${data.amount}&receipt_id=${encodeURIComponent(
+          data.publicId,
+        )}&demo=true`;
+        return;
       }
 
       const ok = await loadRazorpay();
@@ -799,6 +842,18 @@ export function CheckoutClient() {
           razorpay_signature: string;
         }) => {
           try {
+            // 1. Fire Meta Pixel & Google Ads conversion tracking
+            trackDonationSuccess({
+              amount: data.amount,
+              paymentId: r.razorpay_payment_id,
+              orderId: r.razorpay_order_id,
+              donorName: form.name,
+              donorPhone: form.phone,
+              donorEmail: form.email,
+              receiptId: data.publicId,
+              mode: "live",
+            });
+
             const v = await fetch("/api/donations/verify", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
@@ -806,7 +861,14 @@ export function CheckoutClient() {
             });
             const vd = await parseJsonResponse<{ error?: string }>(v);
             if (!v.ok || vd.error) throw new Error(vd.error || "Verification failed.");
-            finish(data.publicId);
+            
+            cart.clear();
+            // 2. Redirect to dedicated /thank-you page
+            window.location.href = `/thank-you?amount=${data.amount}&payment_id=${encodeURIComponent(
+              r.razorpay_payment_id || "",
+            )}&order_id=${encodeURIComponent(
+              r.razorpay_order_id || "",
+            )}&receipt_id=${encodeURIComponent(data.publicId)}`;
           } catch (err) {
             track("payment_failed", { stage: "verify" });
             setError((err as Error).message || "Payment verification could not be confirmed. Check your email for receipt.");
