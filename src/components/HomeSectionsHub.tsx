@@ -34,9 +34,17 @@ interface ModeItem {
 
 const MODES: ModeItem[] = [
   {
+    id: "all",
+    label: "All Stories",
+    icon: "🌟",
+    badge: "All",
+    targetId: "hub-top",
+    description: "Complete continuous journey of Janaseva Ashrama",
+  },
+  {
     id: "tiers",
     label: "Sponsor 25 Boys",
-    icon: "🍲",
+    icon: "🏛️",
     badge: "Form 28",
     targetId: "official-tiers",
     description: "Form 28 JJ Act registered 5 official sponsorship tiers",
@@ -45,49 +53,41 @@ const MODES: ModeItem[] = [
     id: "celebrate",
     label: "Birthdays",
     icon: "🎂",
-    badge: "Hot",
+    badge: "Trending",
     targetId: "celebrate",
     description: "Celebrate birthday with 25 boys, cake & WhatsApp video wish",
+  },
+  {
+    id: "annadana",
+    label: "Annadana & Meals",
+    icon: "🍲",
+    badge: "Live Feed",
+    targetId: "today",
+    description: "Live daily meals tracker & provisions for 25 resident boys",
+  },
+  {
+    id: "life",
+    label: "Campus Life",
+    icon: "📸",
+    badge: "Moments",
+    targetId: "boys-gallery",
+    description: "Real photos, abacus classes & daily documentary moments",
   },
   {
     id: "community",
     label: "Volunteer",
     icon: "🤝",
-    badge: "2.5h",
+    badge: "2.5h/Wk",
     targetId: "volunteer",
     description: "Give 2.5 hrs/week mentoring, coaching & life skills",
   },
   {
-    id: "annadana",
-    label: "Annadana",
-    icon: "🛒",
-    badge: "Daily",
-    targetId: "impact",
-    description: "Provisions & meals for 25 resident boys",
-  },
-  {
-    id: "life",
-    label: "Life",
-    icon: "📸",
-    badge: "Photos",
-    targetId: "boys-gallery",
-    description: "Documentary chapters, photos & daily prayers",
-  },
-  {
     id: "trust",
-    label: "Trust",
+    label: "80G Trust",
     icon: "🛡️",
-    badge: "80G",
+    badge: "Verified",
     targetId: "transparency",
     description: "Form 10AC, CSR-1, Axis Bank wire & FAQs",
-  },
-  {
-    id: "all",
-    label: "Story",
-    icon: "🌟",
-    badge: "All",
-    targetId: "hub-top",
-    description: "Complete continuous journey of Janaseva Ashrama",
   },
 ];
 
@@ -95,27 +95,33 @@ const MODE_TARGET_MAP: Record<HomeMode, string> = {
   all: "hub-top",
   tiers: "official-tiers",
   celebrate: "celebrate",
-  annadana: "impact",
+  annadana: "today",
   life: "boys-gallery",
   community: "volunteer",
   trust: "transparency",
 };
 
 const HASH_MODE_MAP: Record<string, HomeMode> = {
+  "hub-top": "all",
+  top: "all",
+  all: "all",
   "official-tiers": "tiers",
   tiers: "tiers",
   sponsor: "tiers",
   celebrate: "celebrate",
   birthday: "celebrate",
+  birthdays: "celebrate",
   feast: "celebrate",
+  today: "annadana",
+  "today-meals": "annadana",
+  meals: "annadana",
   impact: "annadana",
   annadana: "annadana",
   needs: "annadana",
   basket: "annadana",
-  "today-meals": "annadana",
+  "boys-gallery": "life",
   "life-in-motion": "life",
   "ashrama-life": "life",
-  "boys-gallery": "life",
   life: "life",
   gallery: "life",
   photos: "life",
@@ -126,8 +132,6 @@ const HASH_MODE_MAP: Record<string, HomeMode> = {
   trust: "trust",
   "80g": "trust",
   faq: "trust",
-  "hub-top": "all",
-  top: "all",
 };
 
 import type {
@@ -198,10 +202,11 @@ export function HomeSectionsHub({
           const hubEl = hubRef.current;
           const tierEl = document.getElementById("official-tiers");
           const celEl = document.getElementById("celebrate");
+          const todayEl = document.getElementById("today");
           const impEl = document.getElementById("impact");
           const galEl = document.getElementById("boys-gallery");
-          const trEl = document.getElementById("transparency") || document.getElementById("trust");
           const volEl = document.getElementById("volunteer") || document.getElementById("community");
+          const trEl = document.getElementById("transparency") || document.getElementById("trust");
 
           // Default mode when above the hub sections is "all"
           let detectedMode: HomeMode = "all";
@@ -213,7 +218,7 @@ export function HomeSectionsHub({
               detectedMode = "community";
             } else if (galEl && galEl.offsetTop <= scrollPos) {
               detectedMode = "life";
-            } else if (impEl && impEl.offsetTop <= scrollPos) {
+            } else if ((impEl && impEl.offsetTop <= scrollPos) || (todayEl && todayEl.offsetTop <= scrollPos)) {
               detectedMode = "annadana";
             } else if (celEl && celEl.offsetTop <= scrollPos) {
               detectedMode = "celebrate";

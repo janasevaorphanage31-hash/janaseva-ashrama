@@ -46,8 +46,8 @@ interface FeastPackage {
 
 const PACKAGES: FeastPackage[] = [
   {
-    id: "video-wish",
-    name: "Personalized WhatsApp Video Song Blessing",
+    id: "pkg-video-blessing",
+    name: "WhatsApp Video Song & Ayu Suktam Blessing",
     price: 700,
     badge: "📱 ₹700 Accessible Seva",
     menu: [
@@ -59,45 +59,70 @@ const PACKAGES: FeastPackage[] = [
     servings: "25 boys personalized video song on WhatsApp",
   },
   {
-    id: "breakfast",
-    name: "Morning Energy Breakfast",
+    id: "pkg-cake",
+    name: "Birthday Cake Cutting & Singing Blessing",
     price: 1500,
-    badge: "🌅 Morning Seva",
-    menu: ["Steaming Idlis or Khara Bath", "Fresh Coconut Chutney", "Hot Sambar", "Warm Milk for all children"],
-    servings: "All 25 resident children",
+    badge: "🍰 Fresh Cake & Song",
+    menu: [
+      "Custom name on fresh 1kg eggless cake",
+      "25 boys singing Happy Birthday video on WhatsApp",
+      "Sweet distribution & high-res photographs",
+      "Form 10AC 80G tax exemption benefit",
+    ],
+    servings: "25 boys cake celebration",
   },
   {
-    id: "lunch-special",
-    name: "Festive Special Lunch with Payasam",
-    price: 3500,
+    id: "pkg-lunch",
+    name: "Special Banana Leaf Festival Feast + Payasam",
+    price: 3501,
     highlight: true,
     badge: "🔥 Most Popular Choice",
-    menu: ["Hot Rice & Ghee", "Traditional South Indian Sambar & Rasam", "Crispy Pooris & Veg Sagu", "Traditional Sweet Payasam / Halwa", "Crisp Papads & Curd"],
-    servings: "Complete festive lunch for all 25 children",
+    menu: [
+      "Full banana leaf satvik feast for 25 boys",
+      "Sweet Payasam, Pooris, Sagu, Sambar, Rice & Curd",
+      "Morning Vedic Shloka chanting of your family's name",
+      "WhatsApp video proof of boys relishing the feast",
+    ],
+    servings: "Full satvik feast for all 25 boys",
   },
   {
-    id: "evening-snacks",
-    name: "Evening Celebration & Fruit Basket",
-    price: 2500,
-    badge: "🍎 Fruits & Milk",
-    menu: ["Warm Badam Milk", "Healthy Evening Savouries", "Fresh Apples & Bananas Fruit Basket", "Special Birthday Biscuits"],
-    servings: "Joyful evening snack time for 25 children",
+    id: "pkg-vidya",
+    name: "Birthday Vidya Daan (School Kits Gift)",
+    price: 2100,
+    badge: "📚 Education Seva",
+    menu: [
+      "Class notebooks & pens for all 25 boys",
+      "Art & geometry stationery sets",
+      "Personalized blessing note signed by boys",
+      "Form 10AC 80G tax deduction receipt",
+    ],
+    servings: "25 boys complete school stationery",
   },
   {
-    id: "grand-birthday",
-    name: "Grand Birthday Feast & Cake Cutting",
-    price: 5500,
-    badge: "🎂 Cake + Feast",
-    menu: ["Large Eggless Birthday Cake", "Special Festive Lunch with Sweets", "Fresh Fruit Basket & Payasam", "Evening Hot Milk & Snacks"],
-    servings: "Grand celebratory feast & cake distribution for 25 children",
+    id: "pkg-snacks",
+    name: "Evening Snacks, Fruit Baskets & Badam Milk",
+    price: 2501,
+    badge: "🍎 Nutrition & Joy",
+    menu: [
+      "Warm nutritious Badam Milk for all 25 boys",
+      "10kg fresh apple & banana crates",
+      "Evening snacks, games & laughter",
+      "High-res WhatsApp video & photo updates",
+    ],
+    servings: "Evening celebration for 25 boys",
   },
   {
-    id: "full-day",
-    name: "Grand Full-Day Nourishment & Care",
-    price: 8500,
+    id: "pkg-full-day",
+    name: "Complete 24-Hour Birthday Annadana Sponsorship",
+    price: 7501,
     badge: "👑 24-Hour Coverage",
-    menu: ["Wholesome Morning Breakfast", "Festive Birthday Lunch with Sweets", "Evening Snacks & Fresh Fruits", "Warm Wholesome Dinner"],
-    servings: "24-hour total nutritional sponsorship for the Ashrama",
+    menu: [
+      "All 3 meals + evening fruits + birthday cake",
+      "Entire day dedicated in celebrant's name",
+      "Sacred morning Gayatri & Shanti prayers",
+      "Official framed Birthday Honor Certificate + Video",
+    ],
+    servings: "Full 24-hour Ashrama coverage for 25 boys",
   },
 ];
 
@@ -121,13 +146,13 @@ export function CelebrateBirthdayClient({
   const rawPackages = content?.celebrationPackages;
   const packages: FeastPackage[] =
     rawPackages && rawPackages.length > 0
-      ? rawPackages.map((p, idx) => ({
+      ? rawPackages.map((p) => ({
           ...p,
-          badge: p.highlight ? "🔥 Most Popular Choice" : idx === 0 ? "🌅 Morning Seva" : "🍲 Wholesome Feast",
+          badge: p.tag || (p.highlight ? "🔥 Most Popular Choice" : p.price <= 700 ? "📱 Accessible Seva" : "🍲 Wholesome Feast"),
         }))
       : PACKAGES;
 
-  const [selectedPkg, setSelectedPkg] = useState<string>(packages[1]?.id || packages[0]?.id || "lunch-special");
+  const [selectedPkg, setSelectedPkg] = useState<string>(packages[2]?.id || packages[0]?.id || "pkg-lunch");
   const [activeWishIndex, setActiveWishIndex] = useState(0);
 
   const rawWishes = content?.wishVideos && content.wishVideos.length > 0 ? content.wishVideos : wishVideos;

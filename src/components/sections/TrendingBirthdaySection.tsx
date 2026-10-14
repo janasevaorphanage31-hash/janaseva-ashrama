@@ -229,38 +229,48 @@ export function TrendingBirthdaySection({
 
   const birthdayPackages: BirthdayPackage[] =
     rawPackages && rawPackages.length > 0
-      ? rawPackages.map((p) => ({
-          id: p.id,
-          slug: "meal",
-          title: p.name,
-          tag: p.highlight ? "⭐ Popular Seva" : p.price <= 700 ? "📱 ₹700 Video Blessing" : "🎂 Birthday Seva",
-          kannada: "ಮಕ್ಕಳೊಂದಿಗೆ ಹುಟ್ಟುಹಬ್ಬದ ಸಂಭ್ರಮ",
-          cost: p.price,
-          description: p.menu.join(", "),
-          servings: p.servings,
-          popular: p.highlight,
-          starter: p.price <= 700,
-          icon: p.price <= 700 ? "📱" : p.price === 1500 ? "🎂" : "🍛",
-          image:
-            p.price <= 700
-              ? "/media/birthday-wishes-orange.jpg"
-              : p.price === 1500
-              ? "/media/birthday-cake-celebration.jpg"
-              : p.price === 3501 || p.price === 3500
-              ? "/media/banana-leaf-feast.jpg"
-              : p.price === 2100
-              ? "/media/art-drawings.jpg"
-              : p.price === 2501 || p.price === 2500
-              ? "/media/fruits.jpg"
-              : "/media/birthday-feast-annadana.jpg",
-          features: [
-            p.servings,
-            "Personalized WhatsApp Video Blessing",
-            "Photos of children enjoying celebration",
-            "Form 10AC 80G Tax Exemption receipt",
-          ],
-          menuTags: p.menu,
-        }))
+      ? rawPackages.map((p, idx) => {
+          const fallback = TRENDING_BIRTHDAY_PACKAGES.find(
+            (t) => t.id === p.id || t.cost === p.price || t.title.toLowerCase() === p.name.toLowerCase()
+          );
+          return {
+            id: p.id || fallback?.id || `pkg-${idx}`,
+            slug: (p as any).slug || fallback?.slug || "meal",
+            title: p.name || fallback?.title || "Birthday Celebration",
+            tag:
+              p.tag ||
+              fallback?.tag ||
+              (p.highlight ? "⭐ Popular Choice" : p.price <= 700 ? "📱 ₹700 Video Blessing" : "🎂 Birthday Seva"),
+            kannada: p.kannada || fallback?.kannada || "ಮಕ್ಕಳೊಂದಿಗೆ ಹುಟ್ಟುಹಬ್ಬದ ಸಂಭ್ರಮ",
+            cost: p.price,
+            description: p.description || fallback?.description || (p.menu && p.menu.length > 0 ? p.menu.join(", ") : "Wholesome satvik seva for all 25 boys."),
+            servings: p.servings || fallback?.servings || "All 25 resident boys",
+            popular: (p.popular ?? p.highlight) || fallback?.popular || false,
+            starter: p.starter ?? fallback?.starter ?? (p.price <= 700),
+            icon: p.icon || fallback?.icon || (p.price <= 700 ? "📱" : p.price === 1500 ? "🎂" : "🍛"),
+            image:
+              p.image ||
+              fallback?.image ||
+              (p.price <= 700
+                ? "/media/birthday-wishes-orange.jpg"
+                : p.price === 1500
+                ? "/media/birthday-cake-celebration.jpg"
+                : p.price === 3501 || p.price === 3500
+                ? "/media/banana-leaf-feast.jpg"
+                : p.price === 2100
+                ? "/media/art-drawings.jpg"
+                : p.price === 2501 || p.price === 2500
+                ? "/media/fruits.jpg"
+                : "/media/birthday-feast-annadana.jpg"),
+            features: p.features || fallback?.features || [
+              p.servings,
+              "Personalized WhatsApp Video Blessing",
+              "Photos of children enjoying celebration",
+              "Form 10AC 80G Tax Exemption receipt",
+            ],
+            menuTags: p.menu || fallback?.menuTags || [],
+          };
+        })
       : TRENDING_BIRTHDAY_PACKAGES;
 
   const [activeVideoId, setActiveVideoId] = useState<string | null>(null);

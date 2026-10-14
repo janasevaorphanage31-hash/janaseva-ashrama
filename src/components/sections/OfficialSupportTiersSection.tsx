@@ -240,7 +240,7 @@ export function OfficialSupportTiersSection({
                 : "bg-white text-teal-900/80 hover:bg-sand/80 border border-teal-900/10"
             }`}
           >
-            All Tiers (6)
+            All 5 Tiers
           </button>
 
           {activeCategories.map((cat) => {
