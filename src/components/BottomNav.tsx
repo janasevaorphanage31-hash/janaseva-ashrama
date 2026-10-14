@@ -168,11 +168,17 @@ export function BottomNav() {
       if (!ticking) {
         window.requestAnimationFrame(() => {
           const scrollPos = window.scrollY + 280;
-          const celEl = document.getElementById("celebrate");
-          const volEl = document.getElementById("volunteer") || document.getElementById("community");
+          const trustEl = document.getElementById("section-trust") || document.getElementById("transparency");
+          const volEl = document.getElementById("section-community") || document.getElementById("volunteer") || document.getElementById("community");
+          const annEl = document.getElementById("section-annadana") || document.getElementById("impact");
+          const celEl = document.getElementById("section-celebrate") || document.getElementById("celebrate");
 
-          if (volEl && volEl.offsetTop <= scrollPos) {
+          if (trustEl && trustEl.offsetTop <= scrollPos) {
+            setActiveSection("home");
+          } else if (volEl && volEl.offsetTop <= scrollPos) {
             setActiveSection("volunteer");
+          } else if (annEl && annEl.offsetTop <= scrollPos) {
+            setActiveSection("home");
           } else if (celEl && celEl.offsetTop <= scrollPos) {
             setActiveSection("celebrate");
           } else {

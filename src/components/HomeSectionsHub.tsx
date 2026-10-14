@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { track } from "@/lib/track";
 
 import { OfficialSupportTiersSection } from "./sections/OfficialSupportTiersSection";
@@ -52,7 +52,7 @@ const MODES: ModeItem[] = [
     label: "Sponsor 25 Boys",
     icon: "🏛️",
     badge: "Form 28",
-    targetId: "official-tiers",
+    targetId: "section-tiers",
     description: "Form 28 JJ Act registered 5 official sponsorship tiers",
   },
   {
@@ -60,7 +60,7 @@ const MODES: ModeItem[] = [
     label: "Birthdays",
     icon: "🎂",
     badge: "Trending",
-    targetId: "celebrate",
+    targetId: "section-celebrate",
     description: "Celebrate birthday with 25 boys, cake & WhatsApp video wish",
   },
   {
@@ -68,7 +68,7 @@ const MODES: ModeItem[] = [
     label: "Daily Needs & Catalog",
     icon: "🍲",
     badge: "₹11+",
-    targetId: "impact",
+    targetId: "section-annadana",
     description: "Live daily meals tracker, categorized needs & Giving Basket",
   },
   {
@@ -76,7 +76,7 @@ const MODES: ModeItem[] = [
     label: "Campus Life",
     icon: "📸",
     badge: "Moments",
-    targetId: "boys-gallery",
+    targetId: "section-life",
     description: "Real photos, abacus classes & daily documentary moments",
   },
   {
@@ -84,7 +84,7 @@ const MODES: ModeItem[] = [
     label: "Volunteer",
     icon: "🤝",
     badge: "2.5h/Wk",
-    targetId: "volunteer",
+    targetId: "section-community",
     description: "Give 2.5 hrs/week mentoring, coaching & life skills",
   },
   {
@@ -92,19 +92,19 @@ const MODES: ModeItem[] = [
     label: "80G Trust",
     icon: "🛡️",
     badge: "Verified",
-    targetId: "transparency",
+    targetId: "section-trust",
     description: "Form 10AC, CSR-1, Axis Bank wire & FAQs",
   },
 ];
 
 const MODE_TARGET_MAP: Record<HomeMode, string> = {
   all: "hub-top",
-  tiers: "official-tiers",
-  celebrate: "celebrate",
-  annadana: "impact",
-  life: "boys-gallery",
-  community: "volunteer",
-  trust: "transparency",
+  tiers: "section-tiers",
+  celebrate: "section-celebrate",
+  annadana: "section-annadana",
+  life: "section-life",
+  community: "section-community",
+  trust: "section-trust",
 };
 
 const HASH_MODE_MAP: Record<string, HomeMode> = {
@@ -112,14 +112,17 @@ const HASH_MODE_MAP: Record<string, HomeMode> = {
   top: "all",
   all: "all",
   stories: "all",
+  "section-tiers": "tiers",
   "official-tiers": "tiers",
   tiers: "tiers",
   sponsor: "tiers",
   sponsorship: "tiers",
+  "section-celebrate": "celebrate",
   celebrate: "celebrate",
   birthday: "celebrate",
   birthdays: "celebrate",
   feast: "celebrate",
+  "section-annadana": "annadana",
   catalog: "annadana",
   needs: "annadana",
   today: "annadana",
@@ -128,6 +131,7 @@ const HASH_MODE_MAP: Record<string, HomeMode> = {
   impact: "annadana",
   annadana: "annadana",
   basket: "annadana",
+  "section-life": "life",
   "boys-gallery": "life",
   "life-in-motion": "life",
   "ashrama-life": "life",
@@ -135,10 +139,12 @@ const HASH_MODE_MAP: Record<string, HomeMode> = {
   gallery: "life",
   photos: "life",
   documentary: "life",
+  "section-community": "community",
   community: "community",
   volunteer: "community",
   activities: "community",
   crew: "community",
+  "section-trust": "trust",
   transparency: "trust",
   trust: "trust",
   "80g": "trust",
@@ -167,42 +173,63 @@ export function HomeSectionsHub({
   const [activeMode, setActiveMode] = useState<HomeMode>("all");
   const hubRef = useRef<HTMLDivElement>(null);
   const activeModeRef = useRef<HomeMode>(activeMode);
+  const isScrollingProgrammatically = useRef<boolean>(false);
+  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     activeModeRef.current = activeMode;
   }, [activeMode]);
 
-  // Switch between Themes, Catalog, or All Stories
-  const switchMode = (mode: HomeMode, targetAnchor?: string) => {
-    setActiveMode(mode);
-    track("home_mode_select", { mode });
-
-    if (typeof window !== "undefined") {
-      window.dispatchEvent(new CustomEvent("janaseva:home-mode-changed", { detail: { mode } }));
-
-      const targetId = targetAnchor || MODE_TARGET_MAP[mode] || "hub-top";
-      if (mode !== "all") {
-        window.history.replaceState(null, "", `#${targetId}`);
-      } else {
-        window.history.replaceState(null, "", window.location.pathname);
-      }
-
-      // Center the active pill in the horizontal sticky bar
-      const activeBtn = document.getElementById(`mode-pill-${mode}`);
-      const containerTrack = activeBtn?.parentElement;
-      if (containerTrack && activeBtn) {
-        const targetLeft = activeBtn.offsetLeft - containerTrack.clientWidth / 2 + activeBtn.clientWidth / 2;
-        containerTrack.scrollTo({ left: targetLeft, behavior: "smooth" });
-      }
-
-      // Smooth scroll to top of the Hub so the theme starts right below the sticky navigation
-      if (hubRef.current) {
-        const yOffset = -70;
-        const y = hubRef.current.getBoundingClientRect().top + window.pageYOffset + yOffset;
-        window.scrollTo({ top: y, behavior: "smooth" });
-      }
+  // Center the active pill in the horizontal sticky bar
+  const centerPill = useCallback((mode: HomeMode) => {
+    if (typeof document === "undefined") return;
+    const activeBtn = document.getElementById(`mode-pill-${mode}`);
+    const containerTrack = activeBtn?.parentElement;
+    if (containerTrack && activeBtn) {
+      const targetLeft =
+        activeBtn.offsetLeft - containerTrack.clientWidth / 2 + activeBtn.clientWidth / 2;
+      containerTrack.scrollTo({ left: targetLeft, behavior: "smooth" });
     }
-  };
+  }, []);
+
+  // Switch between Themes, Catalog, or All Stories
+  const switchMode = useCallback(
+    (mode: HomeMode, targetAnchor?: string) => {
+      if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
+      isScrollingProgrammatically.current = true;
+
+      setActiveMode(mode);
+      centerPill(mode);
+      track("home_mode_select", { mode });
+
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("janaseva:home-mode-changed", { detail: { mode } }));
+
+        const targetId = targetAnchor || MODE_TARGET_MAP[mode] || "hub-top";
+        if (mode !== "all") {
+          window.history.replaceState(null, "", `#${targetId}`);
+        } else {
+          window.history.replaceState(null, "", window.location.pathname);
+        }
+
+        const targetEl =
+          document.getElementById(targetId) ||
+          document.getElementById(`section-${mode}`) ||
+          (mode === "all" ? hubRef.current : null);
+
+        if (targetEl) {
+          const yOffset = -115;
+          const y = targetEl.getBoundingClientRect().top + window.pageYOffset + yOffset;
+          window.scrollTo({ top: Math.max(0, y), behavior: "smooth" });
+        }
+
+        scrollTimeoutRef.current = setTimeout(() => {
+          isScrollingProgrammatically.current = false;
+        }, 850);
+      }
+    },
+    [centerPill]
+  );
 
   // Listen to custom event dispatched by BottomNav or other components
   useEffect(() => {
@@ -214,7 +241,7 @@ export function HomeSectionsHub({
     };
     window.addEventListener("janaseva:set-home-mode", handleSetMode);
     return () => window.removeEventListener("janaseva:set-home-mode", handleSetMode);
-  }, []);
+  }, [switchMode]);
 
   // Listen to mount URL and hashchange event so any link to /#theme triggers smooth theme switch
   useEffect(() => {
@@ -234,7 +261,7 @@ export function HomeSectionsHub({
       if (rawHash) {
         const mappedMode = HASH_MODE_MAP[rawHash];
         if (mappedMode) {
-          switchMode(mappedMode);
+          switchMode(mappedMode, rawHash);
         }
       }
     };
@@ -273,37 +300,60 @@ export function HomeSectionsHub({
       window.removeEventListener("hashchange", syncFromLocation);
       document.removeEventListener("click", handleDocumentClick, { capture: true });
     };
-  }, []);
+  }, [switchMode]);
 
-  // In 'all' mode only: monitor scroll to highlight bottom navigation accurately
+  // Real-time 60fps Scroll Spy: dynamically highlights active pill, auto-centers horizontal track & updates BottomNav
   useEffect(() => {
-    if (activeMode !== "all") return;
-
     let ticking = false;
+
     const handleScroll = () => {
+      if (isScrollingProgrammatically.current) return;
+
       if (!ticking) {
         window.requestAnimationFrame(() => {
-          const scrollPos = window.scrollY + 240;
-          const trEl = document.getElementById("transparency") || document.getElementById("trust");
-          const volEl = document.getElementById("volunteer") || document.getElementById("community");
-          const galEl = document.getElementById("boys-gallery");
-          const impEl = document.getElementById("impact") || document.getElementById("today");
-          const celEl = document.getElementById("celebrate");
+          const scrollY = window.scrollY;
+          // Offset below sticky top navs (115px) + padding margin
+          const triggerLine = scrollY + 180;
 
-          let detected: string = "home";
-          if (trEl && trEl.offsetTop <= scrollPos) {
+          // Sequential sections in page order
+          const tiersEl = document.getElementById("section-tiers") || document.getElementById("official-tiers");
+          const celEl = document.getElementById("section-celebrate") || document.getElementById("celebrate");
+          const annEl = document.getElementById("section-annadana") || document.getElementById("impact");
+          const lifeEl = document.getElementById("section-life") || document.getElementById("boys-gallery");
+          const comEl = document.getElementById("section-community") || document.getElementById("volunteer");
+          const trustEl = document.getElementById("section-trust") || document.getElementById("transparency");
+
+          const isBottom =
+            window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 60;
+
+          let detected: HomeMode = "all";
+
+          if (isBottom && trustEl) {
             detected = "trust";
-          } else if (volEl && volEl.offsetTop <= scrollPos) {
-            detected = "volunteer";
-          } else if (galEl && galEl.offsetTop <= scrollPos) {
+          } else if (trustEl && trustEl.offsetTop <= triggerLine) {
+            detected = "trust";
+          } else if (comEl && comEl.offsetTop <= triggerLine) {
+            detected = "community";
+          } else if (lifeEl && lifeEl.offsetTop <= triggerLine) {
             detected = "life";
-          } else if (impEl && impEl.offsetTop <= scrollPos) {
-            detected = "catalog";
-          } else if (celEl && celEl.offsetTop <= scrollPos) {
+          } else if (annEl && annEl.offsetTop <= triggerLine) {
+            detected = "annadana";
+          } else if (celEl && celEl.offsetTop <= triggerLine) {
             detected = "celebrate";
+          } else if (tiersEl && tiersEl.offsetTop <= triggerLine) {
+            detected = "tiers";
+          } else {
+            detected = "all";
           }
 
-          window.dispatchEvent(new CustomEvent("janaseva:home-mode-changed", { detail: { mode: detected } }));
+          if (detected !== activeModeRef.current) {
+            setActiveMode(detected);
+            centerPill(detected);
+            window.dispatchEvent(
+              new CustomEvent("janaseva:home-mode-changed", { detail: { mode: detected } })
+            );
+          }
+
           ticking = false;
         });
         ticking = true;
@@ -311,84 +361,15 @@ export function HomeSectionsHub({
     };
 
     window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [activeMode]);
+    // Run once on mount after brief layout calculation
+    const initTimer = setTimeout(handleScroll, 200);
 
-  // Reusable theme bottom switcher
-  function renderThemeFooter(currentMode: HomeMode) {
-    return (
-      <div className="py-10 px-4 bg-gradient-to-b from-cream to-sand/40 border-t border-teal-900/10 text-center">
-        <Container>
-          <p className="text-[11px] font-black uppercase tracking-wider text-teal-950/60 mb-3">
-            Explore Another Giving Theme or Return to All Stories
-          </p>
-          <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-3">
-            <button
-              type="button"
-              onClick={() => switchMode("all")}
-              className="focus-ring tap-scale inline-flex items-center gap-1.5 rounded-xl bg-teal-900 px-5 py-2.5 text-xs font-bold text-white hover:bg-teal-950 transition shadow-sm cursor-pointer"
-            >
-              <span>🌟 View All Stories</span>
-            </button>
-            {currentMode !== "tiers" && (
-              <button
-                type="button"
-                onClick={() => switchMode("tiers")}
-                className="focus-ring tap-scale inline-flex items-center gap-1.5 rounded-xl bg-white border border-teal-900/15 px-4 py-2.5 text-xs font-bold text-teal-950 hover:bg-cream transition shadow-2xs cursor-pointer"
-              >
-                <span>🏛️ Sponsor 25 Boys</span>
-              </button>
-            )}
-            {currentMode !== "celebrate" && (
-              <button
-                type="button"
-                onClick={() => switchMode("celebrate")}
-                className="focus-ring tap-scale inline-flex items-center gap-1.5 rounded-xl bg-white border border-teal-900/15 px-4 py-2.5 text-xs font-bold text-teal-950 hover:bg-cream transition shadow-2xs cursor-pointer"
-              >
-                <span>🎂 Birthdays</span>
-              </button>
-            )}
-            {currentMode !== "annadana" && (
-              <button
-                type="button"
-                onClick={() => switchMode("annadana")}
-                className="focus-ring tap-scale inline-flex items-center gap-1.5 rounded-xl bg-white border border-teal-900/15 px-4 py-2.5 text-xs font-bold text-teal-950 hover:bg-cream transition shadow-2xs cursor-pointer"
-              >
-                <span>🍲 Daily Needs Catalog</span>
-              </button>
-            )}
-            {currentMode !== "life" && (
-              <button
-                type="button"
-                onClick={() => switchMode("life")}
-                className="focus-ring tap-scale inline-flex items-center gap-1.5 rounded-xl bg-white border border-teal-900/15 px-4 py-2.5 text-xs font-bold text-teal-950 hover:bg-cream transition shadow-2xs cursor-pointer"
-              >
-                <span>📸 Campus Life</span>
-              </button>
-            )}
-            {currentMode !== "community" && (
-              <button
-                type="button"
-                onClick={() => switchMode("community")}
-                className="focus-ring tap-scale inline-flex items-center gap-1.5 rounded-xl bg-white border border-teal-900/15 px-4 py-2.5 text-xs font-bold text-teal-950 hover:bg-cream transition shadow-2xs cursor-pointer"
-              >
-                <span>🤝 Volunteer</span>
-              </button>
-            )}
-            {currentMode !== "trust" && (
-              <button
-                type="button"
-                onClick={() => switchMode("trust")}
-                className="focus-ring tap-scale inline-flex items-center gap-1.5 rounded-xl bg-white border border-teal-900/15 px-4 py-2.5 text-xs font-bold text-teal-950 hover:bg-cream transition shadow-2xs cursor-pointer"
-              >
-                <span>🛡️ 80G Trust</span>
-              </button>
-            )}
-          </div>
-        </Container>
-      </div>
-    );
-  }
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      clearTimeout(initTimer);
+      if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
+    };
+  }, [centerPill]);
 
   return (
     <div ref={hubRef} className="relative w-full">
@@ -398,11 +379,11 @@ export function HomeSectionsHub({
       {/* ── STICKY TOP SECTION SWITCHER (Segmented Controller) ── */}
       <nav
         aria-label="Home Section Switcher"
-        className="sticky top-14 sm:top-16 z-30 w-full border-b border-teal-900/10 bg-white/95 backdrop-blur-md shadow-xs no-print"
+        className="sticky top-14 sm:top-16 z-30 w-full border-b border-teal-900/10 bg-white/95 backdrop-blur-md shadow-xs no-print transition-colors"
       >
         <div className="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8 py-2">
           {/* iOS Style Segmented Control Track */}
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar scrollbar-none py-0.5 justify-start md:justify-center">
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar scrollbar-none py-0.5 justify-start md:justify-center scroll-smooth">
             {MODES.map((m) => {
               const isSelected = activeMode === m.id;
               return (
@@ -433,26 +414,27 @@ export function HomeSectionsHub({
             })}
           </div>
 
-          {/* Clean minimal indicator (hidden on mobile to save vertical viewport space) */}
-          <div className="hidden sm:flex mt-1 items-center justify-between text-[10px] text-teal-950/60 font-semibold px-1">
-            <span className="flex items-center gap-1.5">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              <span>
+          {/* Dynamic Real-time Status Indicator - updates as user scrolls! */}
+          <div className="flex mt-1 items-center justify-between text-[10px] text-teal-950/70 font-semibold px-1">
+            <span className="flex items-center gap-1.5 min-w-0 truncate">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+              <span className="truncate">
                 {activeMode === "all"
-                  ? "Showing All Stories · Tap any theme or catalog pill to view dedicated section"
-                  : `Currently viewing: ${MODES.find((m) => m.id === activeMode)?.label} · Tap 'All Stories' to see full overview`}
+                  ? "🌟 Showing All Stories · Tap any theme or scroll continuously"
+                  : `Currently viewing: ${MODES.find((m) => m.id === activeMode)?.label} · ${MODES.find((m) => m.id === activeMode)?.description}`}
               </span>
             </span>
-            <span className="text-[10px] text-teal-900 font-bold">
+            <span className="hidden sm:inline-block text-[10px] text-teal-900 font-bold shrink-0 ml-2">
               25 Resident Boys · Form 10AC 80G Certified
             </span>
           </div>
         </div>
       </nav>
 
-      {/* ── THEME 1: SPONSOR 25 BOYS (OFFICIAL 5 SUPPORT TIERS) ── */}
-      {activeMode === "tiers" && (
-        <div className="space-y-0 animate-in fade-in duration-300">
+      {/* ── ALL 6 THEMATIC CHAPTERS RENDERED CONTINUOUSLY IN SEQUENCE ── */}
+      <div className="space-y-0">
+        {/* ── CHAPTER 1: SPONSOR 25 BOYS (OFFICIAL 5 SUPPORT TIERS) ── */}
+        <section id="section-tiers" className="scroll-mt-24 sm:scroll-mt-28">
           <div className="bg-gradient-to-r from-teal-950 via-teal-900 to-teal-950 text-white py-8 sm:py-10 px-4 text-center border-b border-amber-400/20">
             <Container>
               <span className="inline-flex items-center gap-1.5 rounded-full bg-gold/20 text-gold px-3.5 py-1 text-xs font-black uppercase tracking-wider mb-2 ring-1 ring-gold/30">
@@ -466,15 +448,11 @@ export function HomeSectionsHub({
               </p>
             </Container>
           </div>
-
           <OfficialSupportTiersSection tiers={siteContent?.supportTiers} />
-          {renderThemeFooter("tiers")}
-        </div>
-      )}
+        </section>
 
-      {/* ── THEME 2: CELEBRATE BIRTHDAYS & MILESTONES ── */}
-      {activeMode === "celebrate" && (
-        <div className="space-y-0 animate-in fade-in duration-300">
+        {/* ── CHAPTER 2: CELEBRATE BIRTHDAYS & MILESTONES ── */}
+        <section id="section-celebrate" className="scroll-mt-24 sm:scroll-mt-28">
           <div className="bg-gradient-to-r from-amber-950 via-teal-950 to-amber-950 text-white py-8 sm:py-10 px-4 text-center border-b border-amber-400/20">
             <Container>
               <span className="inline-flex items-center gap-1.5 rounded-full bg-saffron/20 text-saffron-light px-3.5 py-1 text-xs font-black uppercase tracking-wider mb-2 ring-1 ring-saffron/30">
@@ -488,19 +466,17 @@ export function HomeSectionsHub({
               </p>
             </Container>
           </div>
-
           <TrendingBirthdaySection
             packages={siteContent?.celebrationPackages}
             wishVideos={siteContent?.wishVideos}
             content={siteContent}
           />
-          {renderThemeFooter("celebrate")}
-        </div>
-      )}
+        </section>
 
-      {/* ── THEME 3: DAILY NEEDS & GIVING CATALOG (ANNADANA) ── */}
-      {activeMode === "annadana" && (
-        <div className="space-y-0 animate-in fade-in duration-300">
+        {/* ── CHAPTER 3: DAILY NEEDS & GIVING CATALOG (ANNADANA) ── */}
+        <section id="section-annadana" className="scroll-mt-24 sm:scroll-mt-28">
+          <div id="catalog" className="scroll-mt-24 sm:scroll-mt-28" />
+          <div id="today-meals" className="scroll-mt-24 sm:scroll-mt-28" />
           <div className="bg-gradient-to-r from-teal-950 via-emerald-950 to-teal-950 text-white py-8 sm:py-10 px-4 text-center border-b border-emerald-400/20">
             <Container>
               <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/20 text-emerald-300 px-3.5 py-1 text-xs font-black uppercase tracking-wider mb-2 ring-1 ring-emerald-400/30">
@@ -514,16 +490,13 @@ export function HomeSectionsHub({
               </p>
             </Container>
           </div>
-
           <TodaySection updates={updates} mealsStatus={siteContent?.todayMealsStatus} mode="meals-only" />
           <ImpactCart />
-          {renderThemeFooter("annadana")}
-        </div>
-      )}
+        </section>
 
-      {/* ── THEME 4: CAMPUS LIFE & DOCUMENTARY ── */}
-      {activeMode === "life" && (
-        <div className="space-y-0 animate-in fade-in duration-300">
+        {/* ── CHAPTER 4: CAMPUS LIFE & DOCUMENTARY ── */}
+        <section id="section-life" className="scroll-mt-24 sm:scroll-mt-28">
+          <div id="ashrama-life" className="scroll-mt-24 sm:scroll-mt-28" />
           <div className="bg-gradient-to-r from-teal-950 via-slate-900 to-teal-950 text-white py-8 sm:py-10 px-4 text-center border-b border-white/10">
             <Container>
               <span className="inline-flex items-center gap-1.5 rounded-full bg-gold/20 text-gold px-3.5 py-1 text-xs font-black uppercase tracking-wider mb-2 ring-1 ring-gold/30">
@@ -537,18 +510,15 @@ export function HomeSectionsHub({
               </p>
             </Container>
           </div>
-
           <RealBoysGallerySection customMedia={approvedMedia} />
           <TodaySection updates={updates} mode="updates-only" />
+          <div id="documentary" className="scroll-mt-24 sm:scroll-mt-28" />
           <DocumentaryVideoSection chapters={siteContent?.docChapters} />
           <EmotionalQuotesSection quotes={siteContent?.quotes} />
-          {renderThemeFooter("life")}
-        </div>
-      )}
+        </section>
 
-      {/* ── THEME 5: VOLUNTEER & COMMUNITY OUTREACH ── */}
-      {activeMode === "community" && (
-        <div className="space-y-0 animate-in fade-in duration-300">
+        {/* ── CHAPTER 5: VOLUNTEER & COMMUNITY OUTREACH ── */}
+        <section id="section-community" className="scroll-mt-24 sm:scroll-mt-28">
           <div className="bg-gradient-to-r from-emerald-950 via-teal-950 to-emerald-950 text-white py-8 sm:py-10 px-4 text-center border-b border-emerald-400/20">
             <Container>
               <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/20 text-emerald-300 px-3.5 py-1 text-xs font-black uppercase tracking-wider mb-2 ring-1 ring-emerald-400/30">
@@ -562,16 +532,12 @@ export function HomeSectionsHub({
               </p>
             </Container>
           </div>
-
           <CommunityV2Section />
           <CommunityActivitiesSection activities={siteContent?.ngoActivities} />
-          {renderThemeFooter("community")}
-        </div>
-      )}
+        </section>
 
-      {/* ── THEME 6: 80G TRUST, LEGAL ACCREDITATIONS & BANKING ── */}
-      {activeMode === "trust" && (
-        <div className="space-y-0 animate-in fade-in duration-300">
+        {/* ── CHAPTER 6: 80G TRUST, LEGAL ACCREDITATIONS & BANKING ── */}
+        <section id="section-trust" className="scroll-mt-24 sm:scroll-mt-28">
           <div className="bg-gradient-to-r from-teal-950 via-slate-950 to-teal-950 text-white py-8 sm:py-10 px-4 text-center border-b border-amber-400/20">
             <Container>
               <span className="inline-flex items-center gap-1.5 rounded-full bg-gold/20 text-gold px-3.5 py-1 text-xs font-black uppercase tracking-wider mb-2 ring-1 ring-gold/30">
@@ -585,7 +551,6 @@ export function HomeSectionsHub({
               </p>
             </Container>
           </div>
-
           <TransparencySection docs={docs} />
           <TrustSection />
           <VerifiedImpactSection metrics={metrics} totals={totals} />
@@ -595,64 +560,68 @@ export function HomeSectionsHub({
             </Container>
           </section>
           <ContactSection content={siteContent} />
-          {renderThemeFooter("trust")}
+        </section>
+
+        {/* ── QUICK JUMP NAVIGATION FOOTER ── */}
+        <div className="py-8 px-4 bg-gradient-to-b from-cream to-sand/40 border-t border-teal-900/10 text-center">
+          <Container>
+            <p className="text-[11px] font-black uppercase tracking-wider text-teal-950/60 mb-3">
+              Explore All 6 Giving Themes or Jump Directly
+            </p>
+            <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-2.5">
+              <button
+                type="button"
+                onClick={() => switchMode("all")}
+                className="focus-ring tap-scale inline-flex items-center gap-1.5 rounded-xl bg-teal-900 px-4 py-2 text-xs font-bold text-white hover:bg-teal-950 transition shadow-sm cursor-pointer"
+              >
+                <span>🌟 Top Overview</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => switchMode("tiers")}
+                className="focus-ring tap-scale inline-flex items-center gap-1.5 rounded-xl bg-white border border-teal-900/15 px-3.5 py-2 text-xs font-bold text-teal-950 hover:bg-cream transition shadow-2xs cursor-pointer"
+              >
+                <span>🏛️ Sponsor 25 Boys</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => switchMode("celebrate")}
+                className="focus-ring tap-scale inline-flex items-center gap-1.5 rounded-xl bg-white border border-teal-900/15 px-3.5 py-2 text-xs font-bold text-teal-950 hover:bg-cream transition shadow-2xs cursor-pointer"
+              >
+                <span>🎂 Birthdays</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => switchMode("annadana")}
+                className="focus-ring tap-scale inline-flex items-center gap-1.5 rounded-xl bg-white border border-teal-900/15 px-3.5 py-2 text-xs font-bold text-teal-950 hover:bg-cream transition shadow-2xs cursor-pointer"
+              >
+                <span>🍲 Daily Needs Catalog</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => switchMode("life")}
+                className="focus-ring tap-scale inline-flex items-center gap-1.5 rounded-xl bg-white border border-teal-900/15 px-3.5 py-2 text-xs font-bold text-teal-950 hover:bg-cream transition shadow-2xs cursor-pointer"
+              >
+                <span>📸 Campus Life</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => switchMode("community")}
+                className="focus-ring tap-scale inline-flex items-center gap-1.5 rounded-xl bg-white border border-teal-900/15 px-3.5 py-2 text-xs font-bold text-teal-950 hover:bg-cream transition shadow-2xs cursor-pointer"
+              >
+                <span>🤝 Volunteer</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => switchMode("trust")}
+                className="focus-ring tap-scale inline-flex items-center gap-1.5 rounded-xl bg-white border border-teal-900/15 px-3.5 py-2 text-xs font-bold text-teal-950 hover:bg-cream transition shadow-2xs cursor-pointer"
+              >
+                <span>🛡️ 80G Trust</span>
+              </button>
+            </div>
+          </Container>
         </div>
-      )}
-
-      {/* ── MODE 7: ALL STORIES (CONTINUOUS COMPREHENSIVE OVERVIEW) ── */}
-      {activeMode === "all" && (
-        <div className="space-y-0 animate-in fade-in duration-300">
-          {/* 1. Sponsor 25 Boys: Exact 5 Official Support Tiers & Pricing */}
-          <OfficialSupportTiersSection tiers={siteContent?.supportTiers} />
-
-          {/* 2. Celebrate Your Birthday with 25 Orphaned Boys in Bengaluru */}
-          <TrendingBirthdaySection
-            packages={siteContent?.celebrationPackages}
-            wishVideos={siteContent?.wishVideos}
-            content={siteContent}
-          />
-
-          {/* 3. Real-Time Daily Updates & Live Meals Tracker */}
-          <TodaySection updates={updates} mealsStatus={siteContent?.todayMealsStatus} mode="all" />
-
-          {/* 4. Categorized Daily Needs & Direct Giving Basket */}
-          <ImpactCart />
-
-          {/* 5. Real Boys Visual Gallery */}
-          <RealBoysGallerySection customMedia={approvedMedia} />
-
-          {/* 6. Weekend Mentorship & Volunteer Network */}
-          <CommunityV2Section />
-
-          {/* 7. On-Ground NGO Activities & Community Outreach */}
-          <CommunityActivitiesSection activities={siteContent?.ngoActivities} />
-
-          {/* 8. Documentary Video Chapters */}
-          <DocumentaryVideoSection chapters={siteContent?.docChapters} />
-
-          {/* 9. Emotional Voices & Reflections */}
-          <EmotionalQuotesSection quotes={siteContent?.quotes} />
-
-          {/* 10. Transparency Center & 5 Official Govt Accreditations */}
-          <TransparencySection docs={docs} />
-
-          {/* 11. Trust & Axis Bank Direct Details */}
-          <TrustSection />
-
-          {/* 12. Verified Platform Impact Numbers */}
-          <VerifiedImpactSection metrics={metrics} totals={totals} />
-
-          {/* 13. Frequently Asked Questions (FAQ) */}
-          <section id="faq" className="scroll-mt-14 py-10 md:py-16 bg-sand/35 w-full max-w-full overflow-hidden">
-            <Container>
-              <DonationFAQ faqs={siteContent?.faqs} />
-            </Container>
-          </section>
-
-          {/* 14. Bengaluru Location, Map & Contact */}
-          <ContactSection content={siteContent} />
-        </div>
-      )}
+      </div>
     </div>
   );
 }
