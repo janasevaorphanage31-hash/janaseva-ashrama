@@ -31,7 +31,7 @@ export const DEFAULT_ITEMS: ImpactItem[] = [
     todayNeed: true,
     featured: true,
     unitLabel: "cup of milk",
-    imageUrl: "/media/food.jpg",
+    imageUrl: "/media/nutrition.jpg",
     accountingMeaning: "Direct procurement of pasteurized Nandini cow milk from Karnataka Milk Federation for morning nutrition.",
     operationalMeaning: "Nourishes young boys before school with vital calcium and energy to study and grow strong.",
     financeApproval: "approved",

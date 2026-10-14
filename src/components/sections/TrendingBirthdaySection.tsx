@@ -132,7 +132,7 @@ export const TRENDING_BIRTHDAY_PACKAGES: BirthdayPackage[] = [
   },
   {
     id: "pkg-full-day",
-    slug: "pantry",
+    slug: "birthday-feast",
     title: "Complete 24-Hour Birthday Annadana Sponsorship",
     tag: "👑 Complete 24h Seva",
     kannada: "ಸಂಪೂರ್ಣ ದಿನದ ಅನ್ನದಾನ ಹಾಗೂ ಪೋಷಣೆ",

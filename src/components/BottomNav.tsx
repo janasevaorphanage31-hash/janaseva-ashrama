@@ -143,7 +143,23 @@ export function BottomNav() {
 
   const [activeSection, setActiveSection] = useState<"home" | "celebrate" | "volunteer">("home");
 
-  // Track active section on the homepage based on user scroll position
+  // Synchronize active section with HomeSectionsHub custom event
+  useEffect(() => {
+    const handleModeChanged = (e: any) => {
+      const mode = e.detail?.mode;
+      if (mode === "celebrate") {
+        setActiveSection("celebrate");
+      } else if (mode === "community" || mode === "volunteer") {
+        setActiveSection("volunteer");
+      } else {
+        setActiveSection("home");
+      }
+    };
+    window.addEventListener("janaseva:home-mode-changed", handleModeChanged);
+    return () => window.removeEventListener("janaseva:home-mode-changed", handleModeChanged);
+  }, []);
+
+  // Track active section on the homepage based on user scroll position (fallback for continuous scroll)
   useEffect(() => {
     if (path !== "/") return;
 
@@ -204,33 +220,22 @@ export function BottomNav() {
     item: NavItem
   ) => {
     if (path === "/") {
+      e.preventDefault();
       if (item.sectionKey === "home") {
-        e.preventDefault();
+        window.dispatchEvent(new CustomEvent("janaseva:set-home-mode", { detail: { mode: "all" } }));
         window.scrollTo({ top: 0, behavior: "smooth" });
         setActiveSection("home");
         return;
       }
       if (item.sectionKey === "celebrate") {
-        const el = document.getElementById("celebrate");
-        if (el) {
-          e.preventDefault();
-          const yOffset = -100;
-          const y = el.getBoundingClientRect().top + window.pageYOffset + yOffset;
-          window.scrollTo({ top: y, behavior: "smooth" });
-          setActiveSection("celebrate");
-          return;
-        }
+        window.dispatchEvent(new CustomEvent("janaseva:set-home-mode", { detail: { mode: "celebrate" } }));
+        setActiveSection("celebrate");
+        return;
       }
       if (item.sectionKey === "volunteer") {
-        const el = document.getElementById("volunteer") || document.getElementById("community");
-        if (el) {
-          e.preventDefault();
-          const yOffset = -100;
-          const y = el.getBoundingClientRect().top + window.pageYOffset + yOffset;
-          window.scrollTo({ top: y, behavior: "smooth" });
-          setActiveSection("volunteer");
-          return;
-        }
+        window.dispatchEvent(new CustomEvent("janaseva:set-home-mode", { detail: { mode: "community" } }));
+        setActiveSection("volunteer");
+        return;
       }
     }
   };

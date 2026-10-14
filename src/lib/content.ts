@@ -41,6 +41,11 @@ export function ensureSeed(): Promise<void> {
             name: sql`excluded.name`,
             description: sql`excluded.description`,
             imageUrl: sql`excluded.image_url`,
+            category: sql`excluded.category`,
+            unitLabel: sql`excluded.unit_label`,
+            featured: sql`excluded.featured`,
+            todayNeed: sql`excluded.today_need`,
+            sortOrder: sql`excluded.sort_order`,
           },
         });
       const [{ t }] = await db.select({ t: count() }).from(todayUpdates);

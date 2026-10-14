@@ -16,6 +16,7 @@ export function TodaySection({
   updates,
   standalone = false,
   mealsStatus,
+  mode = "all",
 }: {
   updates: Update[];
   standalone?: boolean;
@@ -29,6 +30,7 @@ export function TodaySection({
     amount: number;
     ctaText?: string;
   }>;
+  mode?: "all" | "meals-only" | "updates-only";
 }) {
   const featured = updates[0];
   const rest = updates.slice(1, 7);
@@ -82,13 +84,28 @@ export function TodaySection({
   return (
     <Section id="today" tone="cream" className="py-10 md:py-16">
       <Container>
-        <Head
-          eyebrow="Real Daily Moments &amp; Transparency"
-          title="Today at Janaseva Ashrama"
-          lead="Fresh meals prepared before dawn for 25 young boys. Quiet study tables in the evening. Joyful laughter in the courtyard. See authentic, unstaged moments from our home today."
-        />
+        {mode === "meals-only" ? (
+          <Head
+            eyebrow="Real-Time Food Security & Nutrition"
+            title="Today's Kitchen & Meals Status"
+            lead="Breakfast, lunch, evening snacks and dinner cooked fresh daily for 25 resident boys in our Banashankari / Turahalli campus. Sponsor an open meal or see live serving status."
+          />
+        ) : mode === "updates-only" ? (
+          <Head
+            eyebrow="Daily Life & On-Ground Moments"
+            title="Today's Moments at Janaseva Ashrama"
+            lead="Authentic, unstaged moments from our home: morning prayers, study tables, yoga, sports tournaments, and festival celebrations."
+          />
+        ) : (
+          <Head
+            eyebrow="Real Daily Moments &amp; Transparency"
+            title="Today at Janaseva Ashrama"
+            lead="Fresh meals prepared before dawn for 25 young boys. Quiet study tables in the evening. Joyful laughter in the courtyard. See authentic, unstaged moments from our home today."
+          />
+        )}
 
-        {/* ── LIVE DAILY MEALS STATUS TRACKER (Donor Psychology & Urgency) ── */}
+        {/* ── LIVE DAILY MEALS STATUS TRACKER (Shown in 'all' and 'meals-only' modes) ── */}
+        {mode !== "updates-only" && (
         <div className="mt-6 mb-8 rounded-3xl bg-gradient-to-br from-teal-950 via-teal-900 to-teal-950 p-5 sm:p-6 text-white shadow-lg border border-teal-800">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-white/10 pb-3">
             <div className="flex items-center gap-2">
@@ -155,8 +172,10 @@ export function TodaySection({
             })}
           </div>
         </div>
+        )}
 
-        {updates.length === 0 ? (
+        {mode !== "meals-only" && (
+          updates.length === 0 ? (
           <p className="rounded-2xl bg-white p-6 text-teal-900/70">
             Today&apos;s updates are being published by the Ashrama team. Please check back shortly.
           </p>
@@ -300,7 +319,7 @@ export function TodaySection({
               </div>
             )}
           </div>
-        )}
+        ))}
       </Container>
     </Section>
   );
