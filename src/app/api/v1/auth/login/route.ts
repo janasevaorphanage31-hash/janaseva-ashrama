@@ -3,18 +3,18 @@ import { db } from "@/db";
 import { agTelecallers } from "@/db/schema";
 import { eq, or } from "drizzle-orm";
 import { verifyPassword, hashPassword } from "@/lib/admin-auth";
+import { signCallerToken, verifyCallerToken } from "@/lib/caller-auth";
 import { ensureTelecallersAndSeedData } from "@/lib/antigravity-crm";
 
 export async function GET(req: Request) {
   try {
     await ensureTelecallersAndSeedData();
-    const url = new URL(req.url);
-    const queryCaller = url.searchParams.get("callerId");
 
-    // Check cookie or query
+    // Secure cookie-only authentication (reject insecure query param bypass)
     const cookieHeader = req.headers.get("cookie") || "";
     const match = cookieHeader.match(/ag_caller_session=([^;]+)/);
-    const sessionCallerId = queryCaller || (match ? match[1] : null);
+    const rawToken = match ? match[1].trim() : null;
+    const sessionCallerId = rawToken ? verifyCallerToken(rawToken) : null;
 
     if (!sessionCallerId) {
       return NextResponse.json({ authenticated: false });
@@ -83,7 +83,7 @@ export async function POST(req: Request) {
       }
 
       const validCurrent = verifyPassword(currentPassword, caller[0].passwordHash);
-      if (!validCurrent && currentPassword !== "ashrama@123") {
+      if (!validCurrent) {
         return NextResponse.json({ error: "Current password is incorrect" }, { status: 401 });
       }
 
@@ -119,7 +119,7 @@ export async function POST(req: Request) {
     }
 
     const valid = verifyPassword(password, caller[0].passwordHash);
-    if (!valid && password !== "ashrama@123") {
+    if (!valid) {
       return NextResponse.json({ error: "Invalid password" }, { status: 401 });
     }
 
@@ -134,8 +134,8 @@ export async function POST(req: Request) {
       },
     });
 
-    // Set secure telecaller session cookie
-    response.cookies.set("ag_caller_session", caller[0].callerId, {
+    // Set cryptographically signed telecaller session cookie
+    response.cookies.set("ag_caller_session", signCallerToken(caller[0].callerId), {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",

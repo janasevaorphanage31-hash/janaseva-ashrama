@@ -4,10 +4,36 @@ import { agTelecallers } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { requireAdminApi } from "@/lib/admin-auth";
 
+import { createHmac, timingSafeEqual } from "node:crypto";
+
 export interface CallerAuthContext {
   callerId: string;
   name: string;
   isAdmin: boolean;
+}
+
+function callerSecret(): string {
+  return process.env.ADMIN_SESSION_SECRET || "janaseva-telecaller-signing-key-production-secret-min32chars";
+}
+
+export function signCallerToken(callerId: string): string {
+  const normalized = callerId.trim().toUpperCase();
+  const sig = createHmac("sha256", callerSecret()).update(`caller:${normalized}`).digest("hex");
+  return `${normalized}.${sig}`;
+}
+
+export function verifyCallerToken(token: string): string | null {
+  if (!token) return null;
+  const parts = token.split(".");
+  if (parts.length !== 2) return null;
+  const [callerId, sig] = parts;
+  if (!callerId || !sig) return null;
+  const normalized = callerId.trim().toUpperCase();
+  const expectedSig = createHmac("sha256", callerSecret()).update(`caller:${normalized}`).digest("hex");
+  const a = Buffer.from(sig, "hex");
+  const b = Buffer.from(expectedSig, "hex");
+  if (a.length !== b.length || !timingSafeEqual(a, b)) return null;
+  return normalized;
 }
 
 /**
@@ -32,10 +58,11 @@ export async function authenticateCallerOrAdmin(
     };
   }
 
-  // 2. Check telecaller session cookie
+  // 2. Check cryptographically signed telecaller session cookie
   const cookieHeader = req.headers.get("cookie") || "";
   const match = cookieHeader.match(/ag_caller_session=([^;]+)/);
-  const sessionCallerId = match ? match[1].trim().toUpperCase() : null;
+  const rawToken = match ? match[1].trim() : null;
+  const sessionCallerId = rawToken ? verifyCallerToken(rawToken) : null;
 
   if (!sessionCallerId) {
     return null;

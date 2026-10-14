@@ -82,6 +82,10 @@ const ROLES_INFO: { role: string; label: string; desc: string }[] = [
   { role: "PARTNER_ADMIN", label: "Partner Admin", desc: "Coordinate institutional collaborations and organizational partnerships." },
 ];
 
+function generateTierOptionId(): string {
+  return `opt_${Date.now()}`;
+}
+
 export default function AdminDashboardClient({ initialSession }: AdminDashboardProps) {
   const [activeTab, setActiveTab] = useState<Tab>("analytics");
   const [notification, setNotification] = useState("");
@@ -932,7 +936,7 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
     const updated = [...(contentForm?.supportTiers || [])];
     const options = [...(updated[tierIndex]?.options || [])];
     options.push({
-      id: `opt_${Date.now()}`,
+      id: generateTierOptionId(),
       label: "Custom Support Option",
       subLabel: "Direct child care",
       amount: 2500,
@@ -5712,7 +5716,7 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
                           }}
                           className="rounded-lg bg-white/20 px-2.5 py-1 font-bold text-white hover:bg-white/30 transition"
                         >
-                          📸 Use in Today's Moment
+                          📸 Use in Today&apos;s Moment
                         </button>
                       </div>
                     </div>
@@ -7972,6 +7976,7 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
 
                 {dailyPhotoPreview && (
                   <div className="mt-3 relative aspect-[16/10] w-full rounded-2xl bg-teal-950/10 overflow-hidden border border-teal-900/15">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={dailyPhotoPreview}
                       alt="Today preview"

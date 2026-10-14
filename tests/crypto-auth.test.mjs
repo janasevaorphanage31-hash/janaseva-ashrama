@@ -90,3 +90,45 @@ test("Employee Password Scrypt Hashing and Verification", async (t) => {
   });
 });
 
+test("Telecaller Session Token Cryptographic Signing and Verification", async (t) => {
+  function signCallerToken(callerId, secret = TEST_SECRET) {
+    const normalized = callerId.trim().toUpperCase();
+    const sig = createHmac("sha256", secret).update(`caller:${normalized}`).digest("hex");
+    return `${normalized}.${sig}`;
+  }
+
+  function verifyCallerToken(token, secret = TEST_SECRET) {
+    if (!token) return null;
+    const parts = token.split(".");
+    if (parts.length !== 2) return null;
+    const [callerId, sig] = parts;
+    if (!callerId || !sig) return null;
+    const normalized = callerId.trim().toUpperCase();
+    const expectedSig = createHmac("sha256", secret).update(`caller:${normalized}`).digest("hex");
+    const a = Buffer.from(sig, "hex");
+    const b = Buffer.from(expectedSig, "hex");
+    if (a.length !== b.length || !timingSafeEqual(a, b)) return null;
+    return normalized;
+  }
+
+  await t.test("Valid signed telecaller token verifies successfully", () => {
+    const token = signCallerToken("TC01");
+    assert.equal(verifyCallerToken(token), "TC01");
+  });
+
+  await t.test("Unsigned legacy callerId is rejected", () => {
+    assert.equal(verifyCallerToken("TC01"), null);
+  });
+
+  await t.test("Forged callerId in signed token is rejected", () => {
+    const token = signCallerToken("TC01");
+    const forgedToken = token.replace("TC01", "TC02");
+    assert.equal(verifyCallerToken(forgedToken), null);
+  });
+
+  await t.test("Tampered HMAC signature is rejected", () => {
+    const badToken = "TC01.0000000000000000000000000000000000000000000000000000000000000000";
+    assert.equal(verifyCallerToken(badToken), null);
+  });
+});
+

@@ -81,26 +81,29 @@ export function AdminMarketingHub({
 
   // Load config on mount
   useEffect(() => {
-    void fetchConfig();
-  }, []);
-
-  async function fetchConfig() {
-    setLoadingConfig(true);
-    try {
-      const res = await fetch("/api/admin/marketing");
-      if (res.ok) {
-        const data = await res.json();
-        setConfig(data.config);
-        if (data.config?.savedCampaigns?.length > 0) {
-          setActiveCampaign(data.config.savedCampaigns[0]);
+    let ignore = false;
+    fetch("/api/admin/marketing")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!ignore) {
+          if (data?.config) {
+            setConfig(data.config);
+            if (data.config.savedCampaigns?.length > 0) {
+              setActiveCampaign(data.config.savedCampaigns[0]);
+            }
+          }
+          setLoadingConfig(false);
         }
-      }
-    } catch (e) {
-      console.error("Failed to load marketing config:", e);
-    } finally {
-      setLoadingConfig(false);
-    }
-  }
+      })
+      .catch((e) => {
+        console.error("Failed to load marketing config:", e);
+        if (!ignore) setLoadingConfig(false);
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, []);
 
   async function handleSaveConfig() {
     if (!config) return;

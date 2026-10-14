@@ -972,9 +972,14 @@ For queries, call: 9980359595 / 9945223232.`;
               {/* QR Code SVG */}
               <div className="mx-auto flex h-52 w-52 items-center justify-center rounded-2xl bg-cream p-4 border-2 border-teal-900/20 shadow-inner">
                 {/* Visual QR Code Representation using clean SVG */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(formUrl)}`}
                   alt="QR Code for Supporter Form"
+                  width={176}
+                  height={176}
+                  loading="lazy"
+                  decoding="async"
                   className="h-44 w-44 rounded-lg"
                 />
               </div>

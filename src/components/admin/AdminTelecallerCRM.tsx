@@ -60,13 +60,19 @@ export function AdminTelecallerCRM() {
   const [newPasswordInput, setNewPasswordInput] = useState("");
   const [resettingPassword, setResettingPassword] = useState(false);
 
-  useEffect(() => {
-    loadAdminData();
-  }, []);
-
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(""), 5000);
+  };
+
+  const loadLeadsForReassignment = async (callerId: string) => {
+    try {
+      const res = await fetch(`/api/v1/leads/assigned?callerId=${callerId}`);
+      const data = await res.json();
+      if (data.success) {
+        setLeadsList(data.leads || []);
+      }
+    } catch {}
   };
 
   const loadAdminData = async () => {
@@ -94,15 +100,12 @@ export function AdminTelecallerCRM() {
     }
   };
 
-  const loadLeadsForReassignment = async (callerId: string) => {
-    try {
-      const res = await fetch(`/api/v1/leads/assigned?callerId=${callerId}`);
-      const data = await res.json();
-      if (data.success) {
-        setLeadsList(data.leads || []);
-      }
-    } catch {}
-  };
+  useEffect(() => {
+    queueMicrotask(() => {
+      void loadAdminData();
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── ADD TELECALLER ──
   const handleOpenAddModal = () => {

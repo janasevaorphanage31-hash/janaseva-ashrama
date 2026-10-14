@@ -96,12 +96,17 @@ export function CinematicHero({ content }: { content?: Partial<SiteContentMap> }
   const posterSrc = content?.heroPosterUrl || "/media/poster-desktop.jpg";
   const videoSrc = content?.heroVideoUrl || "/media/video-chant-prayer.mp4";
 
+  const [prevVideoSrc, setPrevVideoSrc] = useState(videoSrc);
+  if (prevVideoSrc !== videoSrc) {
+    setPrevVideoSrc(videoSrc);
+    setVideoReady(false);
+  }
+
   useEffect(() => {
     track("hero_view", { type: "cinematic_video_hero" });
   }, []);
 
   useEffect(() => {
-    setVideoReady(false);
     if (videoRef.current) {
       if (videoRef.current.readyState >= 2) {
         setVideoReady(true);

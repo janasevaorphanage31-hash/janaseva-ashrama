@@ -63,21 +63,61 @@ export function DonateClientComponent() {
   const searchParams = useSearchParams();
 
   // URL / Attribution state
-  const [callerRef, setCallerRef] = useState<string>("DIRECT");
-  const [leadId, setLeadId] = useState<string>("");
+  const [callerRef, setCallerRef] = useState<string>(() => {
+    const urlRef = searchParams.get("ref");
+    if (urlRef) return urlRef.trim().toUpperCase();
+    if (typeof window !== "undefined") {
+      try {
+        return (
+          sessionStorage.getItem("antigravity_caller_ref") ||
+          localStorage.getItem("antigravity_caller_ref") ||
+          "DIRECT"
+        );
+      } catch {}
+    }
+    return "DIRECT";
+  });
+  const [leadId, setLeadId] = useState<string>(() => searchParams.get("lead_id") || "");
 
   // Donation amount state
-  const [amount, setAmount] = useState<number>(1000);
-  const [customAmount, setCustomAmount] = useState<string>("");
+  const [amount, setAmount] = useState<number>(() => {
+    const urlAmt = searchParams.get("amount");
+    if (urlAmt) {
+      const parsed = parseFloat(urlAmt);
+      if (parsed >= 10 && parsed <= 500000 && PRESET_TIERS.some((t) => t.amt === parsed)) {
+        return parsed;
+      }
+    }
+    return 1000;
+  });
+  const [customAmount, setCustomAmount] = useState<string>(() => {
+    const urlAmt = searchParams.get("amount");
+    if (urlAmt) {
+      const parsed = parseFloat(urlAmt);
+      if (parsed >= 10 && parsed <= 500000 && !PRESET_TIERS.some((t) => t.amt === parsed)) {
+        return String(parsed);
+      }
+    }
+    return "";
+  });
 
   // Occasion & Dedication
-  const [occasion, setOccasion] = useState<string>("birthday");
+  const [occasion, setOccasion] = useState<string>(() => {
+    const urlOccasion = searchParams.get("occasion");
+    if (urlOccasion) {
+      const match = OCCASIONS.find(
+        (o) => o.id === urlOccasion.toLowerCase() || o.label.toLowerCase().includes(urlOccasion.toLowerCase()),
+      );
+      if (match) return match.id;
+    }
+    return "birthday";
+  });
   const [prayerNote, setPrayerNote] = useState<string>("");
 
   // Donor credentials
-  const [donorName, setDonorName] = useState("");
-  const [donorPhone, setDonorPhone] = useState("");
-  const [donorEmail, setDonorEmail] = useState("");
+  const [donorName, setDonorName] = useState(() => searchParams.get("name") || "");
+  const [donorPhone, setDonorPhone] = useState(() => (searchParams.get("phone") || "").replace(/\D/g, "").slice(-10));
+  const [donorEmail, setDonorEmail] = useState(() => (searchParams.get("email") || "").trim().toLowerCase());
   const [donorPan, setDonorPan] = useState("");
   const [showPanInput, setShowPanInput] = useState(false);
 
@@ -104,61 +144,15 @@ export function DonateClientComponent() {
   const amountSectionRef = useRef<HTMLDivElement>(null);
   const panInputRef = useRef<HTMLInputElement>(null);
 
-  // Parse URL search parameters & initialize prefilled fields
+  // Sync caller reference to session/local storage
   useEffect(() => {
-    // 1. Caller Reference
     const urlRef = searchParams.get("ref");
     if (urlRef) {
       const clean = urlRef.trim().toUpperCase();
-      sessionStorage.setItem("antigravity_caller_ref", clean);
       try {
+        sessionStorage.setItem("antigravity_caller_ref", clean);
         localStorage.setItem("antigravity_caller_ref", clean);
       } catch {}
-      setCallerRef(clean);
-    } else {
-      const stored =
-        sessionStorage.getItem("antigravity_caller_ref") ||
-        (typeof localStorage !== "undefined" ? localStorage.getItem("antigravity_caller_ref") : null);
-      if (stored) setCallerRef(stored);
-    }
-
-    // 2. Lead ID
-    const urlLeadId = searchParams.get("lead_id");
-    if (urlLeadId) setLeadId(urlLeadId);
-
-    // 3. Donor Name
-    const urlName = searchParams.get("name");
-    if (urlName) setDonorName(urlName);
-
-    // 4. Donor Phone
-    const urlPhone = searchParams.get("phone");
-    if (urlPhone) setDonorPhone(urlPhone.replace(/\D/g, "").slice(-10));
-
-    // 5. Donor Email
-    const urlEmail = searchParams.get("email");
-    if (urlEmail) setDonorEmail(urlEmail.trim().toLowerCase());
-
-    // 6. Occasion
-    const urlOccasion = searchParams.get("occasion");
-    if (urlOccasion) {
-      const match = OCCASIONS.find(
-        (o) => o.id === urlOccasion.toLowerCase() || o.label.toLowerCase().includes(urlOccasion.toLowerCase()),
-      );
-      if (match) setOccasion(match.id);
-    }
-
-    // 7. Amount
-    const urlAmt = searchParams.get("amount");
-    if (urlAmt) {
-      const parsed = parseFloat(urlAmt);
-      if (parsed >= 10 && parsed <= 500000) {
-        if (PRESET_TIERS.some((t) => t.amt === parsed)) {
-          setAmount(parsed);
-          setCustomAmount("");
-        } else {
-          setCustomAmount(String(parsed));
-        }
-      }
     }
   }, [searchParams]);
 
@@ -564,6 +558,7 @@ export function DonateClientComponent() {
               <span className="absolute left-3 top-2.5 text-base font-bold text-teal-950/60">₹</span>
               <input
                 type="number"
+                inputMode="numeric"
                 min={10}
                 max={1000000}
                 placeholder="e.g. 5000"
@@ -572,7 +567,7 @@ export function DonateClientComponent() {
                   setCustomAmount(e.target.value);
                   clearFieldError("amount");
                 }}
-                className={`w-full rounded-xl border py-2.5 pl-8 pr-3 text-sm font-bold text-teal-950 outline-none transition ${
+                className={`w-full rounded-xl border py-2.5 pl-8 pr-3 text-base sm:text-sm font-bold text-teal-950 outline-none transition ${
                   formErrors.amount
                     ? "border-rose-500 ring-2 ring-rose-200"
                     : "border-teal-900/20 focus:ring-2 focus:ring-amber-500"
@@ -634,13 +629,14 @@ export function DonateClientComponent() {
             <input
               ref={nameInputRef}
               type="text"
+              autoComplete="name"
               placeholder="e.g. Ramesh Kumar / Ananya Sharma"
               value={donorName}
               onChange={(e) => {
                 setDonorName(e.target.value);
                 clearFieldError("name");
               }}
-              className={`w-full rounded-xl border p-2.5 text-sm text-teal-950 outline-none transition ${
+              className={`w-full rounded-xl border p-2.5 text-base sm:text-sm text-teal-950 outline-none transition ${
                 formErrors.name
                   ? "border-rose-500 ring-2 ring-rose-200 bg-rose-50/20"
                   : "border-teal-900/20 focus:ring-2 focus:ring-amber-500"
@@ -666,6 +662,8 @@ export function DonateClientComponent() {
               <input
                 ref={phoneInputRef}
                 type="tel"
+                inputMode="tel"
+                autoComplete="tel"
                 maxLength={10}
                 placeholder="9876543210"
                 value={donorPhone}
@@ -673,7 +671,7 @@ export function DonateClientComponent() {
                   setDonorPhone(e.target.value.replace(/\D/g, "").slice(0, 10));
                   clearFieldError("phone");
                 }}
-                className={`w-full rounded-xl border py-2.5 pl-11 pr-3 text-sm font-bold text-teal-950 outline-none transition ${
+                className={`w-full rounded-xl border py-2.5 pl-11 pr-3 text-base sm:text-sm font-bold text-teal-950 outline-none transition ${
                   formErrors.phone
                     ? "border-rose-500 ring-2 ring-rose-200 bg-rose-50/20"
                     : "border-teal-900/20 focus:ring-2 focus:ring-amber-500"
@@ -695,13 +693,15 @@ export function DonateClientComponent() {
             </div>
             <input
               type="email"
+              inputMode="email"
+              autoComplete="email"
               placeholder="e.g. ramesh@example.com"
               value={donorEmail}
               onChange={(e) => {
                 setDonorEmail(e.target.value);
                 clearFieldError("email");
               }}
-              className={`w-full rounded-xl border p-2.5 text-sm text-teal-950 outline-none transition ${
+              className={`w-full rounded-xl border p-2.5 text-base sm:text-sm text-teal-950 outline-none transition ${
                 formErrors.email
                   ? "border-rose-500 ring-2 ring-rose-200"
                   : "border-teal-900/20 focus:ring-2 focus:ring-amber-500"
@@ -727,7 +727,7 @@ export function DonateClientComponent() {
               placeholder="e.g. Praying for child's good health and wisdom on his 10th birthday..."
               value={prayerNote}
               onChange={(e) => setPrayerNote(e.target.value)}
-              className="w-full rounded-xl border border-teal-900/20 p-2.5 text-xs text-teal-950 outline-none focus:ring-2 focus:ring-amber-500 resize-none"
+              className="w-full rounded-xl border border-teal-900/20 p-2.5 text-base sm:text-xs text-teal-950 outline-none focus:ring-2 focus:ring-amber-500 resize-none"
             />
           </div>
 
@@ -761,13 +761,16 @@ export function DonateClientComponent() {
                   ref={panInputRef}
                   type="text"
                   maxLength={10}
+                  autoCapitalize="characters"
+                  autoCorrect="off"
+                  spellCheck={false}
                   placeholder="ABCDE1234F"
                   value={donorPan}
                   onChange={(e) => {
                     setDonorPan(sanitizePan(e.target.value));
                     clearFieldError("pan");
                   }}
-                  className={`w-full rounded-xl border p-2.5 text-xs font-mono uppercase tracking-wider text-teal-950 outline-none transition ${
+                  className={`w-full rounded-xl border p-2.5 text-base sm:text-xs font-mono uppercase tracking-wider text-teal-950 outline-none transition ${
                     formErrors.pan
                       ? "border-rose-500 ring-2 ring-rose-200"
                       : "border-teal-900/20 focus:ring-2 focus:ring-amber-500"

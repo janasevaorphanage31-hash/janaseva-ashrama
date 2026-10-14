@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { readFile, stat } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { join, resolve, sep } from "node:path";
 
 const MIME_MAP: Record<string, string> = {
   jpg: "image/jpeg",
@@ -30,11 +30,12 @@ export async function GET(
       return NextResponse.json({ error: "File not found" }, { status: 404 });
     }
 
-    // Canonical directory traversal defense
+    // Canonical directory traversal defense with strict boundary enforcement
     const uploadsBaseDir = resolve(join(process.cwd(), "public", "uploads"));
+    const safeBaseDir = uploadsBaseDir.endsWith(sep) ? uploadsBaseDir : uploadsBaseDir + sep;
     const requestedPath = resolve(join(uploadsBaseDir, ...path));
 
-    if (!requestedPath.startsWith(uploadsBaseDir)) {
+    if (requestedPath !== uploadsBaseDir && !requestedPath.startsWith(safeBaseDir)) {
       return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }
 

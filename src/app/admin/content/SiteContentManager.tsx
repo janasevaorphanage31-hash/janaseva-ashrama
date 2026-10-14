@@ -18,27 +18,31 @@ export function SiteContentManager({
   // File upload state
   const [uploadingField, setUploadingField] = useState<string | null>(null);
 
-  async function load() {
-    setLoading(true);
-    try {
-      const res = await fetch("/api/admin/site-content", { cache: "no-store" });
-      const data = await res.json();
-      if (res.ok && data.content) {
-        setContent(data.content);
-      } else {
-        onMessage(data.error || "Failed to load site content settings.");
-      }
-    } catch {
-      onMessage("Network error loading site content settings.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
   useEffect(() => {
-    void load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    let ignore = false;
+    fetch("/api/admin/site-content", { cache: "no-store" })
+      .then((res) => res.json())
+      .then((data) => {
+        if (!ignore) {
+          if (data?.content) {
+            setContent(data.content);
+          } else {
+            onMessage(data?.error || "Failed to load site content settings.");
+          }
+          setLoading(false);
+        }
+      })
+      .catch(() => {
+        if (!ignore) {
+          onMessage("Network error loading site content settings.");
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, [onMessage]);
 
   async function handleSave(e?: FormEvent) {
     if (e) e.preventDefault();

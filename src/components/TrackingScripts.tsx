@@ -29,7 +29,7 @@ export function TrackingScripts({
   return (
     <>
       {/* ── Global Defensive Shims: Prevent ReferenceError if scripts are blocked ── */}
-      <Script id="tracking-defensive-shims" strategy="beforeInteractive">
+      <Script id="tracking-defensive-shims" strategy="afterInteractive">
         {`
           window.dataLayer = window.dataLayer || [];
           if (typeof window.gtag !== 'function') {
@@ -70,6 +70,7 @@ export function TrackingScripts({
             `}
           </Script>
           <noscript>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               height="1"
               width="1"

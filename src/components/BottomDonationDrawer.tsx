@@ -65,8 +65,14 @@ export function BottomDonationDrawer() {
 
   const drawerRef = useRef<HTMLDivElement>(null);
 
+  const [prevInitialAmount, setPrevInitialAmount] = useState(donateInitialAmount);
+  const [prevInitialTierId, setPrevInitialTierId] = useState(donateInitialTierId);
+
   // Sync initial amount if passed
-  useEffect(() => {
+  if (donateInitialAmount !== prevInitialAmount || donateInitialTierId !== prevInitialTierId) {
+    setPrevInitialAmount(donateInitialAmount);
+    setPrevInitialTierId(donateInitialTierId);
+
     if (donateInitialAmount && donateInitialAmount > 0) {
       setSelectedAmount(donateInitialAmount);
       setCustomInput(String(donateInitialAmount));
@@ -83,7 +89,7 @@ export function BottomDonationDrawer() {
         setActiveTab("tiers");
       }
     }
-  }, [donateInitialAmount, donateInitialTierId]);
+  }
 
   // Handle ESC key
   useEffect(() => {

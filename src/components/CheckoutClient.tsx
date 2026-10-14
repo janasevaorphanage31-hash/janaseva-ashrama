@@ -430,10 +430,32 @@ export function CheckoutClient() {
 
   const [form, setForm] = useState({ name: "", email: "", phone: "", pan: "", anonymous: false });
   const [showPanField, setShowPanField] = useState(false);
-  const [frequency, setFrequency] = useState<"onetime" | "monthly">("onetime");
+  const [frequency, setFrequency] = useState<"onetime" | "monthly">(() => {
+    return search.get("freq") === "monthly" ? "monthly" : "onetime";
+  });
   const [mandateConsent, setMandateConsent] = useState(true);
-  const [dedicationEnabled, setDedicationEnabled] = useState(false);
-  const [dedication, setDedication] = useState({ occasion: "Birthday", name: "", message: "" });
+  const [dedicationEnabled, setDedicationEnabled] = useState(() => {
+    return Boolean(
+      search.get("occasion") ||
+        search.get("name") ||
+        search.get("celebrant") ||
+        search.get("message") ||
+        search.get("purpose")
+    );
+  });
+  const [dedication, setDedication] = useState(() => {
+    const occ = search.get("occasion");
+    const nameParam = search.get("name") || search.get("celebrant") || "";
+    const msgParam = search.get("message") || search.get("purpose") || "";
+    const match = occ
+      ? OCCASION_CHOICES.find((o) => o.toLowerCase() === occ.toLowerCase()) || "Birthday"
+      : "Birthday";
+    return {
+      occasion: match,
+      name: nameParam,
+      message: msgParam,
+    };
+  });
   const [deliveryPreference, setDeliveryPreference] = useState<"email" | "whatsapp" | "both">("both");
   const [updateConsent, setUpdateConsent] = useState(true);
 
@@ -462,13 +484,8 @@ export function CheckoutClient() {
     }
   };
 
-  // Check URL params for pre-set amount, frequency and occasion
+  // Check URL params for pre-set amount
   useEffect(() => {
-    const freqParam = search.get("freq");
-    if (freqParam === "monthly") {
-      setFrequency("monthly");
-    }
-
     const amtParam = search.get("amount");
     if (amtParam) {
       const parsed = Number(amtParam);
@@ -483,23 +500,8 @@ export function CheckoutClient() {
         cart.setCustom(501);
       });
     }
-
-    const occ = search.get("occasion");
-    const nameParam = search.get("name") || search.get("celebrant") || "";
-    const msgParam = search.get("message") || search.get("purpose") || "";
-    if (occ || nameParam || msgParam) {
-      const match = occ ? (OCCASION_CHOICES.find((o) => o.toLowerCase() === occ.toLowerCase()) || "Birthday") : "Birthday";
-      queueMicrotask(() => {
-        setDedicationEnabled(true);
-        setDedication((prev) => ({
-          ...prev,
-          occasion: match,
-          name: nameParam || prev.name,
-          message: msgParam || prev.message,
-        }));
-      });
-    }
-  }, [search, cart.hydrated]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search, cart.hydrated, cart.lines.length, cart.total, cart.custom, cart.setCustom]);
 
   if (!cart.hydrated) {
     return (

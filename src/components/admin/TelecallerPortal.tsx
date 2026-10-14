@@ -59,49 +59,6 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
     setTimeout(() => setToastMsg(""), 4500);
   };
 
-  // 1. Initial Session Check on Mount
-  useEffect(() => {
-    checkCurrentSession();
-  }, []);
-
-  const checkCurrentSession = async () => {
-    setAuthChecking(true);
-    try {
-      const res = await fetch("/api/v1/auth/login");
-      const data = await res.json();
-      if (data.authenticated && data.caller) {
-        setCallerProfile(data.caller);
-        setIsLoggedIn(true);
-        await loadCallerLeads(data.caller.callerId);
-      } else {
-        setIsLoggedIn(false);
-        setCallerProfile(null);
-      }
-    } catch {
-      setIsLoggedIn(false);
-    } finally {
-      setAuthChecking(false);
-    }
-  };
-
-  // 2. Load Leads for Authenticated Caller
-  const loadCallerLeads = async (cid: string) => {
-    setLoadingLeads(true);
-    try {
-      const res = await fetch(`/api/v1/leads/assigned?callerId=${encodeURIComponent(cid)}`);
-      const data = await res.json();
-      if (data.success) {
-        const leadItems = data.leads || [];
-        setLeads(leadItems);
-        await computeStats(leadItems, cid);
-      }
-    } catch (err: any) {
-      showToast("Error loading leads: " + err.message);
-    } finally {
-      setLoadingLeads(false);
-    }
-  };
-
   const computeStats = async (leadItems: any[], cid: string) => {
     let contacted = 0;
     let converted = 0;
@@ -129,6 +86,51 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
       });
     }
   };
+
+  const loadCallerLeads = async (cid: string) => {
+    setLoadingLeads(true);
+    try {
+      const res = await fetch(`/api/v1/leads/assigned?callerId=${encodeURIComponent(cid)}`);
+      const data = await res.json();
+      if (data.success) {
+        const leadItems = data.leads || [];
+        setLeads(leadItems);
+        await computeStats(leadItems, cid);
+      }
+    } catch (err: any) {
+      showToast("Error loading leads: " + err.message);
+    } finally {
+      setLoadingLeads(false);
+    }
+  };
+
+  const checkCurrentSession = async () => {
+    setAuthChecking(true);
+    try {
+      const res = await fetch("/api/v1/auth/login");
+      const data = await res.json();
+      if (data.authenticated && data.caller) {
+        setCallerProfile(data.caller);
+        setIsLoggedIn(true);
+        await loadCallerLeads(data.caller.callerId);
+      } else {
+        setIsLoggedIn(false);
+        setCallerProfile(null);
+      }
+    } catch {
+      setIsLoggedIn(false);
+    } finally {
+      setAuthChecking(false);
+    }
+  };
+
+  // 1. Initial Session Check on Mount
+  useEffect(() => {
+    queueMicrotask(() => {
+      void checkCurrentSession();
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // 3. Handle Telecaller Sign In
   const handleLogin = async (e: React.FormEvent) => {

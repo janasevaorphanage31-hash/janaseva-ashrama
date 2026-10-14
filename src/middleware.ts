@@ -63,6 +63,7 @@ export function middleware(req: NextRequest) {
     (pathname.startsWith("/admin/") && pathname !== "/admin/login");
 
   const hasAdminCookie =
+    Boolean(req.cookies.get("janaseva_admin_session")?.value) ||
     Boolean(req.cookies.get("admin_session")?.value) ||
     Boolean(req.cookies.get("session")?.value);
 

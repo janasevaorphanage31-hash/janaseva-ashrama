@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { writeFile, mkdir } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { join, resolve, sep } from "node:path";
 import { requireAdminApi } from "@/lib/admin-auth";
 import { clean, clientIp } from "@/lib/server-utils";
 import { writeAudit } from "@/lib/audit";
@@ -123,8 +123,11 @@ export async function POST(req: Request) {
     const finalFilename = `${cleanBaseName}_${uniqueTag}.${extension}`;
     const filePath = join(uploadDir, finalFilename);
 
-    // Prevent Path Traversal
-    if (!resolve(filePath).startsWith(resolve(baseUploadDir))) {
+    // Prevent Path Traversal with strict directory boundary
+    const resolvedBase = resolve(baseUploadDir);
+    const safeResolvedBase = resolvedBase.endsWith(sep) ? resolvedBase : resolvedBase + sep;
+    const resolvedTarget = resolve(filePath);
+    if (!resolvedTarget.startsWith(safeResolvedBase)) {
       return NextResponse.json({ error: "Invalid file path traversal detected." }, { status: 400 });
     }
 
