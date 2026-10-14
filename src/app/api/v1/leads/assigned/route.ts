@@ -1,27 +1,26 @@
 import { NextResponse } from "next/server";
 import { getAssignedLeads } from "@/lib/antigravity-crm";
+import { authenticateCallerOrAdmin } from "@/lib/caller-auth";
 
 export async function GET(req: Request) {
   try {
-    const url = new URL(req.url);
-    let callerId = url.searchParams.get("callerId");
-
-    if (!callerId) {
-      // Check cookie or header
-      const cookieHeader = req.headers.get("cookie") || "";
-      const match = cookieHeader.match(/ag_caller_session=([^;]+)/);
-      callerId = match ? match[1] : req.headers.get("x-caller-id");
+    const auth = await authenticateCallerOrAdmin(req);
+    if (!auth) {
+      return NextResponse.json(
+        { error: "Unauthorized. Please log in to your telecaller portal." },
+        { status: 401 }
+      );
     }
 
-    if (!callerId) {
-      callerId = "TC01"; // Fallback to primary test caller
-    }
-
-    const leads = await getAssignedLeads(callerId);
+    // Row-level security: Telecaller can ONLY query their own verified callerId
+    const targetCallerId = auth.callerId;
+    const leads = await getAssignedLeads(targetCallerId);
 
     return NextResponse.json({
       success: true,
-      callerId: callerId.toUpperCase(),
+      callerId: targetCallerId,
+      callerName: auth.name,
+      isAdmin: auth.isAdmin,
       count: leads.length,
       leads,
     });

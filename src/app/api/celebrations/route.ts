@@ -13,6 +13,10 @@ export async function POST(req: Request) {
   const b = await req.json().catch(() => null);
   if (!b) return NextResponse.json({ error: "Invalid booking request." }, { status: 400 });
 
+  if (b.website_hp || b.hp_token) {
+    return NextResponse.json({ error: "Spam submission blocked." }, { status: 400 });
+  }
+
   const celebrantName = clean(b.celebrantName, 120);
   const occasion = clean(b.occasion, 80) || "Birthday";
   const celebrationDate = clean(b.celebrationDate, 20); // YYYY-MM-DD

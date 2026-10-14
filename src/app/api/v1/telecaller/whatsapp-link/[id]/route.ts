@@ -1,32 +1,60 @@
 import { NextResponse } from "next/server";
 import { generateWhatsAppLink } from "@/lib/antigravity-crm";
+import { authenticateCallerOrAdmin } from "@/lib/caller-auth";
+import { db } from "@/db";
+import { agLeads } from "@/db/schema";
+import { eq } from "drizzle-orm";
 
-export async function GET(req: Request, context: { params: Promise<{ id: string }> }) {
+export async function GET(
+  req: Request,
+  context: { params: Promise<{ id: string }> },
+) {
   try {
+    const auth = await authenticateCallerOrAdmin(req);
+    if (!auth) {
+      return NextResponse.json(
+        { error: "Unauthorized. Please log in to your telecaller portal." },
+        { status: 401 },
+      );
+    }
+
     const { id } = await context.params;
     const leadId = parseInt(id, 10);
     if (isNaN(leadId)) {
-      return NextResponse.json({ error: "Invalid lead ID" }, { status: 400 });
+      return NextResponse.json({ error: "Invalid lead ID." }, { status: 400 });
     }
 
-    const url = new URL(req.url);
-    let callerId = url.searchParams.get("callerId");
+    // Row-level security: Verify lead exists and belongs to caller (or admin)
+    const [lead] = await db
+      .select({
+        leadId: agLeads.leadId,
+        assignedCallerId: agLeads.assignedCallerId,
+      })
+      .from(agLeads)
+      .where(eq(agLeads.leadId, leadId))
+      .limit(1);
 
-    if (!callerId) {
-      const cookieHeader = req.headers.get("cookie") || "";
-      const match = cookieHeader.match(/ag_caller_session=([^;]+)/);
-      callerId = match ? match[1] : req.headers.get("x-caller-id") || "TC01";
+    if (!lead) {
+      return NextResponse.json({ error: "Lead not found." }, { status: 404 });
+    }
+
+    if (!auth.isAdmin && lead.assignedCallerId !== auth.callerId) {
+      return NextResponse.json(
+        { error: "Access denied. This lead is assigned to another telecaller." },
+        { status: 403 },
+      );
     }
 
     const host = req.headers.get("host") || "janasevaorphanage.org";
     const protocol = host.includes("localhost") ? "http" : "https";
     const baseUrl = `${protocol}://${host}`;
 
-    const result = await generateWhatsAppLink(leadId, callerId, baseUrl);
+    const result = await generateWhatsAppLink(leadId, auth.callerId, baseUrl);
 
     return NextResponse.json({
       success: true,
       ...result,
+      callerId: auth.callerId,
     });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });

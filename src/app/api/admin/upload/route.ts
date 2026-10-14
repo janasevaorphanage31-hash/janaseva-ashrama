@@ -1,31 +1,55 @@
 import { NextResponse } from "next/server";
 import { writeFile, mkdir } from "node:fs/promises";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { requireAdminApi } from "@/lib/admin-auth";
-import { clean } from "@/lib/server-utils";
-
-const ALLOWED_MIME_TYPES = new Set([
-  // Images
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-  "image/svg+xml",
-  "image/gif",
-  // Videos
-  "video/mp4",
-  "video/webm",
-  "video/quicktime",
-  // Documents
-  "application/pdf",
-  "application/msword",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  "application/vnd.ms-excel",
-  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  "text/plain",
-  "text/csv",
-]);
+import { clean, clientIp } from "@/lib/server-utils";
+import { writeAudit } from "@/lib/audit";
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB max file size
+
+/**
+ * Validates magic numbers (file signatures) to prevent disguised executable or script uploads.
+ */
+function validateMagicBytes(buffer: Buffer, ext: string): boolean {
+  if (buffer.length < 4) return false;
+
+  // JPEG: FF D8 FF
+  if (ext === "jpg" || ext === "jpeg") {
+    return buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff;
+  }
+  // PNG: 89 50 4E 47 0D 0A 1A 0A
+  if (ext === "png") {
+    return (
+      buffer[0] === 0x89 &&
+      buffer[1] === 0x50 &&
+      buffer[2] === 0x4e &&
+      buffer[3] === 0x47
+    );
+  }
+  // GIF: 47 49 46 38
+  if (ext === "gif") {
+    return (
+      buffer[0] === 0x47 &&
+      buffer[1] === 0x49 &&
+      buffer[2] === 0x46 &&
+      buffer[3] === 0x38
+    );
+  }
+  // WEBP: RIFF....WEBP
+  if (ext === "webp") {
+    return (
+      buffer.toString("ascii", 0, 4) === "RIFF" &&
+      buffer.toString("ascii", 8, 12) === "WEBP"
+    );
+  }
+  // PDF: %PDF
+  if (ext === "pdf") {
+    return buffer.toString("ascii", 0, 4) === "%PDF";
+  }
+
+  // Documents/Text formats (TXT, CSV, DOCX, XLSX, MP4, WEBM)
+  return true;
+}
 
 export async function POST(req: Request) {
   const session = await requireAdminApi();
@@ -72,14 +96,23 @@ export async function POST(req: Request) {
 
     const buffer = Buffer.from(await file.arrayBuffer());
 
+    // Magic byte signature verification
+    if (!validateMagicBytes(buffer, extension)) {
+      return NextResponse.json(
+        { error: "File content does not match the declared file extension. Upload rejected for security reasons." },
+        { status: 400 }
+      );
+    }
+
     // Destination directory: public/uploads/{category}
     const safeCategory = ["images", "videos", "documents", "celebrations", "proofs"].includes(category)
       ? category
       : "general";
 
-    const uploadDir = join(process.cwd(), "public", "uploads", safeCategory);
+    const baseUploadDir = join(process.cwd(), "public", "uploads");
+    const uploadDir = join(baseUploadDir, safeCategory);
 
-    // Sanitize filename
+    // Sanitize filename against path traversal
     const cleanBaseName = originalName
       .replace(/\.[^/.]+$/, "")
       .toLowerCase()
@@ -89,6 +122,11 @@ export async function POST(req: Request) {
     const uniqueTag = `${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
     const finalFilename = `${cleanBaseName}_${uniqueTag}.${extension}`;
     const filePath = join(uploadDir, finalFilename);
+
+    // Prevent Path Traversal
+    if (!resolve(filePath).startsWith(resolve(baseUploadDir))) {
+      return NextResponse.json({ error: "Invalid file path traversal detected." }, { status: 400 });
+    }
 
     let publicUrl = `/uploads/${safeCategory}/${finalFilename}`;
     try {
@@ -102,6 +140,15 @@ export async function POST(req: Request) {
         throw new Error("File could not be saved to disk on serverless platform.");
       }
     }
+
+    await writeAudit({
+      actorAdminUserId: session.user.id ?? null,
+      action: "upload.file",
+      entity: "media",
+      entityId: finalFilename,
+      afterState: { filename: finalFilename, size: file.size, mimeType, category: safeCategory },
+      ipAddress: clientIp(req),
+    });
 
     return NextResponse.json({
       ok: true,

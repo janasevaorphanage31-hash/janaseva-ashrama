@@ -1,37 +1,72 @@
 import { NextResponse } from "next/server";
 import { logCallDisposition } from "@/lib/antigravity-crm";
+import { authenticateCallerOrAdmin } from "@/lib/caller-auth";
+import { db } from "@/db";
+import { agLeads } from "@/db/schema";
+import { eq } from "drizzle-orm";
+import { clean } from "@/lib/server-utils";
 
-export async function POST(req: Request, context: { params: Promise<{ id: string }> }) {
+export async function POST(
+  req: Request,
+  context: { params: Promise<{ id: string }> },
+) {
   try {
+    const auth = await authenticateCallerOrAdmin(req);
+    if (!auth) {
+      return NextResponse.json(
+        { error: "Unauthorized. Please log in to your telecaller portal." },
+        { status: 401 },
+      );
+    }
+
     const { id } = await context.params;
     const leadId = parseInt(id, 10);
     if (isNaN(leadId)) {
-      return NextResponse.json({ error: "Invalid lead ID" }, { status: 400 });
+      return NextResponse.json({ error: "Invalid lead ID." }, { status: 400 });
     }
 
-    const body = await req.json();
-    const disposition = body.disposition;
-    const notes = body.notes;
-    const callbackTime = body.callbackTime;
-    let callerId = body.callerId;
+    // Row-level security: Verify lead exists and belongs to the caller (or admin)
+    const [lead] = await db
+      .select({
+        leadId: agLeads.leadId,
+        assignedCallerId: agLeads.assignedCallerId,
+      })
+      .from(agLeads)
+      .where(eq(agLeads.leadId, leadId))
+      .limit(1);
 
-    if (!callerId) {
-      const cookieHeader = req.headers.get("cookie") || "";
-      const match = cookieHeader.match(/ag_caller_session=([^;]+)/);
-      callerId = match ? match[1] : req.headers.get("x-caller-id") || "TC01";
+    if (!lead) {
+      return NextResponse.json({ error: "Lead not found." }, { status: 404 });
     }
 
-    if (!disposition) {
-      return NextResponse.json({ error: "Disposition is required" }, { status: 400 });
+    if (!auth.isAdmin && lead.assignedCallerId !== auth.callerId) {
+      return NextResponse.json(
+        { error: "Access denied. This lead is assigned to another telecaller." },
+        { status: 403 },
+      );
     }
 
-    await logCallDisposition(leadId, callerId, disposition, notes, callbackTime);
+    const body = await req.json().catch(() => ({}));
+    const rawDisposition = clean(body.disposition, 40);
+    const notes = clean(body.notes, 1000);
+    const callbackTime = body.callbackTime ? String(body.callbackTime).slice(0, 50) : undefined;
+
+    const VALID_DISPOSITIONS = ["Interested", "Reschedule", "Rejected", "Pending", "Donated"];
+    if (!VALID_DISPOSITIONS.includes(rawDisposition)) {
+      return NextResponse.json(
+        { error: `Invalid disposition. Allowed: ${VALID_DISPOSITIONS.join(", ")}` },
+        { status: 400 },
+      );
+    }
+
+    await logCallDisposition(leadId, auth.callerId, rawDisposition, notes, callbackTime);
 
     return NextResponse.json({
       success: true,
-      message: "Call disposition logged successfully",
+      message: "Call disposition logged successfully.",
       leadId,
-      disposition,
+      disposition: rawDisposition,
+      callerId: auth.callerId,
     });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });

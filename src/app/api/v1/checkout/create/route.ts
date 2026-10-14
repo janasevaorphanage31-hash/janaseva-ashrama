@@ -1,22 +1,76 @@
 import { NextResponse } from "next/server";
+import { clean, normalizePhone, isEmail, isPhone } from "@/lib/server-utils";
+
+const MAX_DONATION_AMOUNT = 1000000; // ₹10,00,000 maximum per single transaction
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    const amount = Number(body.amount);
-    const callerRefId = (body.callerRefId || "DIRECT").trim().toUpperCase();
-    const leadId = body.leadId ? Number(body.leadId) : null;
-    const donorName = body.donorName || "";
-    const donorPhone = body.donorPhone || "";
-    const donorEmail = body.donorEmail || "";
+    const body = await req.json().catch(() => null);
+    if (!body || typeof body !== "object") {
+      return NextResponse.json({ error: "Invalid JSON payload." }, { status: 400 });
+    }
 
-    if (!amount || amount < 10) {
-      return NextResponse.json({ error: "Invalid donation amount (minimum ₹10)" }, { status: 400 });
+    // 1. CAPTCHA / Bot Protection via Invisible Honeypot
+    // Automated spambots automatically fill all form inputs including hidden ones
+    if (body.website_hp || body.hp_token) {
+      return NextResponse.json(
+        { error: "Automated submission blocked by spam protection." },
+        { status: 400 },
+      );
+    }
+
+    // 2. Never Trust the Frontend: Server-side Amount Validation
+    const amount = Number(body.amount);
+    if (!amount || isNaN(amount) || amount < 10) {
+      return NextResponse.json(
+        { error: "Invalid donation amount (minimum contribution is ₹10)." },
+        { status: 400 },
+      );
+    }
+
+    if (amount > MAX_DONATION_AMOUNT) {
+      return NextResponse.json(
+        { error: `Single online contributions are capped at ₹${MAX_DONATION_AMOUNT.toLocaleString("en-IN")}. For larger institutional contributions, please contact the Trust directly.` },
+        { status: 400 },
+      );
+    }
+
+    // 3. Sanitize User Input
+    const donorName = clean(body.donorName, 80).replace(/[<>{}[\]\\]/g, "");
+    const donorPhone = normalizePhone(clean(body.donorPhone, 20));
+    const donorEmail = clean(body.donorEmail, 100).toLowerCase();
+    const rawRef = clean(body.callerRefId || "DIRECT", 16).toUpperCase();
+    const callerRefId = /^[A-Z0-9_-]+$/.test(rawRef) ? rawRef : "DIRECT";
+    const leadId = body.leadId ? Number(body.leadId) : null;
+    const occasion = clean(body.occasion, 50);
+    const prayerNote = clean(body.prayerNote, 250);
+    const donorPan = clean(body.donorPan, 10)?.toUpperCase() || "";
+
+    if (!donorName || donorName.length < 2) {
+      return NextResponse.json(
+        { error: "Donor name must be at least 2 characters long." },
+        { status: 400 },
+      );
+    }
+
+    if (!donorPhone || !isPhone(donorPhone)) {
+      return NextResponse.json(
+        { error: "A valid 10-digit WhatsApp/mobile number is required to issue your 80G tax receipt." },
+        { status: 400 },
+      );
+    }
+
+    if (donorEmail && !isEmail(donorEmail)) {
+      return NextResponse.json(
+        { error: "Please provide a valid email address or leave it blank." },
+        { status: 400 },
+      );
     }
 
     const keyId = process.env.RAZORPAY_KEY_ID;
     const keySecret = process.env.RAZORPAY_KEY_SECRET;
 
+    // 4. Live Gateway Execution
     if (keyId && keySecret) {
       const basicAuth = Buffer.from(`${keyId}:${keySecret}`).toString("base64");
       const orderRes = await fetch("https://api.razorpay.com/v1/orders", {
@@ -35,6 +89,9 @@ export async function POST(req: Request) {
             donor_name: donorName,
             donor_phone: donorPhone,
             donor_email: donorEmail,
+            donor_pan: donorPan,
+            occasion,
+            prayer_note: prayerNote,
             platform: "antigravity_crm",
           },
         }),
@@ -42,7 +99,7 @@ export async function POST(req: Request) {
 
       if (!orderRes.ok) {
         const errText = await orderRes.text();
-        throw new Error(`Gateway error: ${orderRes.status} ${errText}`);
+        throw new Error(`Payment gateway order initiation failed: ${orderRes.status} ${errText}`);
       }
 
       const order = await orderRes.json();
@@ -58,7 +115,18 @@ export async function POST(req: Request) {
       });
     }
 
-    // Demo / Sandbox mode fallback when live credentials are pending
+    // 5. Debug Mode Off in Production Check
+    const isProduction = process.env.NODE_ENV === "production";
+    const allowDemo = process.env.ALLOW_DEMO_SEED === "true";
+
+    if (isProduction && !allowDemo) {
+      return NextResponse.json(
+        { error: "The online payment gateway is currently unavailable. Please contact the Trust directly or try again later." },
+        { status: 503 },
+      );
+    }
+
+    // Demo / Sandbox mode fallback for local staging & development only
     const demoOrderId = `order_demo_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
     return NextResponse.json({
       success: true,

@@ -633,6 +633,7 @@ export function CheckoutClient() {
             donor: form,
             amount: cart.total,
             idempotencyKey: monthlyKey,
+            website_hp: "",
           }),
         });
 
@@ -779,6 +780,7 @@ export function CheckoutClient() {
           deliveryPreference,
           updateConsent,
           idempotencyKey: attempt.current.key,
+          website_hp: "",
         }),
       });
 

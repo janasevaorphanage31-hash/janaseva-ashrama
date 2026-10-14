@@ -3,8 +3,9 @@ import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { donations, donationLines } from "@/db/schema";
 import { requireAdminApi } from "@/lib/admin-auth";
-import { isEmail, isPhone, normalizePhone } from "@/lib/server-utils";
+import { isEmail, isPhone, normalizePhone, clientIp } from "@/lib/server-utils";
 import { NAME_REGEX, PAN_REGEX } from "@/lib/validation";
+import { writeAudit } from "@/lib/audit";
 
 export async function GET(req: Request) {
   const session = await requireAdminApi(["SUPER_ADMIN", "STAFF_ADMIN", "FINANCE", "DONATION_ADMIN"]);
@@ -180,6 +181,15 @@ export async function POST(req: Request) {
     qty: 1,
   });
 
+  await writeAudit({
+    actorAdminUserId: session.user.id ?? null,
+    action: "crm.record_manual_donation",
+    entity: "donations",
+    entityId: created.id,
+    afterState: { amount, donorName, receiptNo: updated.receiptNo, mode: paymentMode },
+    ipAddress: clientIp(req),
+  });
+
   return NextResponse.json({ ok: true, donation: updated });
 }
 
@@ -204,6 +214,15 @@ export async function PATCH(req: Request) {
     .update(donations)
     .set(updates)
     .where(eq(donations.id, Number(body.id)));
+
+  await writeAudit({
+    actorAdminUserId: session.user.id ?? null,
+    action: "crm.update_donation",
+    entity: "donations",
+    entityId: Number(body.id),
+    afterState: updates,
+    ipAddress: clientIp(req),
+  });
 
   return NextResponse.json({ ok: true });
 }
@@ -231,6 +250,15 @@ export async function DELETE(req: Request) {
   // Delete line items first then donation
   await db.delete(donationLines).where(eq(donationLines.donationId, id));
   await db.delete(donations).where(eq(donations.id, id));
+
+  await writeAudit({
+    actorAdminUserId: session.user.id ?? null,
+    action: "crm.delete_donation",
+    entity: "donations",
+    entityId: id,
+    beforeState: { amount: before.amount, donorName: before.donorName, receiptNo: before.receiptNo },
+    ipAddress: clientIp(req),
+  });
 
   return NextResponse.json({ ok: true, deletedId: id });
 }

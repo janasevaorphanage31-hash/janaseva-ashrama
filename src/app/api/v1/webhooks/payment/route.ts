@@ -7,18 +7,34 @@ export async function POST(req: Request) {
     const rawBody = await req.text();
     const signature = req.headers.get("x-razorpay-signature");
     const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
+    const isProduction = process.env.NODE_ENV === "production";
+    const allowDemo = process.env.ALLOW_DEMO_SEED === "true";
 
-    // Cryptographic signature check if webhook secret is configured
-    if (webhookSecret && signature) {
+    // 1. Verify Webhook Signatures (Mandatory in production or when secret configured)
+    if (webhookSecret) {
+      if (!signature) {
+        console.error("[SECURITY] Missing x-razorpay-signature header on payment webhook");
+        return NextResponse.json({ error: "Missing webhook signature" }, { status: 401 });
+      }
+
       const expectedSignature = crypto
         .createHmac("sha256", webhookSecret)
         .update(rawBody)
         .digest("hex");
 
-      if (expectedSignature !== signature) {
-        console.error("[SECURITY] Invalid Razorpay webhook signature");
+      const expectedBuffer = Buffer.from(expectedSignature, "utf8");
+      const signatureBuffer = Buffer.from(signature, "utf8");
+
+      if (
+        expectedBuffer.length !== signatureBuffer.length ||
+        !crypto.timingSafeEqual(expectedBuffer, signatureBuffer)
+      ) {
+        console.error("[SECURITY] Invalid Razorpay webhook signature (HMAC SHA256 mismatch)");
         return NextResponse.json({ error: "Invalid cryptographic signature" }, { status: 400 });
       }
+    } else if (isProduction && !allowDemo) {
+      console.error("[SECURITY] RAZORPAY_WEBHOOK_SECRET not configured in production");
+      return NextResponse.json({ error: "Webhook endpoint not configured" }, { status: 500 });
     }
 
     let payload: any = {};
@@ -28,7 +44,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
     }
 
-    // 1. Live Razorpay payment.captured event
+    // 2. Live Razorpay payment.captured event
     if (payload.event === "payment.captured") {
       const payment = payload.payload?.payment?.entity || {};
       const notes = payment.notes || {};
@@ -51,8 +67,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ status: "ok", attributedTo: callerRefId });
     }
 
-    // 2. Direct simulation / internal verification trigger
+    // 3. Debug Mode Off in Production: Reject unauthenticated simulation in production
     if (payload.action === "simulate_donation" || payload.paymentId) {
+      if (isProduction && !allowDemo) {
+        return NextResponse.json(
+          { error: "Payment simulation is strictly disabled in production." },
+          { status: 403 },
+        );
+      }
+
       const amount = Number(payload.amount || 1000);
       const callerRefId = payload.callerRefId || "TC01";
       const txnId = payload.paymentId || `pay_sim_${Date.now()}`;

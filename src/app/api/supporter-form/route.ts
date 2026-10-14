@@ -19,6 +19,11 @@ export async function POST(req: Request) {
   const b = await req.json().catch(() => null);
   if (!b) return NextResponse.json({ error: "Invalid form submission." }, { status: 400 });
 
+  // CAPTCHA / Bot Protection via Invisible Honeypot
+  if (b.website_hp || b.hp_token) {
+    return NextResponse.json({ error: "Spam submission blocked." }, { status: 400 });
+  }
+
   const donorName = clean(b.donor?.name, 120);
   const donorEmail = clean(b.donor?.email, 200).toLowerCase();
   const donorPhoneRaw = clean(b.donor?.phone, 24);

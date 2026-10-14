@@ -1,73 +1,276 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useSearchParams } from "next/navigation";
-import { formatINR } from "@/lib/site";
+import { formatINR, SITE, FORM_10AC } from "@/lib/site";
 import { LogoMark } from "@/components/Logo";
 import { trackDonationSuccess } from "@/lib/tracking";
+import { numberToIndianWords } from "@/lib/number-words";
+import {
+  validateName,
+  validateEmail,
+  validatePhone,
+  validatePan,
+  sanitizePan,
+} from "@/lib/validation";
+
+const PRESET_TIERS = [
+  {
+    amt: 500,
+    title: "Morning Milk & Fruit",
+    desc: "Warm cow milk & fresh bananas before morning shlokas for 25 boys",
+    icon: "🥛",
+    badge: "Daily Seva",
+  },
+  {
+    amt: 1000,
+    title: "Punya Annadana Feast",
+    desc: "Fresh steaming lunch or dinner with rice, sambar, ghee & sweet payasa",
+    icon: "🍲",
+    badge: "Most Popular ★",
+  },
+  {
+    amt: 2500,
+    title: "Full Day Annadana",
+    desc: "Complete 3 meals (breakfast, lunch & dinner) for all 25 resident boys",
+    icon: "🍛",
+    badge: "High Impact",
+  },
+  {
+    amt: 5000,
+    title: "Vidya & School Kits",
+    desc: "School uniforms, notebooks, stationery & evening coaching for 5 boys",
+    icon: "📚",
+    badge: "Education",
+  },
+  {
+    amt: 10000,
+    title: "Monthly Arogya & Care",
+    desc: "Doctor consultations, wellness checkups & living shelter support",
+    icon: "🩺",
+    badge: "Comprehensive",
+  },
+];
+
+const OCCASIONS = [
+  { id: "birthday", label: "🎂 Birthday Seva", sub: "Celebrant birthday prayer" },
+  { id: "anniversary", label: "💍 Wedding Anniversary", sub: "Marital blessing seva" },
+  { id: "memorial", label: "🕊️ In Memory / Pitru Smarane", sub: "Pious remembrance" },
+  { id: "gratitude", label: "🌸 General Seva & Thanks", sub: "Daily thanksgiving" },
+];
 
 export function DonateClientComponent() {
   const searchParams = useSearchParams();
+
+  // URL / Attribution state
   const [callerRef, setCallerRef] = useState<string>("DIRECT");
+  const [leadId, setLeadId] = useState<string>("");
+
+  // Donation amount state
   const [amount, setAmount] = useState<number>(1000);
   const [customAmount, setCustomAmount] = useState<string>("");
+
+  // Occasion & Dedication
+  const [occasion, setOccasion] = useState<string>("birthday");
+  const [prayerNote, setPrayerNote] = useState<string>("");
+
+  // Donor credentials
   const [donorName, setDonorName] = useState("");
   const [donorPhone, setDonorPhone] = useState("");
   const [donorEmail, setDonorEmail] = useState("");
   const [donorPan, setDonorPan] = useState("");
+  const [showPanInput, setShowPanInput] = useState(false);
+
+  // Invisible honeypot for bot / spam prevention
+  const [honeypot, setHoneypot] = useState("");
+
+  // Inline validation errors (no abrasive alert popups)
+  const [formErrors, setFormErrors] = useState<{
+    name?: string;
+    phone?: string;
+    email?: string;
+    pan?: string;
+    amount?: string;
+    general?: string;
+  }>({});
+
+  // UI state
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
+  // Field refs for smooth auto-scroll to error
+  const nameInputRef = useRef<HTMLInputElement>(null);
+  const phoneInputRef = useRef<HTMLInputElement>(null);
+  const amountSectionRef = useRef<HTMLDivElement>(null);
+  const panInputRef = useRef<HTMLInputElement>(null);
+
+  // Parse URL search parameters & initialize prefilled fields
   useEffect(() => {
+    // 1. Caller Reference
     const urlRef = searchParams.get("ref");
     if (urlRef) {
       const clean = urlRef.trim().toUpperCase();
       sessionStorage.setItem("antigravity_caller_ref", clean);
+      try {
+        localStorage.setItem("antigravity_caller_ref", clean);
+      } catch {}
       setCallerRef(clean);
     } else {
-      const stored = sessionStorage.getItem("antigravity_caller_ref");
+      const stored =
+        sessionStorage.getItem("antigravity_caller_ref") ||
+        (typeof localStorage !== "undefined" ? localStorage.getItem("antigravity_caller_ref") : null);
       if (stored) setCallerRef(stored);
+    }
+
+    // 2. Lead ID
+    const urlLeadId = searchParams.get("lead_id");
+    if (urlLeadId) setLeadId(urlLeadId);
+
+    // 3. Donor Name
+    const urlName = searchParams.get("name");
+    if (urlName) setDonorName(urlName);
+
+    // 4. Donor Phone
+    const urlPhone = searchParams.get("phone");
+    if (urlPhone) setDonorPhone(urlPhone.replace(/\D/g, "").slice(-10));
+
+    // 5. Donor Email
+    const urlEmail = searchParams.get("email");
+    if (urlEmail) setDonorEmail(urlEmail.trim().toLowerCase());
+
+    // 6. Occasion
+    const urlOccasion = searchParams.get("occasion");
+    if (urlOccasion) {
+      const match = OCCASIONS.find(
+        (o) => o.id === urlOccasion.toLowerCase() || o.label.toLowerCase().includes(urlOccasion.toLowerCase()),
+      );
+      if (match) setOccasion(match.id);
+    }
+
+    // 7. Amount
+    const urlAmt = searchParams.get("amount");
+    if (urlAmt) {
+      const parsed = parseFloat(urlAmt);
+      if (parsed >= 10 && parsed <= 500000) {
+        if (PRESET_TIERS.some((t) => t.amt === parsed)) {
+          setAmount(parsed);
+          setCustomAmount("");
+        } else {
+          setCustomAmount(String(parsed));
+        }
+      }
     }
   }, [searchParams]);
 
+  // Derived effective donation amount
+  const finalAmount = customAmount ? parseFloat(customAmount) || 0 : amount;
+  const amountWords = finalAmount >= 10 ? numberToIndianWords(finalAmount) : "";
+
+  // Clear specific error field as the user types
+  const clearFieldError = (field: keyof typeof formErrors) => {
+    if (formErrors[field] || formErrors.general) {
+      setFormErrors((prev) => {
+        const next = { ...prev };
+        delete next[field];
+        delete next.general;
+        return next;
+      });
+    }
+  };
+
   const handlePayNow = async () => {
-    const finalAmount = customAmount ? parseFloat(customAmount) : amount;
-    if (!finalAmount || finalAmount < 10) {
-      return alert("Please enter a valid donation amount (minimum ₹10).");
+    // Reset errors
+    const errors: typeof formErrors = {};
+
+    // 1. Validate Amount
+    if (!finalAmount || isNaN(finalAmount) || finalAmount < 10) {
+      errors.amount = "Please choose or enter a valid donation amount (minimum ₹10).";
+    } else if (finalAmount > 1000000) {
+      errors.amount = "Online contributions are capped at ₹10,00,000. Please contact the Ashrama for larger endowments.";
     }
 
-    if (!donorName.trim()) {
-      return alert("Please enter your name so the 25 boys can chant your name in morning prayers.");
+    // 2. Validate Donor Name
+    const nameCheck = validateName(donorName, "Full Name");
+    if (!nameCheck.valid) {
+      errors.name = nameCheck.error || "Please enter your full name for morning prayer chanting.";
     }
 
-    if (!donorPhone.trim() || donorPhone.length < 10) {
-      return alert("Please enter a valid 10-digit WhatsApp number to receive your 80G tax receipt.");
+    // 3. Validate Mobile Phone (10 digits)
+    const phoneCheck = validatePhone(donorPhone, true, "WhatsApp / Mobile Number");
+    if (!phoneCheck.valid) {
+      errors.phone = phoneCheck.error || "Please enter a valid 10-digit WhatsApp number to receive your 80G receipt.";
+    }
+
+    // 4. Validate Email (if provided)
+    if (donorEmail.trim()) {
+      const emailCheck = validateEmail(donorEmail, false);
+      if (!emailCheck.valid) {
+        errors.email = emailCheck.error;
+      }
+    }
+
+    // 5. Validate PAN (if provided)
+    if (donorPan.trim()) {
+      const panCheck = validatePan(donorPan, false);
+      if (!panCheck.valid) {
+        errors.pan = panCheck.error || "Invalid PAN card format (expected 5 letters, 4 numbers, 1 letter, e.g. ABCDE1234F).";
+      }
+    }
+
+    // If there are errors, stop and scroll to first error
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
+      if (errors.amount && amountSectionRef.current) {
+        amountSectionRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+      } else if (errors.name && nameInputRef.current) {
+        nameInputRef.current.focus();
+        nameInputRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+      } else if (errors.phone && phoneInputRef.current) {
+        phoneInputRef.current.focus();
+        phoneInputRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+      } else if (errors.pan && panInputRef.current) {
+        panInputRef.current.focus();
+        panInputRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+      return;
     }
 
     setLoading(true);
+    setFormErrors({});
 
     try {
+      const selectedOccasionLabel =
+        OCCASIONS.find((o) => o.id === occasion)?.label || "Special Blessing Seva";
+
       const res = await fetch("/api/v1/checkout/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           amount: finalAmount,
           callerRefId: callerRef,
-          donorName,
-          donorPhone,
-          donorEmail,
+          leadId: leadId || undefined,
+          donorName: donorName.trim(),
+          donorPhone: donorPhone.trim(),
+          donorEmail: donorEmail.trim() || undefined,
+          donorPan: donorPan.trim().toUpperCase() || undefined,
+          occasion: selectedOccasionLabel,
+          prayerNote: prayerNote.trim() || undefined,
+          website_hp: honeypot, // Honeypot field
         }),
       });
 
       const data = await res.json();
-      if (!data.success) throw new Error(data.error || "Failed to initialize checkout");
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Failed to initialize secure checkout. Please try again.");
+      }
 
-      // Load Razorpay script dynamically if missing
+      // Load Razorpay checkout script if missing
       if (typeof window !== "undefined" && !(window as any).Razorpay) {
-        await new Promise((resolve) => {
+        await new Promise((resolve, reject) => {
           const script = document.createElement("script");
           script.src = "https://checkout.razorpay.com/v1/checkout.js";
           script.onload = resolve;
+          script.onerror = () => reject(new Error("Unable to reach payment gateway. Please check your internet connection."));
           document.body.appendChild(script);
         });
       }
@@ -76,18 +279,31 @@ export function DonateClientComponent() {
         const options = {
           key: data.keyId,
           amount: data.amount,
-          currency: data.currency,
-          name: "Janaseva Ashrama",
-          description: "Birthday Seva & Meals for 25 Boys",
+          currency: data.currency || "INR",
+          name: "Janaseva Ashrama Bangalore",
+          description: `${selectedOccasionLabel} · 25 Resident Boys Seva`,
           order_id: data.orderId,
           prefill: {
-            name: donorName,
-            contact: donorPhone,
-            email: donorEmail,
+            name: donorName.trim(),
+            contact: donorPhone.trim(),
+            email: donorEmail.trim() || "donor@janasevaashrama.org",
           },
-          theme: { color: "#052F2C" },
+          notes: {
+            caller_ref_id: callerRef,
+            lead_id: leadId || "",
+            donor_name: donorName.trim(),
+            donor_phone: donorPhone.trim(),
+            occasion: selectedOccasionLabel,
+            prayer_note: prayerNote.trim(),
+          },
+          theme: { color: "#06312f" },
+          modal: {
+            ondismiss: () => {
+              setLoading(false);
+            },
+          },
           handler: async function (response: any) {
-            // 1. Meta Pixel & Google Ads Tracking (Donate + Purchase + Conversion)
+            // 1. Meta Pixel & Google Ads Conversion Tracking (Donate + Purchase)
             trackDonationSuccess({
               amount: finalAmount,
               paymentId: response.razorpay_payment_id,
@@ -116,9 +332,12 @@ export function DonateClientComponent() {
                         status: "captured",
                         notes: {
                           caller_ref_id: callerRef,
+                          lead_id: leadId || "",
                           donor_name: donorName,
                           donor_phone: donorPhone,
                           donor_email: donorEmail,
+                          occasion: selectedOccasionLabel,
+                          prayer_note: prayerNote,
                         },
                       },
                     },
@@ -139,10 +358,18 @@ export function DonateClientComponent() {
         };
 
         const rzp = new (window as any).Razorpay(options);
+        rzp.on("payment.failed", (resp: any) => {
+          setLoading(false);
+          setFormErrors({
+            general:
+              resp?.error?.description ||
+              "Your transaction was not completed. No money has been deducted from your account. Please try another payment method.",
+          });
+        });
         rzp.open();
       } else {
-        const demoPaymentId = `pay_demo_${Date.now()}`;
-        // Instant simulated demo payment verification
+        // Staging / Demo simulated donation
+        const demoPaymentId = `pay_sim_${Date.now()}`;
         await fetch("/api/v1/webhooks/payment", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -153,6 +380,7 @@ export function DonateClientComponent() {
             donorName,
             donorPhone,
             paymentId: demoPaymentId,
+            leadId: leadId ? Number(leadId) : undefined,
           }),
         });
 
@@ -171,184 +399,440 @@ export function DonateClientComponent() {
         )}&demo=true`;
       }
     } catch (err: any) {
-      alert("Payment processing error: " + err.message);
-    } finally {
+      setFormErrors({
+        general:
+          err.message || "An unexpected error occurred while preparing your donation. Please try again.",
+      });
       setLoading(false);
     }
   };
 
-  if (success) {
-    return (
-      <div className="max-w-md mx-auto bg-white rounded-3xl p-6 sm:p-8 shadow-xl border border-teal-900/10 text-center animate-fadeIn">
-        <div className="grid h-16 w-16 place-items-center rounded-2xl bg-emerald-100 text-3xl mx-auto mb-4">
-          🙏
-        </div>
-        <h2 className="font-display text-2xl font-bold text-teal-950">
-          Dhanyavadagalu, {donorName}!
-        </h2>
-        <p className="mt-2 text-sm text-teal-950/75 leading-relaxed">
-          Your auspicious birthday contribution of{" "}
-          <strong className="text-teal-950 font-black">
-            {formatINR(customAmount ? parseFloat(customAmount) : amount)}
-          </strong>{" "}
-          has been received for all 25 boys at Janaseva Ashrama.
-        </p>
-
-        {callerRef !== "DIRECT" && (
-          <p className="mt-3 text-xs text-emerald-800 font-bold bg-emerald-50 py-2 rounded-xl border border-emerald-200">
-            ✓ Successfully credited to Care Advisor {callerRef}
-          </p>
-        )}
-
-        <div className="mt-6 pt-5 border-t border-teal-900/10 text-xs text-teal-950/60 space-y-1.5">
-          <p>📜 Form 10AC 80G Tax Exemption Receipt sent to WhatsApp ({donorPhone}).</p>
-          <p>The boys will chant your family prayer in the morning prayer assembly.</p>
-        </div>
-
-        <button
-          onClick={() => setSuccess(false)}
-          className="mt-6 inline-flex rounded-xl bg-teal-950 text-gold px-6 py-2.5 text-xs font-bold hover:bg-teal-900 transition"
-        >
-          Make Another Dedication
-        </button>
-      </div>
-    );
-  }
-
   return (
-    <div className="max-w-md mx-auto bg-white rounded-3xl p-6 sm:p-8 shadow-xl border border-teal-900/10 animate-fadeIn">
-      {/* Header */}
-      <div className="text-center mb-6">
-        <div className="flex justify-center mb-3">
-          <LogoMark size={52} className="shadow-md ring-4 ring-amber-300/30" />
-        </div>
-        <span className="rounded-full bg-saffron/15 text-saffron-dark px-3 py-1 text-xs font-black uppercase tracking-wider">
-          Auspicious Birthday Seva
-        </span>
-        <h1 className="font-display text-2xl font-bold text-teal-950 mt-2">
-          Celebrate with 25 Resident Boys
-        </h1>
-        <p className="text-xs text-teal-950/70 mt-1">
-          Janaseva Ashrama · Turahalli Bengaluru · Form 10AC 80G 100% Tax Deductible
-        </p>
+    <div className="mx-auto max-w-xl animate-fadeIn">
+      {/* Invisible Honeypot anti-spam protection */}
+      <input
+        type="text"
+        name="website_hp"
+        value={honeypot}
+        onChange={(e) => setHoneypot(e.target.value)}
+        tabIndex={-1}
+        autoComplete="off"
+        className="hidden"
+        aria-hidden="true"
+        style={{ display: "none" }}
+      />
 
-        {callerRef !== "DIRECT" && (
-          <div className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-800 border border-emerald-200">
-            <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span>Assisted by Dedicated Care Advisor: <strong>{callerRef}</strong></span>
+      {/* Main Card */}
+      <div className="rounded-3xl bg-white p-6 sm:p-8 shadow-xl border border-teal-900/10">
+        {/* Header */}
+        <div className="text-center mb-6">
+          <div className="flex justify-center mb-3">
+            <LogoMark size={56} className="shadow-md ring-4 ring-amber-300/30" />
+          </div>
+
+          <div className="inline-flex items-center gap-1.5 rounded-full bg-saffron/15 text-saffron-dark px-3.5 py-1 text-xs font-black uppercase tracking-wider">
+            <span>✨</span>
+            <span>Auspicious Birthday &amp; Special Day Seva</span>
+          </div>
+
+          <h1 className="font-display text-2xl sm:text-3xl font-extrabold text-teal-950 mt-2 tracking-tight">
+            Celebrate with 25 Resident Boys
+          </h1>
+
+          <p className="text-xs sm:text-sm text-teal-950/70 mt-1.5 max-w-md mx-auto leading-relaxed">
+            Janaseva Ashrama · Turahalli Bangalore · Form 10AC Section 80G 100% Tax Deductible
+          </p>
+
+          {/* Telecaller Dedicated Care Advisor Pill */}
+          {callerRef && callerRef !== "DIRECT" && (
+            <div className="mt-3.5 inline-flex items-center gap-2 rounded-full bg-emerald-50 px-4 py-1.5 text-xs font-bold text-emerald-800 border border-emerald-200 shadow-xs">
+              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span>
+                Assisted by Care Advisor: <strong>{callerRef}</strong>
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Global Error Banner (if any) */}
+        {formErrors.general && (
+          <div className="mb-6 rounded-2xl bg-rose-50 border border-rose-200 p-4 text-xs text-rose-800 font-semibold flex items-start gap-3">
+            <span className="text-base leading-none">⚠️</span>
+            <div className="flex-1 leading-relaxed">{formErrors.general}</div>
           </div>
         )}
-      </div>
 
-      {/* Preset Amount Chips */}
-      <div className="mb-4">
-        <label className="block text-xs font-bold text-teal-950 mb-2">
-          Select Auspicious Blessing Tier:
-        </label>
-        <div className="grid grid-cols-3 gap-2">
-          {[
-            { amt: 500, label: "Morning Milk" },
-            { amt: 1000, label: "Punya Lunch" },
-            { amt: 2500, label: "Full Feast" },
-          ].map((item) => (
-            <button
-              key={item.amt}
-              type="button"
-              onClick={() => {
-                setAmount(item.amt);
-                setCustomAmount("");
-              }}
-              className={`py-3 px-1 rounded-2xl text-center transition cursor-pointer ${
-                amount === item.amt && !customAmount
-                  ? "bg-teal-950 text-white shadow-md ring-2 ring-amber-400"
-                  : "bg-cream text-teal-950 hover:bg-sand"
-              }`}
-            >
-              <span className="block text-sm font-black">{formatINR(item.amt)}</span>
-              <span className={`block text-[10px] ${amount === item.amt && !customAmount ? "text-amber-300 font-bold" : "text-teal-950/60"}`}>
-                {item.label}
+        {/* ── 1. Occasion Selector ── */}
+        <div className="mb-6">
+          <label className="block text-xs font-black uppercase tracking-wider text-teal-950 mb-2.5">
+            1. Select Auspicious Occasion:
+          </label>
+          <div className="grid grid-cols-2 gap-2">
+            {OCCASIONS.map((item) => {
+              const isSelected = occasion === item.id;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => setOccasion(item.id)}
+                  className={`p-3 rounded-2xl text-left transition-all border cursor-pointer ${
+                    isSelected
+                      ? "bg-teal-950 text-white border-teal-950 shadow-md ring-2 ring-amber-400"
+                      : "bg-cream/40 text-teal-950 border-teal-900/10 hover:bg-cream"
+                  }`}
+                >
+                  <p className="text-xs font-extrabold flex items-center gap-1.5">
+                    {item.label}
+                  </p>
+                  <p
+                    className={`text-[10px] mt-0.5 ${
+                      isSelected ? "text-amber-300 font-medium" : "text-teal-950/60"
+                    }`}
+                  >
+                    {item.sub}
+                  </p>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* ── 2. Preset Blessing Tiers ── */}
+        <div ref={amountSectionRef} className="mb-6">
+          <div className="flex items-center justify-between mb-2.5">
+            <label className="text-xs font-black uppercase tracking-wider text-teal-950">
+              2. Choose Contribution Blessing Tier:
+            </label>
+            <span className="text-[11px] text-teal-950/60 font-semibold">100% Tax Deductible</span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            {PRESET_TIERS.map((tier) => {
+              const isSelected = amount === tier.amt && !customAmount;
+              return (
+                <button
+                  key={tier.amt}
+                  type="button"
+                  onClick={() => {
+                    setAmount(tier.amt);
+                    setCustomAmount("");
+                    clearFieldError("amount");
+                  }}
+                  className={`p-3 rounded-2xl text-left transition-all border cursor-pointer relative ${
+                    isSelected
+                      ? "bg-teal-950 text-white border-teal-950 shadow-md ring-2 ring-amber-400 scale-[1.01]"
+                      : "bg-cream/40 text-teal-950 border-teal-900/10 hover:bg-cream"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-base">{tier.icon}</span>
+                    <span
+                      className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${
+                        isSelected
+                          ? "bg-amber-400 text-teal-950"
+                          : "bg-teal-900/10 text-teal-900"
+                      }`}
+                    >
+                      {tier.badge}
+                    </span>
+                  </div>
+
+                  <p className="text-base font-black mt-1 text-inherit">
+                    {formatINR(tier.amt)}
+                  </p>
+                  <p className="text-xs font-bold mt-0.5">{tier.title}</p>
+                  <p
+                    className={`text-[11px] mt-1 line-clamp-2 leading-relaxed ${
+                      isSelected ? "text-emerald-100/90" : "text-teal-950/65"
+                    }`}
+                  >
+                    {tier.desc}
+                  </p>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Custom Amount Field */}
+          <div className="mt-3 rounded-2xl bg-cream/30 p-3 border border-teal-900/10">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-xs font-bold text-teal-950">Or Enter Any Custom Amount:</span>
+              <span className="text-[11px] text-teal-950/60">Min ₹10 · Max ₹10,00,000</span>
+            </div>
+
+            <div className="relative">
+              <span className="absolute left-3 top-2.5 text-base font-bold text-teal-950/60">₹</span>
+              <input
+                type="number"
+                min={10}
+                max={1000000}
+                placeholder="e.g. 5000"
+                value={customAmount}
+                onChange={(e) => {
+                  setCustomAmount(e.target.value);
+                  clearFieldError("amount");
+                }}
+                className={`w-full rounded-xl border py-2.5 pl-8 pr-3 text-sm font-bold text-teal-950 outline-none transition ${
+                  formErrors.amount
+                    ? "border-rose-500 ring-2 ring-rose-200"
+                    : "border-teal-900/20 focus:ring-2 focus:ring-amber-500"
+                }`}
+              />
+            </div>
+
+            {/* Quick Increment Chips */}
+            <div className="flex flex-wrap items-center gap-1.5 mt-2">
+              <span className="text-[10px] font-bold text-teal-950/50 uppercase">Quick Add:</span>
+              {[500, 1000, 2500, 5000].map((inc) => (
+                <button
+                  key={inc}
+                  type="button"
+                  onClick={() => {
+                    const current = customAmount ? parseFloat(customAmount) || 0 : amount;
+                    setCustomAmount(String(current + inc));
+                    clearFieldError("amount");
+                  }}
+                  className="rounded-lg bg-white border border-teal-900/15 px-2 py-0.5 text-[11px] font-bold text-teal-950 hover:bg-teal-950 hover:text-white transition cursor-pointer"
+                >
+                  +{formatINR(inc)}
+                </button>
+              ))}
+            </div>
+
+            {formErrors.amount && (
+              <p className="mt-2 text-xs text-rose-600 font-semibold flex items-center gap-1">
+                <span>⚠️</span> {formErrors.amount}
+              </p>
+            )}
+          </div>
+
+          {/* Real-Time Indian Rupee in Words Reassurance */}
+          {amountWords && (
+            <div className="mt-2.5 px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs font-bold text-teal-950 flex items-center gap-2">
+              <span className="text-amber-600">📜</span>
+              <span>
+                Amount in Words: <strong className="text-teal-950">{amountWords}</strong>
               </span>
-            </button>
-          ))}
+            </div>
+          )}
+        </div>
+
+        {/* ── 3. Donor Details ── */}
+        <div className="mb-6 space-y-3.5">
+          <label className="block text-xs font-black uppercase tracking-wider text-teal-950">
+            3. Celebrant &amp; Donor Details:
+          </label>
+
+          {/* Full Name */}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-xs font-bold text-teal-950">
+                Celebrant / Donor Full Name <span className="text-rose-500">*</span>
+              </label>
+              <span className="text-[11px] text-teal-950/60 font-medium">For morning prayer shloka</span>
+            </div>
+            <input
+              ref={nameInputRef}
+              type="text"
+              placeholder="e.g. Ramesh Kumar / Ananya Sharma"
+              value={donorName}
+              onChange={(e) => {
+                setDonorName(e.target.value);
+                clearFieldError("name");
+              }}
+              className={`w-full rounded-xl border p-2.5 text-sm text-teal-950 outline-none transition ${
+                formErrors.name
+                  ? "border-rose-500 ring-2 ring-rose-200 bg-rose-50/20"
+                  : "border-teal-900/20 focus:ring-2 focus:ring-amber-500"
+              }`}
+            />
+            {formErrors.name && (
+              <p className="mt-1 text-xs text-rose-600 font-semibold flex items-center gap-1">
+                <span>⚠️</span> {formErrors.name}
+              </p>
+            )}
+          </div>
+
+          {/* Mobile / WhatsApp */}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-xs font-bold text-teal-950">
+                WhatsApp Mobile Number <span className="text-rose-500">*</span>
+              </label>
+              <span className="text-[11px] text-teal-950/60 font-medium">For instant 80G tax receipt</span>
+            </div>
+            <div className="relative">
+              <span className="absolute left-3 top-2.5 text-xs font-bold text-teal-950/60">+91</span>
+              <input
+                ref={phoneInputRef}
+                type="tel"
+                maxLength={10}
+                placeholder="9876543210"
+                value={donorPhone}
+                onChange={(e) => {
+                  setDonorPhone(e.target.value.replace(/\D/g, "").slice(0, 10));
+                  clearFieldError("phone");
+                }}
+                className={`w-full rounded-xl border py-2.5 pl-11 pr-3 text-sm font-bold text-teal-950 outline-none transition ${
+                  formErrors.phone
+                    ? "border-rose-500 ring-2 ring-rose-200 bg-rose-50/20"
+                    : "border-teal-900/20 focus:ring-2 focus:ring-amber-500"
+                }`}
+              />
+            </div>
+            {formErrors.phone && (
+              <p className="mt-1 text-xs text-rose-600 font-semibold flex items-center gap-1">
+                <span>⚠️</span> {formErrors.phone}
+              </p>
+            )}
+          </div>
+
+          {/* Email Address */}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-xs font-bold text-teal-950">Email Address (Optional)</label>
+              <span className="text-[11px] text-teal-950/60 font-medium">For PDF certificate &amp; receipt</span>
+            </div>
+            <input
+              type="email"
+              placeholder="e.g. ramesh@example.com"
+              value={donorEmail}
+              onChange={(e) => {
+                setDonorEmail(e.target.value);
+                clearFieldError("email");
+              }}
+              className={`w-full rounded-xl border p-2.5 text-sm text-teal-950 outline-none transition ${
+                formErrors.email
+                  ? "border-rose-500 ring-2 ring-rose-200"
+                  : "border-teal-900/20 focus:ring-2 focus:ring-amber-500"
+              }`}
+            />
+            {formErrors.email && (
+              <p className="mt-1 text-xs text-rose-600 font-semibold flex items-center gap-1">
+                <span>⚠️</span> {formErrors.email}
+              </p>
+            )}
+          </div>
+
+          {/* Prayer / Blessings Note */}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-xs font-bold text-teal-950">
+                Special Prayer Wish or Family Names (Optional)
+              </label>
+              <span className="text-[11px] text-teal-950/60 font-medium">Chanted by boys</span>
+            </div>
+            <textarea
+              rows={2}
+              placeholder="e.g. Praying for child's good health and wisdom on his 10th birthday..."
+              value={prayerNote}
+              onChange={(e) => setPrayerNote(e.target.value)}
+              className="w-full rounded-xl border border-teal-900/20 p-2.5 text-xs text-teal-950 outline-none focus:ring-2 focus:ring-amber-500 resize-none"
+            />
+          </div>
+
+          {/* PAN Card Toggle (Form 10AC Section 80G Tax Exemption) */}
+          <div className="rounded-2xl bg-cream/35 p-3.5 border border-teal-900/10">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-base">📜</span>
+                <div>
+                  <p className="text-xs font-bold text-teal-950">Claim 80G Tax Deduction</p>
+                  <p className="text-[10px] text-teal-950/65">
+                    Save up to 50% income tax under Form 10AC Section 80G
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowPanInput(!showPanInput)}
+                className="text-xs font-bold text-teal-900 underline hover:text-amber-700 cursor-pointer"
+              >
+                {showPanInput ? "Hide PAN" : "+ Add PAN"}
+              </button>
+            </div>
+
+            {showPanInput && (
+              <div className="mt-3 pt-3 border-t border-teal-900/10 animate-fadeIn">
+                <label className="block text-xs font-bold text-teal-950 mb-1">
+                  Income Tax PAN Card Number
+                </label>
+                <input
+                  ref={panInputRef}
+                  type="text"
+                  maxLength={10}
+                  placeholder="ABCDE1234F"
+                  value={donorPan}
+                  onChange={(e) => {
+                    setDonorPan(sanitizePan(e.target.value));
+                    clearFieldError("pan");
+                  }}
+                  className={`w-full rounded-xl border p-2.5 text-xs font-mono uppercase tracking-wider text-teal-950 outline-none transition ${
+                    formErrors.pan
+                      ? "border-rose-500 ring-2 ring-rose-200"
+                      : "border-teal-900/20 focus:ring-2 focus:ring-amber-500"
+                  }`}
+                />
+                {formErrors.pan ? (
+                  <p className="mt-1 text-xs text-rose-600 font-semibold flex items-center gap-1">
+                    <span>⚠️</span> {formErrors.pan}
+                  </p>
+                ) : (
+                  <p className="mt-1 text-[10px] text-teal-950/60">
+                    PAN is recorded directly in your official Income Tax Form 10BE filing.
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ── 4. Pay / Donate CTA Button ── */}
+        <button
+          type="button"
+          onClick={handlePayNow}
+          disabled={loading}
+          className="focus-ring tap-scale w-full py-4 rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-600 hover:to-orange-600 text-white font-black text-sm uppercase tracking-wider shadow-lg shadow-orange-500/25 active:scale-95 transition cursor-pointer flex items-center justify-center gap-2 disabled:opacity-75 disabled:cursor-not-allowed"
+        >
+          {loading ? (
+            <>
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+              <span>Preparing Secure Gateway...</span>
+            </>
+          ) : (
+            <>
+              <span>Complete Auspicious Blessing</span>
+              <span className="font-extrabold text-amber-200">({formatINR(finalAmount)})</span>
+              <span>💝</span>
+            </>
+          )}
+        </button>
+
+        {/* ── Trust & Verification Footer ── */}
+        <div className="mt-5 pt-4 border-t border-teal-900/10 grid grid-cols-3 gap-2 text-center text-[10px] text-teal-950/70 font-semibold">
+          <div className="flex flex-col items-center gap-1">
+            <span className="text-sm">🛡️</span>
+            <span>256-Bit SSL Secured</span>
+          </div>
+          <div className="flex flex-col items-center gap-1">
+            <span className="text-sm">📜</span>
+            <span>80G Tax Deductible</span>
+          </div>
+          <div className="flex flex-col items-center gap-1">
+            <span className="text-sm">⚡</span>
+            <span>Instant WhatsApp Receipt</span>
+          </div>
         </div>
       </div>
 
-      {/* Custom Amount */}
-      <div className="mb-4">
-        <label className="block text-xs font-bold text-teal-950 mb-1">
-          Or Enter Any Custom Amount (₹):
-        </label>
-        <div className="relative">
-          <span className="absolute left-3 top-3 text-sm font-bold text-teal-950/50">₹</span>
-          <input
-            type="number"
-            placeholder="e.g. 5000"
-            value={customAmount}
-            onChange={(e) => setCustomAmount(e.target.value)}
-            className="w-full rounded-xl border border-teal-900/20 py-2.5 pl-8 pr-3 text-sm font-bold text-teal-950 focus:ring-2 focus:ring-amber-500 outline-none"
-          />
-        </div>
-      </div>
-
-      {/* Donor Details */}
-      <div className="space-y-3 mb-6">
-        <div>
-          <label className="block text-xs font-bold text-teal-950 mb-1">
-            Celebrant / Donor Name *
-          </label>
-          <input
-            type="text"
-            placeholder="For boys' prayer chanting"
-            value={donorName}
-            onChange={(e) => setDonorName(e.target.value)}
-            className="w-full rounded-xl border border-teal-900/20 p-2.5 text-sm text-teal-950 focus:ring-2 focus:ring-amber-500 outline-none"
-          />
-        </div>
-
-        <div>
-          <label className="block text-xs font-bold text-teal-950 mb-1">
-            WhatsApp Mobile Number *
-          </label>
-          <input
-            type="tel"
-            placeholder="10-digit mobile (for 80G tax receipt)"
-            value={donorPhone}
-            onChange={(e) => setDonorPhone(e.target.value)}
-            className="w-full rounded-xl border border-teal-900/20 p-2.5 text-sm text-teal-950 focus:ring-2 focus:ring-amber-500 outline-none"
-          />
-        </div>
-
-        <div>
-          <label className="block text-xs font-bold text-teal-950 mb-1">
-            PAN Number (Optional, for 80G Tax Exemption)
-          </label>
-          <input
-            type="text"
-            placeholder="ABCDE1234F"
-            maxLength={10}
-            value={donorPan}
-            onChange={(e) => setDonorPan(e.target.value.toUpperCase())}
-            className="w-full rounded-xl border border-teal-900/20 p-2.5 text-sm font-mono uppercase text-teal-950 focus:ring-2 focus:ring-amber-500 outline-none"
-          />
-        </div>
-      </div>
-
-      {/* Submit Button */}
-      <button
-        type="button"
-        onClick={handlePayNow}
-        disabled={loading}
-        className="focus-ring tap-scale w-full py-3.5 rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-600 hover:to-orange-600 text-white font-black text-sm uppercase tracking-wider shadow-lg shadow-orange-500/25 active:scale-95 transition cursor-pointer"
-      >
-        {loading ? "Preparing Gateway..." : `Donate ${formatINR(customAmount ? parseFloat(customAmount) : amount)} Now 💝`}
-      </button>
-
-      <div className="mt-4 flex items-center justify-center gap-3 text-[11px] text-teal-950/60 font-semibold">
-        <span>🛡️ 256-Bit SSL</span>
-        <span>·</span>
-        <span>📜 80G Tax Exemption</span>
-        <span>·</span>
-        <span>⚡ Instant WhatsApp Receipt</span>
+      {/* Institutional Assurance Footnote */}
+      <div className="mt-4 text-center text-xs text-teal-950/60 space-y-1">
+        <p>
+          Registered Charitable Trust: <strong>Janaseva Ashrama (Est. 2000)</strong>
+        </p>
+        <p>
+          Income Tax Form 10AC: <strong>{FORM_10AC.urn}</strong> · Govt of Karnataka Recognized
+        </p>
       </div>
     </div>
   );

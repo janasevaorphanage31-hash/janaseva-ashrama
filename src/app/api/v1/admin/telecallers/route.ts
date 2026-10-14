@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
 import { ensureDbSchema } from "@/db";
+import { requireAdminApi } from "@/lib/admin-auth";
+import { writeAudit } from "@/lib/audit";
+import { clientIp } from "@/lib/server-utils";
 import {
   getAdminLeaderboard,
   distributeBirthdayLeads,
@@ -14,8 +17,16 @@ import {
   resetTelecallerPassword,
 } from "@/lib/antigravity-crm";
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
+    const session = await requireAdminApi();
+    if (!session) {
+      return NextResponse.json(
+        { error: "Unauthorized. Administrator login required." },
+        { status: 401 }
+      );
+    }
+
     await ensureDbSchema();
     await ensureTelecallersAndSeedData();
     const data = await getAdminLeaderboard();
@@ -27,13 +38,30 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
+    const session = await requireAdminApi();
+    if (!session) {
+      return NextResponse.json(
+        { error: "Unauthorized. Administrator login required." },
+        { status: 401 }
+      );
+    }
+
     await ensureDbSchema();
     await ensureTelecallersAndSeedData();
     const body = await req.json();
     const action = body.action;
+    const ip = clientIp(req);
 
     if (action === "trigger_routing") {
       const result = await distributeBirthdayLeads();
+      await writeAudit({
+        actorAdminUserId: session.user.id ?? null,
+        action: "crm.distribute_birthday_leads",
+        entity: "ag_leads",
+        afterState: result,
+        ipAddress: ip,
+      });
+
       const updatedLeaderboard = await getAdminLeaderboard();
       return NextResponse.json({
         success: true,
@@ -55,6 +83,16 @@ export async function POST(req: Request) {
         password,
         dailyQuota: dailyQuota ? parseInt(String(dailyQuota), 10) : 50,
       });
+
+      await writeAudit({
+        actorAdminUserId: session.user.id ?? null,
+        action: "crm.add_telecaller",
+        entity: "ag_telecallers",
+        entityId: newCaller.callerId,
+        afterState: { name: newCaller.name, callerId: newCaller.callerId },
+        ipAddress: ip,
+      });
+
       const updatedLeaderboard = await getAdminLeaderboard();
       return NextResponse.json({
         success: true,
@@ -70,6 +108,16 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "Caller ID is required to delete." }, { status: 400 });
       }
       const res = await deleteTelecaller(callerId, redistributeLeads !== false);
+
+      await writeAudit({
+        actorAdminUserId: session.user.id ?? null,
+        action: "crm.delete_telecaller",
+        entity: "ag_telecallers",
+        entityId: callerId,
+        afterState: res,
+        ipAddress: ip,
+      });
+
       const updatedLeaderboard = await getAdminLeaderboard();
       return NextResponse.json({
         success: true,
@@ -84,6 +132,16 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "Caller ID and isActive status are required." }, { status: 400 });
       }
       const res = await toggleTelecallerStatus(callerId, isActive, redistributeLeads !== false);
+
+      await writeAudit({
+        actorAdminUserId: session.user.id ?? null,
+        action: "crm.toggle_telecaller_status",
+        entity: "ag_telecallers",
+        entityId: callerId,
+        afterState: { isActive },
+        ipAddress: ip,
+      });
+
       const updatedLeaderboard = await getAdminLeaderboard();
       return NextResponse.json({
         success: true,
@@ -98,6 +156,15 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "Please provide an array of leads to upload." }, { status: 400 });
       }
       const res = await uploadBulkLeads(leads, autoDistribute !== false, mode || "balanced");
+
+      await writeAudit({
+        actorAdminUserId: session.user.id ?? null,
+        action: "crm.upload_bulk_leads",
+        entity: "ag_leads",
+        afterState: { uploaded: res.validInserted, distributed: res.distributed },
+        ipAddress: ip,
+      });
+
       const updatedLeaderboard = await getAdminLeaderboard();
       return NextResponse.json({
         success: true,
@@ -110,6 +177,15 @@ export async function POST(req: Request) {
     if (action === "distribute_equally") {
       const { mode } = body;
       const res = await distributeAllPendingLeads(mode || "balanced");
+
+      await writeAudit({
+        actorAdminUserId: session.user.id ?? null,
+        action: "crm.distribute_pending_leads",
+        entity: "ag_leads",
+        afterState: res,
+        ipAddress: ip,
+      });
+
       const updatedLeaderboard = await getAdminLeaderboard();
       return NextResponse.json({
         success: true,
@@ -125,6 +201,15 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "Caller ID and new password are required." }, { status: 400 });
       }
       await resetTelecallerPassword(callerId, newPassword);
+
+      await writeAudit({
+        actorAdminUserId: session.user.id ?? null,
+        action: "crm.reset_telecaller_password",
+        entity: "ag_telecallers",
+        entityId: callerId,
+        ipAddress: ip,
+      });
+
       return NextResponse.json({
         success: true,
         message: `Password for ${callerId} has been successfully updated.`,
@@ -134,6 +219,15 @@ export async function POST(req: Request) {
     if (action === "export_csv") {
       const { exportType } = body;
       const result = await generateAgencyCSVExport(exportType || "performance");
+
+      await writeAudit({
+        actorAdminUserId: session.user.id ?? null,
+        action: "crm.export_agency_csv",
+        entity: "ag_telecallers",
+        afterState: { exportType },
+        ipAddress: ip,
+      });
+
       return NextResponse.json({
         success: true,
         ...result,
@@ -149,6 +243,15 @@ export async function POST(req: Request) {
       }
 
       await bulkReassignLeads(leadIds, targetCallerId);
+
+      await writeAudit({
+        actorAdminUserId: session.user.id ?? null,
+        action: "crm.bulk_reassign_leads",
+        entity: "ag_leads",
+        afterState: { leadCount: leadIds.length, targetCallerId },
+        ipAddress: ip,
+      });
+
       const updatedLeaderboard = await getAdminLeaderboard();
       return NextResponse.json({
         success: true,
