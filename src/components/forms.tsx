@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { track } from "@/lib/track";
+import { trackLead } from "@/lib/tracking";
 import {
   validateName,
   validateEmail,
@@ -118,6 +119,10 @@ export function VolunteerForm({
           try {
             await post("/api/volunteers", f);
             track("volunteer_submitted", { interestArea: f.interestArea });
+            trackLead({
+              content_name: `Volunteer: ${f.interestArea}`,
+              lead_type: "Volunteer Application",
+            });
             setState("done");
           } catch (err) {
             const msg = (err as Error).message;
@@ -373,6 +378,11 @@ export function CampaignForm({
           try {
             const d = await post("/api/campaigns", { ...f, goalAmount: Number(f.goalAmount) });
             track("campaign_created", { occasion: f.occasion });
+            trackLead({
+              content_name: `Campaign: ${f.title}`,
+              lead_type: "Campaign Submission",
+              value: Number(f.goalAmount) || 5000,
+            });
             setSlug(d.slug);
             setState("done");
           } catch (err) {

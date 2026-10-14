@@ -8,7 +8,7 @@ import { SITE } from "@/lib/site";
 export const metadata: Metadata = {
   title: "Direct Giving & Impact Areas · Janaseva Ashrama Bangalore",
   description:
-    "Select essential meal kits, nutritious milk, school books, or medical support for 48+ children at Janaseva Ashrama. Form 10AC 80G tax benefit.",
+    "Select essential meal kits, nutritious milk, school books, or medical support for 25 resident boys at Janaseva Ashrama. Form 10AC 80G tax benefit.",
   alternates: {
     canonical: `${SITE.url}/impact`,
   },

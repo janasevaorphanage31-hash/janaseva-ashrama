@@ -3,6 +3,8 @@
 import { useState, type FormEvent } from "react";
 import { validateName, validateEmail, validatePhone, sanitizeNumeric, sanitizeName } from "@/lib/validation";
 import { ValidationErrorModal } from "./ValidationErrorModal";
+import { track } from "@/lib/track";
+import { trackLead } from "@/lib/tracking";
 
 export function CorporateFormClient() {
   const [form, setForm] = useState({
@@ -66,6 +68,11 @@ export function CorporateFormClient() {
       });
 
       if (res.ok) {
+        track("corporate_inquiry_submitted", { company: form.companyName, interest: form.interest });
+        trackLead({
+          content_name: `Corporate CSR: ${form.companyName}`,
+          lead_type: "Corporate CSR Inquiry",
+        });
         setSent(true);
       } else {
         const data = await res.json().catch(() => ({}));

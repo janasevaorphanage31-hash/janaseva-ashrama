@@ -7,7 +7,7 @@ import { INTERESTS, SITE } from "@/lib/site";
 export const metadata: Metadata = {
   title: "Janaseva Crew · Volunteer Your Skills · Janaseva Ashrama Bangalore",
   description:
-    "Join the Janaseva Crew. Contribute your teaching, technology, design, photography, or event skills to enrich the lives of 48+ children in Bengaluru.",
+    "Join the Janaseva Crew. Contribute your teaching, technology, design, photography, or mentoring skills to enrich the lives of 25 resident boys in Bengaluru.",
   alternates: {
     canonical: `${SITE.url}/janaseva-crew`,
   },
