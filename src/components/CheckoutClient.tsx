@@ -1761,7 +1761,7 @@ export function CheckoutClient() {
                 </label>
                 <textarea
                   rows={2}
-                  className={`${inputCls} mt-1 text-sm`}
+                  className={`${inputCls} mt-1 text-base sm:text-sm`}
                   placeholder="e.g. Wishing you boundless joy, good health and blessings on your special day."
                   value={dedication.message}
                   onChange={(e) => setDedication({ ...dedication, message: e.target.value })}

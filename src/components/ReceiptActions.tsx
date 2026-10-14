@@ -37,7 +37,7 @@ export function ReceiptActions({ donationPublicId }: { donationPublicId: string 
         <h3 className="font-display text-lg font-bold text-teal-900">Impact Certificate</h3>
         <p className="text-xs text-teal-950/65">Server-generated from your verified donation.</p>
         <div className="mt-2 flex flex-wrap gap-2">
-          <input value={certName} onChange={(e) => setCertName(e.target.value)} placeholder="Optional display name" className="focus-ring rounded-xl border border-teal-900/20 bg-white px-3 py-2 text-sm" />
+          <input value={certName} onChange={(e) => setCertName(e.target.value)} placeholder="Optional display name" className="focus-ring rounded-xl border border-teal-900/20 bg-white px-3 py-2 text-base sm:text-sm" />
           <button onClick={createCertificate} disabled={!!busy} className="focus-ring rounded-xl bg-teal-800 px-4 py-2 text-sm font-bold text-white disabled:opacity-60">
             {busy === "cert" ? "Generating…" : "Generate certificate"}
           </button>
