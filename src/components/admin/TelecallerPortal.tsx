@@ -308,7 +308,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
   const handleCopyReferralLink = () => {
     if (!callerProfile) return;
     const origin = typeof window !== "undefined" ? window.location.origin : "https://janasevaorphanage.org";
-    const refLink = `${origin}/donate?ref=${callerProfile.callerId}`;
+    const refLink = `${origin}/#official-tiers?ref=${callerProfile.callerId}`;
     navigator.clipboard.writeText(refLink);
     showToast("✓ Referral link copied to clipboard: " + refLink);
   };
@@ -579,6 +579,27 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
 
       {/* ── ASSIGNED LEADS QUEUE TABLE ── */}
       <div className="rounded-3xl bg-white p-5 sm:p-6 shadow-sm border border-teal-900/10">
+        {/* 90% Main Campaign Guidance Banner for Telecallers */}
+        <div className="mb-5 rounded-2xl bg-amber-500/10 border border-amber-500/30 p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="space-y-1">
+            <div className="flex items-center gap-1.5 text-xs font-black text-amber-950 uppercase tracking-wider">
+              <span>🏛️</span>
+              <span>90% NGO Telecaller Focus: &apos;Sponsor 25 Boys&apos; Official Tiers</span>
+            </div>
+            <p className="text-xs text-teal-950/80 font-medium leading-relaxed">
+              When speaking with well-wishers, prioritize offering the Form 28 registered sponsorship tiers:
+              <strong> ₹4,500 Full Day Food (All 25 Boys)</strong> · <strong>₹6,000 Monthly Ration</strong> · <strong>₹4,800 Clothes</strong> · <strong>₹9,600 Education</strong> (or starter ₹1,800 - ₹2,500).
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={handleCopyReferralLink}
+            className="shrink-0 rounded-xl bg-amber-500 hover:bg-amber-600 text-teal-950 font-black px-3.5 py-2 text-xs shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
+          >
+            <span>📋 Copy Official Tiers Link</span>
+          </button>
+        </div>
+
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
           <div>
             <h2 className="font-display text-lg font-bold text-teal-950">

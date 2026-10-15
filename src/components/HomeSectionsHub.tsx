@@ -27,7 +27,7 @@ import type {
   getApprovedMedia,
 } from "@/lib/content";
 
-export type HomeMode = "all" | "tiers" | "celebrate" | "annadana" | "life" | "community" | "trust";
+export type HomeMode = "tiers" | "celebrate" | "annadana" | "life" | "community" | "trust" | "all";
 
 interface ModeItem {
   id: HomeMode;
@@ -40,20 +40,12 @@ interface ModeItem {
 
 const MODES: ModeItem[] = [
   {
-    id: "all",
-    label: "All Stories",
-    icon: "🌟",
-    badge: "All",
-    targetId: "hub-top",
-    description: "Complete continuous journey of Janaseva Ashrama",
-  },
-  {
     id: "tiers",
     label: "Sponsor 25 Boys",
     icon: "🏛️",
-    badge: "Form 28",
+    badge: "90% Focus",
     targetId: "section-tiers",
-    description: "Form 28 JJ Act registered 5 official sponsorship tiers",
+    description: "90% Primary NGO Focus · Form 28 JJ Act registered 5 official sponsorship tiers",
   },
   {
     id: "celebrate",
@@ -95,23 +87,27 @@ const MODES: ModeItem[] = [
     targetId: "section-trust",
     description: "Form 10AC, CSR-1, Axis Bank wire & FAQs",
   },
+  {
+    id: "all",
+    label: "All Stories",
+    icon: "🌟",
+    badge: "Overview",
+    targetId: "hub-top",
+    description: "Complete continuous journey of Janaseva Ashrama",
+  },
 ];
 
 const MODE_TARGET_MAP: Record<HomeMode, string> = {
-  all: "hub-top",
   tiers: "section-tiers",
   celebrate: "section-celebrate",
   annadana: "section-annadana",
   life: "section-life",
   community: "section-community",
   trust: "section-trust",
+  all: "hub-top",
 };
 
 const HASH_MODE_MAP: Record<string, HomeMode> = {
-  "hub-top": "all",
-  top: "all",
-  all: "all",
-  stories: "all",
   "section-tiers": "tiers",
   "official-tiers": "tiers",
   tiers: "tiers",
@@ -151,6 +147,10 @@ const HASH_MODE_MAP: Record<string, HomeMode> = {
   bank: "trust",
   faq: "trust",
   contact: "trust",
+  "hub-top": "all",
+  top: "all",
+  all: "all",
+  stories: "all",
 };
 
 export interface HomeSectionsHubProps {
@@ -170,7 +170,8 @@ export function HomeSectionsHub({
   siteContent,
   approvedMedia,
 }: HomeSectionsHubProps) {
-  const [activeMode, setActiveMode] = useState<HomeMode>("all");
+  // Default to 'tiers' (Sponsor 25 Boys) as 90% of NGO telecaller focus is on this campaign
+  const [activeMode, setActiveMode] = useState<HomeMode>("tiers");
   const hubRef = useRef<HTMLDivElement>(null);
   const activeModeRef = useRef<HomeMode>(activeMode);
   const isScrollingProgrammatically = useRef<boolean>(false);
@@ -248,7 +249,7 @@ export function HomeSectionsHub({
     const syncFromLocation = () => {
       if (typeof window === "undefined") return;
 
-      // 1. Check URL query params e.g. ?theme=celebrate
+      // 1. Check URL query params e.g. ?theme=tiers or ?theme=celebrate
       const params = new URLSearchParams(window.location.search);
       const themeParam = params.get("theme") as HomeMode | null;
       if (themeParam && MODES.some((m) => m.id === themeParam)) {
@@ -256,7 +257,7 @@ export function HomeSectionsHub({
         return;
       }
 
-      // 2. Check URL hash e.g. #celebrate, #official-tiers, #catalog
+      // 2. Check URL hash e.g. #official-tiers, #celebrate, #catalog
       const rawHash = window.location.hash.replace(/^#/, "");
       if (rawHash) {
         const mappedMode = HASH_MODE_MAP[rawHash];
@@ -311,39 +312,36 @@ export function HomeSectionsHub({
 
       if (!ticking) {
         window.requestAnimationFrame(() => {
-          const scrollY = window.scrollY;
-          // Offset below sticky top navs (115px) + padding margin
-          const triggerLine = scrollY + 180;
-
-          // Sequential sections in page order
-          const tiersEl = document.getElementById("section-tiers") || document.getElementById("official-tiers");
-          const celEl = document.getElementById("section-celebrate") || document.getElementById("celebrate");
-          const annEl = document.getElementById("section-annadana") || document.getElementById("impact");
-          const lifeEl = document.getElementById("section-life") || document.getElementById("boys-gallery");
-          const comEl = document.getElementById("section-community") || document.getElementById("volunteer");
-          const trustEl = document.getElementById("section-trust") || document.getElementById("transparency");
-
           const isBottom =
-            window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 60;
+            window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 70;
 
-          let detected: HomeMode = "all";
+          // Ordered list of sections from bottom to top for viewport collision detection
+          const sections: { mode: HomeMode; id: string; fallbackId: string }[] = [
+            { mode: "trust", id: "section-trust", fallbackId: "transparency" },
+            { mode: "community", id: "section-community", fallbackId: "volunteer" },
+            { mode: "life", id: "section-life", fallbackId: "boys-gallery" },
+            { mode: "annadana", id: "section-annadana", fallbackId: "catalog" },
+            { mode: "celebrate", id: "section-celebrate", fallbackId: "celebrate" },
+            { mode: "tiers", id: "section-tiers", fallbackId: "official-tiers" },
+          ];
 
-          if (isBottom && trustEl) {
+          let detected: HomeMode = "tiers";
+
+          if (isBottom) {
             detected = "trust";
-          } else if (trustEl && trustEl.offsetTop <= triggerLine) {
-            detected = "trust";
-          } else if (comEl && comEl.offsetTop <= triggerLine) {
-            detected = "community";
-          } else if (lifeEl && lifeEl.offsetTop <= triggerLine) {
-            detected = "life";
-          } else if (annEl && annEl.offsetTop <= triggerLine) {
-            detected = "annadana";
-          } else if (celEl && celEl.offsetTop <= triggerLine) {
-            detected = "celebrate";
-          } else if (tiersEl && tiersEl.offsetTop <= triggerLine) {
-            detected = "tiers";
           } else {
-            detected = "all";
+            // Trigger activation line: below the sticky headers (top bar + hub nav ~120px)
+            const triggerY = 170;
+            for (const s of sections) {
+              const el = document.getElementById(s.id) || document.getElementById(s.fallbackId);
+              if (el) {
+                const rect = el.getBoundingClientRect();
+                if (rect.top <= triggerY) {
+                  detected = s.mode;
+                  break;
+                }
+              }
+            }
           }
 
           if (detected !== activeModeRef.current) {
@@ -414,13 +412,13 @@ export function HomeSectionsHub({
             })}
           </div>
 
-          {/* Dynamic Real-time Status Indicator - updates as user scrolls! */}
+          {/* Dynamic Real-time Status Indicator - updates synchronously as user scrolls! */}
           <div className="flex mt-1 items-center justify-between text-[10px] text-teal-950/70 font-semibold px-1">
             <span className="flex items-center gap-1.5 min-w-0 truncate">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
               <span className="truncate">
-                {activeMode === "all"
-                  ? "🌟 Showing All Stories · Tap any theme or scroll continuously"
+                {activeMode === "tiers"
+                  ? "🏛️ Viewing: Sponsor 25 Boys · 90% Primary NGO Focus · Form 28 JJ Act 5 Official Tiers"
                   : `Currently viewing: ${MODES.find((m) => m.id === activeMode)?.label} · ${MODES.find((m) => m.id === activeMode)?.description}`}
               </span>
             </span>
@@ -431,41 +429,15 @@ export function HomeSectionsHub({
         </div>
       </nav>
 
-      {/* ── ALL 6 THEMATIC CHAPTERS RENDERED CONTINUOUSLY IN SEQUENCE ── */}
+      {/* ── ALL 6 THEMATIC CHAPTERS RENDERED CONTINUOUSLY (NO DUPLICATE STACKED HEADERS) ── */}
       <div className="space-y-0">
-        {/* ── CHAPTER 1: SPONSOR 25 BOYS (OFFICIAL 5 SUPPORT TIERS) ── */}
+        {/* ── CHAPTER 1: SPONSOR 25 BOYS (OFFICIAL 5 SUPPORT TIERS - 90% FOCUS) ── */}
         <section id="section-tiers" className="scroll-mt-24 sm:scroll-mt-28">
-          <div className="bg-gradient-to-r from-teal-950 via-teal-900 to-teal-950 text-white py-8 sm:py-10 px-4 text-center border-b border-amber-400/20">
-            <Container>
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-gold/20 text-gold px-3.5 py-1 text-xs font-black uppercase tracking-wider mb-2 ring-1 ring-gold/30">
-                <span>🏛️</span> Form 28 JJ Act Registered Support Tiers
-              </span>
-              <h2 className="font-display text-2xl sm:text-3xl md:text-4xl font-bold text-white">
-                Official Sponsorship Tiers for 25 Resident Boys
-              </h2>
-              <p className="mt-2 text-xs sm:text-sm text-white/80 max-w-2xl mx-auto leading-relaxed">
-                Audited fixed-price sponsorship for daily food, monthly grocery staples, clothing sets, and annual schooling under Section 80G tax exemption.
-              </p>
-            </Container>
-          </div>
           <OfficialSupportTiersSection tiers={siteContent?.supportTiers} />
         </section>
 
         {/* ── CHAPTER 2: CELEBRATE BIRTHDAYS & MILESTONES ── */}
         <section id="section-celebrate" className="scroll-mt-24 sm:scroll-mt-28">
-          <div className="bg-gradient-to-r from-amber-950 via-teal-950 to-amber-950 text-white py-8 sm:py-10 px-4 text-center border-b border-amber-400/20">
-            <Container>
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-saffron/20 text-saffron-light px-3.5 py-1 text-xs font-black uppercase tracking-wider mb-2 ring-1 ring-saffron/30">
-                <span>🎂</span> Celebrate Life Milestones in Bengaluru
-              </span>
-              <h2 className="font-display text-2xl sm:text-3xl md:text-4xl font-bold text-white">
-                Celebrate Your Birthday with 25 Orphaned Boys
-              </h2>
-              <p className="mt-2 text-xs sm:text-sm text-amber-100/80 max-w-2xl mx-auto leading-relaxed">
-                Sponsor a traditional banana leaf feast, cut an eggless cake, or receive a live WhatsApp video blessing from 25 boys chanting your name.
-              </p>
-            </Container>
-          </div>
           <TrendingBirthdaySection
             packages={siteContent?.celebrationPackages}
             wishVideos={siteContent?.wishVideos}
@@ -477,19 +449,6 @@ export function HomeSectionsHub({
         <section id="section-annadana" className="scroll-mt-24 sm:scroll-mt-28">
           <div id="catalog" className="scroll-mt-24 sm:scroll-mt-28" />
           <div id="today-meals" className="scroll-mt-24 sm:scroll-mt-28" />
-          <div className="bg-gradient-to-r from-teal-950 via-emerald-950 to-teal-950 text-white py-8 sm:py-10 px-4 text-center border-b border-emerald-400/20">
-            <Container>
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/20 text-emerald-300 px-3.5 py-1 text-xs font-black uppercase tracking-wider mb-2 ring-1 ring-emerald-400/30">
-                <span>🍲</span> Itemized Giving Store &amp; Kitchen Tracker
-              </span>
-              <h2 className="font-display text-2xl sm:text-3xl md:text-4xl font-bold text-white">
-                Categorized Daily Needs &amp; Giving Basket
-              </h2>
-              <p className="mt-2 text-xs sm:text-sm text-emerald-100/80 max-w-2xl mx-auto leading-relaxed">
-                Directly fund individual daily items from ₹11 morning cow milk and ₹101 hot lunch to ₹251 school bags and ₹2,501 wholesale pantry staples. Instant 80G receipt.
-              </p>
-            </Container>
-          </div>
           <TodaySection updates={updates} mealsStatus={siteContent?.todayMealsStatus} mode="meals-only" />
           <ImpactCart />
         </section>
@@ -497,19 +456,6 @@ export function HomeSectionsHub({
         {/* ── CHAPTER 4: CAMPUS LIFE & DOCUMENTARY ── */}
         <section id="section-life" className="scroll-mt-24 sm:scroll-mt-28">
           <div id="ashrama-life" className="scroll-mt-24 sm:scroll-mt-28" />
-          <div className="bg-gradient-to-r from-teal-950 via-slate-900 to-teal-950 text-white py-8 sm:py-10 px-4 text-center border-b border-white/10">
-            <Container>
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-gold/20 text-gold px-3.5 py-1 text-xs font-black uppercase tracking-wider mb-2 ring-1 ring-gold/30">
-                <span>📸</span> Authentic On-Ground Documentation
-              </span>
-              <h2 className="font-display text-2xl sm:text-3xl md:text-4xl font-bold text-white">
-                Real Daily Life Inside Janaseva Ashrama
-              </h2>
-              <p className="mt-2 text-xs sm:text-sm text-white/80 max-w-2xl mx-auto leading-relaxed">
-                No actors, no staged models. 60 authentic photos, documentary video chapters, abacus classes, and caregiver reflections from Thurahalli, Bangalore.
-              </p>
-            </Container>
-          </div>
           <RealBoysGallerySection customMedia={approvedMedia} />
           <TodaySection updates={updates} mode="updates-only" />
           <div id="documentary" className="scroll-mt-24 sm:scroll-mt-28" />
@@ -519,38 +465,12 @@ export function HomeSectionsHub({
 
         {/* ── CHAPTER 5: VOLUNTEER & COMMUNITY OUTREACH ── */}
         <section id="section-community" className="scroll-mt-24 sm:scroll-mt-28">
-          <div className="bg-gradient-to-r from-emerald-950 via-teal-950 to-emerald-950 text-white py-8 sm:py-10 px-4 text-center border-b border-emerald-400/20">
-            <Container>
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/20 text-emerald-300 px-3.5 py-1 text-xs font-black uppercase tracking-wider mb-2 ring-1 ring-emerald-400/30">
-                <span>🤝</span> U&amp;I Concept · 2.5 Hours / Week
-              </span>
-              <h2 className="font-display text-2xl sm:text-3xl md:text-4xl font-bold text-white">
-                Janaseva Volunteer Crew &amp; Field Outreach
-              </h2>
-              <p className="mt-2 text-xs sm:text-sm text-emerald-100/80 max-w-2xl mx-auto leading-relaxed">
-                Give 2.5 hours on a weekend to teach English, mentor younger boys, or join medical camps and cleanliness drives in Bengaluru.
-              </p>
-            </Container>
-          </div>
           <CommunityV2Section />
           <CommunityActivitiesSection activities={siteContent?.ngoActivities} />
         </section>
 
         {/* ── CHAPTER 6: 80G TRUST, LEGAL ACCREDITATIONS & BANKING ── */}
         <section id="section-trust" className="scroll-mt-24 sm:scroll-mt-28">
-          <div className="bg-gradient-to-r from-teal-950 via-slate-950 to-teal-950 text-white py-8 sm:py-10 px-4 text-center border-b border-amber-400/20">
-            <Container>
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-gold/20 text-gold px-3.5 py-1 text-xs font-black uppercase tracking-wider mb-2 ring-1 ring-gold/30">
-                <span>🛡️</span> 100% Tax Deductible · Form 10AC Section 80G
-              </span>
-              <h2 className="font-display text-2xl sm:text-3xl md:text-4xl font-bold text-white">
-                Legal Transparency, Axis Bank Wire &amp; Trust Pillars
-              </h2>
-              <p className="mt-2 text-xs sm:text-sm text-white/80 max-w-2xl mx-auto leading-relaxed">
-                Inspect official government accreditations, verified platform statistics, direct Axis Bank Banashankari account details, and donor FAQs.
-              </p>
-            </Container>
-          </div>
           <TransparencySection docs={docs} />
           <TrustSection />
           <VerifiedImpactSection metrics={metrics} totals={totals} />
@@ -571,15 +491,8 @@ export function HomeSectionsHub({
             <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-2.5">
               <button
                 type="button"
-                onClick={() => switchMode("all")}
-                className="focus-ring tap-scale inline-flex items-center gap-1.5 rounded-xl bg-teal-900 px-4 py-2 text-xs font-bold text-white hover:bg-teal-950 transition shadow-sm cursor-pointer"
-              >
-                <span>🌟 Top Overview</span>
-              </button>
-              <button
-                type="button"
                 onClick={() => switchMode("tiers")}
-                className="focus-ring tap-scale inline-flex items-center gap-1.5 rounded-xl bg-white border border-teal-900/15 px-3.5 py-2 text-xs font-bold text-teal-950 hover:bg-cream transition shadow-2xs cursor-pointer"
+                className="focus-ring tap-scale inline-flex items-center gap-1.5 rounded-xl bg-teal-900 px-4 py-2 text-xs font-bold text-white hover:bg-teal-950 transition shadow-sm cursor-pointer"
               >
                 <span>🏛️ Sponsor 25 Boys</span>
               </button>
@@ -617,6 +530,13 @@ export function HomeSectionsHub({
                 className="focus-ring tap-scale inline-flex items-center gap-1.5 rounded-xl bg-white border border-teal-900/15 px-3.5 py-2 text-xs font-bold text-teal-950 hover:bg-cream transition shadow-2xs cursor-pointer"
               >
                 <span>🛡️ 80G Trust</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => switchMode("all")}
+                className="focus-ring tap-scale inline-flex items-center gap-1.5 rounded-xl bg-white border border-teal-900/15 px-3.5 py-2 text-xs font-bold text-teal-950 hover:bg-cream transition shadow-2xs cursor-pointer"
+              >
+                <span>🌟 All Stories Overview</span>
               </button>
             </div>
           </Container>

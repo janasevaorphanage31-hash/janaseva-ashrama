@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { formatINR } from "@/lib/site";
-import { SUPPORTER_CATEGORIES, OFFICIAL_FORM_META } from "@/lib/supporter-form";
+import { SUPPORTER_CATEGORIES } from "@/lib/supporter-form";
 import { useCart } from "../CartProvider";
 import { track } from "@/lib/track";
 
@@ -54,53 +54,53 @@ const CONCISE_META: Record<
   }
 > = {
   food_one_day: {
-    shortTitle: "Daily Meals",
-    tabLabel: "Meals",
-    oneLineDesc: "Hot breakfast, lunch, snacks & dinner for 25 boys.",
+    shortTitle: "One Day Food for all 25 Children",
+    tabLabel: "Tier 1: Food",
+    oneLineDesc: "Wholesome daily Annadana: hot breakfast, nutritious lunch, snacks & dinner for all 25 children.",
     pillOptions: [
-      { id: "all_children", label: "Full Day", impact: "All 25 Boys · 4 Meals" },
-      { id: "two_times", label: "2 Meals", impact: "Lunch & Dinner" },
-      { id: "one_time", label: "1 Meal", impact: "Single Feast" },
+      { id: "all_children", label: "Full Day", impact: "All 25 Boys · 4 Complete Meals (Breakfast, Lunch, Snacks, Dinner)" },
+      { id: "two_times", label: "2 Meals", impact: "All 25 Boys · Lunch & Dinner" },
+      { id: "one_time", label: "1 Meal", impact: "All 25 Boys · Single Meal Feast" },
     ],
   },
   food_one_month: {
-    shortTitle: "Monthly Ration",
-    tabLabel: "Ration",
-    oneLineDesc: "Essential monthly rice, dal, oil & fresh groceries.",
+    shortTitle: "One Month Food for Children",
+    tabLabel: "Tier 2: Ration",
+    oneLineDesc: "Essential monthly rice, toor dal, fresh vegetables, milk & fruits for resident children.",
     pillOptions: [
-      { id: "4_children", label: "4 Boys", impact: "1 Month Groceries" },
-      { id: "2_children", label: "2 Boys", impact: "1 Month Groceries" },
-      { id: "1_child", label: "1 Boy", impact: "1 Month Groceries" },
+      { id: "4_children", label: "4 Boys", impact: "4 Boys · 1 Month Full Groceries" },
+      { id: "2_children", label: "2 Boys", impact: "2 Boys · 1 Month Full Groceries" },
+      { id: "1_child", label: "1 Boy", impact: "1 Boy · 1 Month Full Groceries" },
     ],
   },
   cloth_one_set: {
-    shortTitle: "Clothing Sets",
-    tabLabel: "Clothes",
-    oneLineDesc: "Durable cotton shirts, pants & festival outfits.",
+    shortTitle: "One Set Cloth for Children",
+    tabLabel: "Tier 3: Clothes",
+    oneLineDesc: "Durable everyday cotton outfits, traditional festival wear & daily clothing sets.",
     pillOptions: [
-      { id: "8_children", label: "8 Boys", impact: "8 Full Sets" },
-      { id: "6_children", label: "6 Boys", impact: "6 Full Sets" },
-      { id: "3_children", label: "3 Boys", impact: "3 Full Sets" },
+      { id: "8_children", label: "8 Boys", impact: "8 Full Outfits & Festival Sets" },
+      { id: "6_children", label: "6 Boys", impact: "6 Full Outfits & Festival Sets" },
+      { id: "3_children", label: "3 Boys", impact: "3 Full Outfits & Festival Sets" },
     ],
   },
   education_one_month: {
-    shortTitle: "Monthly Vidya",
-    tabLabel: "Tuition",
-    oneLineDesc: "School tuition, notebooks, stationery & tutoring.",
+    shortTitle: "One Month Education for Children",
+    tabLabel: "Tier 4: Education",
+    oneLineDesc: "School tuition, notebooks, stationery, exam preparation & evening tutoring.",
     pillOptions: [
-      { id: "12_children", label: "12 Boys", impact: "Batch Tuition" },
-      { id: "8_children", label: "8 Boys", impact: "Schooling Support" },
-      { id: "4_children", label: "4 Boys", impact: "Essential Coaching" },
+      { id: "12_children", label: "12 Boys", impact: "12 Boys · Batch Tuition & Schooling" },
+      { id: "8_children", label: "8 Boys", impact: "8 Boys · Monthly Schooling & Kits" },
+      { id: "4_children", label: "4 Boys", impact: "4 Boys · Monthly Education Support" },
     ],
   },
   education_one_year: {
-    shortTitle: "Full Year School",
-    tabLabel: "School",
-    oneLineDesc: "Annual school fees, uniform sets & full academic year.",
+    shortTitle: "One Year Education for Children",
+    tabLabel: "Tier 5: Full Year",
+    oneLineDesc: "Annual school fees, textbook bundles, school bags, shoes & full academic year.",
     pillOptions: [
-      { id: "3_children", label: "3 Boys", impact: "Full Academic Year" },
-      { id: "2_children", label: "2 Boys", impact: "Full Academic Year" },
-      { id: "1_child", label: "1 Boy", impact: "Full Academic Year" },
+      { id: "3_children", label: "3 Boys", impact: "3 Boys · Complete Academic School Year" },
+      { id: "2_children", label: "2 Boys", impact: "2 Boys · Complete Academic School Year" },
+      { id: "1_child", label: "1 Boy", impact: "1 Boy · Complete Academic School Year" },
     ],
   },
 };
@@ -116,6 +116,10 @@ export function OfficialSupportTiersSection({
   // Active category filter tab: "all" or specific category ID or "bank_wire"
   const [activeTab, setActiveTab] = useState<string>("all");
 
+  // Amount / Budget Filter: "all" | "low" (< ₹3000) | "mid" (₹3000 - ₹6400) | "high" (₹9600+)
+  const [budgetFilter, setBudgetFilter] = useState<"all" | "low" | "mid" | "high">("all");
+  const [selectedExactAmount, setSelectedExactAmount] = useState<number | null>(null);
+
   // Selected pricing option per category
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({
     food_one_day: "all_children",
@@ -128,9 +132,93 @@ export function OfficialSupportTiersSection({
   const [copiedBank, setCopiedBank] = useState(false);
   const [addedNotification, setAddedNotification] = useState<string | null>(null);
 
+  const handleSelectExactAmount = (amount: number, categoryId: string, optionId: string) => {
+    setSelectedExactAmount(amount);
+    setSelectedOptions((prev) => ({ ...prev, [categoryId]: optionId }));
+    setActiveTab("all");
+    track("tier_exact_amount_select", { amount, categoryId, optionId });
+
+    if (typeof document !== "undefined") {
+      const card = document.getElementById(`tier-card-${categoryId}`);
+      if (card) {
+        card.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }
+  };
+
+  // Listen to mount query params (e.g. ?amount=4500&ref=TC01)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const ref = params.get("ref");
+      if (ref) {
+        const cleanRef = ref.trim().toUpperCase();
+        if (/^[A-Z0-9_-]+$/.test(cleanRef)) {
+          sessionStorage.setItem("antigravity_caller_ref", cleanRef);
+          localStorage.setItem("antigravity_caller_ref", cleanRef);
+        }
+      }
+
+      const amtParam = params.get("amount");
+      const tierParam = params.get("tier");
+
+      queueMicrotask(() => {
+        if (amtParam) {
+          const amt = parseInt(amtParam, 10);
+          if (amt === 4500) handleSelectExactAmount(4500, "food_one_day", "all_children");
+          else if (amt === 3000) handleSelectExactAmount(3000, "food_one_day", "two_times");
+          else if (amt === 2500) handleSelectExactAmount(2500, "food_one_day", "one_time");
+          else if (amt === 6000) handleSelectExactAmount(6000, "food_one_month", "4_children");
+          else if (amt === 4000) handleSelectExactAmount(4000, "food_one_month", "2_children");
+          else if (amt === 2000) handleSelectExactAmount(2000, "food_one_month", "1_child");
+          else if (amt === 4800) handleSelectExactAmount(4800, "cloth_one_set", "8_children");
+          else if (amt === 3600) handleSelectExactAmount(3600, "cloth_one_set", "6_children");
+          else if (amt === 1800) handleSelectExactAmount(1800, "cloth_one_set", "3_children");
+          else if (amt === 9600) handleSelectExactAmount(9600, "education_one_month", "12_children");
+        }
+
+        if (tierParam && activeCategories.some((c) => c.id === tierParam)) {
+          setActiveTab(tierParam);
+        }
+      });
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleSelectOption = (categoryId: string, optionId: string) => {
+    setSelectedExactAmount(null);
     setSelectedOptions((prev) => ({ ...prev, [categoryId]: optionId }));
     track("tier_pricing_option_toggle", { categoryId, optionId });
+  };
+
+  const handleBudgetFilter = (filter: "all" | "low" | "mid" | "high") => {
+    setBudgetFilter(filter);
+    setSelectedExactAmount(null);
+    track("tier_budget_filter_click", { filter });
+
+    if (filter === "low") {
+      setSelectedOptions((prev) => ({
+        ...prev,
+        food_one_day: "one_time", // ₹2,500
+        food_one_month: "1_child", // ₹2,000
+        cloth_one_set: "3_children", // ₹1,800
+      }));
+    } else if (filter === "mid") {
+      setSelectedOptions((prev) => ({
+        ...prev,
+        food_one_day: "all_children", // ₹4,500
+        food_one_month: "4_children", // ₹6,000
+        cloth_one_set: "8_children", // ₹4,800
+        education_one_month: "8_children", // ₹6,400
+      }));
+    } else if (filter === "high") {
+      setSelectedOptions((prev) => ({
+        ...prev,
+        education_one_month: "12_children", // ₹9,600
+        education_one_year: "1_child", // ₹9,600
+      }));
+    }
   };
 
   const handleSponsorTier = (categoryId: string) => {
@@ -138,6 +226,7 @@ export function OfficialSupportTiersSection({
     if (!cat) return;
     const currentOptionId = selectedOptions[categoryId] || cat.options[0].id;
     const option = cat.options.find((o) => o.id === currentOptionId) || cat.options[0];
+    const meta = CONCISE_META[categoryId];
 
     track("tier_sponsor_click", {
       categoryId,
@@ -148,8 +237,8 @@ export function OfficialSupportTiersSection({
     openBottomDonate(
       option.amount,
       categoryId,
-      `${cat.title} (${option.label.split("(")[0].trim()})`,
-      "Festival / Celebration"
+      `${meta?.shortTitle || cat.title} - ${option.label.split("(")[0].trim()} (${formatINR(option.amount)})`,
+      "Sponsor 25 Boys (Form 28)"
     );
   };
 
@@ -163,8 +252,9 @@ export function OfficialSupportTiersSection({
 
     const cat = activeCategories.find((c) => c.id === categoryId);
     const option = cat?.options.find((o) => o.id === currentOptionId);
+    const meta = CONCISE_META[categoryId];
 
-    setAddedNotification(`Added "${cat?.title} (${formatINR(option?.amount || 0)})" to Giving Basket!`);
+    setAddedNotification(`Added "${meta?.shortTitle || cat?.title} (${formatINR(option?.amount || 0)})" to Giving Basket!`);
     setTimeout(() => setAddedNotification(null), 3000);
 
     track("tier_add_to_cart", { categoryId, optionId: currentOptionId, slug });
@@ -188,32 +278,42 @@ export function OfficialSupportTiersSection({
   return (
     <section
       id="official-tiers"
-      aria-label="Sponsorship Tiers"
-      className="scroll-mt-16 w-full max-w-full overflow-hidden bg-sand/30 py-8 md:py-14 border-b border-teal-900/10"
+      aria-label="Sponsor 25 Boys Official Sponsorship Tiers"
+      className="scroll-mt-24 sm:scroll-mt-28 w-full max-w-full overflow-hidden bg-sand/30 py-8 md:py-14 border-b border-teal-900/10"
     >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        {/* ── REDESIGNED CLEAN PUNCHY HEADER ("a word is enough") ── */}
-        <div className="text-center max-w-2xl mx-auto mb-6 md:mb-8">
-          <div className="inline-flex items-center gap-1.5 rounded-full bg-saffron/15 border border-saffron/30 px-3 py-1 text-[11px] font-black uppercase tracking-wider text-saffron-dark mb-2">
-            <span>ಸಂಸ್ಥೆಯ ಸೇವೆ</span>
-            <span>·</span>
-            <span>Sponsorship</span>
+        {/* ── AUTHORITATIVE TELECALLER & OFFICIAL FORM 28 HEADER ── */}
+        <div className="text-center max-w-3xl mx-auto mb-6 md:mb-8">
+          <div className="inline-flex items-center gap-1.5 rounded-full bg-gold/25 border border-gold/50 px-3.5 py-1 text-xs font-black uppercase tracking-wider text-teal-950 mb-2.5 shadow-2xs">
+            <span>🏛️</span>
+            <span>JJ Act Reg: KA18CH0242 · Form 28 Approved · 90% Primary NGO Focus</span>
           </div>
 
           <h2 className="font-display text-2xl sm:text-3xl md:text-4xl font-extrabold text-teal-950 tracking-tight">
-            Sponsor 25 Boys
+            Sponsor 25 Boys: Official Support Tiers
           </h2>
 
-          {/* Minimal 1-Word / Punchy Trust Chips */}
-          <div className="mt-2.5 flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 text-[11px] font-bold text-teal-900">
-            <span className="rounded-full bg-white px-2.5 py-1 border border-teal-900/10 shadow-2xs">
-              ✓ 80G Tax-Exempt
+          <p className="mt-1.5 text-xs sm:text-sm font-bold text-saffron-dark">
+            ಸಂಸ್ಥೆಯ ಅಧಿಕೃತ 5 ಸೇವಾ ಯೋಜನೆಗಳು · 25 ಆಶ್ರಮದ ಮಕ್ಕಳಿಗೆ 100% ನೇರ ಪೋಷಣೆ
+          </p>
+
+          <p className="mt-2 text-xs sm:text-sm text-teal-950/75 leading-relaxed max-w-2xl mx-auto">
+            Choose an audited fixed-price sponsorship tier for all 25 resident boys. Covers daily food, monthly grocery supplies, clothing sets, and annual schooling under Section 80G tax exemption.
+          </p>
+
+          {/* Trust Guarantee Badges */}
+          <div className="mt-3 flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 text-[11px] font-bold text-teal-900">
+            <span className="rounded-full bg-white px-3 py-1 border border-teal-900/10 shadow-2xs">
+              ✓ Form 10AC Section 80G (100% Tax Free)
             </span>
-            <span className="rounded-full bg-white px-2.5 py-1 border border-teal-900/10 shadow-2xs">
-              ✓ 100% Direct Care
+            <span className="rounded-full bg-white px-3 py-1 border border-teal-900/10 shadow-2xs">
+              ✓ Form 28 JJ Act KA18CH0242
             </span>
-            <span className="rounded-full bg-white px-2.5 py-1 border border-teal-900/10 shadow-2xs">
-              ✓ JJ Act KA18CH0242
+            <span className="rounded-full bg-white px-3 py-1 border border-teal-900/10 shadow-2xs">
+              ✓ 100% Direct Care to 25 Boys
+            </span>
+            <span className="rounded-full bg-white px-3 py-1 border border-teal-900/10 shadow-2xs">
+              ✓ Instant WhatsApp 80G Certificate
             </span>
           </div>
 
@@ -227,6 +327,68 @@ export function OfficialSupportTiersSection({
               </Link>
             </div>
           )}
+        </div>
+
+        {/* ── FAST AMOUNT / BUDGET FILTER (Changes according to amount) ── */}
+        <div className="mb-5 flex flex-col gap-2.5 bg-white/80 backdrop-blur-xs p-3 sm:p-4 rounded-2xl border border-teal-900/10 shadow-2xs">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5 text-xs font-black text-teal-950 uppercase tracking-wider">
+              <span>⚡</span>
+              <span>Change According to Budget / Amount:</span>
+            </div>
+            <div className="flex flex-wrap items-center gap-1.5">
+              {[
+                { id: "all", label: "All Amounts" },
+                { id: "low", label: "Under ₹3,000 (Starter)" },
+                { id: "mid", label: "₹3,200 – ₹6,000 (Popular)" },
+                { id: "high", label: "₹9,600+ (Annual / Edu)" },
+              ].map((b) => (
+                <button
+                  key={b.id}
+                  type="button"
+                  onClick={() => handleBudgetFilter(b.id as any)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+                    budgetFilter === b.id && !selectedExactAmount
+                      ? "bg-teal-900 text-white shadow-xs scale-102"
+                      : "bg-cream text-teal-950/75 hover:bg-sand/80 border border-teal-900/10"
+                  }`}
+                >
+                  {b.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Quick Exact Seva Amount Chips - 1 Tap Auto-Selects the Matching Tier */}
+          <div className="pt-2.5 border-t border-teal-900/10 flex flex-wrap items-center gap-1.5">
+            <span className="text-[11px] font-bold text-teal-950/70 mr-1">Direct Amount:</span>
+            {[
+              { amount: 1800, label: "₹1,800 (Clothes · 3 Boys)", catId: "cloth_one_set", optId: "3_children" },
+              { amount: 2000, label: "₹2,000 (1 Month Ration · 1 Boy)", catId: "food_one_month", optId: "1_child" },
+              { amount: 2500, label: "₹2,500 (1 Meal · 25 Boys)", catId: "food_one_day", optId: "one_time" },
+              { amount: 3000, label: "₹3,000 (2 Meals · 25 Boys)", catId: "food_one_day", optId: "two_times" },
+              { amount: 3600, label: "₹3,600 (Clothes · 6 Boys)", catId: "cloth_one_set", optId: "6_children" },
+              { amount: 4500, label: "₹4,500 (Full Day Food · 25 Boys ⭐)", catId: "food_one_day", optId: "all_children" },
+              { amount: 6000, label: "₹6,000 (1 Month Ration · 4 Boys)", catId: "food_one_month", optId: "4_children" },
+              { amount: 9600, label: "₹9,600 (Education · 12 Boys / 1 Year)", catId: "education_one_month", optId: "12_children" },
+            ].map((p) => {
+              const isSelected = selectedExactAmount === p.amount;
+              return (
+                <button
+                  key={p.amount}
+                  type="button"
+                  onClick={() => handleSelectExactAmount(p.amount, p.catId, p.optId)}
+                  className={`rounded-lg px-2.5 py-1 text-[11px] font-bold transition cursor-pointer ${
+                    isSelected
+                      ? "bg-amber-500 text-teal-950 font-black shadow-xs ring-2 ring-amber-400 scale-103"
+                      : "bg-sand/40 text-teal-900 hover:bg-sand border border-teal-900/10"
+                  }`}
+                >
+                  {p.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* ── CONCISE INTERACTIVE TABS (Instant Category Switcher) ── */}
@@ -294,7 +456,9 @@ export function OfficialSupportTiersSection({
                 key={cat.id}
                 id={`tier-card-${cat.id}`}
                 className={`group relative flex flex-col justify-between rounded-3xl bg-white/95 backdrop-blur-md p-4 sm:p-5 transition-all duration-300 border shadow-md hover:shadow-xl hover:-translate-y-0.5 ${
-                  isFlagship
+                  selectedExactAmount && currentOption.amount === selectedExactAmount
+                    ? "border-2 border-amber-500 ring-4 ring-amber-400/50 bg-gradient-to-b from-white via-amber-50/30 to-orange-50/15 scale-[1.01]"
+                    : isFlagship
                     ? "border-2 border-amber-500 ring-2 ring-amber-400/30 bg-gradient-to-b from-white via-amber-50/20 to-orange-50/10"
                     : "border-teal-900/10 hover:border-amber-500/40"
                 }`}
@@ -302,7 +466,7 @@ export function OfficialSupportTiersSection({
                 {/* Popular Flagship Badge */}
                 {isFlagship && (
                   <div className="absolute -top-3 right-4 rounded-full bg-gradient-celebrate px-3 py-0.5 text-[10px] font-black uppercase tracking-wider text-white shadow-md glow-saffron z-10 animate-shimmer">
-                    ★ Most Critical Seva
+                    ★ 90% Primary Campaign · Form 28 Regd
                   </div>
                 )}
 
@@ -311,7 +475,7 @@ export function OfficialSupportTiersSection({
                   <div className="relative aspect-[16/9] w-full overflow-hidden rounded-2xl bg-teal-900 mb-3 shadow-2xs">
                     <Image
                       src={imgUrl}
-                      alt={cat.title}
+                      alt={meta?.shortTitle || cat.title}
                       fill
                       className="object-cover transition duration-300 group-hover:scale-103"
                       sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 380px"
@@ -337,7 +501,7 @@ export function OfficialSupportTiersSection({
                   {/* Title & 1-Line Description */}
                   <div className="mb-3">
                     <div className="flex items-baseline justify-between gap-2">
-                      <h3 className="font-display text-lg font-bold text-teal-950 leading-tight">
+                      <h3 className="font-display text-base sm:text-lg font-bold text-teal-950 leading-tight">
                         {meta?.shortTitle || cat.title}
                       </h3>
                       <span className="text-[11px] font-semibold text-saffron-dark shrink-0">
@@ -361,7 +525,7 @@ export function OfficialSupportTiersSection({
                           onClick={() => handleSelectOption(cat.id, opt.id)}
                           className={`py-1.5 px-1 rounded-lg text-center transition cursor-pointer ${
                             isSelected
-                              ? "bg-teal-900 text-white font-extrabold shadow-2xs"
+                              ? "bg-teal-900 text-white font-extrabold shadow-2xs ring-1 ring-teal-800"
                               : "text-teal-950/75 hover:bg-white font-semibold text-xs"
                           }`}
                         >
@@ -376,12 +540,17 @@ export function OfficialSupportTiersSection({
                     })}
                   </div>
 
-                  {/* Impact Summary Line */}
-                  <div className="flex items-center justify-between px-1 py-1 text-xs">
-                    <span className="font-display text-lg font-extrabold text-teal-950">
-                      {formatINR(currentOption.amount)}
-                    </span>
-                    <span className="text-[11px] font-bold text-teal-800 bg-teal-50 px-2 py-0.5 rounded-md border border-teal-900/10">
+                  {/* Dynamic Impact & Price Line */}
+                  <div className="flex items-center justify-between px-2 py-1.5 text-xs bg-amber-50/60 rounded-xl border border-amber-200/50 mb-1">
+                    <div>
+                      <span className="font-display text-base sm:text-lg font-black text-teal-950 block">
+                        {formatINR(currentOption.amount)}
+                      </span>
+                      <span className="text-[10px] font-semibold text-teal-950/60 block">
+                        Tax Exempt under 80G
+                      </span>
+                    </div>
+                    <span className="text-[10px] sm:text-[11px] font-bold text-teal-900 bg-white px-2 py-0.5 rounded-lg border border-teal-900/10 shadow-2xs text-right truncate max-w-[55%]">
                       {currentPill?.impact || currentOption.subLabel || "Direct Seva"}
                     </span>
                   </div>
@@ -395,7 +564,7 @@ export function OfficialSupportTiersSection({
                       onClick={() => handleSponsorTier(cat.id)}
                       className="focus-ring tap-scale flex-1 flex items-center justify-center gap-1.5 rounded-2xl bg-gradient-celebrate py-3 px-3.5 text-xs font-black uppercase tracking-wider text-white shadow-md glow-saffron hover:opacity-95 transition cursor-pointer"
                     >
-                      <span>Sponsor {formatINR(currentOption.amount)} 💝</span>
+                      <span>Sponsor {formatINR(currentOption.amount)} ({currentPill?.label || currentOption.label.split("(")[0].trim()}) 💝</span>
                     </button>
 
                     <button
@@ -413,7 +582,7 @@ export function OfficialSupportTiersSection({
                   </div>
 
                   <div className="flex items-center justify-between text-[10px] text-teal-950/60 px-0.5">
-                    <span>✓ 80G Tax Benefit Included</span>
+                    <span>✓ Form 28 KA18CH0242</span>
                     <Link
                       href="/supporter-form"
                       className="font-bold text-teal-900 hover:text-saffron-dark underline"
@@ -448,47 +617,36 @@ export function OfficialSupportTiersSection({
                 <div className="mt-3 rounded-xl bg-white/10 p-3 border border-white/10 space-y-2 text-xs">
                   <div>
                     <span className="text-[10px] text-white/60 uppercase block">Account Name</span>
-                    <p className="font-bold text-white text-xs truncate">{OFFICIAL_FORM_META.societyName}</p>
+                    <span className="font-bold">JANA SEVA SAMRUDDI EDUCATION AND RURAL DEVELOPMENT SOCIETY</span>
                   </div>
-
-                  <div className="grid grid-cols-2 gap-2 pt-0.5">
-                    <div className="rounded-lg bg-black/30 p-2 border border-white/10">
-                      <span className="text-[9px] text-amber-300 uppercase block font-bold">Axis Bank A/c</span>
-                      <p className="font-mono font-bold text-amber-200 text-xs tracking-wider select-all">913020019616990</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <span className="text-[10px] text-white/60 uppercase block">Account No</span>
+                      <span className="font-mono font-bold text-amber-300">913020019616990</span>
                     </div>
-                    <div className="rounded-lg bg-black/30 p-2 border border-white/10">
-                      <span className="text-[9px] text-amber-300 uppercase block font-bold">IFSC Code</span>
-                      <p className="font-mono font-bold text-amber-200 text-xs tracking-wider select-all">UTIB0000102</p>
+                    <div>
+                      <span className="text-[10px] text-white/60 uppercase block">IFSC Code</span>
+                      <span className="font-mono font-bold text-amber-300">UTIB0000102</span>
                     </div>
                   </div>
-
-                  <button
-                    type="button"
-                    onClick={handleCopyBank}
-                    className="w-full text-center py-1.5 rounded-lg bg-white/15 hover:bg-white/25 text-[11px] font-bold text-amber-200 transition cursor-pointer"
-                  >
-                    {copiedBank ? "✓ Bank Details Copied!" : "📋 Copy Bank Details"}
-                  </button>
+                  <div>
+                    <span className="text-[10px] text-white/60 uppercase block">Bank &amp; Branch</span>
+                    <span>Axis Bank, Banashankari 2nd Stage, Bangalore</span>
+                  </div>
                 </div>
               </div>
 
-              <div className="mt-4 pt-3 border-t border-white/10 space-y-2">
+              <div className="mt-4 pt-3 border-t border-white/10 flex items-center justify-between">
                 <button
                   type="button"
-                  onClick={() => openBottomDonate(2500, "food_one_day")}
-                  className="focus-ring tap-scale flex w-full items-center justify-center gap-1.5 rounded-xl bg-amber-400 py-2.5 text-xs font-black uppercase tracking-wider text-teal-950 shadow-xs hover:bg-amber-300 transition cursor-pointer"
+                  onClick={handleCopyBank}
+                  className="focus-ring tap-scale flex items-center gap-1.5 rounded-xl bg-amber-400 text-teal-950 px-3.5 py-2 text-xs font-bold hover:bg-amber-300 transition cursor-pointer"
                 >
-                  <span>Quick Custom Donate ⚡</span>
+                  <span>{copiedBank ? "✓ Copied!" : "📋 Copy Bank Details"}</span>
                 </button>
-
-                <div className="text-center text-[10px]">
-                  <Link
-                    href="/supporter-form"
-                    className="font-bold text-amber-300 hover:text-white underline underline-offset-2"
-                  >
-                    Download Official Supporter Form →
-                  </Link>
-                </div>
+                <span className="text-[10px] text-white/60">
+                  Form 10AC Section 80G
+                </span>
               </div>
             </div>
           )}

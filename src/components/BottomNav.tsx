@@ -24,6 +24,7 @@ const MORE_SECTIONS: MoreSection[] = [
   {
     title: "🌟 Direct Seva & Sponsorship",
     items: [
+      { href: "/#official-tiers", label: "Sponsor 25 Boys (Official Tiers)", sub: "Form 28 JJ Act registered 5 official sponsorship tiers", icon: "🏛️", badge: "90% Priority" },
       { href: "/celebrate-birthday", label: "Celebrate Birthday", sub: "Feast with boys + WhatsApp video blessing", icon: "🎂", badge: "Trending" },
       { href: "/make-a-day-matter", label: "Make a Day Matter", sub: "Sponsor 1 day meals for all 25 boys", icon: "🍲", badge: "Popular" },
       { href: "/gift-impact", label: "Gift an Impact", sub: "Dedicate meals in honor of someone", icon: "🎁" },
@@ -68,7 +69,7 @@ const LEGAL_LINKS = [
 interface NavItem {
   href: string;
   label: string;
-  sectionKey: "home" | "celebrate" | "volunteer";
+  sectionKey: "home" | "tiers" | "celebrate" | "volunteer";
   icon: React.ReactNode;
 }
 
@@ -76,6 +77,13 @@ function HomeIcon() {
   return (
     <svg className="h-[22px] w-[22px] fill-current" viewBox="0 0 24 24" aria-hidden="true">
       <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
+    </svg>
+  );
+}
+function TiersNavIcon() {
+  return (
+    <svg className="h-[22px] w-[22px] fill-current" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M12 1L3 5v2h18V5L12 1zm-7 8v8h2V9H5zm5 0v8h2V9h-2zm5 0v8h2V9h-2zm5 0v8h2V9h-2zM2 19v2h20v-2H2z" />
     </svg>
   );
 }
@@ -141,13 +149,15 @@ export function BottomNav() {
     };
   }, [open]);
 
-  const [activeSection, setActiveSection] = useState<"home" | "celebrate" | "volunteer">("home");
+  const [activeSection, setActiveSection] = useState<"home" | "tiers" | "celebrate" | "volunteer">("home");
 
   // Synchronize active section with HomeSectionsHub custom event
   useEffect(() => {
     const handleModeChanged = (e: any) => {
       const mode = e.detail?.mode;
-      if (mode === "celebrate") {
+      if (mode === "tiers") {
+        setActiveSection("tiers");
+      } else if (mode === "celebrate") {
         setActiveSection("celebrate");
       } else if (mode === "community" || mode === "volunteer") {
         setActiveSection("volunteer");
@@ -167,20 +177,20 @@ export function BottomNav() {
     const updateActiveSection = () => {
       if (!ticking) {
         window.requestAnimationFrame(() => {
-          const scrollPos = window.scrollY + 280;
+          const triggerY = 180;
           const trustEl = document.getElementById("section-trust") || document.getElementById("transparency");
           const volEl = document.getElementById("section-community") || document.getElementById("volunteer") || document.getElementById("community");
-          const annEl = document.getElementById("section-annadana") || document.getElementById("impact");
           const celEl = document.getElementById("section-celebrate") || document.getElementById("celebrate");
+          const tiersEl = document.getElementById("section-tiers") || document.getElementById("official-tiers");
 
-          if (trustEl && trustEl.offsetTop <= scrollPos) {
+          if (trustEl && trustEl.getBoundingClientRect().top <= triggerY) {
             setActiveSection("home");
-          } else if (volEl && volEl.offsetTop <= scrollPos) {
+          } else if (volEl && volEl.getBoundingClientRect().top <= triggerY) {
             setActiveSection("volunteer");
-          } else if (annEl && annEl.offsetTop <= scrollPos) {
-            setActiveSection("home");
-          } else if (celEl && celEl.offsetTop <= scrollPos) {
+          } else if (celEl && celEl.getBoundingClientRect().top <= triggerY) {
             setActiveSection("celebrate");
+          } else if (tiersEl && tiersEl.getBoundingClientRect().top <= triggerY) {
+            setActiveSection("tiers");
           } else {
             setActiveSection("home");
           }
@@ -209,6 +219,9 @@ export function BottomNav() {
     if (path === "/") {
       return activeSection === item.sectionKey;
     }
+    if (item.sectionKey === "tiers") {
+      return path.startsWith("/supporter-form");
+    }
     if (item.sectionKey === "celebrate") {
       return path.startsWith("/celebrate");
     }
@@ -233,13 +246,33 @@ export function BottomNav() {
         setActiveSection("home");
         return;
       }
+      if (item.sectionKey === "tiers") {
+        window.dispatchEvent(new CustomEvent("janaseva:set-home-mode", { detail: { mode: "tiers" } }));
+        const el = document.getElementById("section-tiers") || document.getElementById("official-tiers");
+        if (el) {
+          const y = el.getBoundingClientRect().top + window.pageYOffset - 115;
+          window.scrollTo({ top: Math.max(0, y), behavior: "smooth" });
+        }
+        setActiveSection("tiers");
+        return;
+      }
       if (item.sectionKey === "celebrate") {
         window.dispatchEvent(new CustomEvent("janaseva:set-home-mode", { detail: { mode: "celebrate" } }));
+        const el = document.getElementById("section-celebrate") || document.getElementById("celebrate");
+        if (el) {
+          const y = el.getBoundingClientRect().top + window.pageYOffset - 115;
+          window.scrollTo({ top: Math.max(0, y), behavior: "smooth" });
+        }
         setActiveSection("celebrate");
         return;
       }
       if (item.sectionKey === "volunteer") {
         window.dispatchEvent(new CustomEvent("janaseva:set-home-mode", { detail: { mode: "community" } }));
+        const el = document.getElementById("section-community") || document.getElementById("volunteer");
+        if (el) {
+          const y = el.getBoundingClientRect().top + window.pageYOffset - 115;
+          window.scrollTo({ top: Math.max(0, y), behavior: "smooth" });
+        }
         setActiveSection("volunteer");
         return;
       }
@@ -252,10 +285,10 @@ export function BottomNav() {
 
   const leftNavItems: NavItem[] = [
     { href: "/", label: "HOME", sectionKey: "home", icon: <HomeIcon /> },
-    { href: "/#celebrate", label: "BIRTHDAYS", sectionKey: "celebrate", icon: <BirthdayNavIcon /> },
+    { href: "/#official-tiers", label: "SPONSOR 25", sectionKey: "tiers", icon: <TiersNavIcon /> },
   ];
   const rightNavItems: NavItem[] = [
-    { href: "/#volunteer", label: "VOLUNTEER", sectionKey: "volunteer", icon: <VolunteerIcon /> },
+    { href: "/#celebrate", label: "BIRTHDAYS", sectionKey: "celebrate", icon: <BirthdayNavIcon /> },
   ];
 
   return (

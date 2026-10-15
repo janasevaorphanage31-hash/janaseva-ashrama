@@ -651,14 +651,14 @@ export function AdminTelecallerCRM() {
 
   const handleCopyCredentials = (caller: TelecallerStats, pwd?: string) => {
     const origin = typeof window !== "undefined" ? window.location.origin : "https://janasevaorphanage.org";
-    const text = `🌟 *JANASEVA ASHRAMA TELECALLER PORTAL ACCESS*\n👤 Advisor Name: ${caller.name}\n🆔 Caller ID: ${caller.callerId}\n📧 Login Email: ${caller.email || `${caller.callerId.toLowerCase()}@janaseva.org`}\n🔑 Password: ${pwd || "ashrama@123"}\n🔗 Login Portal: ${origin}/portal\n🎯 Personal Donation Link: ${origin}/donate?ref=${caller.callerId}`;
+    const text = `🌟 *JANASEVA ASHRAMA TELECALLER PORTAL ACCESS*\n👤 Advisor Name: ${caller.name}\n🆔 Caller ID: ${caller.callerId}\n📧 Login Email: ${caller.email || `${caller.callerId.toLowerCase()}@janaseva.org`}\n🔑 Password: ${pwd || "ashrama@123"}\n🔗 Login Portal: ${origin}/portal\n🎯 Primary 'Sponsor 25 Boys' Campaign Link: ${origin}/#official-tiers?ref=${caller.callerId}`;
     navigator.clipboard.writeText(text);
     showToast(`✓ Copied login credentials for ${caller.callerId} to clipboard!`);
   };
 
   const handleSendWhatsAppCredentials = (caller: TelecallerStats, pwd?: string) => {
     const origin = typeof window !== "undefined" ? window.location.origin : "https://janasevaorphanage.org";
-    const text = `🌟 *JANASEVA ASHRAMA TELECALLER PORTAL ACCESS*\n\nNamaste ${caller.name},\nHere are your access credentials for our daily birthday donation outreach portal:\n\n👤 *Advisor:* ${caller.name}\n🆔 *Caller ID:* ${caller.callerId}\n📧 *Login Email:* ${caller.email || `${caller.callerId.toLowerCase()}@janaseva.org`}\n🔑 *Password:* ${pwd || "ashrama@123"}\n\n🔗 *Login to Portal:* ${origin}/portal\n🎯 *Your Referral Donation Link:* ${origin}/donate?ref=${caller.callerId}\n\nPlease login and start calling your assigned birthday well-wishers today!`;
+    const text = `🌟 *JANASEVA ASHRAMA TELECALLER PORTAL ACCESS*\n\nNamaste ${caller.name},\nHere are your access credentials for our telecaller outreach portal (Focus: Sponsor 25 Boys Tiers):\n\n👤 *Advisor:* ${caller.name}\n🆔 *Caller ID:* ${caller.callerId}\n📧 *Login Email:* ${caller.email || `${caller.callerId.toLowerCase()}@janaseva.org`}\n🔑 *Password:* ${pwd || "ashrama@123"}\n\n🔗 *Login to Portal:* ${origin}/portal\n🎯 *Your 'Sponsor 25 Boys' Referral Link:* ${origin}/#official-tiers?ref=${caller.callerId}\n\nPlease login and start reaching out to your assigned queue today!`;
     const cleanNumber = (caller.whatsappNumber || "").replace(/\D/g, "");
     window.open(`https://wa.me/91${cleanNumber}?text=${encodeURIComponent(text)}`, "_blank");
     showToast(`✓ Opened WhatsApp to send credentials to ${caller.name}`);

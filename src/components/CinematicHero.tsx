@@ -366,21 +366,29 @@ export function CinematicHero({ content }: { content?: Partial<SiteContentMap> }
           </div>
 
           {/* Finger-First Primary Donation CTA & Secondary Birthday Link */}
-          <div className="mt-4 flex flex-col sm:flex-row items-center gap-3">
+          <div className="mt-4 flex flex-col sm:flex-row items-center gap-2.5">
             <button
               type="button"
               onClick={handleHeroDonate}
-              className="focus-ring tap-scale w-full sm:flex-1 py-3.5 sm:py-4 px-6 rounded-2xl bg-gradient-to-r from-amber-400 via-orange-500 to-amber-500 hover:from-amber-500 hover:to-orange-600 text-teal-950 font-black text-xs sm:text-sm uppercase tracking-wider shadow-xl shadow-orange-500/30 transition active:scale-95 cursor-pointer flex items-center justify-center gap-2 animate-heartbeat"
+              className="focus-ring tap-scale w-full sm:flex-1 py-3.5 sm:py-4 px-5 rounded-2xl bg-gradient-to-r from-amber-400 via-orange-500 to-amber-500 hover:from-amber-500 hover:to-orange-600 text-teal-950 font-black text-xs sm:text-sm uppercase tracking-wider shadow-xl shadow-orange-500/30 transition active:scale-95 cursor-pointer flex items-center justify-center gap-2 animate-heartbeat"
             >
-              <span>FEED 25 BOYS NOW · {formatINR(effectiveAmount)}</span>
+              <span>FEED 25 BOYS · {formatINR(effectiveAmount)}</span>
               <span>💝 →</span>
             </button>
 
+            <a
+              href="#official-tiers"
+              className="focus-ring tap-scale w-full sm:w-auto py-3.5 sm:py-4 px-4.5 rounded-2xl bg-amber-400 hover:bg-amber-300 text-teal-950 font-black text-xs sm:text-sm text-center transition flex items-center justify-center gap-1.5 shadow-md cursor-pointer"
+            >
+              <span>🏛️ Sponsor 25 Boys</span>
+              <span className="rounded bg-teal-950 text-gold text-[9px] px-1 py-0.2 font-black uppercase">90% Focus</span>
+            </a>
+
             <Link
               href="/celebrate-birthday"
-              className="focus-ring tap-scale w-full sm:w-auto py-3.5 sm:py-4 px-5 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/20 text-white font-extrabold text-xs sm:text-sm text-center transition flex items-center justify-center gap-2"
+              className="focus-ring tap-scale w-full sm:w-auto py-3.5 sm:py-4 px-4.5 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/20 text-white font-extrabold text-xs sm:text-sm text-center transition flex items-center justify-center gap-1.5"
             >
-              <span>Celebrate Birthday With Boys</span>
+              <span>Celebrate Birthday</span>
               <span>🎂</span>
             </Link>
           </div>

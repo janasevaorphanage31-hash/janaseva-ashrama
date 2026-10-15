@@ -44,6 +44,22 @@ export function CartProvider({ catalog, children }: { catalog: ImpactItem[]; chi
   const [donateInitialOccasion, setDonateInitialOccasion] = useState<string | undefined>(undefined);
 
   useEffect(() => {
+    // 1. Globally persist telecaller referral parameter (?ref=TCxx)
+    if (typeof window !== "undefined") {
+      try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const refParam = urlParams.get("ref");
+        if (refParam) {
+          const cleanRef = refParam.trim().toUpperCase();
+          if (/^[A-Z0-9_-]+$/.test(cleanRef)) {
+            sessionStorage.setItem("antigravity_caller_ref", cleanRef);
+            localStorage.setItem("antigravity_caller_ref", cleanRef);
+          }
+        }
+      } catch {}
+    }
+
+    // 2. Hydrate cart state from localStorage
     try {
       const raw = localStorage.getItem(KEY);
       if (raw) {

@@ -147,7 +147,16 @@ export function BottomDonationDrawer() {
     });
     const occasionQuery = donateInitialOccasion ? `&occasion=${encodeURIComponent(donateInitialOccasion)}` : "";
     const purposeQuery = donateInitialPurpose ? `&purpose=${encodeURIComponent(donateInitialPurpose)}` : "";
-    router.push(`/checkout?amount=${currentAmount}${frequency === "monthly" ? "&freq=monthly" : ""}${occasionQuery}${purposeQuery}`);
+    let refParam = "";
+    if (typeof window !== "undefined") {
+      try {
+        const storedRef = sessionStorage.getItem("antigravity_caller_ref") || localStorage.getItem("antigravity_caller_ref");
+        if (storedRef && storedRef !== "DIRECT") {
+          refParam = `&ref=${encodeURIComponent(storedRef)}`;
+        }
+      } catch {}
+    }
+    router.push(`/checkout?amount=${currentAmount}${frequency === "monthly" ? "&freq=monthly" : ""}${occasionQuery}${purposeQuery}${refParam}`);
   };
 
   const handleCopy = (text: string, field: string) => {
