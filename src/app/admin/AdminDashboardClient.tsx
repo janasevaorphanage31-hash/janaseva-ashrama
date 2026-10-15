@@ -18,10 +18,11 @@ import { BusinessPlanModal } from "@/components/BusinessPlanModal";
 import { AdminSubscriptionsTab } from "@/components/admin/AdminSubscriptionsTab";
 import { AdminMarketingHub } from "@/components/admin/AdminMarketingHub";
 import { AdminTelecallerCRM } from "@/components/admin/AdminTelecallerCRM";
+import { WhatsAppDashboard } from "@/components/admin/whatsapp/WhatsAppDashboard";
 import { CURATED_GALLERY, type GalleryItem } from "@/data/ashrama-curated-gallery";
 import type { TodayMealStatusItem } from "@/lib/site-content";
 
-type Tab = "analytics" | "crm" | "telecallers" | "subscriptions" | "marketing" | "celebrations" | "content" | "media" | "catalogs" | "documents" | "community" | "team";
+type Tab = "analytics" | "crm" | "whatsapp" | "telecallers" | "subscriptions" | "marketing" | "celebrations" | "content" | "media" | "catalogs" | "documents" | "community" | "team";
 
 interface AdminDashboardProps {
   initialSession: {
@@ -1914,16 +1915,16 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
         <button
           type="button"
           onClick={() => {
-            setActiveTab("marketing");
+            setActiveTab("whatsapp");
           }}
           className="group relative flex flex-col items-start gap-1 rounded-2xl bg-gradient-to-br from-emerald-600 to-green-700 p-3.5 text-left text-white shadow-md active:scale-95 transition cursor-pointer overflow-hidden"
         >
           <div className="flex w-full items-center justify-between">
             <span className="text-2xl drop-shadow-xs">💬</span>
-            <span className="rounded-full bg-white/25 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider">Viral</span>
+            <span className="rounded-full bg-white/25 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider">Live CRM</span>
           </div>
-          <span className="font-display text-sm font-bold mt-1 text-white">WhatsApp Blast</span>
-          <span className="text-[11px] text-white/85 leading-tight">1-tap donor appeals</span>
+          <span className="font-display text-sm font-bold mt-1 text-white">WhatsApp CRM</span>
+          <span className="text-[11px] text-white/85 leading-tight">AI Bot &amp; Broadcasts</span>
         </button>
       </div>
 
@@ -1932,6 +1933,7 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
         {[
           { id: "analytics", label: "📊 Analytics" },
           { id: "crm", label: "💳 Donor CRM" },
+          { id: "whatsapp", label: "🟢 WhatsApp CRM" },
           { id: "telecallers", label: "📞 Telecaller CRM (15)" },
           { id: "subscriptions", label: "🔁 Subscriptions" },
           { id: "marketing", label: "🤖 AI Marketing & Ads" },
@@ -7767,6 +7769,11 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
             </div>
           )}
         </div>
+      )}
+
+      {/* ==================== 9. WHATSAPP CRM & BROADCAST SUITE ==================== */}
+      {activeTab === "whatsapp" && (
+        <WhatsAppDashboard initialSession={initialSession} />
       )}
 
       {/* ==================== ADD EMPLOYEE MODAL ==================== */}

@@ -428,7 +428,7 @@ export function CheckoutClient() {
   const router = useRouter();
   const search = useSearchParams();
 
-  const [form, setForm] = useState({ name: "", email: "", phone: "", pan: "", anonymous: false });
+  const [form, setForm] = useState({ name: "", email: "", phone: "", pan: "", anonymous: false, whatsappConsent: true });
   const [showPanField, setShowPanField] = useState(false);
   const [frequency, setFrequency] = useState<"onetime" | "monthly">(() => {
     return search.get("freq") === "monthly" ? "monthly" : "onetime";
@@ -1690,6 +1690,19 @@ export function CheckoutClient() {
               />
               <span>
                 <strong>Keep my contribution anonymous:</strong> Do not display my name on the public Live Impact Wall or campaign pages.
+              </span>
+            </label>
+
+            {/* WhatsApp Updates & 80G Receipt Consent (Section 14 Compliance) */}
+            <label className="flex items-start gap-3 rounded-2xl bg-emerald-50/70 border border-emerald-200/60 p-3 text-xs sm:text-sm text-teal-950 cursor-pointer">
+              <input
+                type="checkbox"
+                className="mt-0.5 h-4 w-4 rounded accent-emerald-700"
+                checked={form.whatsappConsent}
+                onChange={(e) => setForm({ ...form, whatsappConsent: e.target.checked })}
+              />
+              <span className="leading-snug">
+                <strong className="text-emerald-950 font-semibold">WhatsApp Updates &amp; 80G Receipts:</strong> Yes, I agree to receive donation-related WhatsApp updates and tax receipts from Janaseva Ashrama. I can opt out at any time by replying STOP.
               </span>
             </label>
           </div>

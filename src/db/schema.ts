@@ -600,4 +600,245 @@ export const agDonations = pgTable(
   ],
 );
 
+// ==============================================================================
+// WHATSAPP CRM & META CLOUD API ARCHITECTURE (10 Core Models)
+// ==============================================================================
+
+/** 1. WhatsApp Contact & Donor Identity Profile */
+export const whatsAppContacts = pgTable(
+  "whats_app_contacts",
+  {
+    id: serial("id").primaryKey(),
+    donorId: integer("donor_id").references(() => donations.id, { onDelete: "set null" }),
+    normalizedPhone: text("normalized_phone").notNull().unique(), // E.164 e.g. +919876543210
+    whatsappId: text("whatsapp_id"),
+    displayName: text("display_name"),
+    email: text("email"),
+    tags: jsonb("tags").$type<string[]>().default([]),
+    customFields: jsonb("custom_fields").$type<Record<string, any>>().default({}),
+    preferredLanguage: text("preferred_language").notNull().default("en"), // en | kn
+    lastSevaType: text("last_seva_type"),
+    lastDonationAmount: integer("last_donation_amount"),
+    lastDonationAt: timestamp("last_donation_at"),
+    optInStatus: boolean("opt_in_status").notNull().default(true),
+    consentSource: text("consent_source").default("DIRECT"), // CHECKOUT | INBOUND | FORM | IMPORT
+    consentTimestamp: timestamp("consent_timestamp").defaultNow(),
+    optOutAt: timestamp("opt_out_at"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => [
+    index("wa_contacts_phone_idx").on(t.normalizedPhone),
+    index("wa_contacts_optin_idx").on(t.optInStatus),
+    index("wa_contacts_donation_idx").on(t.lastDonationAt),
+  ],
+);
+
+/** 2. WhatsApp Consents & Regulatory Audit Trail */
+export const whatsAppConsents = pgTable(
+  "whats_app_consents",
+  {
+    id: serial("id").primaryKey(),
+    contactId: integer("contact_id").notNull().references(() => whatsAppContacts.id, { onDelete: "cascade" }),
+    purpose: text("purpose").notNull().default("TRANSACTIONAL"), // TRANSACTIONAL | MARKETING | ALL
+    status: text("status").notNull().default("GRANTED"), // GRANTED | REVOKED
+    source: text("source").notNull().default("CHECKOUT"),
+    policyVersion: text("policy_version").default("v1.0"),
+    capturedAt: timestamp("captured_at").notNull().defaultNow(),
+    withdrawnAt: timestamp("withdrawn_at"),
+    evidenceReference: text("evidence_reference"),
+  },
+  (t) => [
+    index("wa_consents_contact_idx").on(t.contactId, t.purpose),
+  ],
+);
+
+/** 3. WhatsApp Conversations (Team Inbox Threads) */
+export const whatsAppConversations = pgTable(
+  "whats_app_conversations",
+  {
+    id: serial("id").primaryKey(),
+    contactId: integer("contact_id").notNull().references(() => whatsAppContacts.id, { onDelete: "cascade" }),
+    assignedUserId: integer("assigned_user_id").references(() => adminUsers.id, { onDelete: "set null" }),
+    status: text("status").notNull().default("OPEN"), // OPEN | WAITING | RESOLVED | CLOSED
+    unreadCount: integer("unread_count").notNull().default(0),
+    aiEnabled: boolean("ai_enabled").notNull().default(true),
+    lastInboundAt: timestamp("last_inbound_at"),
+    lastMessageAt: timestamp("last_message_at").notNull().defaultNow(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => [
+    index("wa_conv_contact_idx").on(t.contactId),
+    index("wa_conv_status_idx").on(t.status),
+    index("wa_conv_last_msg_idx").on(t.lastMessageAt),
+  ],
+);
+
+/** 4. WhatsApp Messages (Inbound & Outbound) */
+export const whatsAppMessages = pgTable(
+  "whats_app_messages",
+  {
+    id: serial("id").primaryKey(),
+    contactId: integer("contact_id").notNull().references(() => whatsAppContacts.id, { onDelete: "cascade" }),
+    conversationId: integer("conversation_id").notNull().references(() => whatsAppConversations.id, { onDelete: "cascade" }),
+    wamId: text("wam_id").unique(), // Meta wamid.HBg...
+    direction: text("direction").notNull(), // INBOUND | OUTBOUND
+    messageType: text("message_type").notNull().default("text"), // text | template | image | video | document | interactive
+    content: text("content"),
+    mediaUrl: text("media_url"),
+    templateName: text("template_name"),
+    campaignId: integer("campaign_id"),
+    status: text("status").notNull().default("PENDING"), // PENDING | SENT | DELIVERED | READ | FAILED
+    failureCode: text("failure_code"),
+    failureReason: text("failure_reason"),
+    rawPayload: jsonb("raw_payload"),
+    sentAt: timestamp("sent_at"),
+    deliveredAt: timestamp("delivered_at"),
+    readAt: timestamp("read_at"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [
+    index("wa_msg_conv_idx").on(t.conversationId, t.createdAt),
+    index("wa_msg_wamid_idx").on(t.wamId),
+    index("wa_msg_contact_idx").on(t.contactId),
+  ],
+);
+
+/** 5. WhatsApp Message Templates (Meta Approved Cache) */
+export const whatsAppTemplates = pgTable(
+  "whats_app_templates",
+  {
+    id: serial("id").primaryKey(),
+    metaTemplateId: text("meta_template_id"),
+    name: text("name").notNull().unique(),
+    category: text("category").notNull().default("UTILITY"), // UTILITY | MARKETING | AUTHENTICATION
+    language: text("language").notNull().default("en"),
+    components: jsonb("components").$type<any[]>().default([]),
+    status: text("status").notNull().default("APPROVED"), // APPROVED | PENDING | REJECTED | PAUSED | DISABLED
+    rejectionReason: text("rejection_reason"),
+    lastSyncedAt: timestamp("last_synced_at").notNull().defaultNow(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => [
+    index("wa_tpl_name_idx").on(t.name),
+    index("wa_tpl_status_idx").on(t.status),
+  ],
+);
+
+/** 6. WhatsApp Broadcast Campaigns */
+export const whatsAppCampaigns = pgTable(
+  "whats_app_campaigns",
+  {
+    id: serial("id").primaryKey(),
+    name: text("name").notNull(),
+    purpose: text("purpose").notNull().default("ANNADANA_APPEAL"),
+    templateId: integer("template_id").references(() => whatsAppTemplates.id, { onDelete: "set null" }),
+    templateName: text("template_name"),
+    audienceCriteria: jsonb("audience_criteria").$type<Record<string, any>>().default({}),
+    status: text("status").notNull().default("DRAFT"), // DRAFT | SCHEDULED | QUEUED | PROCESSING | COMPLETED | PAUSED | CANCELLED
+    totalRecipients: integer("total_recipients").notNull().default(0),
+    eligibleRecipients: integer("eligible_recipients").notNull().default(0),
+    suppressedRecipients: integer("suppressed_recipients").notNull().default(0),
+    queuedCount: integer("queued_count").notNull().default(0),
+    sentCount: integer("sent_count").notNull().default(0),
+    deliveredCount: integer("delivered_count").notNull().default(0),
+    readCount: integer("read_count").notNull().default(0),
+    failedCount: integer("failed_count").notNull().default(0),
+    scheduledAt: timestamp("scheduled_at"),
+    createdBy: integer("created_by").references(() => adminUsers.id, { onDelete: "set null" }),
+    approvedBy: integer("approved_by").references(() => adminUsers.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    completedAt: timestamp("completed_at"),
+  },
+  (t) => [
+    index("wa_camp_status_idx").on(t.status),
+    index("wa_camp_sched_idx").on(t.scheduledAt),
+  ],
+);
+
+/** 7. WhatsApp Campaign Recipients (Durable Send Queue) */
+export const whatsAppCampaignRecipients = pgTable(
+  "whats_app_campaign_recipients",
+  {
+    id: serial("id").primaryKey(),
+    campaignId: integer("campaign_id").notNull().references(() => whatsAppCampaigns.id, { onDelete: "cascade" }),
+    contactId: integer("contact_id").notNull().references(() => whatsAppContacts.id, { onDelete: "cascade" }),
+    status: text("status").notNull().default("QUEUED"), // QUEUED | SENT | DELIVERED | READ | FAILED | SUPPRESSED
+    messageId: integer("message_id").references(() => whatsAppMessages.id, { onDelete: "set null" }),
+    wamId: text("wam_id"),
+    failureReason: text("failure_reason"),
+    parameters: jsonb("parameters").$type<Record<string, any>>().default({}),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    sentAt: timestamp("sent_at"),
+    deliveredAt: timestamp("delivered_at"),
+    readAt: timestamp("read_at"),
+  },
+  (t) => [
+    uniqueIndex("wa_camp_recip_unique").on(t.campaignId, t.contactId),
+    index("wa_camp_recip_status").on(t.campaignId, t.status),
+  ],
+);
+
+/** 8. WhatsApp Automations (Workflow Rules Engine) */
+export const whatsAppAutomations = pgTable(
+  "whats_app_automations",
+  {
+    id: serial("id").primaryKey(),
+    name: text("name").notNull(),
+    triggerType: text("trigger_type").notNull(), // DONATION_CAPTURED | RECEIPT_READY | BIRTHDAY_SEVA | INBOUND_GREETING | MEDIA_PROOF
+    configuration: jsonb("configuration").$type<Record<string, any>>().default({}),
+    enabled: boolean("enabled").notNull().default(true),
+    createdBy: integer("created_by").references(() => adminUsers.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => [
+    index("wa_auto_trigger_idx").on(t.triggerType, t.enabled),
+  ],
+);
+
+/** 9. WhatsApp Automation Executions (Idempotent Execution Audit) */
+export const whatsAppAutomationExecutions = pgTable(
+  "whats_app_automation_executions",
+  {
+    id: serial("id").primaryKey(),
+    automationId: integer("automation_id").notNull().references(() => whatsAppAutomations.id, { onDelete: "cascade" }),
+    eventId: text("event_id").notNull().unique(), // e.g. "don_pay_12345_wa_receipt"
+    contactId: integer("contact_id").references(() => whatsAppContacts.id, { onDelete: "set null" }),
+    status: text("status").notNull().default("PENDING"), // PENDING | COMPLETED | FAILED | SKIPPED
+    result: jsonb("result"),
+    error: text("error"),
+    startedAt: timestamp("started_at").notNull().defaultNow(),
+    completedAt: timestamp("completed_at"),
+  },
+  (t) => [
+    index("wa_auto_exec_event_idx").on(t.eventId),
+    index("wa_auto_exec_status_idx").on(t.status),
+  ],
+);
+
+/** 10. WhatsApp Grounded Knowledge Documents (Grounded AI RAG) */
+export const whatsAppKnowledgeDocuments = pgTable(
+  "whats_app_knowledge_documents",
+  {
+    id: serial("id").primaryKey(),
+    title: text("title").notNull(),
+    content: text("content").notNull(),
+    sourceType: text("source_type").notNull().default("FAQ"), // FAQ | LEGAL | SEVA_CATALOG | ASHRAMA_STORY | VISITING_HOURS
+    sourceReference: text("source_reference"),
+    language: text("language").notNull().default("en"), // en | kn | both
+    status: text("status").notNull().default("PUBLISHED"), // PUBLISHED | DRAFT | ARCHIVED
+    updatedBy: integer("updated_by").references(() => adminUsers.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => [
+    index("wa_know_type_idx").on(t.sourceType, t.status),
+    index("wa_know_lang_idx").on(t.language),
+  ],
+);
+
+
 

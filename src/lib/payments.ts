@@ -150,6 +150,31 @@ export async function markPaid(donationId: number, paymentId: string): Promise<b
     if (rows.length > 0) {
       await db.update(impactGifts).set({ status: "ready" }).where(eq(impactGifts.donationId, donationId)).catch(() => {});
       await db.insert(analyticsEvents).values({ event: "verified_donation", sessionId: "server", meta: { donationId: donationId } }).catch(() => {});
+
+      // Dispatch automated WhatsApp 80G receipt & blessing
+      try {
+        const [updatedDonation] = await db
+          .select()
+          .from(donations)
+          .where(eq(donations.id, donationId))
+          .limit(1);
+
+        if (updatedDonation && updatedDonation.donorPhone && updatedDonation.receiptNo) {
+          const { triggerDonationWhatsAppAutomation } = await import("./whatsapp-automation");
+          await triggerDonationWhatsAppAutomation({
+            donationId: updatedDonation.id,
+            donorName: updatedDonation.donorName,
+            donorPhone: updatedDonation.donorPhone,
+            donorEmail: updatedDonation.donorEmail || undefined,
+            amount: updatedDonation.amount,
+            receiptNumber: updatedDonation.receiptNo,
+            pan: (updatedDonation.meta as any)?.donorPan || undefined,
+          });
+        }
+      } catch (err) {
+        console.error("Failed to trigger donation WhatsApp receipt:", err);
+      }
+
       return true;
     }
     return false;
@@ -280,6 +305,25 @@ export async function recordSubscriptionCharge(params: {
 
     return finalDonation;
   });
+
+  // Dispatch automated WhatsApp 80G receipt for recurring debit
+  try {
+    if (result && result.donorPhone && result.receiptNo) {
+      const { triggerDonationWhatsAppAutomation } = await import("./whatsapp-automation");
+      await triggerDonationWhatsAppAutomation({
+        donationId: result.id,
+        donorName: result.donorName,
+        donorPhone: result.donorPhone,
+        donorEmail: result.donorEmail || undefined,
+        amount: result.amount,
+        receiptNumber: result.receiptNo,
+        pan: (result.meta as any)?.donorPan || undefined,
+        sevaType: "Monthly Annadana Subscription",
+      });
+    }
+  } catch (err) {
+    console.error("Failed to trigger subscription WhatsApp receipt:", err);
+  }
 
   return { donation: result, alreadyRecorded: false };
 }
