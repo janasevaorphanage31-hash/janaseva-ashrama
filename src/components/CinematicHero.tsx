@@ -6,7 +6,6 @@ import type { SiteContentMap } from "@/lib/site-content";
 import { track } from "@/lib/track";
 import { useCart } from "./CartProvider";
 import { formatINR } from "@/lib/site";
-import { numberToIndianWords } from "@/lib/number-words";
 
 export interface ShagunTier {
   amount: number;
@@ -19,35 +18,41 @@ export interface ShagunTier {
 
 const HERO_SHAGUN_TIERS = [
   {
-    amt: 101,
-    label: "1 Punya Meal",
-    sub: "Hot meal for 1 boy",
-    impact: "1 steaming hot lunch (rice, dal, sabzi & fresh curd) for 1 boy",
+    amt: 1800,
+    label: "Clothes · 3 Boys",
+    sub: "Festive & daily cotton sets",
+    image: "/media/boys-group-red-assembly.jpg",
+    impact: "Complete cotton clothing sets and festival wear for 3 resident boys",
   },
   {
-    amt: 501,
-    label: "3 Days Care",
-    sub: "Nutrition & doctor visit",
-    impact: "3 full days of meals and pediatric healthcare for 1 boy",
+    amt: 2500,
+    label: "1 Meal · 25 Boys",
+    sub: "Hot lunch with sweet payasam",
+    image: "/media/annadana-hall-hd.jpg",
+    impact: "Steaming hot lunch feast with rice, sambar, fresh curd & sweet payasam for all 25 boys",
   },
   {
-    amt: 1001,
-    label: "Week Ration",
-    sub: "Vegetables & rice sack",
-    impact: "1 week fresh farm vegetables, toor dal & Sona Masoori rice for ashrama kitchen",
+    amt: 3000,
+    label: "2 Meals · 25 Boys",
+    sub: "Lunch & dinner for all 25 boys",
+    image: "/media/banana-leaf-feast.jpg",
+    impact: "2 full hot meals (lunch and dinner) for all 25 resident boys",
   },
   {
-    amt: 2501,
-    label: "Feast 25 Boys ★",
-    sub: "All 25 boys feast",
-    badge: "Most Chosen",
-    impact: "Full hot dining hall feast with sweet payasam for all 25 resident boys",
+    amt: 4500,
+    label: "Full Day · 25 Boys",
+    sub: "All 4 meals (Breakfast to Dinner)",
+    badge: "Most Chosen ⭐",
+    image: "/media/annadana-hall-hd.jpg",
+    impact: "Wholesome 4-meal Annadana (breakfast, lunch, evening snacks & dinner) for all 25 boys",
   },
   {
-    amt: 5001,
-    label: "Vidya & Kits",
-    sub: "School sets for 5 boys",
-    impact: "Complete school uniform sets, notebooks, geometry kits & evening tuition for 5 boys",
+    amt: 6000,
+    label: "Month Ration · 4 Boys",
+    sub: "Rice, dal, milk & vegetables",
+    badge: "Monthly Care",
+    image: "/media/pantry.jpg",
+    impact: "Essential 1-month kitchen groceries, toor dal, fresh vegetables & milk for 4 resident boys",
   },
 ];
 
@@ -58,8 +63,8 @@ export function CinematicHero({ content }: { content?: Partial<SiteContentMap> }
   const [isMuted, setIsMuted] = useState(true);
   const [fitMode, setFitMode] = useState<"cover" | "contain">("cover");
 
-  // Shagun Giving Deck State (Anchored at ₹2,501 for maximum psychological impact & average order value)
-  const [selectedAmt, setSelectedAmt] = useState<number>(2501);
+  // Sponsor 25 Boys Scheme State (Anchored at ₹4,500 flagship Full Day Food)
+  const [selectedAmt, setSelectedAmt] = useState<number>(4500);
   const [customAmt, setCustomAmt] = useState<string>("");
 
   const posterSrc = content?.heroPosterUrl || "/media/poster-desktop.jpg";
@@ -94,8 +99,6 @@ export function CinematicHero({ content }: { content?: Partial<SiteContentMap> }
 
   const effectiveAmount = customAmt && Number(customAmt) > 0 ? Number(customAmt) : selectedAmt;
   const activeTier = HERO_SHAGUN_TIERS.find((t) => t.amt === effectiveAmount);
-  const taxSavings = Math.round(effectiveAmount * 0.15); // Approximate 50% 80G deduction value for 30% tax bracket
-  const amountWords = numberToIndianWords(effectiveAmount);
 
   const handleHeroDonate = () => {
     track("hero_quick_donate_click", {
@@ -104,9 +107,9 @@ export function CinematicHero({ content }: { content?: Partial<SiteContentMap> }
     });
     openBottomDonate(
       effectiveAmount,
-      "annadana",
-      activeTier ? `${activeTier.label} (${formatINR(effectiveAmount)}) for 25 Boys` : `Seva (${formatINR(effectiveAmount)}) for 25 Boys`,
-      "Occasion Giving"
+      "food_one_day",
+      activeTier ? `${activeTier.label} (${formatINR(effectiveAmount)}) for 25 Boys` : `Sponsor 25 Boys (${formatINR(effectiveAmount)})`,
+      "Sponsor 25 Boys (Form 28)"
     );
   };
 
@@ -222,36 +225,15 @@ export function CinematicHero({ content }: { content?: Partial<SiteContentMap> }
         </div>
       </div>
 
-      {/* ── 3. ECOMMERCE DONATION SALES DECK: APPLIED MATH & NUMBER PSYCHOLOGY ── */}
+      {/* ── 3. ECOMMERCE DONATION SALES DECK: SPONSOR 25 BOYS SCHEME AMOUNTS WITH PHOTO BACKGROUNDS ── */}
       <div className="w-full bg-gradient-to-b from-teal-900 via-teal-950 to-teal-950 py-4 sm:py-6 px-3 sm:px-6 lg:px-8 border-b border-white/10">
-        <div className="mx-auto max-w-4xl rounded-3xl bg-white/10 backdrop-blur-xl p-4 sm:p-6 border border-white/20 shadow-2xl">
-          {/* Header Row: Live Needs Urgency & Arithmetic */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-white/15 pb-3">
-            <div className="flex items-center gap-2">
-              <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-amber-500/20 text-amber-400 text-sm">
-                🍲
-              </span>
-              <div>
-                <span className="text-xs font-black uppercase tracking-wider text-amber-300">
-                  Today&apos;s Satvik Annadana Need
-                </span>
-                <p className="text-[11px] text-teal-100/80">
-                  75 Meals Required Today (25 Boys × 3 Meals) · <strong>69 Sponsored</strong>
-                </p>
-              </div>
-            </div>
-
-            <div className="inline-flex items-center gap-1.5 rounded-full bg-rose-500/20 border border-rose-400/40 px-3 py-1 text-[11px] font-black text-rose-300 self-start sm:self-auto">
-              <span className="h-2 w-2 rounded-full bg-rose-400 animate-ping" />
-              <span>Only 6 Evening Meals Remaining Tonight!</span>
-            </div>
-          </div>
-
-          {/* Interactive Shagun Amount Pills (Finger-First, 44px+ Touch Targets) */}
-          <div className="mt-4">
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-xs font-extrabold uppercase tracking-wider text-amber-200">
-                Choose Auspicious Shagun Blessing:
+        <div className="mx-auto max-w-4xl rounded-3xl bg-white/10 backdrop-blur-xl p-4 sm:p-5 border border-white/20 shadow-2xl">
+          {/* Interactive Sponsor 25 Boys Scheme Cards with Photo Backgrounds */}
+          <div>
+            <div className="flex items-center justify-between mb-2.5">
+              <label className="text-xs font-extrabold uppercase tracking-wider text-amber-200 flex items-center gap-1.5">
+                <span>🏛️</span>
+                <span>Select Sponsorship Scheme &amp; Amount:</span>
               </label>
               <span className="text-[11px] font-semibold text-emerald-300">
                 100% Direct Allocation to 25 Boys
@@ -269,41 +251,61 @@ export function CinematicHero({ content }: { content?: Partial<SiteContentMap> }
                       setSelectedAmt(tier.amt);
                       setCustomAmt("");
                     }}
-                    className={`relative p-2.5 sm:p-3 rounded-2xl text-left transition-all border cursor-pointer tap-scale flex flex-col justify-between ${
+                    className={`group relative overflow-hidden p-2.5 sm:p-3 rounded-2xl text-left transition-all border cursor-pointer tap-scale flex flex-col justify-between min-h-[92px] sm:min-h-[108px] ${
                       isSelected
-                        ? "bg-gradient-to-b from-amber-500 to-orange-600 text-white border-amber-300 shadow-lg shadow-orange-500/30 ring-2 ring-amber-300 scale-[1.02]"
-                        : "bg-teal-950/60 hover:bg-teal-900/80 text-white border-white/15"
+                        ? "border-amber-300 ring-2 ring-amber-300 shadow-xl shadow-orange-500/30 scale-[1.02]"
+                        : "border-white/20 hover:border-amber-300/60"
                     }`}
                   >
-                    {tier.badge && (
-                      <span className="absolute -top-2 right-2 rounded-full bg-amber-300 px-2 py-0.2 text-[9px] font-black uppercase text-teal-950 shadow">
-                        {tier.badge}
-                      </span>
-                    )}
-                    <div>
-                      <span className="font-display text-base sm:text-lg font-black block">
+                    {/* Authentic photo background */}
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={tier.image}
+                      alt={tier.label}
+                      className="absolute inset-0 h-full w-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
+                    />
+                    {/* High-contrast gradient overlay so text is 100% legible */}
+                    <div
+                      className={`absolute inset-0 transition-colors ${
+                        isSelected
+                          ? "bg-gradient-to-t from-teal-950/95 via-teal-950/75 to-teal-950/40"
+                          : "bg-gradient-to-t from-black/90 via-black/70 to-black/35 group-hover:from-black/85 group-hover:via-black/60"
+                      }`}
+                    />
+
+                    {/* Optional Top Badge */}
+                    <div className="relative z-10 flex justify-end w-full">
+                      {tier.badge && (
+                        <span className="rounded-full bg-amber-400 px-1.5 py-0.2 text-[8px] sm:text-[9px] font-black uppercase text-teal-950 shadow">
+                          {tier.badge}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="relative z-10 mt-auto">
+                      <span className="font-display text-base sm:text-lg font-black block text-amber-300 drop-shadow-sm leading-none">
                         {formatINR(tier.amt)}
                       </span>
-                      <span className="text-xs font-bold block leading-tight mt-0.5">
+                      <span className="text-xs font-bold block leading-tight text-white drop-shadow-sm mt-1">
                         {tier.label}
                       </span>
+                      <span className="text-[10px] block line-clamp-1 text-white/80 mt-0.5 leading-tight">
+                        {tier.sub}
+                      </span>
                     </div>
-                    <span className={`text-[10px] mt-1 line-clamp-1 ${isSelected ? "text-amber-100" : "text-white/60"}`}>
-                      {tier.sub}
-                    </span>
                   </button>
                 );
               })}
             </div>
 
-            {/* Custom Amount Field */}
-            <div className="mt-3 flex flex-col sm:flex-row sm:items-center gap-2">
-              <div className="relative flex-1">
+            {/* Custom Amount Field (Clean single input without bulky increment chips) */}
+            <div className="mt-2.5">
+              <div className="relative">
                 <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-bold text-white/60">₹</span>
                 <input
                   type="text"
                   inputMode="numeric"
-                  placeholder="Or enter any custom amount (min ₹10)"
+                  placeholder="Or enter any custom sponsorship amount (min ₹10)"
                   value={customAmt}
                   onChange={(e) => {
                     const cleaned = e.target.value.replace(/\D/g, "");
@@ -312,61 +314,31 @@ export function CinematicHero({ content }: { content?: Partial<SiteContentMap> }
                   className="w-full rounded-xl border border-white/20 bg-teal-950/70 py-2.5 pl-8 pr-3 text-base sm:text-sm font-bold text-white outline-none focus:border-amber-400 placeholder:text-white/40"
                 />
               </div>
-
-              {/* Quick increment chips */}
-              <div className="flex items-center gap-1.5 shrink-0 overflow-x-auto no-scrollbar py-0.5">
-                {[100, 500, 1000, 2500].map((inc) => (
-                  <button
-                    key={inc}
-                    type="button"
-                    onClick={() => {
-                      const cur = customAmt ? Number(customAmt) || 0 : selectedAmt;
-                      setCustomAmt(String(cur + inc));
-                    }}
-                    className="rounded-lg bg-white/10 hover:bg-white/20 border border-white/15 px-2.5 py-1.5 text-xs font-bold text-amber-200 transition cursor-pointer"
-                  >
-                    +{formatINR(inc)}
-                  </button>
-                ))}
-              </div>
             </div>
           </div>
 
-          {/* Applied Math & Emotional Reality Box */}
-          <div className="mt-3.5 rounded-2xl bg-teal-950/80 p-3 sm:p-4 border border-amber-400/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="space-y-1">
-              <div className="flex items-center gap-1.5 text-xs font-bold text-amber-300">
-                <span>🌸</span>
-                <span>Direct Impact for 25 Resident Boys:</span>
-              </div>
-              <p className="text-xs sm:text-sm text-white font-medium leading-relaxed">
-                {activeTier
-                  ? activeTier.impact
-                  : `Your contribution of ${formatINR(effectiveAmount)} translates directly into essential kitchen groceries, nutrition, and child care.`}
-              </p>
-              {amountWords && (
-                <p className="text-[11px] text-amber-200/80 italic font-mono">
-                  Rupees: {amountWords}
+          {/* Clean Emotional Impact & 80G Tax Exemption Strip */}
+          <div className="mt-3 rounded-2xl bg-teal-950/80 p-3 sm:p-3.5 border border-amber-400/30 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="text-base select-none shrink-0">🌸</span>
+              <div className="min-w-0">
+                <span className="text-[11px] font-extrabold uppercase tracking-wider text-amber-300 block">
+                  Direct Impact for 25 Resident Boys:
+                </span>
+                <p className="text-xs text-white font-medium leading-snug">
+                  {activeTier
+                    ? activeTier.impact
+                    : `Your contribution of ${formatINR(effectiveAmount)} directly covers wholesome meals, clothes & care for 25 resident boys.`}
                 </p>
-              )}
+              </div>
             </div>
-
-            {/* 80G Tax Savings Arithmetic */}
-            <div className="shrink-0 rounded-xl bg-emerald-950/70 border border-emerald-400/30 p-2.5 text-center sm:text-right">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-300 block">
-                Form 10AC Section 80G
-              </span>
-              <span className="font-display text-sm sm:text-base font-extrabold text-white block mt-0.5">
-                Save ~{formatINR(taxSavings)} in Tax
-              </span>
-              <span className="text-[10px] text-emerald-200/70 block">
-                Effective cost: only {formatINR(Math.max(0, effectiveAmount - taxSavings))}
-              </span>
+            <div className="shrink-0 self-start sm:self-auto rounded-lg bg-emerald-950/70 border border-emerald-400/30 px-2.5 py-1 text-[10px] font-bold text-emerald-300">
+              Form 10AC · 100% Tax Deductible (80G)
             </div>
           </div>
 
           {/* Finger-First Primary Donation CTA & Secondary Birthday Link */}
-          <div className="mt-4 flex flex-col sm:flex-row items-center gap-2.5">
+          <div className="mt-3.5 flex flex-col sm:flex-row items-center gap-2.5">
             <button
               type="button"
               onClick={handleHeroDonate}
@@ -394,7 +366,7 @@ export function CinematicHero({ content }: { content?: Partial<SiteContentMap> }
           </div>
 
           {/* Trust Guarantees Footer */}
-          <div className="mt-3.5 pt-3 border-t border-white/10 grid grid-cols-3 gap-2 text-center text-[10px] sm:text-xs text-white/80 font-medium">
+          <div className="mt-3 pt-2.5 border-t border-white/10 grid grid-cols-3 gap-2 text-center text-[10px] sm:text-xs text-white/80 font-medium">
             <span className="flex items-center justify-center gap-1">
               <span className="text-emerald-400">✓</span> Instant WhatsApp Receipt
             </span>

@@ -57,7 +57,7 @@ const MODES: ModeItem[] = [
   },
   {
     id: "annadana",
-    label: "Daily Needs & Catalog",
+    label: "Daily Needs",
     icon: "🍲",
     badge: "₹11+",
     targetId: "section-annadana",
@@ -379,7 +379,7 @@ export function HomeSectionsHub({
         aria-label="Home Section Switcher"
         className="sticky top-14 sm:top-16 z-30 w-full border-b border-teal-900/10 bg-white/95 backdrop-blur-md shadow-xs no-print transition-colors"
       >
-        <div className="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8 py-2">
+        <div className="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8 py-1.5 sm:py-2">
           {/* iOS Style Segmented Control Track */}
           <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar scrollbar-none py-0.5 justify-start md:justify-center scroll-smooth">
             {MODES.map((m) => {
@@ -390,7 +390,7 @@ export function HomeSectionsHub({
                   id={`mode-pill-${m.id}`}
                   type="button"
                   onClick={() => switchMode(m.id, m.targetId)}
-                  className={`focus-ring tap-scale inline-flex items-center gap-1.5 whitespace-nowrap rounded-xl px-3 sm:px-3.5 py-2 text-xs font-bold shrink-0 cursor-pointer transition-all duration-200 ${
+                  className={`focus-ring tap-scale inline-flex items-center gap-1.5 whitespace-nowrap rounded-xl px-3 sm:px-3.5 py-1.5 sm:py-2 text-xs font-bold shrink-0 cursor-pointer transition-all duration-200 ${
                     isSelected
                       ? "bg-teal-900 text-white shadow-sm ring-1 ring-teal-800 scale-[1.02]"
                       : "bg-cream/80 text-teal-950/75 hover:bg-sand/70 hover:text-teal-950"
@@ -412,8 +412,8 @@ export function HomeSectionsHub({
             })}
           </div>
 
-          {/* Dynamic Real-time Status Indicator - updates synchronously as user scrolls! */}
-          <div className="flex mt-1 items-center justify-between text-[10px] text-teal-950/70 font-semibold px-1">
+          {/* Dynamic Real-time Status Indicator - visible on tablet/desktop, hidden on mobile for clean screen */}
+          <div className="hidden sm:flex mt-1 items-center justify-between text-[10px] text-teal-950/70 font-semibold px-1">
             <span className="flex items-center gap-1.5 min-w-0 truncate">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
               <span className="truncate">

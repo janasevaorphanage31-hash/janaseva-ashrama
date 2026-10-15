@@ -47,7 +47,7 @@ export function ScrollToTopButton() {
 
   return (
     <div
-      className={`fixed ${bottomCls} left-3 sm:left-5 z-40 lg:hidden no-print transition-all duration-300 ease-out animate-fadeIn`}
+      className={`fixed ${bottomCls} left-3 sm:left-5 z-40 hidden md:flex no-print transition-all duration-300 ease-out animate-fadeIn`}
     >
       <button
         type="button"

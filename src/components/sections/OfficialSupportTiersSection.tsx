@@ -105,6 +105,67 @@ const CONCISE_META: Record<
   },
 };
 
+export const SCHEME_PRICE_CARDS = [
+  {
+    amount: 1800,
+    label: "Clothes · 3 Boys",
+    sub: "3 cotton outfit sets",
+    image: "/media/boys-group-red-assembly.jpg",
+    catId: "cloth_one_set",
+    optId: "3_children",
+  },
+  {
+    amount: 2000,
+    label: "1 Mo Ration · 1 Boy",
+    sub: "Rice, dal & groceries",
+    image: "/media/pantry.jpg",
+    catId: "food_one_month",
+    optId: "1_child",
+  },
+  {
+    amount: 2500,
+    label: "1 Meal · 25 Boys",
+    sub: "Hot lunch with sweet payasam",
+    image: "/media/annadana-hall-hd.jpg",
+    catId: "food_one_day",
+    optId: "one_time",
+  },
+  {
+    amount: 3000,
+    label: "2 Meals · 25 Boys",
+    sub: "Lunch & dinner feast",
+    image: "/media/banana-leaf-feast.jpg",
+    catId: "food_one_day",
+    optId: "two_times",
+  },
+  {
+    amount: 4500,
+    label: "Full Day · 25 Boys",
+    sub: "All 4 daily meals (B/L/S/D)",
+    badge: "Most Chosen ⭐",
+    image: "/media/annadana-hall-hd.jpg",
+    catId: "food_one_day",
+    optId: "all_children",
+  },
+  {
+    amount: 6000,
+    label: "1 Mo Ration · 4 Boys",
+    sub: "Monthly pantry provisions",
+    badge: "Popular Care",
+    image: "/media/pantry.jpg",
+    catId: "food_one_month",
+    optId: "4_children",
+  },
+  {
+    amount: 9600,
+    label: "Schooling · 12 Boys",
+    sub: "Monthly education & kits",
+    image: "/media/learning.jpg",
+    catId: "education_one_month",
+    optId: "12_children",
+  },
+];
+
 export function OfficialSupportTiersSection({
   tiers,
 }: {
@@ -115,12 +176,9 @@ export function OfficialSupportTiersSection({
 
   // Active category filter tab: "all" or specific category ID or "bank_wire"
   const [activeTab, setActiveTab] = useState<string>("all");
+  const [selectedExactAmount, setSelectedExactAmount] = useState<number | null>(4500);
 
-  // Amount / Budget Filter: "all" | "low" (< ₹3000) | "mid" (₹3000 - ₹6400) | "high" (₹9600+)
-  const [budgetFilter, setBudgetFilter] = useState<"all" | "low" | "mid" | "high">("all");
-  const [selectedExactAmount, setSelectedExactAmount] = useState<number | null>(null);
-
-  // Selected pricing option per category
+  // Selected pricing option per category (Defaults to flagship Full Day Food ₹4,500)
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({
     food_one_day: "all_children",
     food_one_month: "4_children",
@@ -192,35 +250,6 @@ export function OfficialSupportTiersSection({
     track("tier_pricing_option_toggle", { categoryId, optionId });
   };
 
-  const handleBudgetFilter = (filter: "all" | "low" | "mid" | "high") => {
-    setBudgetFilter(filter);
-    setSelectedExactAmount(null);
-    track("tier_budget_filter_click", { filter });
-
-    if (filter === "low") {
-      setSelectedOptions((prev) => ({
-        ...prev,
-        food_one_day: "one_time", // ₹2,500
-        food_one_month: "1_child", // ₹2,000
-        cloth_one_set: "3_children", // ₹1,800
-      }));
-    } else if (filter === "mid") {
-      setSelectedOptions((prev) => ({
-        ...prev,
-        food_one_day: "all_children", // ₹4,500
-        food_one_month: "4_children", // ₹6,000
-        cloth_one_set: "8_children", // ₹4,800
-        education_one_month: "8_children", // ₹6,400
-      }));
-    } else if (filter === "high") {
-      setSelectedOptions((prev) => ({
-        ...prev,
-        education_one_month: "12_children", // ₹9,600
-        education_one_year: "1_child", // ₹9,600
-      }));
-    }
-  };
-
   const handleSponsorTier = (categoryId: string) => {
     const cat = activeCategories.find((c) => c.id === categoryId);
     if (!cat) return;
@@ -283,8 +312,8 @@ export function OfficialSupportTiersSection({
     >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         {/* ── AUTHORITATIVE TELECALLER & OFFICIAL FORM 28 HEADER ── */}
-        <div className="text-center max-w-3xl mx-auto mb-6 md:mb-8">
-          <div className="inline-flex items-center gap-1.5 rounded-full bg-gold/25 border border-gold/50 px-3.5 py-1 text-xs font-black uppercase tracking-wider text-teal-950 mb-2.5 shadow-2xs">
+        <div className="text-center max-w-3xl mx-auto mb-5 md:mb-7">
+          <div className="inline-flex items-center gap-1.5 rounded-full bg-gold/25 border border-gold/50 px-3.5 py-1 text-xs font-black uppercase tracking-wider text-teal-950 mb-2 shadow-2xs">
             <span>🏛️</span>
             <span>JJ Act Reg: KA18CH0242 · Form 28 Approved · 90% Primary NGO Focus</span>
           </div>
@@ -293,26 +322,22 @@ export function OfficialSupportTiersSection({
             Sponsor 25 Boys: Official Support Tiers
           </h2>
 
-          <p className="mt-1.5 text-xs sm:text-sm font-bold text-saffron-dark">
+          <p className="mt-1 text-xs sm:text-sm font-bold text-saffron-dark">
             ಸಂಸ್ಥೆಯ ಅಧಿಕೃತ 5 ಸೇವಾ ಯೋಜನೆಗಳು · 25 ಆಶ್ರಮದ ಮಕ್ಕಳಿಗೆ 100% ನೇರ ಪೋಷಣೆ
           </p>
 
-          <p className="mt-2 text-xs sm:text-sm text-teal-950/75 leading-relaxed max-w-2xl mx-auto">
-            Choose an audited fixed-price sponsorship tier for all 25 resident boys. Covers daily food, monthly grocery supplies, clothing sets, and annual schooling under Section 80G tax exemption.
-          </p>
-
-          {/* Trust Guarantee Badges */}
-          <div className="mt-3 flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 text-[11px] font-bold text-teal-900">
-            <span className="rounded-full bg-white px-3 py-1 border border-teal-900/10 shadow-2xs">
+          {/* Compact Trust Guarantee Badges */}
+          <div className="mt-2.5 flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 text-[11px] font-bold text-teal-900">
+            <span className="rounded-full bg-white px-3 py-0.5 border border-teal-900/10 shadow-2xs">
               ✓ Form 10AC Section 80G (100% Tax Free)
             </span>
-            <span className="rounded-full bg-white px-3 py-1 border border-teal-900/10 shadow-2xs">
+            <span className="rounded-full bg-white px-3 py-0.5 border border-teal-900/10 shadow-2xs">
               ✓ Form 28 JJ Act KA18CH0242
             </span>
-            <span className="rounded-full bg-white px-3 py-1 border border-teal-900/10 shadow-2xs">
-              ✓ 100% Direct Care to 25 Boys
+            <span className="rounded-full bg-white px-3 py-0.5 border border-teal-900/10 shadow-2xs">
+              ✓ 25 Resident Boys Direct Care
             </span>
-            <span className="rounded-full bg-white px-3 py-1 border border-teal-900/10 shadow-2xs">
+            <span className="rounded-full bg-white px-3 py-0.5 border border-teal-900/10 shadow-2xs">
               ✓ Instant WhatsApp 80G Certificate
             </span>
           </div>
@@ -329,62 +354,71 @@ export function OfficialSupportTiersSection({
           )}
         </div>
 
-        {/* ── FAST AMOUNT / BUDGET FILTER (Changes according to amount) ── */}
-        <div className="mb-5 flex flex-col gap-2.5 bg-white/80 backdrop-blur-xs p-3 sm:p-4 rounded-2xl border border-teal-900/10 shadow-2xs">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+        {/* ── SPONSOR 25 BOYS SCHEME PRICE SELECTOR WITH PHOTO BACKGROUNDS ── */}
+        <div className="mb-6 bg-white/80 backdrop-blur-xs p-3 sm:p-4 rounded-3xl border border-teal-900/10 shadow-xs">
+          <div className="flex items-center justify-between mb-2.5 px-1">
             <div className="flex items-center gap-1.5 text-xs font-black text-teal-950 uppercase tracking-wider">
-              <span>⚡</span>
-              <span>Change According to Budget / Amount:</span>
+              <span>🏛️</span>
+              <span>Sponsor 25 Boys Scheme &amp; Pricing (Tap to Choose):</span>
             </div>
-            <div className="flex flex-wrap items-center gap-1.5">
-              {[
-                { id: "all", label: "All Amounts" },
-                { id: "low", label: "Under ₹3,000 (Starter)" },
-                { id: "mid", label: "₹3,200 – ₹6,000 (Popular)" },
-                { id: "high", label: "₹9,600+ (Annual / Edu)" },
-              ].map((b) => (
-                <button
-                  key={b.id}
-                  type="button"
-                  onClick={() => handleBudgetFilter(b.id as any)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
-                    budgetFilter === b.id && !selectedExactAmount
-                      ? "bg-teal-900 text-white shadow-xs scale-102"
-                      : "bg-cream text-teal-950/75 hover:bg-sand/80 border border-teal-900/10"
-                  }`}
-                >
-                  {b.label}
-                </button>
-              ))}
-            </div>
+            <span className="text-[11px] font-bold text-emerald-700 hidden sm:inline">
+              100% Tax Free under 80G
+            </span>
           </div>
 
-          {/* Quick Exact Seva Amount Chips - 1 Tap Auto-Selects the Matching Tier */}
-          <div className="pt-2.5 border-t border-teal-900/10 flex flex-wrap items-center gap-1.5">
-            <span className="text-[11px] font-bold text-teal-950/70 mr-1">Direct Amount:</span>
-            {[
-              { amount: 1800, label: "₹1,800 (Clothes · 3 Boys)", catId: "cloth_one_set", optId: "3_children" },
-              { amount: 2000, label: "₹2,000 (1 Month Ration · 1 Boy)", catId: "food_one_month", optId: "1_child" },
-              { amount: 2500, label: "₹2,500 (1 Meal · 25 Boys)", catId: "food_one_day", optId: "one_time" },
-              { amount: 3000, label: "₹3,000 (2 Meals · 25 Boys)", catId: "food_one_day", optId: "two_times" },
-              { amount: 3600, label: "₹3,600 (Clothes · 6 Boys)", catId: "cloth_one_set", optId: "6_children" },
-              { amount: 4500, label: "₹4,500 (Full Day Food · 25 Boys ⭐)", catId: "food_one_day", optId: "all_children" },
-              { amount: 6000, label: "₹6,000 (1 Month Ration · 4 Boys)", catId: "food_one_month", optId: "4_children" },
-              { amount: 9600, label: "₹9,600 (Education · 12 Boys / 1 Year)", catId: "education_one_month", optId: "12_children" },
-            ].map((p) => {
-              const isSelected = selectedExactAmount === p.amount;
+          {/* Photo-backed Scheme Cards */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-2 sm:gap-2.5">
+            {SCHEME_PRICE_CARDS.map((card) => {
+              const isSelected = selectedExactAmount === card.amount;
               return (
                 <button
-                  key={p.amount}
+                  key={card.amount}
                   type="button"
-                  onClick={() => handleSelectExactAmount(p.amount, p.catId, p.optId)}
-                  className={`rounded-lg px-2.5 py-1 text-[11px] font-bold transition cursor-pointer ${
+                  onClick={() => {
+                    handleSelectExactAmount(card.amount, card.catId, card.optId);
+                  }}
+                  className={`group relative overflow-hidden p-2.5 rounded-2xl text-left transition-all border cursor-pointer tap-scale flex flex-col justify-between min-h-[92px] sm:min-h-[105px] ${
                     isSelected
-                      ? "bg-amber-500 text-teal-950 font-black shadow-xs ring-2 ring-amber-400 scale-103"
-                      : "bg-sand/40 text-teal-900 hover:bg-sand border border-teal-900/10"
+                      ? "border-amber-500 ring-2 ring-amber-400 shadow-lg scale-[1.02]"
+                      : "border-teal-900/15 hover:border-amber-400/60"
                   }`}
                 >
-                  {p.label}
+                  {/* Photo Background */}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={card.image}
+                    alt={card.label}
+                    className="absolute inset-0 h-full w-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
+                  />
+                  {/* High-contrast gradient overlay */}
+                  <div
+                    className={`absolute inset-0 transition-colors ${
+                      isSelected
+                        ? "bg-gradient-to-t from-teal-950/95 via-teal-950/75 to-teal-950/40"
+                        : "bg-gradient-to-t from-black/90 via-black/70 to-black/35 group-hover:from-black/85 group-hover:via-black/60"
+                    }`}
+                  />
+
+                  {/* Top Badge */}
+                  <div className="relative z-10 flex justify-end w-full">
+                    {card.badge && (
+                      <span className="rounded-full bg-amber-400 px-1.5 py-0.2 text-[8px] font-black uppercase text-teal-950 shadow">
+                        {card.badge}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="relative z-10 mt-auto">
+                    <span className="font-display text-sm sm:text-base font-black block text-amber-300 drop-shadow-sm leading-none">
+                      {formatINR(card.amount)}
+                    </span>
+                    <span className="text-[11px] sm:text-xs font-bold block leading-tight text-white drop-shadow-sm mt-1">
+                      {card.label}
+                    </span>
+                    <span className="text-[9px] sm:text-[10px] block line-clamp-1 text-white/80 mt-0.5 leading-tight">
+                      {card.sub}
+                    </span>
+                  </div>
                 </button>
               );
             })}
