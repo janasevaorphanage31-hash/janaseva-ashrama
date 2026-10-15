@@ -671,7 +671,13 @@ export async function getSiteContentMap(): Promise<SiteContentMap> {
       faqs: parsed.faqs || DEFAULT_SITE_CONTENT.faqs,
       wishVideos: parsed.wishVideos || DEFAULT_SITE_CONTENT.wishVideos,
       todayMealsStatus: parsed.todayMealsStatus || DEFAULT_SITE_CONTENT.todayMealsStatus,
-      supportTiers: parsed.supportTiers || DEFAULT_SITE_CONTENT.supportTiers,
+      supportTiers: parsed.supportTiers
+        ? parsed.supportTiers.map((tier: any, idx: number) => ({
+            ...DEFAULT_SITE_CONTENT.supportTiers[idx],
+            ...tier,
+            imageUrl: tier.imageUrl || DEFAULT_SITE_CONTENT.supportTiers[idx]?.imageUrl,
+          }))
+        : DEFAULT_SITE_CONTENT.supportTiers,
       celebrationPackages: parsed.celebrationPackages || DEFAULT_SITE_CONTENT.celebrationPackages,
       celebrationVideoCost: typeof parsed.celebrationVideoCost === "number" ? parsed.celebrationVideoCost : DEFAULT_SITE_CONTENT.celebrationVideoCost,
       celebrationVideoHeading: parsed.celebrationVideoHeading || DEFAULT_SITE_CONTENT.celebrationVideoHeading,

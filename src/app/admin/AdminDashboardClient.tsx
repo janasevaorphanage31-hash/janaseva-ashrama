@@ -4464,6 +4464,49 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
                               className="w-full rounded-xl border border-teal-900/15 bg-white px-2.5 py-1.5 text-xs text-teal-950"
                             />
                           </div>
+
+                          <div className="sm:col-span-2 space-y-1.5">
+                            <label className="block text-[11px] font-bold text-teal-900/70">
+                              Tier Background Photo / Image URL:
+                            </label>
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="text"
+                                value={tier.imageUrl || ""}
+                                placeholder="/media/annadana-hall-hd.jpg or https://..."
+                                onChange={(e) => handleUpdateTier(tierIdx, { imageUrl: e.target.value })}
+                                className="w-full rounded-xl border border-teal-900/15 bg-white px-2.5 py-1.5 text-xs text-teal-950 font-mono"
+                              />
+                              <label className="shrink-0 cursor-pointer rounded-xl bg-teal-900 px-3 py-1.5 text-xs font-bold text-white hover:bg-teal-800 transition flex items-center shadow-xs">
+                                Upload Photo
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  className="hidden"
+                                  onChange={async (e) => {
+                                    const f = e.target.files?.[0];
+                                    if (f) {
+                                      const url = await handleFileUpload(f, "images");
+                                      if (url) handleUpdateTier(tierIdx, { imageUrl: url });
+                                    }
+                                  }}
+                                />
+                              </label>
+                            </div>
+                            {tier.imageUrl && (
+                              <div className="mt-1 flex items-center gap-2">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                  src={tier.imageUrl}
+                                  alt={tier.title}
+                                  className="h-14 w-24 rounded-lg object-cover border border-teal-900/20 shadow-2xs"
+                                />
+                                <span className="text-[10px] text-teal-900/60 font-mono truncate">
+                                  {tier.imageUrl}
+                                </span>
+                              </div>
+                            )}
+                          </div>
                         </div>
 
                         {/* Pricing Options */}

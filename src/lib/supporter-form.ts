@@ -13,6 +13,7 @@ export interface SupporterCategory {
   kannadaTitle: string;
   desc: string;
   icon: string;
+  imageUrl?: string;
   options: SupporterOption[];
 }
 
@@ -24,6 +25,7 @@ export const SUPPORTER_CATEGORIES: SupporterCategory[] = [
     kannadaTitle: "ಎಲ್ಲಾ ಮಕ್ಕಳಿಗೆ ಒಂದು ದಿನದ ಊಟ",
     desc: "Wholesome daily Annadana: hot breakfast, nutritious lunch, evening snacks & dinner for all 25 children.",
     icon: "🍲",
+    imageUrl: "/media/annadana-hall-hd.jpg",
     options: [
       { id: "all_children", label: "Full Day (All Children)", subLabel: "Breakfast + Lunch + Dinner", amount: 4500, isPopular: true },
       { id: "two_times", label: "Two Times", subLabel: "Lunch & Dinner for all boys", amount: 3000 },
@@ -37,6 +39,7 @@ export const SUPPORTER_CATEGORIES: SupporterCategory[] = [
     kannadaTitle: "ಮಕ್ಕಳಿಗೆ ಒಂದು ತಿಂಗಳ ಊಟ",
     desc: "Sponsor monthly grocery supplies (Sona Masoori rice, toor dal, fresh vegetables, milk & fruits) for resident children.",
     icon: "🍚",
+    imageUrl: "/media/pantry.jpg",
     options: [
       { id: "4_children", label: "4 Children (1 Month)", subLabel: "Full grocery support", amount: 6000, isPopular: true },
       { id: "2_children", label: "2 Children (1 Month)", subLabel: "Essential ration kit", amount: 4000 },
@@ -50,6 +53,7 @@ export const SUPPORTER_CATEGORIES: SupporterCategory[] = [
     kannadaTitle: "ಮಕ್ಕಳಿಗೆ ಬಟ್ಟೆ ಜೋಡಿ",
     desc: "Provide durable everyday cotton outfits, traditional festival wear, and daily clothing sets for boys.",
     icon: "👕",
+    imageUrl: "/media/boys-group-red-assembly.jpg",
     options: [
       { id: "8_children", label: "8 Children (1 Set Cloth)", subLabel: "Full wardrobe refresh", amount: 4800, isPopular: true },
       { id: "6_children", label: "6 Children (1 Set Cloth)", subLabel: "Cloth sets for 6 boys", amount: 3600 },
@@ -63,6 +67,7 @@ export const SUPPORTER_CATEGORIES: SupporterCategory[] = [
     kannadaTitle: "ಒಂದು ತಿಂಗಳ ವಿದ್ಯಾಭ್ಯಾಸ",
     desc: "Sponsor monthly tuition, notebooks, stationery, exam preparation, and evening coaching classes.",
     icon: "📚",
+    imageUrl: "/media/learning.jpg",
     options: [
       { id: "12_children", label: "12 Children (1 Month)", subLabel: "Batch tuition support", amount: 9600, isPopular: true },
       { id: "8_children", label: "8 Children (1 Month)", subLabel: "8 boys schooling & kits", amount: 6400 },
@@ -76,6 +81,7 @@ export const SUPPORTER_CATEGORIES: SupporterCategory[] = [
     kannadaTitle: "ಒಂದು ವರ್ಷದ ಸಂಪೂರ್ಣ ಶಿಕ್ಷಣ",
     desc: "Annual educational sponsorship covering full school fees, textbook bundles, school bags, shoes, and mentorship.",
     icon: "🎓",
+    imageUrl: "/media/abacus-math-class.jpg",
     options: [
       { id: "3_children", label: "3 Children (Full Year)", subLabel: "3 boys complete academic year", amount: 28800, isPopular: true },
       { id: "2_children", label: "2 Children (Full Year)", subLabel: "2 boys full school year", amount: 19200 },

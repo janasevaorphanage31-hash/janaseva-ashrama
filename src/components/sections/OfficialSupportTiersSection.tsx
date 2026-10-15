@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { formatINR } from "@/lib/site";
+import { formatINR, BANK_DETAILS } from "@/lib/site";
 import { SUPPORTER_CATEGORIES } from "@/lib/supporter-form";
+import type { BankDetailsItem } from "@/lib/site-content";
 import { useCart } from "../CartProvider";
 import { track } from "@/lib/track";
 
@@ -168,11 +169,97 @@ export const SCHEME_PRICE_CARDS = [
 
 export function OfficialSupportTiersSection({
   tiers,
+  bankDetails,
 }: {
   tiers?: typeof SUPPORTER_CATEGORIES;
+  bankDetails?: BankDetailsItem;
 } = {}) {
   const activeCategories = tiers && tiers.length > 0 ? tiers : SUPPORTER_CATEGORIES;
+  const activeBank = bankDetails || {
+    accountHolder: BANK_DETAILS.accountName,
+    accountNumber: BANK_DETAILS.accountNumber,
+    ifsc: BANK_DETAILS.ifscCode,
+    bankName: BANK_DETAILS.bankName,
+    branch: BANK_DETAILS.branch,
+  };
   const { openBottomDonate, setQty, qty } = useCart();
+
+  // Dynamically compute Scheme Price Selector cards based on activeCategories
+  const schemePriceCards = useMemo(() => {
+    const foodDay = activeCategories.find((c) => c.id === "food_one_day");
+    const foodMonth = activeCategories.find((c) => c.id === "food_one_month");
+    const cloth = activeCategories.find((c) => c.id === "cloth_one_set");
+    const eduMonth = activeCategories.find((c) => c.id === "education_one_month");
+
+    const clothOpt3 = cloth?.options?.find((o) => o.id === "3_children") || cloth?.options?.[2] || cloth?.options?.[0];
+    const foodMonthOpt1 = foodMonth?.options?.find((o) => o.id === "1_child") || foodMonth?.options?.[2];
+    const foodDayOpt1 = foodDay?.options?.find((o) => o.id === "one_time") || foodDay?.options?.[2];
+    const foodDayOpt2 = foodDay?.options?.find((o) => o.id === "two_times") || foodDay?.options?.[1];
+    const foodDayOptFull = foodDay?.options?.find((o) => o.id === "all_children") || foodDay?.options?.[0];
+    const foodMonthOpt4 = foodMonth?.options?.find((o) => o.id === "4_children") || foodMonth?.options?.[0];
+    const eduMonthOpt12 = eduMonth?.options?.find((o) => o.id === "12_children") || eduMonth?.options?.[0];
+
+    return [
+      {
+        amount: clothOpt3?.amount || 1800,
+        label: clothOpt3?.label ? `Clothes · ${clothOpt3.label.replace(" (1 Set Cloth)", "")}` : "Clothes · 3 Boys",
+        sub: clothOpt3?.subLabel || "3 cotton outfit sets",
+        image: cloth?.imageUrl || TIER_IMAGES.cloth_one_set,
+        catId: "cloth_one_set",
+        optId: clothOpt3?.id || "3_children",
+      },
+      {
+        amount: foodMonthOpt1?.amount || 2000,
+        label: foodMonthOpt1?.label ? `Ration · ${foodMonthOpt1.label.replace(" (1 Month)", "")}` : "1 Mo Ration · 1 Boy",
+        sub: foodMonthOpt1?.subLabel || "Rice, dal & groceries",
+        image: foodMonth?.imageUrl || TIER_IMAGES.food_one_month,
+        catId: "food_one_month",
+        optId: foodMonthOpt1?.id || "1_child",
+      },
+      {
+        amount: foodDayOpt1?.amount || 2500,
+        label: foodDayOpt1?.label || "1 Meal · 25 Boys",
+        sub: foodDayOpt1?.subLabel || "Hot lunch with sweet payasam",
+        image: foodDay?.imageUrl || TIER_IMAGES.food_one_day,
+        catId: "food_one_day",
+        optId: foodDayOpt1?.id || "one_time",
+      },
+      {
+        amount: foodDayOpt2?.amount || 3000,
+        label: foodDayOpt2?.label || "2 Meals · 25 Boys",
+        sub: foodDayOpt2?.subLabel || "Lunch & dinner feast",
+        image: "/media/banana-leaf-feast.jpg",
+        catId: "food_one_day",
+        optId: foodDayOpt2?.id || "two_times",
+      },
+      {
+        amount: foodDayOptFull?.amount || 4500,
+        label: foodDayOptFull?.label ? foodDayOptFull.label.replace(" (All Children)", " · 25 Boys") : "Full Day · 25 Boys",
+        sub: foodDayOptFull?.subLabel || "All 4 daily meals (B/L/S/D)",
+        badge: "Most Chosen ⭐",
+        image: foodDay?.imageUrl || TIER_IMAGES.food_one_day,
+        catId: "food_one_day",
+        optId: foodDayOptFull?.id || "all_children",
+      },
+      {
+        amount: foodMonthOpt4?.amount || 6000,
+        label: foodMonthOpt4?.label ? `Ration · ${foodMonthOpt4.label.replace(" (1 Month)", "")}` : "1 Mo Ration · 4 Boys",
+        sub: foodMonthOpt4?.subLabel || "Monthly pantry provisions",
+        badge: "Popular Care",
+        image: foodMonth?.imageUrl || TIER_IMAGES.food_one_month,
+        catId: "food_one_month",
+        optId: foodMonthOpt4?.id || "4_children",
+      },
+      {
+        amount: eduMonthOpt12?.amount || 9600,
+        label: eduMonthOpt12?.label ? `Schooling · ${eduMonthOpt12.label.replace(" (1 Month)", "")}` : "Schooling · 12 Boys",
+        sub: eduMonthOpt12?.subLabel || "Monthly education & kits",
+        image: eduMonth?.imageUrl || TIER_IMAGES.education_one_month,
+        catId: "education_one_month",
+        optId: eduMonthOpt12?.id || "12_children",
+      },
+    ];
+  }, [activeCategories]);
 
   // Active category filter tab: "all" or specific category ID or "bank_wire"
   const [activeTab, setActiveTab] = useState<string>("all");
@@ -368,7 +455,7 @@ export function OfficialSupportTiersSection({
 
           {/* Photo-backed Scheme Cards */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-2 sm:gap-2.5">
-            {SCHEME_PRICE_CARDS.map((card) => {
+            {schemePriceCards.map((card) => {
               const isSelected = selectedExactAmount === card.amount;
               return (
                 <button
@@ -480,7 +567,7 @@ export function OfficialSupportTiersSection({
             const currentOptionId = selectedOptions[cat.id] || cat.options[0].id;
             const currentOption = cat.options.find((o) => o.id === currentOptionId) || cat.options[0];
             const isFlagship = cat.id === "food_one_day";
-            const imgUrl = TIER_IMAGES[cat.id] || "/media/annadana-hall-hd.jpg";
+            const imgUrl = cat.imageUrl || TIER_IMAGES[cat.id] || "/media/annadana-hall-hd.jpg";
             const currentSlug = TIER_SLUG_MAP[cat.id]?.[currentOptionId];
             const inCartQty = currentSlug ? qty[currentSlug] || 0 : 0;
             const currentPill = meta?.pillOptions.find((p) => p.id === currentOptionId);
@@ -651,21 +738,21 @@ export function OfficialSupportTiersSection({
                 <div className="mt-3 rounded-xl bg-white/10 p-3 border border-white/10 space-y-2 text-xs">
                   <div>
                     <span className="text-[10px] text-white/60 uppercase block">Account Name</span>
-                    <span className="font-bold">JANA SEVA SAMRUDDI EDUCATION AND RURAL DEVELOPMENT SOCIETY</span>
+                    <span className="font-bold">{activeBank.accountHolder}</span>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
                       <span className="text-[10px] text-white/60 uppercase block">Account No</span>
-                      <span className="font-mono font-bold text-amber-300">913020019616990</span>
+                      <span className="font-mono font-bold text-amber-300">{activeBank.accountNumber}</span>
                     </div>
                     <div>
                       <span className="text-[10px] text-white/60 uppercase block">IFSC Code</span>
-                      <span className="font-mono font-bold text-amber-300">UTIB0000102</span>
+                      <span className="font-mono font-bold text-amber-300">{activeBank.ifsc}</span>
                     </div>
                   </div>
                   <div>
                     <span className="text-[10px] text-white/60 uppercase block">Bank &amp; Branch</span>
-                    <span>Axis Bank, Banashankari 2nd Stage, Bangalore</span>
+                    <span>{activeBank.bankName}, {activeBank.branch}</span>
                   </div>
                 </div>
               </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import type { SiteContentMap } from "@/lib/site-content";
 import { track } from "@/lib/track";
@@ -16,13 +16,26 @@ export interface ShagunTier {
   isPopular?: boolean;
 }
 
-const HERO_SHAGUN_TIERS = [
+export interface HeroSchemeTier {
+  amt: number;
+  label: string;
+  sub: string;
+  badge?: string;
+  image: string;
+  impact: string;
+  categoryId?: string;
+  optionId?: string;
+}
+
+const HERO_SHAGUN_TIERS: HeroSchemeTier[] = [
   {
     amt: 1800,
     label: "Clothes · 3 Boys",
     sub: "Festive & daily cotton sets",
     image: "/media/boys-group-red-assembly.jpg",
     impact: "Complete cotton clothing sets and festival wear for 3 resident boys",
+    categoryId: "cloth_one_set",
+    optionId: "3_children",
   },
   {
     amt: 2500,
@@ -30,6 +43,8 @@ const HERO_SHAGUN_TIERS = [
     sub: "Hot lunch with sweet payasam",
     image: "/media/annadana-hall-hd.jpg",
     impact: "Steaming hot lunch feast with rice, sambar, fresh curd & sweet payasam for all 25 boys",
+    categoryId: "food_one_day",
+    optionId: "one_time",
   },
   {
     amt: 3000,
@@ -37,6 +52,8 @@ const HERO_SHAGUN_TIERS = [
     sub: "Lunch & dinner for all 25 boys",
     image: "/media/banana-leaf-feast.jpg",
     impact: "2 full hot meals (lunch and dinner) for all 25 resident boys",
+    categoryId: "food_one_day",
+    optionId: "two_times",
   },
   {
     amt: 4500,
@@ -45,6 +62,8 @@ const HERO_SHAGUN_TIERS = [
     badge: "Most Chosen ⭐",
     image: "/media/annadana-hall-hd.jpg",
     impact: "Wholesome 4-meal Annadana (breakfast, lunch, evening snacks & dinner) for all 25 boys",
+    categoryId: "food_one_day",
+    optionId: "all_children",
   },
   {
     amt: 6000,
@@ -53,6 +72,8 @@ const HERO_SHAGUN_TIERS = [
     badge: "Monthly Care",
     image: "/media/pantry.jpg",
     impact: "Essential 1-month kitchen groceries, toor dal, fresh vegetables & milk for 4 resident boys",
+    categoryId: "food_one_month",
+    optionId: "4_children",
   },
 ];
 
@@ -63,8 +84,75 @@ export function CinematicHero({ content }: { content?: Partial<SiteContentMap> }
   const [isMuted, setIsMuted] = useState(true);
   const [fitMode, setFitMode] = useState<"cover" | "contain">("cover");
 
+  // Dynamically derive 5 Scheme Cards from Admin CMS content.supportTiers
+  const heroTiers: HeroSchemeTier[] = useMemo(() => {
+    const tiers = content?.supportTiers;
+    if (!tiers || tiers.length === 0) return HERO_SHAGUN_TIERS;
+
+    const foodDay = tiers.find((t) => t.id === "food_one_day");
+    const foodMonth = tiers.find((t) => t.id === "food_one_month");
+    const cloth = tiers.find((t) => t.id === "cloth_one_set");
+
+    const optCloth3 = cloth?.options?.find((o) => o.id === "3_children") || cloth?.options?.[2] || cloth?.options?.[0];
+    const optFood1 = foodDay?.options?.find((o) => o.id === "one_time") || foodDay?.options?.[2];
+    const optFood2 = foodDay?.options?.find((o) => o.id === "two_times") || foodDay?.options?.[1];
+    const optFoodFull = foodDay?.options?.find((o) => o.id === "all_children") || foodDay?.options?.[0];
+    const optRation4 = foodMonth?.options?.find((o) => o.id === "4_children") || foodMonth?.options?.[0];
+
+    return [
+      {
+        amt: optCloth3?.amount || 1800,
+        label: optCloth3?.label ? `Clothes · ${optCloth3.label.replace(" (1 Set Cloth)", "")}` : "Clothes · 3 Boys",
+        sub: optCloth3?.subLabel || "Festive & daily cotton sets",
+        image: cloth?.imageUrl || "/media/boys-group-red-assembly.jpg",
+        impact: cloth?.desc || "Complete cotton clothing sets and festival wear for resident boys",
+        categoryId: "cloth_one_set",
+        optionId: optCloth3?.id || "3_children",
+      },
+      {
+        amt: optFood1?.amount || 2500,
+        label: optFood1?.label || "1 Meal · 25 Boys",
+        sub: optFood1?.subLabel || "Hot lunch with sweet payasam",
+        image: foodDay?.imageUrl || "/media/annadana-hall-hd.jpg",
+        impact: "Steaming hot lunch feast with rice, sambar, fresh curd & sweet payasam for all 25 boys",
+        categoryId: "food_one_day",
+        optionId: optFood1?.id || "one_time",
+      },
+      {
+        amt: optFood2?.amount || 3000,
+        label: optFood2?.label || "2 Meals · 25 Boys",
+        sub: optFood2?.subLabel || "Lunch & dinner for all 25 boys",
+        image: "/media/banana-leaf-feast.jpg",
+        impact: "2 full hot meals (lunch and dinner) for all 25 resident boys",
+        categoryId: "food_one_day",
+        optionId: optFood2?.id || "two_times",
+      },
+      {
+        amt: optFoodFull?.amount || 4500,
+        label: optFoodFull?.label ? optFoodFull.label.replace(" (All Children)", " · 25 Boys") : "Full Day · 25 Boys",
+        sub: optFoodFull?.subLabel || "All 4 meals (Breakfast to Dinner)",
+        badge: "Most Chosen ⭐",
+        image: foodDay?.imageUrl || "/media/annadana-hall-hd.jpg",
+        impact: foodDay?.desc || "Wholesome 4-meal Annadana (breakfast, lunch, evening snacks & dinner) for all 25 boys",
+        categoryId: "food_one_day",
+        optionId: optFoodFull?.id || "all_children",
+      },
+      {
+        amt: optRation4?.amount || 6000,
+        label: optRation4?.label ? `Month Ration · ${optRation4.label.replace(" (1 Month)", "")}` : "Month Ration · 4 Boys",
+        sub: optRation4?.subLabel || "Rice, dal, milk & vegetables",
+        badge: "Monthly Care",
+        image: foodMonth?.imageUrl || "/media/pantry.jpg",
+        impact: foodMonth?.desc || "Essential 1-month kitchen groceries, toor dal, fresh vegetables & milk for resident boys",
+        categoryId: "food_one_month",
+        optionId: optRation4?.id || "4_children",
+      },
+    ];
+  }, [content?.supportTiers]);
+
   // Sponsor 25 Boys Scheme State (Anchored at ₹4,500 flagship Full Day Food)
-  const [selectedAmt, setSelectedAmt] = useState<number>(4500);
+  const defaultAmt = heroTiers.find((t) => t.badge?.includes("⭐"))?.amt || 4500;
+  const [selectedAmt, setSelectedAmt] = useState<number>(defaultAmt);
   const [customAmt, setCustomAmt] = useState<string>("");
 
   const posterSrc = content?.heroPosterUrl || "/media/poster-desktop.jpg";
@@ -98,7 +186,7 @@ export function CinematicHero({ content }: { content?: Partial<SiteContentMap> }
   };
 
   const effectiveAmount = customAmt && Number(customAmt) > 0 ? Number(customAmt) : selectedAmt;
-  const activeTier = HERO_SHAGUN_TIERS.find((t) => t.amt === effectiveAmount);
+  const activeTier = heroTiers.find((t) => t.amt === effectiveAmount);
 
   const handleHeroDonate = () => {
     track("hero_quick_donate_click", {
@@ -107,7 +195,7 @@ export function CinematicHero({ content }: { content?: Partial<SiteContentMap> }
     });
     openBottomDonate(
       effectiveAmount,
-      "food_one_day",
+      activeTier?.categoryId || "food_one_day",
       activeTier ? `${activeTier.label} (${formatINR(effectiveAmount)}) for 25 Boys` : `Sponsor 25 Boys (${formatINR(effectiveAmount)})`,
       "Sponsor 25 Boys (Form 28)"
     );
@@ -132,7 +220,7 @@ export function CinematicHero({ content }: { content?: Partial<SiteContentMap> }
           }`}
         />
 
-        {/* Autoplay edge-to-edge looping video */}
+        {/* Autoplay edge-to-edge looping video (metadata preload for fast initial paint) */}
         <video
           key={videoSrc}
           ref={videoRef}
@@ -141,7 +229,7 @@ export function CinematicHero({ content }: { content?: Partial<SiteContentMap> }
           muted={isMuted}
           loop
           playsInline
-          preload="auto"
+          preload="metadata"
           aria-hidden
           onLoadedData={() => setVideoReady(true)}
           onCanPlay={() => setVideoReady(true)}
@@ -241,7 +329,7 @@ export function CinematicHero({ content }: { content?: Partial<SiteContentMap> }
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-2.5">
-              {HERO_SHAGUN_TIERS.map((tier) => {
+              {heroTiers.map((tier) => {
                 const isSelected = effectiveAmount === tier.amt && !customAmt;
                 return (
                   <button

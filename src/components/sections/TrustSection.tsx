@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Chip, Container, Head, Section } from "../ui";
 import { BANK_DETAILS, SITE } from "@/lib/site";
+import type { SiteContentMap } from "@/lib/site-content";
 
 const TRUST_PILLARS = [
   {
@@ -65,8 +66,10 @@ const TRUST_PILLARS = [
   },
 ];
 
-export function TrustSection() {
+export function TrustSection({ content }: { content?: Partial<SiteContentMap> } = {}) {
   const marqueePillars = [...TRUST_PILLARS, ...TRUST_PILLARS];
+  const phone = content?.contactPhone || SITE.phone;
+  const whatsappUrl = content?.socialWhatsapp || `https://wa.me/${SITE.whatsapp}`;
 
   return (
     <Section id="trust" tone="white" className="overflow-hidden py-12 md:py-16">
@@ -133,16 +136,16 @@ export function TrustSection() {
           </div>
           <div className="flex shrink-0 flex-wrap items-center gap-3">
             <a
-              href={`tel:${SITE.phone}`}
+              href={`tel:${phone}`}
               className="focus-ring inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-xs font-bold text-teal-900 hover:bg-gold transition shadow-xs"
             >
               <svg className="h-3.5 w-3.5 fill-current" viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M20 15.5c-1.2 0-2.4-.2-3.6-.6-.3-.1-.7 0-1 .2l-2.2 2.2c-2.8-1.4-5.1-3.8-6.6-6.6l2.2-2.2c.3-.3.4-.7.2-1-.4-1.1-.6-2.3-.6-3.5 0-.6-.4-1-1-1H4c-.6 0-1 .4-1 1 0 9.4 7.6 17 17 17 .6 0 1-.4 1-1v-3.5c0-.6-.4-1-1-1z" />
               </svg>
-              <span>Call {SITE.phone}</span>
+              <span>Call {phone}</span>
             </a>
             <a
-              href={`https://wa.me/${SITE.whatsapp}`}
+              href={whatsappUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="focus-ring inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white hover:bg-emerald-700 transition shadow-xs"

@@ -433,7 +433,10 @@ export function HomeSectionsHub({
       <div className="space-y-0">
         {/* ── CHAPTER 1: SPONSOR 25 BOYS (OFFICIAL 5 SUPPORT TIERS - 90% FOCUS) ── */}
         <section id="section-tiers" className="scroll-mt-24 sm:scroll-mt-28">
-          <OfficialSupportTiersSection tiers={siteContent?.supportTiers} />
+          <OfficialSupportTiersSection
+            tiers={siteContent?.supportTiers}
+            bankDetails={siteContent?.bankDetails}
+          />
         </section>
 
         {/* ── CHAPTER 2: CELEBRATE BIRTHDAYS & MILESTONES ── */}
@@ -472,7 +475,7 @@ export function HomeSectionsHub({
         {/* ── CHAPTER 6: 80G TRUST, LEGAL ACCREDITATIONS & BANKING ── */}
         <section id="section-trust" className="scroll-mt-24 sm:scroll-mt-28">
           <TransparencySection docs={docs} />
-          <TrustSection />
+          <TrustSection content={siteContent} />
           <VerifiedImpactSection metrics={metrics} totals={totals} />
           <section id="faq" className="scroll-mt-14 py-10 md:py-16 bg-sand/35 w-full max-w-full overflow-hidden">
             <Container>
