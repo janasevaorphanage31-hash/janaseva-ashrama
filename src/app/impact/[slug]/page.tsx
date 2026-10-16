@@ -16,10 +16,16 @@ export async function generateMetadata({
   return {
     title: `${item.name} (${formatINR(item.unitPrice)}) | Janaseva Ashrama`,
     description: `${item.description} Transparent, server-verified giving for Janaseva Ashrama.`,
+    alternates: {
+      canonical: `${SITE.url}/impact/${item.slug}`,
+    },
     openGraph: {
       title: `${item.name} - Janaseva Ashrama`,
       description: item.description,
-      images: item.imageUrl ? [{ url: item.imageUrl }] : undefined,
+      url: `${SITE.url}/impact/${item.slug}`,
+      images: item.imageUrl
+        ? [{ url: item.imageUrl.startsWith("http") ? item.imageUrl : `${SITE.url}${item.imageUrl}` }]
+        : undefined,
     },
   };
 }

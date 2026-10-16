@@ -1,18 +1,13 @@
 import type { MetadataRoute } from "next";
-import { headers } from "next/headers";
 import { and, eq, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { campaigns } from "@/db/schema";
+import { SITE } from "@/lib/site";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 86400; // 24 hours
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  let host = "www.janasevaashrama.org";
-  try {
-    const h = await headers();
-    host = h.get("x-forwarded-host") || h.get("host") || host;
-  } catch {}
-  const baseUrl = `https://${host}`;
+  const baseUrl = SITE.url; // "https://www.janasevaashrama.org"
 
   const staticRoutes = [
     { path: "", priority: 1.0, changeFrequency: "daily" as const },

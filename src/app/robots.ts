@@ -1,15 +1,10 @@
 import type { MetadataRoute } from "next";
-import { headers } from "next/headers";
+import { SITE } from "@/lib/site";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 86400; // 24 hours
 
 export default async function robots(): Promise<MetadataRoute.Robots> {
-  let host = "www.janasevaashrama.org";
-  try {
-    const h = await headers();
-    host = h.get("x-forwarded-host") || h.get("host") || host;
-  } catch {}
-  const baseUrl = `https://${host}`;
+  const baseUrl = SITE.url; // "https://www.janasevaashrama.org"
   const protectedRoutes = [
     "/admin",
     "/admin/*",

@@ -274,6 +274,22 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         },
       },
       {
+        "@type": "VideoObject",
+        "@id": `${SITE.url}/#hero-video`,
+        name: "Daily Annadana Prayers and Meals for 25 Boys at Janaseva Ashrama Bangalore",
+        description:
+          "Authentic video of 25 resident boys reciting daily prayers before receiving hot, nutritious Annadana meals at Janaseva Ashrama in Turahalli, Bengaluru.",
+        thumbnailUrl: [
+          `${SITE.url}/media/janaseva-ashrama-original.jpg`,
+          `${SITE.url}/media/annadana-hall-hd.jpg`,
+        ],
+        uploadDate: "2024-01-15T08:00:00+05:30",
+        duration: "PT35S",
+        contentUrl: `${SITE.url}/media/video-chant-prayer.mp4`,
+        embedUrl: `${SITE.url}/#video`,
+        publisher: { "@id": `${SITE.url}/#organization` },
+      },
+      {
         "@type": "FAQPage",
         "@id": `${SITE.url}/#faq`,
         mainEntity: FAQ_ITEMS.map((item) => ({
