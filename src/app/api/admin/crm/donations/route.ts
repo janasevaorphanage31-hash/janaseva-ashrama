@@ -85,8 +85,19 @@ export async function GET(req: Request) {
     })
     .from(donations);
 
+  const [filterCountRow] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(donations)
+    .where(whereClause || sql`true`);
+
   return NextResponse.json({
     items,
+    pagination: {
+      page,
+      limit,
+      totalCount: filterCountRow?.count ?? 0,
+      totalPages: Math.max(1, Math.ceil((filterCountRow?.count ?? 0) / limit)),
+    },
     totals: {
       totalRaised: totals.totalRaised,
       paidCount: totals.paidCount,

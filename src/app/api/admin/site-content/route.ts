@@ -26,8 +26,10 @@ export async function POST(req: Request) {
   // Revalidate Next.js cache so live website updates immediately
   revalidatePath("/", "layout");
   revalidatePath("/");
+  revalidatePath("/giving-basket");
+  revalidatePath("/make-a-day-matter");
   revalidatePath("/celebrate-birthday");
-  revalidatePath("/admin/content");
+  revalidatePath("/admin");
 
   const updated = await getSiteContentMap();
   return NextResponse.json({ ok: true, content: updated });

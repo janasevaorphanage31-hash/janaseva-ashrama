@@ -89,9 +89,55 @@ function generateTierOptionId(): string {
 
 export default function AdminDashboardClient({ initialSession }: AdminDashboardProps) {
   const [activeTab, setActiveTab] = useState<Tab>("analytics");
+  const [refreshing, setRefreshing] = useState(false);
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [notification, setNotification] = useState("");
   const [valModalOpen, setValModalOpen] = useState(false);
   const [valModalMsg, setValModalMsg] = useState("");
+
+  // Sync tab with URL search parameter on mount & updates
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const tabParam = params.get("tab") as Tab | null;
+    const validTabs: Tab[] = [
+      "analytics",
+      "crm",
+      "whatsapp",
+      "telecallers",
+      "subscriptions",
+      "marketing",
+      "celebrations",
+      "content",
+      "media",
+      "catalogs",
+      "documents",
+      "community",
+      "team",
+    ];
+    if (tabParam && validTabs.includes(tabParam)) {
+      setActiveTab(tabParam);
+    }
+  }, []);
+
+  function handleTabChange(tab: Tab) {
+    setActiveTab(tab);
+    setNotification("");
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      url.searchParams.set("tab", tab);
+      window.history.replaceState({}, "", url.toString());
+    }
+  }
+
+  function copyToClipboard(key: string, text: string) {
+    if (!text || typeof navigator === "undefined" || !navigator.clipboard) return;
+    navigator.clipboard.writeText(text);
+    setCopiedKey(key);
+    setTimeout(() => {
+      setCopiedKey((curr) => (curr === key ? null : curr));
+    }, 2000);
+  }
 
   // Business Plan & Strategy State
   const [businessPlanOpen, setBusinessPlanOpen] = useState(false);
@@ -110,7 +156,18 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
   const [crmLoading, setCrmLoading] = useState(false);
   const [crmSearch, setCrmSearch] = useState("");
   const [crmStatus, setCrmStatus] = useState("all");
-  const [crmTotals, setCrmTotals] = useState({ totalRaised: 0, paidCount: 0, totalCount: 0 });
+  const [crmPage, setCrmPage] = useState(1);
+  const [crmTotalPages, setCrmTotalPages] = useState(1);
+  const [crmTotalCount, setCrmTotalCount] = useState(0);
+  const [crmTotals, setCrmTotals] = useState({
+    totalRaised: 0,
+    paidCount: 0,
+    totalCount: 0,
+    onlineRaised: 0,
+    wireRaised: 0,
+    offlineRaised: 0,
+    panClaimedCount: 0,
+  });
   const [selectedDonation, setSelectedDonation] = useState<any | null>(null);
   const [offlineDonationModalOpen, setOfflineDonationModalOpen] = useState(false);
   const [offlineSubmitting, setOfflineSubmitting] = useState(false);
@@ -323,17 +380,22 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
     }
   }
 
-  // Load CRM data
-  async function loadCrmData() {
+  // Load CRM data with optional override params to eliminate race conditions
+  async function loadCrmData(page = crmPage, search = crmSearch, status = crmStatus, mode = crmMode) {
     setCrmLoading(true);
     try {
-      const q = encodeURIComponent(crmSearch.trim());
-      const s = encodeURIComponent(crmStatus);
-      const m = encodeURIComponent(crmMode);
-      const res = await fetch(`/api/admin/crm/donations?q=${q}&status=${s}&mode=${m}`, { cache: "no-store" });
+      const q = encodeURIComponent(search.trim());
+      const s = encodeURIComponent(status);
+      const m = encodeURIComponent(mode);
+      const res = await fetch(`/api/admin/crm/donations?q=${q}&status=${s}&mode=${m}&page=${page}&limit=25`, { cache: "no-store" });
       const data = await res.json();
       if (res.ok) {
         setDonations(data.items || []);
+        if (data.pagination) {
+          setCrmPage(data.pagination.page);
+          setCrmTotalPages(data.pagination.totalPages);
+          setCrmTotalCount(data.pagination.totalCount);
+        }
         setCrmTotals(
           data.totals || {
             totalRaised: 0,
@@ -350,8 +412,9 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
       }
     } catch {
       setNotification("Network error loading CRM data.");
+    } finally {
+      setCrmLoading(false);
     }
-    setCrmLoading(false);
   }
 
   // Delete CRM donation
@@ -1331,14 +1394,14 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
     }
   }
 
-  // Load Celebrations data
-  async function loadCelebrations() {
+  // Load Celebrations data with optional override params to eliminate race conditions
+  async function loadCelebrations(search = celebSearch, status = celebStatus, occ = celebOccasion) {
     setCelebLoading(true);
     try {
-      const q = encodeURIComponent(celebSearch.trim());
-      const s = encodeURIComponent(celebStatus);
-      const occ = encodeURIComponent(celebOccasion);
-      const res = await fetch(`/api/admin/celebrations?q=${q}&status=${s}&occasion=${occ}`, { cache: "no-store" });
+      const q = encodeURIComponent(search.trim());
+      const s = encodeURIComponent(status);
+      const occEnc = encodeURIComponent(occ);
+      const res = await fetch(`/api/admin/celebrations?q=${q}&status=${s}&occasion=${occEnc}`, { cache: "no-store" });
       const data = await res.json();
       if (res.ok) {
         setCelebrations(data.items || []);
@@ -1355,8 +1418,9 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
       }
     } catch {
       setNotification("Network error loading celebrations.");
+    } finally {
+      setCelebLoading(false);
     }
-    setCelebLoading(false);
   }
 
   // Update celebration status
@@ -1747,6 +1811,34 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
     }
   }
 
+  async function handleRefreshActiveTab() {
+    setRefreshing(true);
+    try {
+      if (activeTab === "analytics") await loadAnalytics();
+      else if (activeTab === "crm") await loadCrmData(crmPage);
+      else if (activeTab === "celebrations") await loadCelebrations();
+      else if (activeTab === "content" || activeTab === "media") {
+        await loadSiteContent();
+        await loadImpactMetrics();
+        if (activeTab === "media") {
+          await loadTodayUpdatesList();
+          await loadMediaAssets();
+        }
+      } else if (activeTab === "catalogs") await loadCatalogs();
+      else if (activeTab === "documents") await loadDocuments();
+      else if (activeTab === "community") {
+        await loadVolunteers();
+        await loadSiteContent();
+      } else if (activeTab === "team") await loadTeamMembers();
+      else if (activeTab === "marketing") await loadCampaigns();
+      setNotification(`Refreshed ${activeTab.toUpperCase()} data.`);
+    } catch {
+      setNotification("Failed to refresh data.");
+    } finally {
+      setRefreshing(false);
+    }
+  }
+
   useEffect(() => {
     const t = setTimeout(() => {
       if (activeTab === "crm") void loadCrmData();
@@ -1790,6 +1882,16 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+            <button
+              type="button"
+              disabled={refreshing}
+              onClick={handleRefreshActiveTab}
+              className="rounded-xl bg-white/10 px-3 py-2 text-xs font-bold text-white hover:bg-white/20 transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              title="Refresh data for current tab"
+            >
+              <span className={refreshing ? "animate-spin" : ""}>🔄</span>
+              <span>{refreshing ? "Refreshing..." : "Refresh"}</span>
+            </button>
             <button
               type="button"
               onClick={() => setDailyPhotoModalOpen(true)}
@@ -1852,7 +1954,7 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
         <button
           type="button"
           onClick={() => {
-            setActiveTab("content");
+            handleTabChange("content");
             setContentSubtab("meals");
           }}
           className="group relative flex flex-col items-start gap-1 rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-700 p-3.5 text-left text-white shadow-md active:scale-95 transition cursor-pointer overflow-hidden"
@@ -1868,7 +1970,7 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
         <button
           type="button"
           onClick={() => {
-            setActiveTab("content");
+            handleTabChange("content");
             setContentSubtab("hero");
           }}
           className="group relative flex flex-col items-start gap-1 rounded-2xl bg-gradient-to-br from-sky-600 to-indigo-700 p-3.5 text-left text-white shadow-md active:scale-95 transition cursor-pointer overflow-hidden"
@@ -1884,7 +1986,7 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
         <button
           type="button"
           onClick={() => {
-            setActiveTab("documents");
+            handleTabChange("documents");
             setNewDocOpen(true);
           }}
           className="group relative flex flex-col items-start gap-1 rounded-2xl bg-gradient-to-br from-purple-600 to-slate-800 p-3.5 text-left text-white shadow-md active:scale-95 transition cursor-pointer overflow-hidden"
@@ -1900,7 +2002,7 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
         <button
           type="button"
           onClick={() => {
-            setActiveTab("marketing");
+            handleTabChange("marketing");
           }}
           className="group relative flex flex-col items-start gap-1 rounded-2xl bg-gradient-to-br from-teal-700 to-emerald-900 p-3.5 text-left text-white shadow-md active:scale-95 transition cursor-pointer overflow-hidden"
         >
@@ -1915,7 +2017,7 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
         <button
           type="button"
           onClick={() => {
-            setActiveTab("whatsapp");
+            handleTabChange("whatsapp");
           }}
           className="group relative flex flex-col items-start gap-1 rounded-2xl bg-gradient-to-br from-emerald-600 to-green-700 p-3.5 text-left text-white shadow-md active:scale-95 transition cursor-pointer overflow-hidden"
         >
@@ -1928,41 +2030,104 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
         </button>
       </div>
 
-      {/* Main Tab Controller - Horizontally Scrollable on Mobile for Native App Feel */}
-      <div className="flex overflow-x-auto no-scrollbar scrollbar-none gap-2 border-b border-teal-900/10 pb-2.5 pt-1 -mx-2 px-2 sm:mx-0 sm:px-0 sm:flex-wrap">
-        {[
-          { id: "analytics", label: "📊 Analytics" },
-          { id: "crm", label: "💳 Donor CRM" },
-          { id: "whatsapp", label: "🟢 WhatsApp CRM" },
-          { id: "telecallers", label: "📞 Telecaller CRM (15)" },
-          { id: "subscriptions", label: "🔁 Subscriptions" },
-          { id: "marketing", label: "🤖 AI Marketing & Ads" },
-          { id: "celebrations", label: "🎂 Celebrations" },
-          { id: "content", label: "📝 Website Content" },
-          { id: "media", label: "🎥 Media & Today" },
-          { id: "catalogs", label: "🛍️ Giving Basket" },
-          { id: "documents", label: "📜 80G Documents" },
-          { id: "community", label: "🤝 Volunteers" },
-          ...(initialSession.user.role === "SUPER_ADMIN"
-            ? [{ id: "team", label: "👥 Team Roles" }]
-            : []),
-        ].map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            onClick={() => {
-              setActiveTab(tab.id as Tab);
-              setNotification("");
-            }}
-            className={`shrink-0 whitespace-nowrap rounded-xl px-3.5 py-2 text-xs sm:text-sm font-bold transition active:scale-95 cursor-pointer ${
-              activeTab === tab.id
-                ? "bg-teal-950 text-white shadow-md ring-2 ring-saffron/40"
-                : "bg-white text-teal-950 ring-1 ring-teal-900/10 hover:bg-cream"
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
+      {/* Modern Grouped Tab Controller - Horizontal Scroll on All Viewports */}
+      <div className="rounded-2xl bg-white p-2 sm:p-2.5 shadow-xs border border-teal-900/10">
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar scrollbar-none pb-1">
+          {/* Operations Group */}
+          <div className="flex items-center gap-1.5 shrink-0 bg-teal-50/80 p-1 rounded-xl border border-teal-900/10">
+            <span className="text-[10px] font-black uppercase text-teal-900/60 px-1.5 tracking-wider hidden md:inline">Operations</span>
+            {[
+              { id: "analytics", label: "📊 Analytics" },
+              { id: "crm", label: "💳 Donor CRM" },
+              { id: "whatsapp", label: "🟢 WhatsApp CRM" },
+              { id: "telecallers", label: "📞 Telecaller CRM (15)" },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => handleTabChange(tab.id as Tab)}
+                className={`shrink-0 whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-bold transition active:scale-95 cursor-pointer ${
+                  activeTab === tab.id
+                    ? "bg-teal-950 text-white shadow-xs ring-2 ring-saffron"
+                    : "bg-white text-teal-950/80 ring-1 ring-teal-900/10 hover:bg-cream hover:text-teal-950"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Impact Group */}
+          <div className="flex items-center gap-1.5 shrink-0 bg-amber-50/80 p-1 rounded-xl border border-amber-900/10">
+            <span className="text-[10px] font-black uppercase text-amber-900/60 px-1.5 tracking-wider hidden md:inline">Impact</span>
+            {[
+              { id: "celebrations", label: "🎂 Celebrations" },
+              { id: "subscriptions", label: "🔁 Subscriptions" },
+              { id: "catalogs", label: "🛍️ Giving Basket" },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => handleTabChange(tab.id as Tab)}
+                className={`shrink-0 whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-bold transition active:scale-95 cursor-pointer ${
+                  activeTab === tab.id
+                    ? "bg-teal-950 text-white shadow-xs ring-2 ring-saffron"
+                    : "bg-white text-teal-950/80 ring-1 ring-teal-900/10 hover:bg-cream hover:text-teal-950"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Site & Growth Group */}
+          <div className="flex items-center gap-1.5 shrink-0 bg-sky-50/80 p-1 rounded-xl border border-sky-900/10">
+            <span className="text-[10px] font-black uppercase text-sky-900/60 px-1.5 tracking-wider hidden md:inline">Site</span>
+            {[
+              { id: "content", label: "📝 Website Content" },
+              { id: "media", label: "🎥 Media & Today" },
+              { id: "marketing", label: "🤖 AI Marketing & Ads" },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => handleTabChange(tab.id as Tab)}
+                className={`shrink-0 whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-bold transition active:scale-95 cursor-pointer ${
+                  activeTab === tab.id
+                    ? "bg-teal-950 text-white shadow-xs ring-2 ring-saffron"
+                    : "bg-white text-teal-950/80 ring-1 ring-teal-900/10 hover:bg-cream hover:text-teal-950"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Trust & Team Group */}
+          <div className="flex items-center gap-1.5 shrink-0 bg-purple-50/80 p-1 rounded-xl border border-purple-900/10">
+            <span className="text-[10px] font-black uppercase text-purple-900/60 px-1.5 tracking-wider hidden md:inline">Trust</span>
+            {[
+              { id: "documents", label: "📜 80G Documents" },
+              { id: "community", label: "🤝 Volunteers" },
+              ...(initialSession.user.role === "SUPER_ADMIN"
+                ? [{ id: "team", label: "👥 Team Roles" }]
+                : []),
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => handleTabChange(tab.id as Tab)}
+                className={`shrink-0 whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-bold transition active:scale-95 cursor-pointer ${
+                  activeTab === tab.id
+                    ? "bg-teal-950 text-white shadow-xs ring-2 ring-saffron"
+                    : "bg-white text-teal-950/80 ring-1 ring-teal-900/10 hover:bg-cream hover:text-teal-950"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* Notification Banner */}
@@ -2227,24 +2392,38 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
 
           {/* CRM Search & Filters */}
           <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-teal-900/10 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
-            <div className="flex-1">
+            <div className="flex-1 relative">
               <input
                 type="text"
                 value={crmSearch}
                 onChange={(e) => setCrmSearch(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") void loadCrmData();
+                  if (e.key === "Enter") void loadCrmData(1, crmSearch, crmStatus, crmMode);
                 }}
                 placeholder="Search donors by name, email, phone, receipt number, or PAN card..."
-                className="w-full rounded-xl border border-teal-900/15 px-3.5 py-2 text-xs sm:text-sm text-teal-950 focus:border-teal-900 focus:outline-none"
+                className="w-full rounded-xl border border-teal-900/15 pl-3.5 pr-8 py-2 text-xs sm:text-sm text-teal-950 focus:border-teal-900 focus:outline-none"
               />
+              {crmSearch && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCrmSearch("");
+                    void loadCrmData(1, "", crmStatus, crmMode);
+                  }}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-gray-400 hover:text-gray-700 cursor-pointer"
+                  title="Clear search"
+                >
+                  ✕
+                </button>
+              )}
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <select
                 value={crmStatus}
                 onChange={(e) => {
-                  setCrmStatus(e.target.value);
-                  setTimeout(() => void loadCrmData(), 50);
+                  const val = e.target.value;
+                  setCrmStatus(val);
+                  void loadCrmData(1, crmSearch, val, crmMode);
                 }}
                 className="rounded-xl border border-teal-900/15 px-3 py-2 text-xs font-bold text-teal-950 bg-white"
               >
@@ -2257,8 +2436,9 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
               <select
                 value={crmMode}
                 onChange={(e) => {
-                  setCrmMode(e.target.value);
-                  setTimeout(() => void loadCrmData(), 50);
+                  const val = e.target.value;
+                  setCrmMode(val);
+                  void loadCrmData(1, crmSearch, crmStatus, val);
                 }}
                 className="rounded-xl border border-teal-900/15 px-3 py-2 text-xs font-bold text-teal-950 bg-white"
               >
@@ -2270,7 +2450,7 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
               </select>
               <button
                 type="button"
-                onClick={() => void loadCrmData()}
+                onClick={() => void loadCrmData(1, crmSearch, crmStatus, crmMode)}
                 className="rounded-xl bg-teal-950 px-4 py-2 text-xs font-bold text-white hover:bg-teal-900 transition cursor-pointer"
               >
                 Search
@@ -2319,7 +2499,17 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
                               {d.createdAt ? new Date(d.createdAt).toLocaleDateString("en-IN") : "-"}
                             </td>
                             <td className="py-3 font-mono font-bold text-teal-950">
-                              {d.receiptNo || d.publicId}
+                              <div className="flex items-center gap-1.5">
+                                <span>{d.receiptNo || d.publicId}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => copyToClipboard(`rec_${d.id}`, d.receiptNo || d.publicId)}
+                                  className="text-gray-400 hover:text-teal-900 text-[11px] cursor-pointer"
+                                  title="Copy Receipt / Reference"
+                                >
+                                  {copiedKey === `rec_${d.id}` ? "✓" : "📋"}
+                                </button>
+                              </div>
                             </td>
                             <td className="py-3">
                               <span className="font-bold text-teal-950 block">{d.donorName}</span>
@@ -2328,8 +2518,41 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
                               )}
                             </td>
                             <td className="py-3 text-teal-950/70">
-                              <span className="block">{d.donorEmail}</span>
-                              {d.donorPhone && <span className="text-[11px]">{d.donorPhone}</span>}
+                              <div className="flex items-center gap-1.5">
+                                <span className="block truncate max-w-[150px]">{d.donorEmail}</span>
+                                {d.donorEmail && (
+                                  <button
+                                    type="button"
+                                    onClick={() => copyToClipboard(`em_${d.id}`, d.donorEmail)}
+                                    className="text-gray-400 hover:text-teal-900 text-[11px] cursor-pointer"
+                                    title="Copy Email"
+                                  >
+                                    {copiedKey === `em_${d.id}` ? "✓" : "📋"}
+                                  </button>
+                                )}
+                              </div>
+                              {d.donorPhone && (
+                                <div className="flex items-center gap-1.5 mt-0.5">
+                                  <span className="text-[11px] font-mono">{d.donorPhone}</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => copyToClipboard(`ph_${d.id}`, d.donorPhone)}
+                                    className="text-gray-400 hover:text-teal-900 text-[11px] cursor-pointer"
+                                    title="Copy Phone"
+                                  >
+                                    {copiedKey === `ph_${d.id}` ? "✓" : "📋"}
+                                  </button>
+                                  <a
+                                    href={`https://wa.me/${d.donorPhone.replace(/[^0-9]/g, "")}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-[11px] hover:scale-110 transition cursor-pointer"
+                                    title="Message on WhatsApp"
+                                  >
+                                    💬
+                                  </a>
+                                </div>
+                              )}
                             </td>
                             <td className="py-3 font-bold text-teal-900 text-sm">
                               <div>{formatINR(d.amount)}</div>
@@ -2421,14 +2644,43 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
 
                         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-teal-950/70 border-t border-teal-900/5 pt-2">
                           {d.donorPhone && (
-                            <a href={`tel:${d.donorPhone}`} className="text-teal-800 font-medium">
-                              📞 {d.donorPhone}
-                            </a>
+                            <div className="flex items-center gap-1.5">
+                              <a href={`tel:${d.donorPhone}`} className="text-teal-800 font-medium">
+                                📞 {d.donorPhone}
+                              </a>
+                              <button
+                                type="button"
+                                onClick={() => copyToClipboard(`ph_m_${d.id}`, d.donorPhone)}
+                                className="text-gray-400 hover:text-teal-900 text-[10px] cursor-pointer"
+                                title="Copy Phone"
+                              >
+                                {copiedKey === `ph_m_${d.id}` ? "✓" : "📋"}
+                              </button>
+                              <a
+                                href={`https://wa.me/${d.donorPhone.replace(/[^0-9]/g, "")}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-[11px] hover:scale-110 transition cursor-pointer"
+                                title="Chat on WhatsApp"
+                              >
+                                💬
+                              </a>
+                            </div>
                           )}
                           {d.donorEmail && (
-                            <a href={`mailto:${d.donorEmail}`} className="text-teal-800 truncate max-w-[180px]">
-                              ✉️ {d.donorEmail}
-                            </a>
+                            <div className="flex items-center gap-1">
+                              <a href={`mailto:${d.donorEmail}`} className="text-teal-800 truncate max-w-[170px]">
+                                ✉️ {d.donorEmail}
+                              </a>
+                              <button
+                                type="button"
+                                onClick={() => copyToClipboard(`em_m_${d.id}`, d.donorEmail)}
+                                className="text-gray-400 hover:text-teal-900 text-[10px] cursor-pointer"
+                                title="Copy Email"
+                              >
+                                {copiedKey === `em_m_${d.id}` ? "✓" : "📋"}
+                              </button>
+                            </div>
                           )}
                           {meta.pan && (
                             <span className="font-mono text-[10px] text-teal-900/70">PAN: {meta.pan}</span>
@@ -2470,6 +2722,35 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
                     );
                   })}
                 </div>
+
+                {/* Pagination Controls */}
+                {crmTotalPages > 1 && (
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-teal-900/10 pt-4 mt-3">
+                    <p className="text-xs text-teal-950/60 font-semibold">
+                      Showing page <span className="text-teal-950 font-bold">{crmPage}</span> of{" "}
+                      <span className="text-teal-950 font-bold">{crmTotalPages}</span> ({crmTotalCount} total donations)
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        disabled={crmPage <= 1 || crmLoading}
+                        onClick={() => void loadCrmData(crmPage - 1)}
+                        className="rounded-lg border border-teal-900/20 px-3 py-1.5 text-xs font-bold text-teal-950 hover:bg-teal-50 disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed"
+                      >
+                        &larr; Previous
+                      </button>
+                      <span className="text-xs font-bold text-teal-900 px-2">Page {crmPage}</span>
+                      <button
+                        type="button"
+                        disabled={crmPage >= crmTotalPages || crmLoading}
+                        onClick={() => void loadCrmData(crmPage + 1)}
+                        className="rounded-lg border border-teal-900/20 px-3 py-1.5 text-xs font-bold text-teal-950 hover:bg-teal-50 disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed"
+                      >
+                        Next &rarr;
+                      </button>
+                    </div>
+                  </div>
+                )}
               </>
             )}
           </div>
@@ -3030,24 +3311,38 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
 
           {/* Search, Filter & Walk-in Action Bar */}
           <div className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-teal-900/10 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-            <div className="flex-1">
+            <div className="flex-1 relative">
               <input
                 type="text"
                 value={celebSearch}
                 onChange={(e) => setCelebSearch(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") void loadCelebrations();
+                  if (e.key === "Enter") void loadCelebrations(celebSearch, celebStatus, celebOccasion);
                 }}
                 placeholder="Search celebrations by celebrant name, donor, mobile, or reference..."
-                className="w-full rounded-xl border border-teal-900/15 px-3.5 py-2 text-xs sm:text-sm text-teal-950 focus:border-teal-900 focus:outline-none"
+                className="w-full rounded-xl border border-teal-900/15 pl-3.5 pr-8 py-2 text-xs sm:text-sm text-teal-950 focus:border-teal-900 focus:outline-none"
               />
+              {celebSearch && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCelebSearch("");
+                    void loadCelebrations("", celebStatus, celebOccasion);
+                  }}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-teal-900/40 hover:text-teal-900 font-bold p-1"
+                  title="Clear search"
+                >
+                  ✕
+                </button>
+              )}
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <select
                 value={celebStatus}
                 onChange={(e) => {
-                  setCelebStatus(e.target.value);
-                  setTimeout(() => void loadCelebrations(), 50);
+                  const val = e.target.value;
+                  setCelebStatus(val);
+                  void loadCelebrations(celebSearch, val, celebOccasion);
                 }}
                 className="rounded-xl border border-teal-900/15 px-3 py-2 text-xs font-bold text-teal-950 bg-white"
               >
@@ -3063,8 +3358,9 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
               <select
                 value={celebOccasion}
                 onChange={(e) => {
-                  setCelebOccasion(e.target.value);
-                  setTimeout(() => void loadCelebrations(), 50);
+                  const val = e.target.value;
+                  setCelebOccasion(val);
+                  void loadCelebrations(celebSearch, celebStatus, val);
                 }}
                 className="rounded-xl border border-teal-900/15 px-3 py-2 text-xs font-bold text-teal-950 bg-white"
               >
@@ -3078,7 +3374,7 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
 
               <button
                 type="button"
-                onClick={() => void loadCelebrations()}
+                onClick={() => void loadCelebrations(celebSearch, celebStatus, celebOccasion)}
                 className="rounded-xl bg-teal-950 px-4 py-2 text-xs font-bold text-white hover:bg-teal-900 transition"
               >
                 Filter
@@ -3122,7 +3418,17 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
                         <tr key={c.id} className="hover:bg-cream/40">
                           <td className="py-3">
                             <span className="font-bold text-teal-950 block">{c.celebrationDate}</span>
-                            <span className="font-mono text-[10px] text-teal-900/60">{c.reference}</span>
+                            <div className="flex items-center gap-1 font-mono text-[10px] text-teal-900/60">
+                              <span>{c.reference}</span>
+                              <button
+                                type="button"
+                                onClick={() => copyToClipboard(`celeb-ref-${c.id}`, c.reference)}
+                                className="hover:text-teal-900 transition"
+                                title="Copy booking reference"
+                              >
+                                {copiedKey === `celeb-ref-${c.id}` ? "✓" : "📋"}
+                              </button>
+                            </div>
                           </td>
                           <td className="py-3">
                             <span className="font-bold text-teal-950 block">{c.celebrantName}</span>
@@ -3162,14 +3468,24 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
                           </td>
                           <td className="py-3">
                             <span className="font-bold text-teal-950 block">{c.donorName}</span>
-                            <a
-                              href={`https://wa.me/91${c.donorPhone.replace(/\D/g, "").slice(-10)}?text=${encodeURIComponent(`Namaste ${c.donorName}! Regarding your celebration booking for ${c.celebrantName} at Janaseva Ashrama on ${c.celebrationDate}...`)}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="font-mono text-[11px] text-emerald-700 hover:underline inline-flex items-center gap-1 font-bold"
-                            >
-                              <span>WhatsApp: {c.donorPhone}</span>
-                            </a>
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                              <a
+                                href={`https://wa.me/91${c.donorPhone.replace(/\D/g, "").slice(-10)}?text=${encodeURIComponent(`Namaste ${c.donorName}! Regarding your celebration booking for ${c.celebrantName} at Janaseva Ashrama on ${c.celebrationDate}...`)}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="font-mono text-[11px] text-emerald-700 hover:underline inline-flex items-center gap-1 font-bold"
+                              >
+                                <span>💬 {c.donorPhone}</span>
+                              </a>
+                              <button
+                                type="button"
+                                onClick={() => copyToClipboard(`celeb-phone-${c.id}`, c.donorPhone)}
+                                className="text-[10px] text-teal-900/50 hover:text-teal-900 transition"
+                                title="Copy mobile number"
+                              >
+                                {copiedKey === `celeb-phone-${c.id}` ? "✓" : "📋"}
+                              </button>
+                            </div>
                           </td>
                           <td className="py-3">
                             <select
@@ -3229,14 +3545,24 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
                         <div className="flex items-center justify-between">
                           <span>Donor: <strong className="text-teal-950">{c.donorName}</strong></span>
                           {c.donorPhone && (
-                            <a
-                              href={`https://wa.me/91${c.donorPhone.replace(/\D/g, "").slice(-10)}?text=${encodeURIComponent(`Namaste ${c.donorName}! Regarding your celebration booking for ${c.celebrantName} at Janaseva Ashrama on ${c.celebrationDate}...`)}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="font-mono text-[11px] text-emerald-700 hover:underline inline-flex items-center gap-1 font-bold"
-                            >
-                              <span>💬 WhatsApp</span>
-                            </a>
+                            <div className="flex items-center gap-1.5">
+                              <a
+                                href={`https://wa.me/91${c.donorPhone.replace(/\D/g, "").slice(-10)}?text=${encodeURIComponent(`Namaste ${c.donorName}! Regarding your celebration booking for ${c.celebrantName} at Janaseva Ashrama on ${c.celebrationDate}...`)}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="font-mono text-[11px] text-emerald-700 hover:underline inline-flex items-center gap-1 font-bold"
+                              >
+                                <span>💬 WhatsApp</span>
+                              </a>
+                              <button
+                                type="button"
+                                onClick={() => copyToClipboard(`m-celeb-phone-${c.id}`, c.donorPhone)}
+                                className="text-[10px] text-teal-900/50 hover:text-teal-900 transition"
+                                title="Copy mobile number"
+                              >
+                                {copiedKey === `m-celeb-phone-${c.id}` ? "✓" : "📋"}
+                              </button>
+                            </div>
                           )}
                         </div>
                         {c.visitMode === "in_person" && (

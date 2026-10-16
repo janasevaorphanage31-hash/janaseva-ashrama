@@ -38,7 +38,9 @@ export async function POST(req: Request) {
 
   revalidatePath("/", "layout");
   revalidatePath("/");
-  revalidatePath("/admin/content");
+  revalidatePath("/giving-basket");
+  revalidatePath("/make-a-day-matter");
+  revalidatePath("/admin");
 
   return NextResponse.json({ ok: true, item: row });
 }
@@ -75,7 +77,9 @@ export async function PATCH(req: Request) {
 
   revalidatePath("/", "layout");
   revalidatePath("/");
-  revalidatePath("/admin/content");
+  revalidatePath("/giving-basket");
+  revalidatePath("/make-a-day-matter");
+  revalidatePath("/admin");
 
   return NextResponse.json({ ok: true, item: row });
 }
@@ -93,7 +97,9 @@ export async function DELETE(req: Request) {
 
   revalidatePath("/", "layout");
   revalidatePath("/");
-  revalidatePath("/admin/content");
+  revalidatePath("/giving-basket");
+  revalidatePath("/make-a-day-matter");
+  revalidatePath("/admin");
 
   return NextResponse.json({ ok: true, deletedId: id });
 }
