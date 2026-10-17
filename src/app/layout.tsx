@@ -114,6 +114,9 @@ export const metadata: Metadata = {
   },
   verification: {
     google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION || "google40ecaabef6839658",
+    other: {
+      "facebook-domain-verification": "n1isx3zr9txq42ao1jv60szinn07pk",
+    },
   },
   category: "Non-Profit Organization",
 };
@@ -307,6 +310,9 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   return (
     <html lang="en" className="overflow-x-hidden max-w-full">
       <head>
+        {/* Meta Business Verification for Business ID 29314538551481728 (janasevaorphanage.org) */}
+        <meta name="facebook-domain-verification" content="n1isx3zr9txq42ao1jv60szinn07pk" />
+
         {/* Classical Google thumbnail snippet image tag */}
         <link rel="image_src" href={`${SITE.url}/media/janaseva-ashrama-original.jpg`} />
 
