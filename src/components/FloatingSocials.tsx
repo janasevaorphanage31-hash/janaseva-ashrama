@@ -24,11 +24,11 @@ export function FloatingSocials() {
   // Hide on admin routes or checkout
   if (pathname?.startsWith("/admin") || pathname === "/checkout") return null;
 
-  // Dynamic clearance: If Giving Basket is active, lift above it so CHECKOUT NOW is never covered
+  // Dynamic clearance: If Giving Basket is active, lift cleanly above it so CHECKOUT NOW is never covered
   const positionClass =
     total > 0
-      ? "bottom-[calc(9.75rem+env(safe-area-inset-bottom))] md:bottom-24 right-4 md:right-6"
-      : "bottom-[calc(5.25rem+env(safe-area-inset-bottom))] md:bottom-6 right-4 md:right-6";
+      ? "bottom-[calc(11.5rem+env(safe-area-inset-bottom))] md:bottom-24 right-3.5 md:right-6"
+      : "bottom-[calc(5.75rem+env(safe-area-inset-bottom))] md:bottom-6 right-3.5 md:right-6";
 
   return (
     <>

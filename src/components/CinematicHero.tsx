@@ -77,6 +77,36 @@ const HERO_SHAGUN_TIERS: HeroSchemeTier[] = [
   },
 ];
 
+const HERO_QUICK_PRESETS = [11, 21, 51, 101, 251, 501, 1001, 2501, 5001];
+
+function getCustomImpact(amt: number): string {
+  if (amt <= 0) {
+    return "Choose any amount to sponsor food, education, and daily care for 25 resident boys.";
+  }
+  if (amt < 20) {
+    return `Your sacred contribution of ${formatINR(amt)} provides 1 warm glass of pure morning cow milk for 1 growing boy.`;
+  }
+  if (amt < 50) {
+    return `Your sacred contribution of ${formatINR(amt)} provides fresh bananas & seasonal orchard fruits for the boys.`;
+  }
+  if (amt < 100) {
+    return `Your sacred contribution of ${formatINR(amt)} covers hot breakfast (idlis, sambar & chutney) for the boys.`;
+  }
+  if (amt < 250) {
+    return `Your sacred contribution of ${formatINR(amt)} provides a wholesome hot lunch for resident boys.`;
+  }
+  if (amt < 1000) {
+    return `Your sacred contribution of ${formatINR(amt)} covers fresh kitchen vegetables, toor dal & pediatric care for the boys.`;
+  }
+  if (amt < 2500) {
+    return `Your generous sponsorship of ${formatINR(amt)} covers hot breakfast and evening nutrition for all 25 resident boys.`;
+  }
+  if (amt < 4500) {
+    return `Your generous sponsorship of ${formatINR(amt)} covers steaming hot lunch or dinner feasts with sambar, rice & sweet payasam for 25 boys.`;
+  }
+  return `Your noble sponsorship of ${formatINR(amt)} covers complete 4-meal Annadana, grocery support & care for all 25 resident boys.`;
+}
+
 export function CinematicHero({ content }: { content?: Partial<SiteContentMap> }) {
   const { openBottomDonate } = useCart();
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -386,84 +416,166 @@ export function CinematicHero({ content }: { content?: Partial<SiteContentMap> }
               })}
             </div>
 
-            {/* Custom Amount Field (Clean single input without bulky increment chips) */}
-            <div className="mt-2.5">
-              <div className="relative">
-                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-bold text-white/60">₹</span>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  placeholder="Or enter any custom sponsorship amount (min ₹10)"
-                  value={customAmt}
-                  onChange={(e) => {
-                    const cleaned = e.target.value.replace(/\D/g, "");
-                    setCustomAmt(cleaned);
-                  }}
-                  className="w-full rounded-xl border border-white/20 bg-teal-950/70 py-2.5 pl-8 pr-3 text-base sm:text-sm font-bold text-white outline-none focus:border-amber-400 placeholder:text-white/40"
-                />
+            {/* ── QUICK IMPACT PRESETS & DONOR-FRIENDLY CARD (Image 1 UI/UX in Image 2) ── */}
+            <div className="mt-4 rounded-3xl bg-white p-4 sm:p-5 md:p-6 shadow-2xl ring-1 ring-teal-900/10 space-y-3.5 text-teal-950">
+              {/* Header with Title and Instant Donate Button from Image 1 */}
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h3 className="font-display text-base sm:text-lg md:text-xl font-black text-teal-950 flex items-center gap-1.5">
+                    <span>⚡</span>
+                    <span>Quick Impact Presets</span>
+                  </h3>
+                  <p className="text-[11px] sm:text-xs text-teal-950/70 mt-0.5 font-medium">
+                    Fast 1-tap contribution chips ideal for mobile donors.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleHeroDonate}
+                  className="animate-heartbeat focus-ring px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-2xl bg-gradient-celebrate text-white text-[11px] sm:text-xs font-black uppercase tracking-wider shadow-lg glow-saffron hover:opacity-95 cursor-pointer flex items-center gap-1.5 tap-scale shrink-0"
+                >
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-beacon absolute inline-flex h-full w-full rounded-full bg-white opacity-80" />
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-200" />
+                  </span>
+                  <span>Instant Donate 💝</span>
+                </button>
               </div>
-            </div>
-          </div>
 
-          {/* Clean Emotional Impact & 80G Tax Exemption Strip */}
-          <div className="mt-3 rounded-2xl bg-teal-950/80 p-3 sm:p-3.5 border border-amber-400/30 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-            <div className="flex items-center gap-2 min-w-0">
-              <span className="text-base select-none shrink-0">🌸</span>
-              <div className="min-w-0">
-                <span className="text-[11px] font-extrabold uppercase tracking-wider text-amber-300 block">
-                  Direct Impact for 25 Resident Boys:
+              {/* 1-Tap Preset Chips Grid from Image 1 */}
+              <div className="flex flex-wrap gap-1.5 sm:gap-2 pt-0.5">
+                {HERO_QUICK_PRESETS.map((amt) => {
+                  const isChipActive = customAmt ? Number(customAmt) === amt : (!customAmt && effectiveAmount === amt);
+                  return (
+                    <button
+                      key={amt}
+                      type="button"
+                      onClick={() => {
+                        setCustomAmt(String(amt));
+                        setSelectedAmt(amt);
+                      }}
+                      className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-2xl text-xs font-black transition focus-ring active:scale-95 cursor-pointer ${
+                        isChipActive
+                          ? "bg-gradient-celebrate text-white shadow-md glow-saffron font-black scale-105 ring-2 ring-amber-400"
+                          : "bg-cream text-teal-950 border border-teal-900/15 hover:bg-sand font-bold"
+                      }`}
+                    >
+                      {formatINR(amt)}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Custom Numeric Input with prominent ₹ and Clear button from Image 1 */}
+              <div className="pt-1">
+                <div className="flex items-center justify-between mb-1">
+                  <label
+                    htmlFor="hero-custom-amount"
+                    className="block text-[11px] sm:text-xs font-bold uppercase tracking-wider text-teal-900/70"
+                  >
+                    Or enter your own custom amount (₹10 to ₹5,00,000)
+                  </label>
+                  {customAmt && (
+                    <button
+                      type="button"
+                      onClick={() => setCustomAmt("")}
+                      className="text-xs font-bold text-amber-700 hover:text-amber-900 underline cursor-pointer"
+                    >
+                      Reset to Tier
+                    </button>
+                  )}
+                </div>
+                <div className="flex items-center rounded-2xl border-2 border-teal-900/15 bg-cream px-3.5 sm:px-4 py-1.5 sm:py-2 focus-within:border-teal-800 transition">
+                  <span className="font-display text-lg sm:text-xl font-black text-teal-900 mr-2 select-none">
+                    ₹
+                  </span>
+                  <input
+                    id="hero-custom-amount"
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    placeholder="Enter custom amount"
+                    value={customAmt}
+                    onChange={(e) => {
+                      const cleaned = e.target.value.replace(/\D/g, "");
+                      setCustomAmt(cleaned);
+                    }}
+                    className="w-full bg-transparent text-base sm:text-lg font-black text-teal-950 placeholder:text-teal-950/40 placeholder:font-normal outline-none"
+                  />
+                  {customAmt && (
+                    <button
+                      type="button"
+                      onClick={() => setCustomAmt("")}
+                      className="shrink-0 text-xs font-bold text-teal-900/60 hover:text-teal-900 p-1 cursor-pointer"
+                      title="Clear amount"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* High-Contrast Emotional Impact & 80G Tax Exemption Strip */}
+              <div className="rounded-2xl bg-amber-50/90 p-3 sm:p-3.5 border border-amber-300/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 shadow-2xs">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-xl select-none shrink-0">🌸</span>
+                  <div className="min-w-0">
+                    <span className="text-[11px] font-black uppercase tracking-wider text-amber-900 block">
+                      Direct Impact for 25 Resident Boys:
+                    </span>
+                    <p className="text-xs text-teal-950 font-bold leading-snug">
+                      {activeTier && !customAmt
+                        ? activeTier.impact
+                        : getCustomImpact(effectiveAmount)}
+                    </p>
+                  </div>
+                </div>
+                <div className="shrink-0 self-start sm:self-auto rounded-lg bg-emerald-100 border border-emerald-300 px-2.5 py-1 text-[10px] font-black text-emerald-900 shadow-2xs">
+                  Form 10AC · 100% Tax Deductible (80G)
+                </div>
+              </div>
+
+              {/* Finger-First Primary Donation CTA & Secondary Links */}
+              <div className="pt-1 flex flex-col sm:flex-row items-center gap-2 sm:gap-2.5">
+                <button
+                  type="button"
+                  onClick={handleHeroDonate}
+                  className="focus-ring tap-scale w-full sm:flex-1 py-3.5 sm:py-4 px-5 rounded-2xl bg-gradient-to-r from-amber-400 via-orange-500 to-amber-500 hover:from-amber-500 hover:to-orange-600 text-teal-950 font-black text-xs sm:text-sm uppercase tracking-wider shadow-xl shadow-orange-500/25 transition active:scale-95 cursor-pointer flex items-center justify-center gap-2 animate-heartbeat"
+                >
+                  <span>FEED 25 BOYS · {formatINR(effectiveAmount)}</span>
+                  <span>💝 →</span>
+                </button>
+
+                <a
+                  href="#official-tiers"
+                  className="focus-ring tap-scale w-full sm:w-auto py-3 sm:py-4 px-4 rounded-2xl bg-teal-950 hover:bg-teal-900 text-white font-black text-xs sm:text-sm text-center transition flex items-center justify-center gap-1.5 shadow-md cursor-pointer"
+                >
+                  <span>🏛️ Sponsor 25 Boys</span>
+                  <span className="rounded bg-amber-400 text-teal-950 text-[9px] px-1 py-0.2 font-black uppercase">90% Focus</span>
+                </a>
+
+                <Link
+                  href="/celebrate-birthday"
+                  className="focus-ring tap-scale w-full sm:w-auto py-3 sm:py-4 px-4 rounded-2xl bg-sand/60 hover:bg-sand border border-teal-900/15 text-teal-950 font-black text-xs sm:text-sm text-center transition flex items-center justify-center gap-1.5"
+                >
+                  <span>Celebrate Birthday</span>
+                  <span>🎂</span>
+                </Link>
+              </div>
+
+              {/* Trust Guarantees Footer */}
+              <div className="pt-2 border-t border-teal-900/10 grid grid-cols-3 gap-2 text-center text-[10px] sm:text-xs text-teal-950/80 font-bold">
+                <span className="flex items-center justify-center gap-1">
+                  <span className="text-emerald-600 font-black">✓</span> Instant WhatsApp Receipt
                 </span>
-                <p className="text-xs text-white font-medium leading-snug">
-                  {activeTier
-                    ? activeTier.impact
-                    : `Your contribution of ${formatINR(effectiveAmount)} directly covers wholesome meals, clothes & care for 25 resident boys.`}
-                </p>
+                <span className="flex items-center justify-center gap-1">
+                  <span className="text-emerald-600 font-black">✓</span> Govt Reg: KA18CH0242
+                </span>
+                <span className="flex items-center justify-center gap-1">
+                  <span className="text-emerald-600 font-black">✓</span> 100% Tax Free 80G
+                </span>
               </div>
             </div>
-            <div className="shrink-0 self-start sm:self-auto rounded-lg bg-emerald-950/70 border border-emerald-400/30 px-2.5 py-1 text-[10px] font-bold text-emerald-300">
-              Form 10AC · 100% Tax Deductible (80G)
-            </div>
-          </div>
-
-          {/* Finger-First Primary Donation CTA & Secondary Birthday Link */}
-          <div className="mt-3.5 flex flex-col sm:flex-row items-center gap-2.5">
-            <button
-              type="button"
-              onClick={handleHeroDonate}
-              className="focus-ring tap-scale w-full sm:flex-1 py-3.5 sm:py-4 px-5 rounded-2xl bg-gradient-to-r from-amber-400 via-orange-500 to-amber-500 hover:from-amber-500 hover:to-orange-600 text-teal-950 font-black text-xs sm:text-sm uppercase tracking-wider shadow-xl shadow-orange-500/30 transition active:scale-95 cursor-pointer flex items-center justify-center gap-2 animate-heartbeat"
-            >
-              <span>FEED 25 BOYS · {formatINR(effectiveAmount)}</span>
-              <span>💝 →</span>
-            </button>
-
-            <a
-              href="#official-tiers"
-              className="focus-ring tap-scale w-full sm:w-auto py-3.5 sm:py-4 px-4.5 rounded-2xl bg-amber-400 hover:bg-amber-300 text-teal-950 font-black text-xs sm:text-sm text-center transition flex items-center justify-center gap-1.5 shadow-md cursor-pointer"
-            >
-              <span>🏛️ Sponsor 25 Boys</span>
-              <span className="rounded bg-teal-950 text-gold text-[9px] px-1 py-0.2 font-black uppercase">90% Focus</span>
-            </a>
-
-            <Link
-              href="/celebrate-birthday"
-              className="focus-ring tap-scale w-full sm:w-auto py-3.5 sm:py-4 px-4.5 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/20 text-white font-extrabold text-xs sm:text-sm text-center transition flex items-center justify-center gap-1.5"
-            >
-              <span>Celebrate Birthday</span>
-              <span>🎂</span>
-            </Link>
-          </div>
-
-          {/* Trust Guarantees Footer */}
-          <div className="mt-3 pt-2.5 border-t border-white/10 grid grid-cols-3 gap-2 text-center text-[10px] sm:text-xs text-white/80 font-medium">
-            <span className="flex items-center justify-center gap-1">
-              <span className="text-emerald-400">✓</span> Instant WhatsApp Receipt
-            </span>
-            <span className="flex items-center justify-center gap-1">
-              <span className="text-emerald-400">✓</span> Govt Reg: KA18CH0242
-            </span>
-            <span className="flex items-center justify-center gap-1">
-              <span className="text-emerald-400">✓</span> 100% Tax Free 80G
-            </span>
           </div>
         </div>
       </div>
