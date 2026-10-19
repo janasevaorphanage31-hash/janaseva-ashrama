@@ -9,6 +9,7 @@ import { PWARegister } from "@/components/PWARegister";
 import { FAQ_ITEMS } from "@/lib/faq";
 import { SITE } from "@/lib/site";
 import { TrackingScripts } from "@/components/TrackingScripts";
+import { LiveVisitorTracker } from "@/components/LiveVisitorTracker";
 import { getMarketingConfig } from "@/lib/marketing-agent";
 
 export const dynamic = "force-dynamic";
@@ -361,6 +362,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
       <body className="antialiased min-h-screen w-full max-w-full overflow-x-clip">
         <CartProvider catalog={catalog}>
           <PWARegister />
+          <LiveVisitorTracker />
           <PublicSiteChrome>{children}</PublicSiteChrome>
         </CartProvider>
       </body>

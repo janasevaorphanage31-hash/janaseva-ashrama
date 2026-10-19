@@ -3,6 +3,7 @@ import { count, desc, eq, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { donations, donationLines, campaigns, volunteerApplications, analyticsEvents } from "@/db/schema";
 import { requireAdminApi } from "@/lib/admin-auth";
+import { getLiveVisitorTelemetry } from "@/lib/visitor-tracker";
 
 export async function GET() {
   const session = await requireAdminApi();
@@ -123,5 +124,6 @@ export async function GET() {
     statusBreakdown: statusRows,
     categoryBreakdown: categoryRows,
     recentTransactions,
+    liveTelemetry: getLiveVisitorTelemetry(),
   });
 }

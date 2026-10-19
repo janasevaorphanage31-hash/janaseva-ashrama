@@ -192,6 +192,10 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
   // Analytics state
   const [analyticsData, setAnalyticsData] = useState<any | null>(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
+  const [liveTelemetry, setLiveTelemetry] = useState<any | null>(null);
+  const [liveAutoRefresh, setLiveAutoRefresh] = useState(true);
+  const [lastLivePoll, setLastLivePoll] = useState<Date>(new Date());
+  const [liveChannelFilter, setLiveChannelFilter] = useState<string>("all");
 
   // Site Content CMS state
   const [contentForm, setContentForm] = useState<any | null>(null);
@@ -1167,11 +1171,28 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
     try {
       const res = await fetch("/api/admin/analytics", { cache: "no-store" });
       const data = await res.json();
-      if (res.ok) setAnalyticsData(data);
+      if (res.ok) {
+        setAnalyticsData(data);
+        if (data.liveTelemetry) setLiveTelemetry(data.liveTelemetry);
+      }
     } catch {
       // silent
     }
     setAnalyticsLoading(false);
+  }
+
+  // Fast Real-Time Live Telemetry Poller (4s loop)
+  async function fetchLiveTelemetry() {
+    try {
+      const res = await fetch("/api/admin/analytics/live", { cache: "no-store" });
+      if (res.ok) {
+        const data = await res.json();
+        setLiveTelemetry(data);
+        setLastLivePoll(new Date());
+      }
+    } catch {
+      // silent
+    }
   }
 
   // Load Site Content CMS data
@@ -1865,6 +1886,17 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
 
+  // Real-time 4-second live visitor polling loop when on analytics tab
+  useEffect(() => {
+    if (activeTab !== "analytics") return;
+    void fetchLiveTelemetry();
+    if (!liveAutoRefresh) return;
+    const interval = setInterval(() => {
+      void fetchLiveTelemetry();
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [activeTab, liveAutoRefresh]);
+
   return (
     <div className="space-y-6">
       {/* Top Banner Navigation */}
@@ -2151,6 +2183,432 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
             <p className="text-sm font-semibold text-teal-900/70">Loading executive analytics...</p>
           ) : analyticsData ? (
             <>
+              {/* ── LIVE VISITOR RADAR HEADER & COMMAND BAR ── */}
+              <div className="rounded-3xl bg-gradient-to-r from-teal-950 via-teal-900 to-emerald-950 p-6 text-white shadow-lg ring-1 ring-white/15">
+                <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <span className="relative flex h-4 w-4">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-4 w-4 bg-emerald-500"></span>
+                    </span>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h2 className="font-display text-xl sm:text-2xl font-bold tracking-tight text-white">
+                          Live Website Visitors
+                        </h2>
+                        <span className="rounded-full bg-emerald-500/20 px-2.5 py-0.5 font-mono text-xs font-bold text-emerald-300 ring-1 ring-emerald-500/40">
+                          LIVE RADAR
+                        </span>
+                      </div>
+                      <p className="text-xs text-white/70 mt-0.5">
+                        Real-time visitor telemetry · Syncs every 4s · Last ping: {lastLivePoll.toLocaleTimeString("en-IN")}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setLiveAutoRefresh(!liveAutoRefresh)}
+                      className={`rounded-xl px-3 py-1.5 text-xs font-bold transition flex items-center gap-1.5 shadow-xs ${
+                        liveAutoRefresh
+                          ? "bg-emerald-500 text-teal-950 hover:bg-emerald-400"
+                          : "bg-white/10 text-white/80 hover:bg-white/20"
+                      }`}
+                    >
+                      <span className={`inline-block h-2 w-2 rounded-full ${liveAutoRefresh ? "bg-teal-950" : "bg-white/50"}`} />
+                      {liveAutoRefresh ? "Auto-Sync ON" : "Auto-Sync Paused"}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        void fetchLiveTelemetry();
+                        void loadAnalytics();
+                      }}
+                      className="rounded-xl bg-white/15 px-3 py-1.5 text-xs font-bold text-white hover:bg-white/25 transition flex items-center gap-1"
+                    >
+                      <span>🔄</span>
+                      <span>Refresh Now</span>
+                    </button>
+
+                    <a
+                      href="/"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="rounded-xl bg-saffron px-3 py-1.5 text-xs font-bold text-teal-950 hover:bg-amber-400 transition flex items-center gap-1 shadow-xs"
+                    >
+                      <span>🌐</span>
+                      <span>Open Site in New Tab</span>
+                    </a>
+                  </div>
+                </div>
+
+                {/* 5 Real-Time Telemetry KPI Tiles */}
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 mt-6">
+                  <div className="rounded-2xl bg-white/10 p-4 ring-1 ring-white/15 backdrop-blur-xs">
+                    <div className="flex items-center justify-between">
+                      <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-300">Active Right Now</p>
+                      <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                    </div>
+                    <p className="mt-2 font-display text-3xl font-bold text-white">
+                      {liveTelemetry?.activeNow ?? 0}
+                    </p>
+                    <p className="mt-1 text-[11px] text-white/60">Live in last 2 mins</p>
+                  </div>
+
+                  <div className="rounded-2xl bg-white/10 p-4 ring-1 ring-white/15 backdrop-blur-xs">
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-white/70">Today's Visitors</p>
+                    <p className="mt-2 font-display text-3xl font-bold text-white">
+                      {liveTelemetry?.today?.uniqueVisitors || analyticsData?.funnel?.visits || 0}
+                    </p>
+                    <p className="mt-1 text-[11px] text-white/60">Unique device sessions</p>
+                  </div>
+
+                  <div className="rounded-2xl bg-white/10 p-4 ring-1 ring-white/15 backdrop-blur-xs">
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-white/70">Today's Page Views</p>
+                    <p className="mt-2 font-display text-3xl font-bold text-white">
+                      {liveTelemetry?.today?.pageViews || 0}
+                    </p>
+                    <p className="mt-1 text-[11px] text-white/60">Total route hits today</p>
+                  </div>
+
+                  <div className="rounded-2xl bg-white/10 p-4 ring-1 ring-white/15 backdrop-blur-xs">
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-amber-300">Checkout Starts</p>
+                    <p className="mt-2 font-display text-3xl font-bold text-white">
+                      {liveTelemetry?.today?.checkouts || analyticsData?.funnel?.checkouts || 0}
+                    </p>
+                    <p className="mt-1 text-[11px] text-white/60">Donation intents today</p>
+                  </div>
+
+                  <div className="rounded-2xl bg-white/10 p-4 ring-1 ring-white/15 backdrop-blur-xs">
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-saffron">Verified Raised Today</p>
+                    <p className="mt-2 font-display text-2xl sm:text-3xl font-bold text-saffron">
+                      {formatINR(analyticsData?.kpis?.todayRaised ?? liveTelemetry?.today?.donationsRaised ?? 0)}
+                    </p>
+                    <p className="mt-1 text-[11px] text-white/60">
+                      {analyticsData?.kpis?.todayDonations ?? liveTelemetry?.today?.donationsCount ?? 0} paid donations
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* ── LIVE VISITOR STREAM TABLE ── */}
+              <div className="rounded-3xl bg-white p-5 sm:p-6 shadow-sm ring-1 ring-teal-900/10">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-display text-lg font-bold text-teal-950">Active Visitor Stream</h3>
+                      <span className="rounded-full bg-teal-100 px-2 py-0.5 text-[11px] font-mono font-bold text-teal-800">
+                        {(liveTelemetry?.liveVisitors || []).length} Recorded Sessions
+                      </span>
+                    </div>
+                    <p className="text-xs text-teal-950/60 mt-0.5">
+                      See where users are coming from (WhatsApp, Meta Ads, Google), what page they are on, and their device.
+                    </p>
+                  </div>
+
+                  {/* Channel Filter Pills */}
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {["all", "WhatsApp", "Meta Ads", "Google", "Direct"].map((chan) => (
+                      <button
+                        key={chan}
+                        type="button"
+                        onClick={() => setLiveChannelFilter(chan)}
+                        className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
+                          liveChannelFilter === chan
+                            ? "bg-teal-900 text-white"
+                            : "bg-cream text-teal-950/70 hover:bg-sand/60"
+                        }`}
+                      >
+                        {chan === "all" ? "All Channels" : chan}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Table */}
+                {liveTelemetry?.liveVisitors && liveTelemetry.liveVisitors.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead>
+                        <tr className="border-b border-teal-900/10 text-teal-900/70">
+                          <th className="py-2.5 font-bold">Status</th>
+                          <th className="py-2.5 font-bold">Current Page</th>
+                          <th className="py-2.5 font-bold">Channel / Source</th>
+                          <th className="py-2.5 font-bold">Device & OS</th>
+                          <th className="py-2.5 font-bold">Location</th>
+                          <th className="py-2.5 font-bold">Journey Steps</th>
+                          <th className="py-2.5 font-bold">Time on Site</th>
+                          <th className="py-2.5 font-bold text-right">Last Seen</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-teal-900/5">
+                        {liveTelemetry.liveVisitors
+                          .filter((v: any) => {
+                            if (liveChannelFilter === "all") return true;
+                            if (liveChannelFilter === "Google") {
+                              return v.trafficSource === "Google Search" || v.trafficSource === "Google Ads";
+                            }
+                            return v.trafficSource === liveChannelFilter;
+                          })
+                          .map((v: any) => {
+                            const isOnline = v.status === "online";
+                            const isIdle = v.status === "idle";
+
+                            return (
+                              <tr key={v.sessionId} className="hover:bg-cream/40 transition">
+                                <td className="py-3">
+                                  <span
+                                    className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
+                                      isOnline
+                                        ? "bg-emerald-100 text-emerald-800 ring-1 ring-emerald-300"
+                                        : isIdle
+                                        ? "bg-amber-100 text-amber-800 ring-1 ring-amber-300"
+                                        : "bg-gray-100 text-gray-700"
+                                    }`}
+                                  >
+                                    <span
+                                      className={`h-1.5 w-1.5 rounded-full ${
+                                        isOnline ? "bg-emerald-600 animate-pulse" : isIdle ? "bg-amber-600" : "bg-gray-400"
+                                      }`}
+                                    />
+                                    {isOnline ? "Online" : isIdle ? "Idle" : "Left"}
+                                  </span>
+                                </td>
+
+                                <td className="py-3">
+                                  <div className="flex flex-col">
+                                    <span className="font-mono font-bold text-teal-900">
+                                      {v.currentPath}
+                                    </span>
+                                    <span className="text-[11px] text-teal-950/60 truncate max-w-[200px]" title={v.pageTitle}>
+                                      {v.pageTitle || "Janaseva Ashrama"}
+                                    </span>
+                                  </div>
+                                </td>
+
+                                <td className="py-3">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-sm">
+                                      {v.trafficSource === "WhatsApp" ? "📱" :
+                                       v.trafficSource === "Meta Ads" ? "🎯" :
+                                       v.trafficSource === "Google Ads" ? "💰" :
+                                       v.trafficSource === "Google Search" ? "🔍" :
+                                       v.trafficSource === "Instagram" ? "📸" : "🌐"}
+                                    </span>
+                                    <div className="flex flex-col">
+                                      <span className="font-bold text-teal-950">{v.trafficSource}</span>
+                                      {v.campaign && (
+                                        <span className="text-[10px] text-saffron-dark font-mono truncate max-w-[120px]">
+                                          {v.campaign}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                </td>
+
+                                <td className="py-3 text-teal-950/80">
+                                  <div className="flex flex-col">
+                                    <span className="font-semibold">
+                                      {v.device === "Mobile" ? "📱 Mobile" : v.device === "Tablet" ? "📟 Tablet" : "💻 Desktop"}
+                                    </span>
+                                    <span className="text-[10px] text-teal-950/50">
+                                      {v.os} · {v.browser}
+                                    </span>
+                                  </div>
+                                </td>
+
+                                <td className="py-3 text-teal-950/80">
+                                  <div className="flex flex-col">
+                                    <span className="font-semibold">{v.city || "Bengaluru"}</span>
+                                    <span className="text-[10px] text-teal-950/50">{v.country || "IN"}</span>
+                                  </div>
+                                </td>
+
+                                <td className="py-3">
+                                  <div className="flex flex-wrap items-center gap-1 max-w-[180px]">
+                                    {(v.history || []).slice(-3).map((step: any, idx: number) => (
+                                      <span
+                                        key={idx}
+                                        className="rounded bg-sand/40 px-1.5 py-0.5 font-mono text-[9px] text-teal-950"
+                                      >
+                                        {step.action ? `⚡ ${step.action}` : step.path}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </td>
+
+                                <td className="py-3 font-mono text-[11px] text-teal-950/70">
+                                  {v.durationSeconds != null
+                                    ? v.durationSeconds > 60
+                                      ? `${Math.floor(v.durationSeconds / 60)}m ${v.durationSeconds % 60}s`
+                                      : `${v.durationSeconds}s`
+                                    : "—"}
+                                </td>
+
+                                <td className="py-3 text-right">
+                                  <span className="font-mono text-[11px] font-semibold text-teal-900">
+                                    {v.secondsAgo != null
+                                      ? v.secondsAgo < 10
+                                        ? "Just now"
+                                        : `${v.secondsAgo}s ago`
+                                      : "Recently"}
+                                  </span>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="rounded-2xl border-2 border-dashed border-teal-900/15 p-8 text-center bg-cream/30">
+                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-teal-900/10 text-2xl">
+                      📡
+                    </div>
+                    <h4 className="mt-3 font-display text-base font-bold text-teal-950">
+                      Ready & Listening for Live Visitors
+                    </h4>
+                    <p className="mt-1 text-xs text-teal-950/60 max-w-md mx-auto">
+                      The live telemetry engine is active. As soon as anyone opens <strong>https://janasevaorphanage.org</strong> or clicks a WhatsApp or Meta ad link, their session will appear here in real-time.
+                    </p>
+                    <div className="mt-4 flex justify-center gap-3">
+                      <a
+                        href="/"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="rounded-xl bg-teal-900 px-4 py-2 text-xs font-bold text-white hover:bg-teal-800 transition shadow-xs"
+                      >
+                        Open Website in New Tab to Test
+                      </a>
+                      <button
+                        type="button"
+                        onClick={() => fetchLiveTelemetry()}
+                        className="rounded-xl bg-white px-4 py-2 text-xs font-bold text-teal-950 ring-1 ring-teal-900/15 hover:bg-cream transition"
+                      >
+                        Check for New Pings
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* ── TWO TELEMETRY PANELS: TRAFFIC SOURCES & TOP PAGES ── */}
+              <div className="grid gap-6 lg:grid-cols-2">
+                {/* Traffic Sources Acquisition */}
+                <div className="rounded-3xl bg-white p-5 sm:p-6 shadow-sm ring-1 ring-teal-900/10">
+                  <h3 className="font-display text-base font-bold text-teal-900 mb-3 flex items-center justify-between">
+                    <span>Traffic Acquisition Channels</span>
+                    <span className="text-xs font-normal text-teal-950/50">Active sessions</span>
+                  </h3>
+                  <div className="space-y-3">
+                    {liveTelemetry?.sources && Object.keys(liveTelemetry.sources).length > 0 ? (
+                      Object.entries(liveTelemetry.sources).map(([source, count]: [string, any]) => {
+                        const total = Object.values(liveTelemetry.sources).reduce((a: any, b: any) => a + b, 0) as number;
+                        const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+                        return (
+                          <div key={source} className="space-y-1">
+                            <div className="flex justify-between text-xs">
+                              <span className="font-semibold text-teal-950 flex items-center gap-1.5">
+                                <span>
+                                  {source === "WhatsApp" ? "📱" :
+                                   source === "Meta Ads" ? "🎯" :
+                                   source === "Google Ads" || source === "Google Search" ? "🔍" :
+                                   source === "Instagram" ? "📸" : "🌐"}
+                                </span>
+                                {source}
+                              </span>
+                              <span className="font-bold text-teal-900">{count} visitors ({pct}%)</span>
+                            </div>
+                            <div className="h-2 rounded-full bg-sand/40 overflow-hidden">
+                              <div
+                                className={`h-full rounded-full transition-all duration-500 ${
+                                  source === "WhatsApp" ? "bg-emerald-500" :
+                                  source === "Meta Ads" ? "bg-blue-600" :
+                                  source.includes("Google") ? "bg-amber-500" : "bg-teal-900"
+                                }`}
+                                style={{ width: `${Math.max(5, pct)}%` }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <p className="text-xs text-teal-950/60 py-4 text-center">No traffic recorded yet today.</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Top Active Pages */}
+                <div className="rounded-3xl bg-white p-5 sm:p-6 shadow-sm ring-1 ring-teal-900/10">
+                  <h3 className="font-display text-base font-bold text-teal-900 mb-3 flex items-center justify-between">
+                    <span>Top Active Pages Visited</span>
+                    <span className="text-xs font-normal text-teal-950/50">Page hits</span>
+                  </h3>
+                  <div className="space-y-2.5">
+                    {liveTelemetry?.topPages && liveTelemetry.topPages.length > 0 ? (
+                      liveTelemetry.topPages.map((p: any, i: number) => (
+                        <div key={i} className="flex items-center justify-between rounded-xl bg-cream p-2.5 text-xs">
+                          <div className="flex items-center gap-2">
+                            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-teal-900/10 text-[10px] font-bold text-teal-900">
+                              {i + 1}
+                            </span>
+                            <span className="font-mono font-bold text-teal-950">{p.path}</span>
+                          </div>
+                          <span className="font-bold text-teal-900 rounded-md bg-white px-2 py-0.5 shadow-2xs">
+                            {p.count} views
+                          </span>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-xs text-teal-950/60 py-4 text-center">No page views recorded yet.</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* ── REAL-TIME RECENT EVENT TICKER ── */}
+              {liveTelemetry?.recentEvents && liveTelemetry.recentEvents.length > 0 && (
+                <div className="rounded-3xl bg-white p-5 sm:p-6 shadow-sm ring-1 ring-teal-900/10">
+                  <h3 className="font-display text-base font-bold text-teal-950 mb-3 flex items-center justify-between">
+                    <span className="flex items-center gap-2">
+                      <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                      Live Activity Ticker
+                    </span>
+                    <span className="text-xs text-teal-950/50">Chronological feed</span>
+                  </h3>
+                  <div className="space-y-2 max-h-60 overflow-y-auto pr-1 text-xs">
+                    {liveTelemetry.recentEvents.map((evt: any) => (
+                      <div
+                        key={evt.id}
+                        className="flex items-center justify-between rounded-xl bg-cream/60 p-2.5 hover:bg-cream transition"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <span className="rounded-md bg-teal-900 px-1.5 py-0.5 font-mono text-[10px] font-bold text-white">
+                            {evt.event.toUpperCase()}
+                          </span>
+                          <span className="font-mono text-teal-900 font-bold">{evt.path}</span>
+                          <span className="text-[11px] text-teal-950/60 hidden sm:inline">
+                            via {evt.source} ({evt.device})
+                          </span>
+                        </div>
+                        <span className="font-mono text-[10px] text-teal-950/50">
+                          {new Date(evt.timestamp).toLocaleTimeString("en-IN")}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* ── FINANCIAL & DONOR AUDIT RECONCILIATION ── */}
+              <div className="pt-2">
+                <h3 className="font-display text-base font-bold text-teal-950 mb-3">
+                  Verified Financial & Campaign Metrics
+                </h3>
+              </div>
+
               {/* Financial KPI Cards */}
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 <div className="rounded-2xl bg-white p-4 ring-1 ring-teal-900/10">
