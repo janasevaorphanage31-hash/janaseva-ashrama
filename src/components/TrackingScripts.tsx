@@ -64,7 +64,7 @@ export function TrackingScripts({
 }: TrackingScriptsProps) {
   // Resolve configuration from props or public environment variables
   const metaPixelId =
-    (propPixelId || process.env.NEXT_PUBLIC_META_PIXEL_ID || "").trim();
+    (propPixelId || process.env.NEXT_PUBLIC_META_PIXEL_ID || "2627567804376774").trim();
   const googleAdsId =
     (propGoogleAdsId ||
       process.env.NEXT_PUBLIC_GOOGLE_ADS_ID ||

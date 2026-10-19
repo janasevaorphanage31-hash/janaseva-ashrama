@@ -39,8 +39,8 @@ export interface DonationTrackingPayload {
 export function getClientTrackingConfig() {
   const metaPixelId =
     typeof process !== "undefined"
-      ? process.env.NEXT_PUBLIC_META_PIXEL_ID || ""
-      : "";
+      ? process.env.NEXT_PUBLIC_META_PIXEL_ID || "2627567804376774"
+      : "2627567804376774";
   const googleAdsId =
     typeof process !== "undefined"
       ? process.env.NEXT_PUBLIC_GOOGLE_ADS_ID ||

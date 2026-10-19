@@ -76,7 +76,7 @@ export interface GeneratedCampaign {
 }
 
 export const DEFAULT_MARKETING_CONFIG: MarketingConfig = {
-  metaPixelId: "",
+  metaPixelId: "2627567804376774",
   metaCapiToken: "",
   metaCapiTestEventCode: "",
   googleAdsCustomerId: "",
