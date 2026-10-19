@@ -39,6 +39,8 @@ Thumbs.db
 # IDE & Editor settings
 .vscode/
 .idea/
+.claude/
+skills-lock.json
 *.suo
 *.ntvs*
 *.njsproj
