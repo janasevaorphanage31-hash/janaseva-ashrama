@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
@@ -26,73 +26,140 @@ export interface PresetTier {
   impact: string;
   badge?: string;
   icon: string;
-  popular?: boolean;
+  image: string;
+  category: "shagun" | "meals" | "boys";
 }
 
-const META_ADS_PRESET_TIERS: PresetTier[] = [
+const ALL_PRESET_TIERS: PresetTier[] = [
+  // ── Shagun Tier (₹11 to ₹51) ──
   {
-    amt: 500,
-    label: "₹500",
-    impact: "Feeds a child for a whole week",
-    badge: "Most Popular ★",
-    icon: "🍲",
-    popular: true,
+    amt: 11,
+    label: "₹11",
+    impact: "1 warm glass of pure cow milk for 1 boy",
+    badge: "Shagun ₹11",
+    icon: "🥛",
+    image: "/media/food.jpg",
+    category: "shagun",
   },
+  {
+    amt: 21,
+    label: "₹21",
+    impact: "Fresh morning fruit & study vitality",
+    badge: "Shagun ₹21",
+    icon: "🍌",
+    image: "/media/fruits.jpg",
+    category: "shagun",
+  },
+  {
+    amt: 51,
+    label: "₹51",
+    impact: "Hot breakfast (idlis & sambar) for a child",
+    badge: "Shagun ₹51",
+    icon: "🍲",
+    image: "/media/prayer-meals.jpg",
+    category: "shagun",
+  },
+  // ── Daily Feasts & Care (₹101 to ₹501) ──
+  {
+    amt: 101,
+    label: "₹101",
+    impact: "Full hot satvik lunch or dinner for 1 boy",
+    badge: "Most Popular ★",
+    icon: "🍛",
+    image: "/media/banana-leaf-feast.jpg",
+    category: "meals",
+  },
+  {
+    amt: 251,
+    label: "₹251",
+    impact: "Full school notebooks & stationery kit",
+    badge: "Vidya Kit",
+    icon: "📚",
+    image: "/media/school-kit.jpg",
+    category: "meals",
+  },
+  {
+    amt: 501,
+    label: "₹501",
+    impact: "3 days nutritious meals & pediatric doctor care",
+    badge: "Arogya Seva",
+    icon: "🩺",
+    image: "/media/boys-meal-gratitude.jpg",
+    category: "meals",
+  },
+  // ── Sponsor 25 Resident Boys (₹1,000 to ₹4,500) ──
   {
     amt: 1000,
     label: "₹1,000",
-    impact: "Complete school kit & notebooks for a boy",
-    badge: "Vidya Kit",
-    icon: "📚",
+    impact: "Feeds a child for a whole week + tuition",
+    badge: "Feeds 1 Wk ⭐",
+    icon: "🍲",
+    image: "/media/learning.jpg",
+    category: "boys",
   },
   {
-    amt: 2000,
-    label: "₹2,000",
-    impact: "1 month healthcare & pediatric nutrition",
-    badge: "Healthcare",
-    icon: "🩺",
+    amt: 2500,
+    label: "₹2,500",
+    impact: "Special hot lunch feast for all 25 boys",
+    badge: "25 Boys Meal",
+    icon: "🍛",
+    image: "/media/annadana-hall-hd.jpg",
+    category: "boys",
   },
   {
     amt: 4500,
     label: "₹4,500",
-    impact: "1 Day Annadana (all 4 hot meals for 25 boys)",
+    impact: "All 4 meals (Full Day Annadana) for all 25 boys",
     badge: "Full Day Seva",
-    icon: "🍛",
-  },
-  {
-    amt: 6000,
-    label: "₹6,000",
-    impact: "1 month kitchen groceries & dal for 4 boys",
-    badge: "Monthly Ration",
-    icon: "🍚",
+    icon: "✨",
+    image: "/media/boys-group-red-assembly.jpg",
+    category: "boys",
   },
 ];
 
 const OCCASIONS = [
   { id: "general", label: "🌸 General Seva", sub: "Daily meal & child care" },
-  { id: "birthday", label: "🎂 Birthday Blessing", sub: "In honour of birthday" },
-  { id: "anniversary", label: "💍 Wedding Anniversary", sub: "Family blessing" },
+  { id: "birthday", label: "🎂 Birthday Blessing", sub: "Celebrant birthday prayer" },
+  { id: "anniversary", label: "💍 Wedding Anniversary", sub: "Family welfare blessing" },
   { id: "memorial", label: "🕊️ In Loving Memory", sub: "Pious remembrance" },
 ];
 
 const FAQS = [
   {
-    q: "Will I get an 80G tax exemption receipt?",
-    a: "Yes, instantly! Janaseva Ashrama is registered under Section 80G Form 10AC (URN: AABTJ7431MF20231). As soon as your contribution is completed, your official 80G tax receipt is generated and dispatched to your WhatsApp number and email.",
+    q: "Will I get an 80G tax exemption receipt for ₹11 or any amount?",
+    a: "Yes! Every single contribution, starting from ₹11 upwards, is legally tax-deductible under Section 80G Form 10AC (URN: AABTJ7431MF20231). Your official digital receipt is sent immediately to your WhatsApp and email.",
   },
   {
-    q: "Can I visit Janaseva Ashrama in Bengaluru?",
-    a: "Absolutely! We welcome donors, families, and visitors 7 days a week between 9:00 AM and 7:00 PM. Our campus is located in Turahalli, Uttarahalli Hobli, Bengaluru 560061.",
+    q: "Can I visit Janaseva Ashrama in Bengaluru to meet the boys?",
+    a: "Yes, visitors are warmly welcome 7 days a week between 9:00 AM and 7:00 PM. We are located in Turahalli, Bengaluru South 560061. You can celebrate your birthday or family anniversary directly with the 25 boys.",
   },
   {
     q: "What payment methods are supported?",
-    a: "You can pay with 1 tap using Google Pay, PhonePe, Paytm, BHIM, Cred, any UPI app, Debit Cards, Credit Cards, or Net Banking from all major Indian banks.",
+    a: "You can donate instantly with 1 tap via Google Pay, PhonePe, Paytm, BHIM, Cred, any UPI app, Debit Cards, Credit Cards, or Net Banking from all major Indian banks.",
   },
   {
-    q: "How is my donation utilized for the 25 boys?",
-    a: "100% of your contribution goes directly to the children's daily freshly prepared satvik meals, school uniforms, notebooks, evening coaching, and routine medical checkups under Juvenile Justice Act registration KA18CH0242.",
+    q: "How does my contribution reach the 25 resident boys?",
+    a: "100% of your donation is allocated directly to fresh kitchen groceries (Sona Masoori rice, Toor dal, fresh vegetables, cow milk), school uniforms, textbooks, and routine doctor checkups under Karnataka Govt JJ Act registration KA18CH0242.",
   },
 ];
+
+function getDynamicImpactText(amt: number): string {
+  if (amt <= 0) return "Choose or enter any sacred amount to support 25 resident boys.";
+  if (amt === 11) return "Provides 1 glass of warm, pure cow milk for a young boy before morning shlokas.";
+  if (amt === 21) return "Provides fresh bananas & seasonal study fruits for a child.";
+  if (amt === 51) return "Serves a steaming hot breakfast (idlis, sambar & chutney) fresh from the kitchen.";
+  if (amt === 101) return "Provides a full hot satvik lunch with rice, sambar, and fresh vegetables for 1 boy.";
+  if (amt === 251) return "Provides a full set of school notebooks, pencils, and geometry stationery.";
+  if (amt === 501) return "Sponsors 3 full days of satvik meals, morning milk, and pediatric wellness care.";
+  if (amt === 1000) return "Feeds an orphaned boy with all 3 nutritious meals for an entire week.";
+  if (amt === 2500) return "Hosts a special festive hot lunch feast with sweet payasam for all 25 boys.";
+  if (amt === 4500) return "Sponsors complete 24-hour 4-meal Annadana (breakfast, lunch, evening snacks & dinner) for all 25 boys.";
+  if (amt < 50) return `Your gift of ${formatINR(amt)} provides warm cow milk and morning study fruit for resident boys.`;
+  if (amt < 200) return `Your gift of ${formatINR(amt)} serves wholesome hot meals to the children at Janaseva Ashrama today.`;
+  if (amt < 1000) return `Your noble gift of ${formatINR(amt)} covers fresh kitchen staples, vegetables & doctor care.`;
+  if (amt < 3000) return `Your generous sponsorship of ${formatINR(amt)} provides nutritious feasts & textbooks for resident boys.`;
+  return `Your noble contribution of ${formatINR(amt)} covers full-day Annadana, monthly pantry staples & holistic shelter care for all 25 boys.`;
+}
 
 export function MetaAdsDonateComponent() {
   const searchParams = useSearchParams();
@@ -114,22 +181,25 @@ export function MetaAdsDonateComponent() {
   });
   const [leadId] = useState<string>(() => searchParams.get("lead_id") || "");
 
-  // Amount State (Default ₹500 according to Meta Ads spec: "₹500 feeds a child for a week")
+  // Category Filter for Presets ("all" | "shagun" | "meals" | "boys")
+  const [activeCategory, setActiveCategory] = useState<string>("all");
+
+  // Amount State (Starts from ₹11 upwards; default ₹101 or ₹500)
   const [amount, setAmount] = useState<number>(() => {
     const urlAmt = searchParams.get("amount");
     if (urlAmt) {
       const parsed = parseFloat(urlAmt);
-      if (parsed >= 10 && parsed <= 500000 && META_ADS_PRESET_TIERS.some((t) => t.amt === parsed)) {
+      if (parsed >= 10 && parsed <= 500000 && ALL_PRESET_TIERS.some((t) => t.amt === parsed)) {
         return parsed;
       }
     }
-    return 500;
+    return 101; // Welcoming starter tier
   });
   const [customAmount, setCustomAmount] = useState<string>(() => {
     const urlAmt = searchParams.get("amount");
     if (urlAmt) {
       const parsed = parseFloat(urlAmt);
-      if (parsed >= 10 && parsed <= 500000 && !META_ADS_PRESET_TIERS.some((t) => t.amt === parsed)) {
+      if (parsed >= 10 && parsed <= 500000 && !ALL_PRESET_TIERS.some((t) => t.amt === parsed)) {
         return String(parsed);
       }
     }
@@ -166,8 +236,9 @@ export function MetaAdsDonateComponent() {
     general?: string;
   }>({});
 
-  // Refs for smooth scroll to errors or sticky bar trigger
+  // Refs for smooth scroll
   const topCardRef = useRef<HTMLDivElement>(null);
+  const customInputRef = useRef<HTMLInputElement>(null);
   const nameInputRef = useRef<HTMLInputElement>(null);
   const phoneInputRef = useRef<HTMLInputElement>(null);
 
@@ -176,25 +247,20 @@ export function MetaAdsDonateComponent() {
   const amountWords = finalAmount >= 10 ? numberToIndianWords(finalAmount) : "";
 
   // Dynamic Impact Description
-  const currentTier = META_ADS_PRESET_TIERS.find((t) => t.amt === finalAmount);
-  const impactSummary = currentTier
-    ? currentTier.impact
-    : finalAmount < 500
-    ? `Provides warm morning milk & fruits for resident boys`
-    : finalAmount < 1000
-    ? `Feeds a resident child nutritious satvik meals for ${Math.max(1, Math.round(finalAmount / 71))} days`
-    : finalAmount < 2500
-    ? `Covers school education kit, notebooks & evening tutoring for 2 boys`
-    : finalAmount < 5000
-    ? `Provides 1 full day of fresh meals and nutrition for all 25 resident boys`
-    : `Covers monthly groceries, kitchen staples & holistic care for the resident children`;
+  const impactSummary = getDynamicImpactText(finalAmount);
+
+  // Filtered preset tiers
+  const filteredTiers = useMemo(() => {
+    if (activeCategory === "all") return ALL_PRESET_TIERS;
+    return ALL_PRESET_TIERS.filter((t) => t.category === activeCategory);
+  }, [activeCategory]);
 
   // Track ViewContent on mount
   useEffect(() => {
     trackViewContent({
       content_name: "Meta Ads 25 Boys Donation",
       content_category: "Child Welfare & Annadana",
-      value: finalAmount || 500,
+      value: finalAmount || 101,
       currency: "INR",
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -213,13 +279,12 @@ export function MetaAdsDonateComponent() {
     });
   };
 
-  // Observe top card visibility for mobile sticky bar
+  // Sticky bottom bar trigger on mobile
   useEffect(() => {
     const handleScroll = () => {
       if (!topCardRef.current) return;
       const rect = topCardRef.current.getBoundingClientRect();
-      // Show sticky bar when donor has scrolled past the top card button
-      setShowStickyBar(rect.bottom < 120);
+      setShowStickyBar(rect.bottom < 100);
     };
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
@@ -253,9 +318,9 @@ export function MetaAdsDonateComponent() {
   const handlePayNow = async () => {
     const errors: typeof formErrors = {};
 
-    // 1. Amount validation
-    if (!finalAmount || isNaN(finalAmount) || finalAmount < 10) {
-      errors.amount = "Please choose or enter a valid donation amount (minimum ₹10).";
+    // 1. Amount validation (Starts from ₹11 upwards)
+    if (!finalAmount || isNaN(finalAmount) || finalAmount < 11) {
+      errors.amount = "Please choose or enter a valid donation amount (minimum contribution is ₹11).";
     } else if (finalAmount > 1000000) {
       errors.amount = "Online contributions are capped at ₹10,00,000. Please contact the Ashrama directly for larger endowments.";
     }
@@ -499,60 +564,95 @@ export function MetaAdsDonateComponent() {
         style={{ display: "none" }}
       />
 
-      {/* ── 1. Minimal Trust Bar (Zero Distraction, Maximum Credibility) ── */}
-      <header className="mb-4 flex items-center justify-between px-1">
-        <div className="flex items-center gap-2.5">
-          <LogoMark size={40} className="shadow-xs ring-2 ring-amber-400/40" />
-          <div>
-            <h2 className="text-sm font-black tracking-tight text-teal-950 leading-tight">
-              Janaseva Ashrama
-            </h2>
-            <p className="text-[10px] font-semibold text-teal-950/70">
-              Makkala Ashraya Kendra · Est. 2000
-            </p>
+      {/* ── 1. 🚨 LIVE URGENT DONATION BEACON BAR ── */}
+      <div className="mb-3.5 rounded-2xl bg-gradient-to-r from-red-600 via-orange-600 to-amber-600 p-3 text-white shadow-lg border border-red-400/40">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-90" />
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-white" />
+            </span>
+            <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider">
+              Urgent Need Today · Bangalore Ashrama
+            </span>
           </div>
-        </div>
-
-        <div className="flex items-center gap-1.5">
-          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 border border-emerald-300 px-2.5 py-0.5 text-[10px] font-black text-emerald-900 shadow-2xs">
-            <span>🛡️</span>
-            <span>80G Tax Free</span>
-          </span>
-          <span className="hidden sm:inline-flex items-center gap-1 rounded-full bg-amber-100 border border-amber-300 px-2.5 py-0.5 text-[10px] font-bold text-amber-950 shadow-2xs">
-            <span>Govt Reg: {SITE.jjActNumber}</span>
+          <span className="rounded-full bg-white/20 px-2 py-0.5 text-[9px] sm:text-[10px] font-black uppercase">
+            6 Meals Needed Tonight
           </span>
         </div>
-      </header>
 
-      {/* ── 2. Emotional Headline & Social Proof Hook ── */}
-      <div className="text-center mb-4 px-2">
-        <div className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/15 border border-amber-500/30 px-3.5 py-1 text-[11px] font-black text-amber-900 uppercase tracking-wider mb-2">
-          <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
-          </span>
-          <span>Support 25 Resident Orphaned Boys in Bengaluru</span>
-        </div>
-
-        <h1 className="font-display text-2xl sm:text-3xl font-black text-teal-950 tracking-tight leading-tight">
-          Give Pure Satvik Meals &amp; Education
-        </h1>
-
-        <p className="text-xs sm:text-sm text-teal-950/75 mt-1.5 max-w-md mx-auto leading-relaxed">
-          Your sacred contribution reaches the children directly with fresh hot meals, school uniforms, and loving shelter. 100% Tax Deductible.
+        <p className="mt-1 text-[11px] sm:text-xs text-white/95 leading-snug font-medium">
+          Evening satvik meals &amp; tomorrow&apos;s morning cow milk needed for 25 boys.{" "}
+          <strong>Even ₹11 blesses a child with warm milk.</strong>
         </p>
+
+        {/* Urgency Progress Bar */}
+        <div className="mt-2 flex items-center gap-2">
+          <div className="flex-1 h-2 rounded-full bg-black/25 overflow-hidden">
+            <div className="h-full rounded-full bg-amber-300 w-[76%] transition-all duration-500" />
+          </div>
+          <span className="text-[10px] font-black text-amber-200 shrink-0">19/25 Boys Sponsored</span>
+        </div>
       </div>
 
-      {/* ── 3. 🎯 TOP ACTION DONATION CARD (ABOVE THE FOLD ON MOBILE) ── */}
+      {/* ── 2. HERO CARD WITH AUTHENTIC PHOTO BACKGROUND & EMOTIONAL HOOK ── */}
+      <div className="relative overflow-hidden rounded-3xl bg-teal-950 p-5 sm:p-7 text-white shadow-2xl mb-4 border border-amber-400/30">
+        {/* Authentic Background Photo with Vignette */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/media/boys-meal-gratitude.jpg"
+          alt="Resident orphaned boys praying with gratitude at Janaseva Ashrama Bangalore"
+          className="absolute inset-0 h-full w-full object-cover object-center scale-105 filter brightness-75 transition-transform duration-700"
+        />
+        {/* High-Contrast Gradient Scrim for 100% Text Legibility */}
+        <div className="absolute inset-0 bg-gradient-to-t from-teal-950 via-teal-950/85 to-teal-950/65" />
+
+        {/* Content */}
+        <div className="relative z-10">
+          <div className="flex items-center justify-between gap-2 mb-3">
+            <div className="flex items-center gap-2.5">
+              <LogoMark size={44} className="shadow-md ring-2 ring-amber-400/60" />
+              <div>
+                <h2 className="text-sm sm:text-base font-black tracking-tight text-white leading-tight">
+                  Janaseva Ashrama
+                </h2>
+                <p className="text-[10px] font-semibold text-amber-300">
+                  Registered Orphanage &amp; Children&apos;s Home · Est. 2000
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-col items-end gap-1">
+              <span className="rounded-full bg-emerald-500/30 border border-emerald-400 px-2 py-0.5 text-[9px] font-black uppercase text-emerald-200">
+                🛡️ 80G Tax Free
+              </span>
+              <span className="text-[9px] text-white/70 font-mono">
+                Govt: {SITE.jjActNumber}
+              </span>
+            </div>
+          </div>
+
+          <h1 className="font-display text-2xl sm:text-3xl font-black text-white tracking-tight leading-tight mt-1">
+            Feed &amp; Educate 25 Orphaned Boys
+          </h1>
+
+          <p className="text-xs sm:text-sm text-teal-100/90 mt-2 leading-relaxed">
+            Every rupee directly provides steaming hot satvik meals, school kits, and loving care. 
+            <strong> All donors are remembered in 6:30 AM morning prayers.</strong>
+          </p>
+        </div>
+      </div>
+
+      {/* ── 3. 🎯 TOP ACTION DONATION CARD (ABOVE THE MOBILE FOLD) ── */}
       <div
         ref={topCardRef}
-        className="rounded-3xl bg-white p-5 sm:p-7 shadow-2xl border-2 border-amber-400/40 relative overflow-hidden ring-4 ring-amber-300/10"
+        className="rounded-3xl bg-white p-5 sm:p-7 shadow-2xl border-2 border-amber-400/50 relative overflow-hidden ring-4 ring-amber-300/15"
       >
-        {/* Glow Accent */}
-        <div className="absolute top-0 right-0 -mt-8 -mr-8 h-28 w-28 rounded-full bg-amber-400/15 blur-2xl pointer-events-none" />
+        {/* Decorative corner glow */}
+        <div className="absolute top-0 right-0 -mt-8 -mr-8 h-28 w-28 rounded-full bg-amber-400/20 blur-2xl pointer-events-none" />
 
         {/* Online vs Direct Bank Transfer Tabs */}
-        <div className="mb-4 flex rounded-2xl bg-cream/70 p-1 border border-teal-900/10">
+        <div className="mb-4 flex rounded-2xl bg-cream/80 p-1 border border-teal-900/10">
           <button
             type="button"
             onClick={() => setActiveTab("online")}
@@ -562,7 +662,7 @@ export function MetaAdsDonateComponent() {
                 : "text-teal-950/70 hover:text-teal-950"
             }`}
           >
-            <span>⚡ Instant Online (UPI / Cards)</span>
+            <span>⚡ Instant 1-Tap (UPI / Cards)</span>
           </button>
           <button
             type="button"
@@ -588,166 +688,215 @@ export function MetaAdsDonateComponent() {
         {/* TAB 1: ONLINE DONATION (UPI / CARDS / RAZORPAY) */}
         {activeTab === "online" && (
           <div className="space-y-4">
-            {/* ── PRESET TIERS GRID (Checklist Point 3: ₹500, ₹1000, ₹2000, etc.) ── */}
+            {/* ── STEP 1: PRESET AMOUNTS WITH AUTHENTIC PHOTO BACKGROUNDS (Starts from ₹11) ── */}
             <div>
               <div className="flex items-center justify-between mb-2">
                 <label className="text-xs font-black uppercase tracking-wider text-teal-950 flex items-center gap-1.5">
                   <span>1.</span>
-                  <span>Select Contribution Amount:</span>
+                  <span>Choose Sacred Contribution:</span>
                 </label>
-                <span className="text-[11px] font-bold text-emerald-700 flex items-center gap-1">
-                  <span>✓</span> 80G Tax Deductible
+                <span className="text-[11px] font-bold text-emerald-800 flex items-center gap-1">
+                  <span>✓</span> Starts from ₹11 · 80G Tax Free
                 </span>
               </div>
 
+              {/* Category Filter Chips for Fast Selection */}
+              <div className="flex items-center gap-1.5 mb-2.5 overflow-x-auto pb-1 text-xs">
+                {[
+                  { id: "all", label: "🌟 All Tiers" },
+                  { id: "shagun", label: "🥛 Shagun (₹11 - ₹51)" },
+                  { id: "meals", label: "🍲 Meals (₹101 - ₹501)" },
+                  { id: "boys", label: "🏛️ 25 Boys (₹1k - ₹4.5k)" },
+                ].map((cat) => (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => setActiveCategory(cat.id)}
+                    className={`px-3 py-1 rounded-xl text-[11px] font-bold shrink-0 transition cursor-pointer ${
+                      activeCategory === cat.id
+                        ? "bg-teal-950 text-white shadow-xs font-black"
+                        : "bg-cream text-teal-950 border border-teal-900/10 hover:bg-sand"
+                    }`}
+                  >
+                    {cat.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Grid of Preset Cards with Authentic Image Backgrounds */}
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {META_ADS_PRESET_TIERS.map((tier) => {
+                {filteredTiers.map((tier) => {
                   const isSelected = amount === tier.amt && !customAmount;
                   return (
                     <button
                       key={tier.amt}
                       type="button"
                       onClick={() => handleSelectTier(tier.amt)}
-                      className={`relative p-3 rounded-2xl text-left border transition-all cursor-pointer tap-scale ${
+                      className={`group relative overflow-hidden p-2.5 sm:p-3 rounded-2xl text-left transition-all border cursor-pointer tap-scale flex flex-col justify-between min-h-[96px] sm:min-h-[104px] ${
                         isSelected
-                          ? "bg-teal-950 text-white border-teal-950 shadow-lg ring-2 ring-amber-400 scale-[1.02]"
-                          : "bg-cream/40 text-teal-950 border-teal-900/15 hover:bg-cream hover:border-amber-400/50"
+                          ? "border-amber-400 ring-2 ring-amber-400 shadow-xl scale-[1.02]"
+                          : "border-teal-900/15 hover:border-amber-400/60"
                       }`}
                     >
-                      {tier.badge && (
-                        <span
-                          className={`absolute -top-2 right-2 rounded-full px-2 py-0.5 text-[8px] font-black uppercase shadow-xs ${
-                            isSelected
-                              ? "bg-amber-400 text-teal-950"
-                              : "bg-teal-900/10 text-teal-900"
-                          }`}
-                        >
-                          {tier.badge}
-                        </span>
-                      )}
+                      {/* Authentic Image Background */}
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={tier.image}
+                        alt={tier.label}
+                        className="absolute inset-0 h-full w-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
+                      />
+                      {/* High-contrast gradient overlay */}
+                      <div
+                        className={`absolute inset-0 transition-colors ${
+                          isSelected
+                            ? "bg-gradient-to-t from-teal-950/95 via-teal-950/80 to-teal-950/50"
+                            : "bg-gradient-to-t from-black/90 via-black/75 to-black/45 group-hover:from-black/85"
+                        }`}
+                      />
 
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-base">{tier.icon}</span>
-                        <span className="font-display text-base font-black tracking-tight">
-                          {tier.label}
-                        </span>
+                      {/* Top Badge */}
+                      <div className="relative z-10 flex justify-end w-full">
+                        {tier.badge && (
+                          <span
+                            className={`rounded-full px-1.5 py-0.2 text-[8px] font-black uppercase shadow-xs ${
+                              isSelected
+                                ? "bg-amber-400 text-teal-950"
+                                : "bg-white/20 text-white backdrop-blur-xs"
+                            }`}
+                          >
+                            {tier.badge}
+                          </span>
+                        )}
                       </div>
 
-                      <p
-                        className={`text-[10px] font-bold mt-1 line-clamp-1 leading-tight ${
-                          isSelected ? "text-amber-300" : "text-teal-950/70"
-                        }`}
-                      >
-                        {tier.impact}
-                      </p>
+                      {/* Content */}
+                      <div className="relative z-10 mt-auto">
+                        <div className="flex items-center gap-1">
+                          <span className="text-sm select-none">{tier.icon}</span>
+                          <span
+                            className={`font-display text-base sm:text-lg font-black leading-none drop-shadow-sm ${
+                              isSelected ? "text-amber-300" : "text-white"
+                            }`}
+                          >
+                            {tier.label}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-white/90 line-clamp-2 leading-tight mt-1 font-medium drop-shadow-xs">
+                          {tier.impact}
+                        </p>
+                      </div>
                     </button>
                   );
                 })}
-
-                {/* Custom Amount Preset Trigger */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCustomAmount(customAmount || "1500");
-                    clearFieldError("amount");
-                  }}
-                  className={`p-3 rounded-2xl text-left border transition-all cursor-pointer tap-scale ${
-                    customAmount
-                      ? "bg-teal-950 text-white border-teal-950 shadow-lg ring-2 ring-amber-400 scale-[1.02]"
-                      : "bg-cream/40 text-teal-950 border-teal-900/15 hover:bg-cream"
-                  }`}
-                >
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-base">✏️</span>
-                    <span className="font-display text-base font-black tracking-tight">
-                      Custom
-                    </span>
-                  </div>
-                  <p
-                    className={`text-[10px] font-bold mt-1 line-clamp-1 leading-tight ${
-                      customAmount ? "text-amber-300" : "text-teal-950/70"
-                    }`}
-                  >
-                    Any amount ₹10+
-                  </p>
-                </button>
               </div>
 
-              {/* Custom Amount Numeric Input Box */}
-              {customAmount !== "" && (
-                <div className="mt-2.5 rounded-2xl bg-cream/40 p-3 border border-teal-900/15 animate-fadeIn">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs font-bold text-teal-950">Enter Custom Amount:</span>
-                    <span className="text-[10px] text-teal-950/60">Min ₹10 · Max ₹10,00,000</span>
-                  </div>
+              {/* ── STEP 2: DEDICATED PERMANENT CUSTOM AMOUNT INPUT SECTION ── */}
+              <div className="mt-3 rounded-2xl bg-cream/50 p-3.5 border border-teal-900/15">
+                <div className="flex items-center justify-between mb-1.5">
+                  <label
+                    htmlFor="meta-custom-amount"
+                    className="text-xs font-black uppercase tracking-wider text-teal-950 flex items-center gap-1.5"
+                  >
+                    <span>✏️</span>
+                    <span>Or Enter Any Custom Amount (Min ₹11):</span>
+                  </label>
+                  {customAmount && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCustomAmount("");
+                        setAmount(101);
+                      }}
+                      className="text-[11px] font-bold text-amber-800 hover:text-amber-950 underline cursor-pointer"
+                    >
+                      Reset
+                    </button>
+                  )}
+                </div>
 
-                  <div className="relative">
-                    <span className="absolute left-3.5 top-2.5 text-base font-black text-teal-950">₹</span>
-                    <input
-                      type="number"
-                      inputMode="numeric"
-                      min={10}
-                      max={1000000}
-                      placeholder="e.g. 1500"
-                      value={customAmount}
-                      onChange={(e) => {
-                        setCustomAmount(e.target.value);
+                <div className="relative flex items-center rounded-xl border-2 border-teal-900/20 bg-white px-3.5 py-1 focus-within:border-teal-900 focus-within:ring-2 focus-within:ring-amber-400 transition">
+                  <span className="font-display text-xl font-black text-teal-950 select-none mr-2">
+                    ₹
+                  </span>
+                  <input
+                    ref={customInputRef}
+                    id="meta-custom-amount"
+                    type="number"
+                    inputMode="numeric"
+                    min={11}
+                    max={1000000}
+                    placeholder="Enter amount (e.g. 51, 151, 1500)"
+                    value={customAmount}
+                    onChange={(e) => {
+                      setCustomAmount(e.target.value);
+                      clearFieldError("amount");
+                    }}
+                    className="w-full bg-transparent py-2 text-lg font-black text-teal-950 placeholder:text-teal-950/35 placeholder:font-normal outline-none"
+                  />
+                  {customAmount && (
+                    <button
+                      type="button"
+                      onClick={() => setCustomAmount("")}
+                      className="text-xs font-bold text-teal-900/50 hover:text-teal-900 p-1 cursor-pointer shrink-0"
+                      title="Clear amount"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+
+                {/* Quick Add Chips (Starting from +₹11) */}
+                <div className="flex flex-wrap items-center gap-1.5 mt-2.5">
+                  <span className="text-[10px] font-bold text-teal-950/60 uppercase">Quick Add:</span>
+                  {[11, 51, 101, 501, 1000, 2500].map((inc) => (
+                    <button
+                      key={inc}
+                      type="button"
+                      onClick={() => {
+                        const current = customAmount ? parseFloat(customAmount) || 0 : amount;
+                        setCustomAmount(String(current + inc));
                         clearFieldError("amount");
                       }}
-                      className="w-full rounded-xl border border-teal-900/20 bg-white py-2.5 pl-8 pr-3 text-base font-black text-teal-950 outline-none focus:ring-2 focus:ring-amber-500"
-                    />
-                  </div>
-
-                  {/* Quick Add Chips */}
-                  <div className="flex flex-wrap items-center gap-1.5 mt-2">
-                    <span className="text-[10px] font-bold text-teal-950/50 uppercase">Quick Add:</span>
-                    {[500, 1000, 2000, 4500].map((inc) => (
-                      <button
-                        key={inc}
-                        type="button"
-                        onClick={() => {
-                          const current = parseFloat(customAmount) || 0;
-                          setCustomAmount(String(current + inc));
-                          clearFieldError("amount");
-                        }}
-                        className="rounded-lg bg-white border border-teal-900/15 px-2 py-0.5 text-[11px] font-bold text-teal-950 hover:bg-teal-950 hover:text-white transition cursor-pointer"
-                      >
-                        +{formatINR(inc)}
-                      </button>
-                    ))}
-                  </div>
+                      className="rounded-lg bg-white hover:bg-teal-950 hover:text-white border border-teal-900/15 px-2.5 py-1 text-[11px] font-black text-teal-950 transition cursor-pointer shadow-2xs"
+                    >
+                      +{formatINR(inc)}
+                    </button>
+                  ))}
                 </div>
-              )}
 
-              {/* Dynamic Impact & 80G Tax Savings Strip */}
-              <div className="mt-2.5 rounded-2xl bg-amber-50 p-3 border border-amber-300/70 text-xs text-amber-950 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-2xs">
-                <div className="flex items-start sm:items-center gap-2">
-                  <span className="text-lg shrink-0">🌸</span>
-                  <div>
-                    <span className="font-bold block leading-tight text-amber-950">
-                      {impactSummary}
+                {formErrors.amount && (
+                  <p className="mt-2 text-xs text-rose-600 font-semibold flex items-center gap-1">
+                    <span>⚠️</span> {formErrors.amount}
+                  </p>
+                )}
+              </div>
+
+              {/* Real-time Dynamic Impact Description & 80G Tax Calculation */}
+              <div className="mt-2.5 rounded-2xl bg-amber-50 p-3.5 border border-amber-300/80 text-xs text-amber-950 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 shadow-2xs">
+                <div className="flex items-start gap-2.5 min-w-0">
+                  <span className="text-xl select-none shrink-0">🌸</span>
+                  <div className="min-w-0">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-amber-900 block">
+                      Direct Impact for 25 Resident Boys:
                     </span>
+                    <p className="font-bold text-teal-950 leading-snug text-xs mt-0.5">
+                      {impactSummary}
+                    </p>
                     {amountWords && (
-                      <span className="text-[10px] text-amber-900/80 font-medium block mt-0.5">
+                      <p className="text-[10px] text-amber-900/80 font-medium mt-0.5">
                         Amount in words: <strong>{amountWords}</strong>
-                      </span>
+                      </p>
                     )}
                   </div>
                 </div>
 
-                <div className="shrink-0 self-start sm:self-auto rounded-lg bg-emerald-100 border border-emerald-300 px-2 py-0.5 text-[10px] font-black text-emerald-950">
-                  Tax Saved: ~{formatINR(Math.round(finalAmount * 0.15))}
+                <div className="shrink-0 self-start sm:self-auto rounded-lg bg-emerald-100 border border-emerald-300 px-2.5 py-1 text-[10px] font-black text-emerald-900 shadow-2xs">
+                  80G Tax Deductible (50%)
                 </div>
               </div>
-
-              {formErrors.amount && (
-                <p className="mt-1.5 text-xs text-rose-600 font-semibold flex items-center gap-1">
-                  <span>⚠️</span> {formErrors.amount}
-                </p>
-              )}
             </div>
 
-            {/* ── 2. DONOR DETAILS INPUT (Streamlined 2 Fields) ── */}
+            {/* ── STEP 3: DONOR DETAILS (Streamlined 2 Fields: Name + WhatsApp) ── */}
             <div className="space-y-3 pt-1">
               <label className="block text-xs font-black uppercase tracking-wider text-teal-950">
                 2. Donor &amp; Receipt Details:
@@ -759,7 +908,7 @@ export function MetaAdsDonateComponent() {
                   <label className="text-xs font-bold text-teal-950">
                     Your Full Name <span className="text-rose-500">*</span>
                   </label>
-                  <span className="text-[10px] text-teal-950/60 font-medium">Chanted in morning shlokas</span>
+                  <span className="text-[10px] text-teal-950/60 font-medium">Chanted in morning prayers</span>
                 </div>
                 <input
                   ref={nameInputRef}
@@ -790,7 +939,7 @@ export function MetaAdsDonateComponent() {
                   <label className="text-xs font-bold text-teal-950">
                     WhatsApp Mobile Number <span className="text-rose-500">*</span>
                   </label>
-                  <span className="text-[10px] text-emerald-700 font-bold">Instant 80G receipt on WhatsApp</span>
+                  <span className="text-[10px] text-emerald-700 font-bold">Instant 80G tax receipt</span>
                 </div>
                 <div className="relative">
                   <span className="absolute left-3 top-2.5 text-xs font-black text-teal-950/70">+91</span>
@@ -841,7 +990,7 @@ export function MetaAdsDonateComponent() {
                 </button>
               </div>
 
-              {/* PAN Input Field (When expanded) */}
+              {/* PAN Input Field */}
               {showPanInput && (
                 <div className="rounded-2xl bg-cream/30 p-3 border border-teal-900/10 animate-fadeIn space-y-1">
                   <div className="flex items-center justify-between">
@@ -868,7 +1017,7 @@ export function MetaAdsDonateComponent() {
                 </div>
               )}
 
-              {/* Occasion / Prayer Dedication (When expanded) */}
+              {/* Occasion / Prayer Dedication */}
               {showOccasionSelect && (
                 <div className="rounded-2xl bg-cream/30 p-3 border border-teal-900/10 animate-fadeIn space-y-2">
                   <label className="block text-xs font-bold text-teal-950">
@@ -911,7 +1060,7 @@ export function MetaAdsDonateComponent() {
               <span className="rounded bg-teal-900/10 px-1.5 py-0.5 text-[10px] font-black text-teal-900">UPI / Cards</span>
             </div>
 
-            {/* ── 3. 🚀 BIG "DONATE NOW" CTA BUTTON (Checklist Point 2: Clear & Prominent) ── */}
+            {/* ── 4. 🚀 BIG "DONATE NOW" CTA BUTTON (Clear, High-Contrast & Prominent) ── */}
             <button
               type="button"
               onClick={handlePayNow}
@@ -931,7 +1080,7 @@ export function MetaAdsDonateComponent() {
               )}
             </button>
 
-            {/* Instant WhatsApp Receipt Guarantee */}
+            {/* Guarantees */}
             <p className="text-center text-[11px] text-teal-950/70 font-semibold flex items-center justify-center gap-1.5">
               <span>🔒 256-Bit SSL Encrypted</span>
               <span>·</span>
@@ -1019,13 +1168,13 @@ export function MetaAdsDonateComponent() {
         )}
       </div>
 
-      {/* ── 4. Authentic Photo Proof & Impact of 25 Resident Boys ── */}
+      {/* ── 5. Authentic Photo Proof & Impact of 25 Resident Boys ── */}
       <section className="mt-8 rounded-3xl bg-white p-5 sm:p-6 shadow-sm border border-teal-900/10">
         <h3 className="font-display text-lg font-black text-teal-950 mb-1">
           Life at Janaseva Ashrama (25 Resident Boys)
         </h3>
         <p className="text-xs text-teal-950/70 mb-4">
-          Turahalli, Bengaluru · Providing holistic care, education, and love since 2000.
+          Turahalli, Bengaluru · Providing wholesome satvik meals, education &amp; loving shelter since 2000.
         </p>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
@@ -1038,7 +1187,7 @@ export function MetaAdsDonateComponent() {
               sizes="(max-width: 640px) 50vw, 33vw"
             />
             <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-2 text-[10px] text-white font-bold leading-tight">
-              🍲 Daily Annadana Feast
+              🍲 Daily Satvik Annadana
             </div>
           </div>
 
@@ -1051,7 +1200,7 @@ export function MetaAdsDonateComponent() {
               sizes="(max-width: 640px) 50vw, 33vw"
             />
             <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-2 text-[10px] text-white font-bold leading-tight">
-              📚 Evening Vidya Study
+              📚 Evening Vidya &amp; Tuition
             </div>
           </div>
 
@@ -1072,20 +1221,20 @@ export function MetaAdsDonateComponent() {
         <div className="mt-4 pt-3 border-t border-teal-900/10 grid grid-cols-3 gap-2 text-center text-[10px] font-bold text-teal-950/80">
           <div>
             <span className="block font-black text-sm text-teal-950">25 Boys</span>
-            <span>Full-Time Shelter</span>
+            <span>Loving Care</span>
           </div>
           <div>
             <span className="block font-black text-sm text-teal-950">4 Meals/Day</span>
-            <span>Nutritious Satvik</span>
+            <span>Satvik Nutrition</span>
           </div>
           <div>
             <span className="block font-black text-sm text-teal-950">100% Free</span>
-            <span>Schooling &amp; Books</span>
+            <span>Schooling &amp; Health</span>
           </div>
         </div>
       </section>
 
-      {/* ── 5. Institutional Trust & Legal Badges ── */}
+      {/* ── 6. Institutional Trust & Legal Badges ── */}
       <section className="mt-4 rounded-3xl bg-cream/50 p-4 sm:p-5 border border-teal-900/10 text-xs text-teal-950">
         <h4 className="font-bold uppercase tracking-wider text-[11px] text-teal-950/70 mb-3 text-center sm:text-left">
           Official Government &amp; Tax Credentials
@@ -1112,7 +1261,7 @@ export function MetaAdsDonateComponent() {
         </div>
       </section>
 
-      {/* ── 6. Donor FAQ Accordion ── */}
+      {/* ── 7. Donor FAQ Accordion ── */}
       <section className="mt-4 rounded-3xl bg-white p-5 border border-teal-900/10">
         <h4 className="font-display text-base font-bold text-teal-950 mb-3">
           Frequently Asked Questions
@@ -1145,7 +1294,7 @@ export function MetaAdsDonateComponent() {
       {/* Direct Contact & WhatsApp Help */}
       <div className="mt-6 text-center text-xs text-teal-950/70 space-y-2">
         <p>
-          Need assistance or wish to plan an in-person visit?
+          Need assistance or wish to plan an in-person campus visit?
         </p>
         <a
           href={`https://wa.me/${SITE.whatsapp}?text=${encodeURIComponent(
@@ -1163,7 +1312,7 @@ export function MetaAdsDonateComponent() {
         </p>
       </div>
 
-      {/* ── 7. 📱 MOBILE STICKY BOTTOM DONATION BAR ── */}
+      {/* ── 8. 📱 MOBILE STICKY BOTTOM DONATION BAR ── */}
       {showStickyBar && (
         <div className="fixed inset-x-0 bottom-0 z-40 bg-white/95 backdrop-blur-md border-t border-teal-900/15 p-3 px-4 shadow-2xl sm:hidden flex items-center justify-between gap-3 animate-in slide-in-from-bottom">
           <div className="min-w-0">
@@ -1176,14 +1325,14 @@ export function MetaAdsDonateComponent() {
               </span>
             </div>
             <p className="text-[10px] text-teal-950/70 truncate font-semibold">
-              {currentTier ? currentTier.impact : "Sponsor 25 Resident Boys"}
+              {impactSummary}
             </p>
           </div>
 
           <button
             type="button"
             onClick={scrollToTopCard}
-            className="shrink-0 px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-black text-xs uppercase tracking-wider shadow-md active:scale-95 cursor-pointer flex items-center gap-1.5"
+            className="shrink-0 px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-black text-xs uppercase tracking-wider shadow-md active:scale-95 cursor-pointer flex items-center gap-1.5 animate-heartbeat"
           >
             <span>DONATE NOW</span>
             <span>💝</span>
