@@ -1,16 +1,18 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { UnifiedDonationFlow } from "@/components/UnifiedDonationFlow";
+import { CheckoutClient } from "@/components/CheckoutClient";
+import { PageHero } from "@/components/ui";
 
 export const metadata: Metadata = {
-  title: "Donate to 25 Resident Boys | Official Secure Checkout | Janaseva Ashrama",
+  title: "Checkout | Review & Give Securely | Janaseva Ashrama",
   description: "Secure, direct online contribution to Janaseva Ashrama, Bangalore. 100% Tax Deductible under Section 80G Form 10AC. Instant UPI & WhatsApp receipt.",
   robots: { index: false },
 };
 
 export default function CheckoutPage() {
   return (
-    <div className="min-h-screen bg-sand/30 py-4 sm:py-10">
+    <>
+      <PageHero eyebrow="Checkout" title="Review & give securely" />
       <Suspense
         fallback={
           <div className="mx-auto max-w-md px-5 py-24 text-center">
@@ -19,8 +21,8 @@ export default function CheckoutPage() {
           </div>
         }
       >
-        <UnifiedDonationFlow />
+        <CheckoutClient />
       </Suspense>
-    </div>
+    </>
   );
 }

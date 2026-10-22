@@ -219,8 +219,9 @@ export function MetaAdsDonateComponent() {
 
   // UI States
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<"online" | "bank">("online");
+  const [activeTab, setActiveTab] = useState<"online" | "upi" | "bank">("online");
   const [copiedBankField, setCopiedBankField] = useState<string | null>(null);
+  const [copiedUpi, setCopiedUpi] = useState(false);
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
   const [showStickyBar, setShowStickyBar] = useState(false);
 
@@ -255,6 +256,22 @@ export function MetaAdsDonateComponent() {
     if (activeCategory === "all") return ALL_PRESET_TIERS;
     return ALL_PRESET_TIERS.filter((t) => t.category === activeCategory);
   }, [activeCategory]);
+
+  // Sync amount dynamically if URL searchParams changes
+  useEffect(() => {
+    const urlAmt = searchParams.get("amount");
+    if (urlAmt) {
+      const parsed = parseFloat(urlAmt);
+      if (parsed >= 10 && parsed <= 500000) {
+        if (ALL_PRESET_TIERS.some((t) => t.amt === parsed)) {
+          setAmount(parsed);
+          setCustomAmount("");
+        } else {
+          setCustomAmount(String(parsed));
+        }
+      }
+    }
+  }, [searchParams]);
 
   // Track ViewContent on mount
   useEffect(() => {
@@ -645,29 +662,40 @@ export function MetaAdsDonateComponent() {
         {/* Decorative corner glow */}
         <div className="absolute top-0 right-0 -mt-8 -mr-8 h-28 w-28 rounded-full bg-amber-400/20 blur-2xl pointer-events-none" />
 
-        {/* Online vs Direct Bank Transfer Tabs */}
-        <div className="mb-4 flex rounded-2xl bg-cream/80 p-1 border border-teal-900/10">
+        {/* Multi-Rail Tabs: 1-Tap Gateway | Direct UPI QR | Bank Transfer */}
+        <div className="mb-4 grid grid-cols-3 gap-1 rounded-2xl bg-cream/80 p-1 border border-teal-900/10">
           <button
             type="button"
             onClick={() => setActiveTab("online")}
-            className={`flex-1 py-2 text-xs font-black rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5 ${
+            className={`py-2 text-[11px] sm:text-xs font-black rounded-xl transition cursor-pointer flex items-center justify-center gap-1 ${
               activeTab === "online"
                 ? "bg-teal-950 text-white shadow-sm ring-1 ring-amber-400"
                 : "text-teal-950/70 hover:text-teal-950"
             }`}
           >
-            <span>⚡ Instant 1-Tap (UPI / Cards)</span>
+            <span>⚡ 1-Tap Pay</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("upi")}
+            className={`py-2 text-[11px] sm:text-xs font-black rounded-xl transition cursor-pointer flex items-center justify-center gap-1 ${
+              activeTab === "upi"
+                ? "bg-teal-950 text-white shadow-sm ring-1 ring-amber-400"
+                : "text-teal-950/70 hover:text-teal-950"
+            }`}
+          >
+            <span>📲 UPI QR</span>
           </button>
           <button
             type="button"
             onClick={() => setActiveTab("bank")}
-            className={`flex-1 py-2 text-xs font-black rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5 ${
+            className={`py-2 text-[11px] sm:text-xs font-black rounded-xl transition cursor-pointer flex items-center justify-center gap-1 ${
               activeTab === "bank"
                 ? "bg-teal-950 text-white shadow-sm ring-1 ring-amber-400"
                 : "text-teal-950/70 hover:text-teal-950"
             }`}
           >
-            <span>🏦 Direct Bank Transfer</span>
+            <span>🏦 Bank</span>
           </button>
         </div>
 
@@ -1083,7 +1111,111 @@ export function MetaAdsDonateComponent() {
           </div>
         )}
 
-        {/* TAB 2: DIRECT BANK TRANSFER (AXIS BANK) */}
+        {/* TAB 2: DIRECT DYNAMIC UPI QR CODE */}
+        {activeTab === "upi" && (
+          <div className="space-y-4 animate-fadeIn text-xs">
+            <div className="rounded-2xl bg-teal-950 text-white p-4 sm:p-5 shadow-md border border-amber-400/30 text-center">
+              <span className="inline-block rounded-full bg-emerald-500/20 px-3 py-1 text-[10px] font-black text-emerald-300 uppercase tracking-wider mb-2">
+                ⚡ Instant Zero-Fee Payment
+              </span>
+              <h3 className="font-display text-base sm:text-lg font-black text-white">
+                Scan to Donate {formatINR(finalAmount)}
+              </h3>
+              <p className="text-[11px] text-teal-100/80 mt-1">
+                Open Google Pay, PhonePe, Paytm, BHIM, or any UPI app to scan
+              </p>
+
+              {/* Dynamic QR Code Card */}
+              <div className="my-4 mx-auto w-fit rounded-2xl bg-white p-3 shadow-xl ring-4 ring-amber-400/40">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(
+                    `upi://pay?pa=9980359595@okaxis&pn=Janaseva%20Ashrama&am=${finalAmount}&cu=INR&tn=Donation%2025%20Boys`
+                  )}&margin=1`}
+                  alt={`UPI QR code to donate ${formatINR(finalAmount)} to Janaseva Ashrama`}
+                  className="h-44 w-44 sm:h-52 sm:w-52 object-contain"
+                />
+                <p className="mt-1 text-[10px] font-bold text-teal-950 font-mono">
+                  {formatINR(finalAmount)} · Official Trust VPA
+                </p>
+              </div>
+
+              {/* 1-Tap UPI App Buttons (Mobile) */}
+              <div className="sm:hidden space-y-2 pt-1">
+                <p className="text-[10px] uppercase tracking-wider text-amber-300 font-bold">
+                  Tap to open your UPI app:
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  <a
+                    href={`upi://pay?pa=9980359595@okaxis&pn=Janaseva%20Ashrama&am=${finalAmount}&cu=INR&tn=Donation%2025%20Boys`}
+                    className="flex items-center justify-center gap-1.5 rounded-xl bg-white py-2.5 px-3 text-xs font-bold text-teal-950 shadow hover:bg-cream transition"
+                  >
+                    <span>⚡ Any UPI App</span>
+                  </a>
+                  <a
+                    href={`phonepe://pay?pa=9980359595@okaxis&pn=Janaseva%20Ashrama&am=${finalAmount}&cu=INR&tn=Donation%2025%20Boys`}
+                    className="flex items-center justify-center gap-1.5 rounded-xl bg-purple-600 py-2.5 px-3 text-xs font-bold text-white shadow hover:bg-purple-700 transition"
+                  >
+                    <span>PhonePe</span>
+                  </a>
+                  <a
+                    href={`gpay://upi/pay?pa=9980359595@okaxis&pn=Janaseva%20Ashrama&am=${finalAmount}&cu=INR&tn=Donation%2025%20Boys`}
+                    className="flex items-center justify-center gap-1.5 rounded-xl bg-blue-600 py-2.5 px-3 text-xs font-bold text-white shadow hover:bg-blue-700 transition"
+                  >
+                    <span>Google Pay</span>
+                  </a>
+                  <a
+                    href={`paytmmp://pay?pa=9980359595@okaxis&pn=Janaseva%20Ashrama&am=${finalAmount}&cu=INR&tn=Donation%2025%20Boys`}
+                    className="flex items-center justify-center gap-1.5 rounded-xl bg-sky-600 py-2.5 px-3 text-xs font-bold text-white shadow hover:bg-sky-700 transition"
+                  >
+                    <span>Paytm</span>
+                  </a>
+                </div>
+              </div>
+
+              {/* Official UPI ID Copy */}
+              <div className="mt-3 rounded-xl bg-white/10 p-2.5 flex items-center justify-between text-left">
+                <div>
+                  <span className="text-[9px] uppercase tracking-wider text-white/60 block">Official UPI ID</span>
+                  <p className="font-mono text-xs sm:text-sm font-black text-amber-300">9980359595@okaxis</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (typeof navigator !== "undefined" && navigator.clipboard) {
+                      navigator.clipboard.writeText("9980359595@okaxis");
+                      setCopiedUpi(true);
+                      setTimeout(() => setCopiedUpi(false), 2500);
+                    }
+                  }}
+                  className="rounded-lg bg-amber-400 px-3 py-1 text-[11px] font-black text-teal-950 hover:bg-amber-300 transition cursor-pointer"
+                >
+                  {copiedUpi ? "✓ Copied!" : "Copy ID"}
+                </button>
+              </div>
+            </div>
+
+            <div className="rounded-2xl bg-amber-50 p-3.5 border border-amber-200 text-amber-950 space-y-1 text-xs">
+              <p className="font-bold">After completing your UPI payment:</p>
+              <p>
+                Please WhatsApp your payment screenshot / UTR to{" "}
+                <a
+                  href={`https://wa.me/${SITE.whatsapp}?text=${encodeURIComponent(
+                    `Namaste Janaseva Ashrama, I have completed a direct UPI donation of ₹${finalAmount}.`
+                  )}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-black text-teal-900 underline"
+                >
+                  +91 99803 59595
+                </a>{" "}
+                with your name for your official Section 80G tax exemption receipt.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 3: DIRECT BANK TRANSFER (AXIS BANK) */}
         {activeTab === "bank" && (
           <div className="space-y-3 animate-fadeIn text-xs">
             <div className="rounded-2xl bg-teal-950 text-white p-4 shadow-md border border-amber-400/30">
