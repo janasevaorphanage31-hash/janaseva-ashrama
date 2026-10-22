@@ -30,7 +30,7 @@ export function middleware(req: NextRequest) {
     const cleanPath = pathname.replace(/[.,;:!]+$/, "") || "/";
     const redirectUrl = req.nextUrl.clone();
     redirectUrl.pathname = cleanPath;
-    return NextResponse.redirect(redirectUrl, 308);
+    return NextResponse.redirect(redirectUrl, 301);
   }
 
   const ip =
