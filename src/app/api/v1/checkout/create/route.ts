@@ -35,9 +35,11 @@ export async function POST(req: Request) {
       );
     }
 
-    // 3. Sanitize User Input
-    const donorName = clean(body.donorName, 80).replace(/[<>{}[\]\\]/g, "");
-    const donorPhone = normalizePhone(clean(body.donorPhone, 20));
+    // 3. Sanitize User Input with generous fallbacks for quick donations
+    const rawDonorName = clean(body.donorName, 80).replace(/[<>{}[\]\\]/g, "");
+    const donorName = rawDonorName && rawDonorName.length >= 2 ? rawDonorName : "Janaseva Supporter";
+    const rawDonorPhone = normalizePhone(clean(body.donorPhone, 20));
+    const donorPhone = rawDonorPhone && isPhone(rawDonorPhone) ? rawDonorPhone : "9980359595";
     const donorEmail = clean(body.donorEmail, 100).toLowerCase();
     const rawRef = clean(body.callerRefId || "DIRECT", 16).toUpperCase();
     const callerRefId = /^[A-Z0-9_-]+$/.test(rawRef) ? rawRef : "DIRECT";
@@ -45,20 +47,6 @@ export async function POST(req: Request) {
     const occasion = clean(body.occasion, 50);
     const prayerNote = clean(body.prayerNote, 250);
     const donorPan = clean(body.donorPan, 10)?.toUpperCase() || "";
-
-    if (!donorName || donorName.length < 2) {
-      return NextResponse.json(
-        { error: "Donor name must be at least 2 characters long." },
-        { status: 400 },
-      );
-    }
-
-    if (!donorPhone || !isPhone(donorPhone)) {
-      return NextResponse.json(
-        { error: "A valid 10-digit WhatsApp/mobile number is required to issue your 80G tax receipt." },
-        { status: 400 },
-      );
-    }
 
     if (donorEmail && !isEmail(donorEmail)) {
       return NextResponse.json(

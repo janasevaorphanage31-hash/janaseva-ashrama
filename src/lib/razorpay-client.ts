@@ -75,14 +75,10 @@ export function ensureRazorpayContainerAttached(): void {
     const container = document.querySelector<HTMLElement>(".razorpay-container");
     if (container) {
       container.style.zIndex = "2147483647";
-      container.style.display = "block";
-      container.style.visibility = "visible";
     }
     const backdrop = document.querySelector<HTMLElement>(".razorpay-backdrop");
     if (backdrop) {
       backdrop.style.zIndex = "2147483646";
-      backdrop.style.display = "block";
-      backdrop.style.visibility = "visible";
     }
   } catch (err) {
     console.warn("[Razorpay DOM] Style check warning:", err);

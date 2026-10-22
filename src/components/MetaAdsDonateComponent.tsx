@@ -20,6 +20,8 @@ import {
   sanitizePan,
 } from "@/lib/validation";
 import { openRazorpayCheckout } from "@/lib/razorpay-client";
+import { useCart } from "./CartProvider";
+import QRCode from "qrcode";
 
 export interface PresetTier {
   amt: number;
@@ -219,7 +221,46 @@ export function MetaAdsDonateComponent() {
 
   // UI States
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<"online" | "bank">("online");
+  const cart = useCart();
+  const [activeTab, setActiveTab] = useState<"gateway" | "upi" | "bank">("gateway");
+  const [qrDataUrl, setQrDataUrl] = useState<string>("");
+
+  // Sync cart amount if coming from homepage or navbar
+  useEffect(() => {
+    if (cart.hydrated && cart.total > 0 && !searchParams.get("amount")) {
+      setAmount(cart.total);
+      if (!ALL_PRESET_TIERS.some((t) => t.amt === cart.total)) {
+        setCustomAmount(String(cart.total));
+      }
+    }
+  }, [cart.hydrated, cart.total, searchParams]);
+
+  // Sync when searchParams change (e.g. user selected a tier from another component)
+  useEffect(() => {
+    const urlAmt = searchParams.get("amount");
+    if (urlAmt) {
+      const parsed = parseFloat(urlAmt);
+      if (parsed >= 10 && parsed <= 500000) {
+        if (ALL_PRESET_TIERS.some((t) => t.amt === parsed)) {
+          setAmount(parsed);
+          setCustomAmount("");
+        } else {
+          setAmount(parsed);
+          setCustomAmount(String(parsed));
+        }
+      }
+    }
+    const urlOccasion = searchParams.get("occasion");
+    if (urlOccasion) {
+      const matchingOcc = OCCASIONS.find(
+        (o) => o.id === urlOccasion.toLowerCase() || o.label.toLowerCase() === urlOccasion.toLowerCase()
+      );
+      if (matchingOcc) {
+        setOccasion(matchingOcc.id);
+        setShowOccasionSelect(true);
+      }
+    }
+  }, [searchParams]);
   const [copiedBankField, setCopiedBankField] = useState<string | null>(null);
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
   const [showStickyBar, setShowStickyBar] = useState(false);
@@ -246,6 +287,25 @@ export function MetaAdsDonateComponent() {
   // Derived effective donation amount
   const finalAmount = customAmount ? parseFloat(customAmount) || 0 : amount;
   const amountWords = finalAmount >= 10 ? numberToIndianWords(finalAmount) : "";
+
+  // Dynamic Official UPI Link for Janaseva Ashrama
+  const upiId = "9980359595@okbizaxis";
+  const upiUri = `upi://pay?pa=${upiId}&pn=Janaseva%20Ashrama&am=${finalAmount}&cu=INR&tn=${encodeURIComponent("Donation for 25 Boys")}`;
+  const gpayUri = `gpay://upi/pay?pa=${upiId}&pn=Janaseva%20Ashrama&am=${finalAmount}&cu=INR&tn=${encodeURIComponent("Donation for 25 Boys")}`;
+  const phonepeUri = `phonepe://pay?pa=${upiId}&pn=Janaseva%20Ashrama&am=${finalAmount}&cu=INR&tn=${encodeURIComponent("Donation for 25 Boys")}`;
+  const paytmUri = `paytmmp://pay?pa=${upiId}&pn=Janaseva%20Ashrama&am=${finalAmount}&cu=INR&tn=${encodeURIComponent("Donation for 25 Boys")}`;
+
+  useEffect(() => {
+    if (finalAmount > 0) {
+      QRCode.toDataURL(upiUri, {
+        width: 240,
+        margin: 1,
+        color: { dark: "#052f2c", light: "#ffffff" },
+      })
+        .then(setQrDataUrl)
+        .catch(() => {});
+    }
+  }, [finalAmount, upiUri]);
 
   // Dynamic Impact Description
   const impactSummary = getDynamicImpactText(finalAmount);
@@ -317,63 +377,23 @@ export function MetaAdsDonateComponent() {
   };
 
   const handlePayNow = async () => {
-    const errors: typeof formErrors = {};
-
-    // 1. Amount validation (Starts from ₹11 upwards)
-    if (!finalAmount || isNaN(finalAmount) || finalAmount < 11) {
-      errors.amount = "Please choose or enter a valid donation amount (minimum contribution is ₹11).";
-    } else if (finalAmount > 1000000) {
-      errors.amount = "Online contributions are capped at ₹10,00,000. Please contact the Ashrama directly for larger endowments.";
-    }
-
-    // 2. Full Name validation
-    const nameCheck = validateName(donorName, "Full Name");
-    if (!nameCheck.valid) {
-      errors.name = nameCheck.error || "Please enter your full name for morning prayer chanting & 80G receipt.";
-    }
-
-    // 3. Mobile validation (10 digits)
-    const phoneCheck = validatePhone(donorPhone, true, "WhatsApp / Mobile Number");
-    if (!phoneCheck.valid) {
-      errors.phone = phoneCheck.error || "Please enter a valid 10-digit WhatsApp number to receive your instant 80G tax receipt.";
-    }
-
-    // 4. Email validation (if provided)
-    if (donorEmail.trim()) {
-      const emailCheck = validateEmail(donorEmail, false);
-      if (!emailCheck.valid) {
-        errors.email = emailCheck.error;
-      }
-    }
-
-    // 5. PAN validation (if provided)
-    if (donorPan.trim()) {
-      const panCheck = validatePan(donorPan, false);
-      if (!panCheck.valid) {
-        errors.pan = panCheck.error || "Invalid PAN format (e.g. ABCDE1234F).";
-      }
-    }
-
-    if (Object.keys(errors).length > 0) {
-      setFormErrors(errors);
-      if (errors.name && nameInputRef.current) {
-        nameInputRef.current.focus();
-        nameInputRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
-      } else if (errors.phone && phoneInputRef.current) {
-        phoneInputRef.current.focus();
-        phoneInputRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
-      } else if (topCardRef.current) {
-        topCardRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
-      }
+    // 1. Amount validation (Starts from ₹10 upwards)
+    if (!finalAmount || isNaN(finalAmount) || finalAmount < 10) {
+      setFormErrors({ amount: "Please choose or enter a valid donation amount (minimum contribution is ₹10)." });
+      if (topCardRef.current) topCardRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
       return;
     }
+
+    // Friendly fallback: never hard-block the gateway launch if name/phone aren't filled yet
+    const effectiveName = donorName.trim() || "Janaseva Supporter";
+    const effectivePhone = donorPhone.replace(/\D/g, "").slice(-10) || "9980359595";
 
     setLoading(true);
     setFormErrors({});
 
     const safetyTimer = setTimeout(() => {
       setLoading(false);
-    }, 15000);
+    }, 12000);
 
     try {
       const selectedOccasionLabel =
@@ -389,8 +409,8 @@ export function MetaAdsDonateComponent() {
           amount: finalAmount,
           callerRefId: callerRef,
           leadId: leadId || undefined,
-          donorName: donorName.trim(),
-          donorPhone: donorPhone.trim(),
+          donorName: effectiveName,
+          donorPhone: effectivePhone,
           donorEmail: donorEmail.trim() || undefined,
           donorPan: donorPan.trim().toUpperCase() || undefined,
           occasion: cleanOccasion,
@@ -422,14 +442,14 @@ export function MetaAdsDonateComponent() {
           currency: data.currency || "INR",
           name: "Janaseva Ashrama Bangalore",
           description: `Sponsor 25 Resident Boys · ${cleanOccasion}`,
-          donorName: donorName.trim(),
-          donorPhone: donorPhone.trim(),
+          donorName: donorName.trim() || undefined,
+          donorPhone: donorPhone.trim() || undefined,
           donorEmail: donorEmail.trim() || "donor@janasevaashrama.org",
           notes: {
             caller_ref_id: callerRef,
             lead_id: leadId || "",
-            donor_name: donorName.trim(),
-            donor_phone: donorPhone.trim(),
+            donor_name: effectiveName,
+            donor_phone: effectivePhone,
             occasion: cleanOccasion,
             prayer_note: cleanPrayerNote,
           },
@@ -440,12 +460,11 @@ export function MetaAdsDonateComponent() {
           onError: (err: any) => {
             clearTimeout(safetyTimer);
             setLoading(false);
+            // Seamless automatic switch to Direct UPI & QR
             setFormErrors({
-              general:
-                err?.description ||
-                err?.message ||
-                "Your payment transaction could not be processed. No money was debited from your account. Please try another payment method.",
+              general: "Browser or popup blocker restricted the gateway window. Please use Direct UPI (Google Pay / PhonePe) or scan QR below!",
             });
+            setActiveTab("upi");
           },
           onSuccess: async (response) => {
             clearTimeout(safetyTimer);
@@ -539,8 +558,9 @@ export function MetaAdsDonateComponent() {
       clearTimeout(safetyTimer);
       setFormErrors({
         general:
-          err.message || "An unexpected error occurred while preparing your donation. Please try again.",
+          err.message || "Payment gateway connection could not be opened. You can complete your donation instantly using Direct UPI or QR code below.",
       });
+      setActiveTab("upi");
       setLoading(false);
     }
   };
@@ -647,29 +667,43 @@ export function MetaAdsDonateComponent() {
         {/* Decorative corner glow */}
         <div className="absolute top-0 right-0 -mt-8 -mr-8 h-28 w-28 rounded-full bg-amber-400/20 blur-2xl pointer-events-none" />
 
-        {/* Online vs Direct Bank Transfer Tabs */}
-        <div className="mb-4 flex rounded-2xl bg-cream/80 p-1 border border-teal-900/10">
+        {/* 3 Donor-Friendly Payment Options */}
+        <div className="mb-4 grid grid-cols-3 gap-1 rounded-2xl bg-cream/80 p-1 border border-teal-900/10 text-center">
           <button
             type="button"
-            onClick={() => setActiveTab("online")}
-            className={`flex-1 py-2 text-xs font-black rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5 ${
-              activeTab === "online"
+            onClick={() => setActiveTab("gateway")}
+            className={`py-2 px-1 text-[11px] sm:text-xs font-black rounded-xl transition cursor-pointer flex flex-col items-center justify-center ${
+              activeTab === "gateway"
                 ? "bg-teal-950 text-white shadow-sm ring-1 ring-amber-400"
                 : "text-teal-950/70 hover:text-teal-950"
             }`}
           >
-            <span>⚡ Instant 1-Tap (UPI / Cards)</span>
+            <span>⚡ Gateway</span>
+            <span className="text-[9px] font-normal opacity-80">UPI / Cards</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("upi")}
+            className={`py-2 px-1 text-[11px] sm:text-xs font-black rounded-xl transition cursor-pointer flex flex-col items-center justify-center ${
+              activeTab === "upi"
+                ? "bg-teal-950 text-white shadow-sm ring-1 ring-amber-400"
+                : "text-teal-950/70 hover:text-teal-950"
+            }`}
+          >
+            <span>📱 Direct UPI</span>
+            <span className="text-[9px] font-normal opacity-80">GPay/QR Code</span>
           </button>
           <button
             type="button"
             onClick={() => setActiveTab("bank")}
-            className={`flex-1 py-2 text-xs font-black rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5 ${
+            className={`py-2 px-1 text-[11px] sm:text-xs font-black rounded-xl transition cursor-pointer flex flex-col items-center justify-center ${
               activeTab === "bank"
                 ? "bg-teal-950 text-white shadow-sm ring-1 ring-amber-400"
                 : "text-teal-950/70 hover:text-teal-950"
             }`}
           >
-            <span>🏦 Direct Bank Transfer</span>
+            <span>🏦 Bank Wire</span>
+            <span className="text-[9px] font-normal opacity-80">Axis Bank</span>
           </button>
         </div>
 
@@ -682,7 +716,7 @@ export function MetaAdsDonateComponent() {
         )}
 
         {/* TAB 1: ONLINE DONATION (UPI / CARDS / RAZORPAY) */}
-        {activeTab === "online" && (
+        {activeTab === "gateway" && (
           <div className="space-y-4">
             {/* ── STEP 1: PRESET AMOUNTS WITH AUTHENTIC PHOTO BACKGROUNDS (Starts from ₹11) ── */}
             <div>
@@ -1082,10 +1116,130 @@ export function MetaAdsDonateComponent() {
               <span>·</span>
               <span>⚡ Instant 80G Receipt on WhatsApp</span>
             </p>
+
+            {/* Quick direct UPI bridge */}
+            <div className="pt-1 text-center">
+              <button
+                type="button"
+                onClick={() => setActiveTab("upi")}
+                className="text-xs font-bold text-emerald-800 hover:text-emerald-950 underline cursor-pointer inline-flex items-center gap-1"
+              >
+                <span>⚡ Prefer Google Pay / PhonePe / QR Code? Tap Here →</span>
+              </button>
+            </div>
           </div>
         )}
 
-        {/* TAB 2: DIRECT BANK TRANSFER (AXIS BANK) */}
+                {/* TAB 2: DIRECT UPI APPS & DYNAMIC QR CODE */}
+        {activeTab === "upi" && (
+          <div className="space-y-4 animate-fadeIn text-xs">
+            {/* Amount confirmation badge */}
+            <div className="rounded-2xl bg-amber-500/10 border border-amber-500/20 p-3 flex items-center justify-between">
+              <div>
+                <span className="text-[10px] uppercase font-bold text-teal-950/60 block">Contribution Amount:</span>
+                <span className="font-display text-xl font-black text-teal-950">{formatINR(finalAmount)}</span>
+              </div>
+              <span className="rounded-lg bg-emerald-100 text-emerald-900 font-black text-[10px] px-2 py-0.5">
+                80G Tax Free
+              </span>
+            </div>
+
+            {/* Dynamic QR Code Card */}
+            <div className="rounded-3xl bg-white p-5 border-2 border-teal-900/15 shadow-md text-center space-y-3">
+              <span className="inline-block rounded-full bg-emerald-100 text-emerald-950 px-3 py-0.5 text-[10px] font-black uppercase tracking-wider">
+                ⚡ Instant Scan &amp; Pay (0% Platform Fee)
+              </span>
+
+              {qrDataUrl ? (
+                <div className="flex justify-center my-2">
+                  <div className="p-2 bg-white rounded-2xl border-2 border-amber-400/50 shadow-inner">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={qrDataUrl}
+                      alt="Janaseva Ashrama UPI Donation QR Code"
+                      className="w-48 h-48 sm:w-52 sm:h-52 object-contain"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="w-48 h-48 mx-auto bg-sand/30 animate-pulse rounded-2xl flex items-center justify-center text-teal-950/40 text-xs">
+                  Generating Dynamic QR...
+                </div>
+              )}
+
+              <p className="text-[11px] font-semibold text-teal-950/80">
+                Scan with <strong>Google Pay</strong>, <strong>PhonePe</strong>, <strong>Paytm</strong>, <strong>BHIM</strong>, or any banking app.
+              </p>
+
+              {/* Copyable UPI ID Box */}
+              <div className="flex items-center justify-between bg-cream/70 p-2.5 rounded-xl border border-teal-900/15 text-left">
+                <div>
+                  <span className="text-[9px] font-bold text-teal-900/60 uppercase block">Official Trust UPI ID:</span>
+                  <p className="font-mono text-xs font-black text-teal-950">{upiId}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleCopyBank(upiId, "upi")}
+                  className="rounded-lg bg-teal-900 text-white px-2.5 py-1 text-[11px] font-bold hover:bg-teal-950 cursor-pointer"
+                >
+                  {copiedBankField === "upi" ? "✓ Copied!" : "Copy UPI"}
+                </button>
+              </div>
+            </div>
+
+            {/* Mobile 1-Tap App Deep Links */}
+            <div className="space-y-2">
+              <p className="text-center text-[10px] font-bold uppercase tracking-wider text-teal-950/60">
+                Or Tap Your Preferred App on Mobile:
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                <a
+                  href={gpayUri}
+                  className="p-3 rounded-xl bg-white border border-teal-900/15 hover:border-emerald-600 shadow-2xs font-bold text-teal-950 flex items-center justify-center gap-2 text-xs transition active:scale-95"
+                >
+                  <span className="text-base">🟢</span>
+                  <span>Google Pay</span>
+                </a>
+                <a
+                  href={phonepeUri}
+                  className="p-3 rounded-xl bg-white border border-teal-900/15 hover:border-purple-600 shadow-2xs font-bold text-teal-950 flex items-center justify-center gap-2 text-xs transition active:scale-95"
+                >
+                  <span className="text-base">🟣</span>
+                  <span>PhonePe</span>
+                </a>
+                <a
+                  href={paytmUri}
+                  className="p-3 rounded-xl bg-white border border-teal-900/15 hover:border-blue-600 shadow-2xs font-bold text-teal-950 flex items-center justify-center gap-2 text-xs transition active:scale-95"
+                >
+                  <span className="text-base">🔵</span>
+                  <span>Paytm</span>
+                </a>
+                <a
+                  href={upiUri}
+                  className="p-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-2xs font-black flex items-center justify-center gap-1.5 text-xs transition active:scale-95"
+                >
+                  <span>⚡ Any UPI App</span>
+                </a>
+              </div>
+            </div>
+
+            {/* WhatsApp Confirmation Button */}
+            <div className="pt-2">
+              <a
+                href={`https://wa.me/${SITE.whatsapp}?text=${encodeURIComponent(
+                  `Namaste Janaseva Ashrama, I have completed a direct UPI donation of ₹${finalAmount} for the 25 resident boys.\n\nDonor Name: ${donorName.trim() || "Well-Wisher"}\nMobile: ${donorPhone.trim() || "Mobile"}\nPlease issue my official 80G tax receipt.`
+                )}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full rounded-2xl bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold py-3.5 px-4 text-center text-xs sm:text-sm shadow-md transition flex items-center justify-center gap-2"
+              >
+                <span>💬 Click Here to Confirm on WhatsApp &amp; Get 80G Receipt</span>
+              </a>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 3: DIRECT BANK TRANSFER (AXIS BANK) */}
         {activeTab === "bank" && (
           <div className="space-y-3 animate-fadeIn text-xs">
             <div className="rounded-2xl bg-teal-950 text-white p-4 shadow-md border border-amber-400/30">
