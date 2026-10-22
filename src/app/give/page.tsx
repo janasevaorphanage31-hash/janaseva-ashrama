@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { MetaAdsDonateComponent } from "@/components/MetaAdsDonateComponent";
+import { UnifiedDonationFlow } from "@/components/UnifiedDonationFlow";
 import { SITE } from "@/lib/site";
 
 export const metadata: Metadata = {
@@ -38,8 +38,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Support 25 Resident Boys | Janaseva Ashrama Bangalore",
-    description:
-      "₹500 feeds a child for a week. 100% Tax Exemption under Section 80G Form 10AC.",
+    description: "₹500 feeds a child for a week. 100% Tax Exemption under Section 80G Form 10AC.",
     images: [`${SITE.url}/media/annadana-hall-hd.jpg`],
   },
 };
@@ -49,13 +48,13 @@ export default function GivePage() {
     <div className="min-h-screen bg-sand/35 py-6 sm:py-12 px-3 sm:px-6">
       <Suspense
         fallback={
-          <div className="mx-auto max-w-md p-12 text-center text-teal-950 font-bold">
+          <div className="mx-auto max-w-md px-5 py-24 text-center">
             <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-teal-900 border-t-transparent" />
-            <p className="mt-4 text-sm font-semibold">Loading donation portal...</p>
+            <p className="mt-4 text-sm font-semibold text-teal-900/70">Connecting secure donation portal…</p>
           </div>
         }
       >
-        <MetaAdsDonateComponent />
+        <UnifiedDonationFlow />
       </Suspense>
     </div>
   );
