@@ -83,6 +83,10 @@ export function RecurringGivingClient() {
     }
 
     setLoading(true);
+    const subSafetyTimer = setTimeout(() => {
+      setLoading(false);
+    }, 15000);
+
     track("recurring_giving_page_submit", { amount: activeAmount });
 
     const key = "sub_page_" + crypto.randomUUID() + "-" + Date.now().toString(36);
@@ -134,13 +138,18 @@ export function RecurringGivingClient() {
         donorName: name,
         donorPhone: phone,
         donorEmail: email,
-        onDismiss: () => setLoading(false),
+        onDismiss: () => {
+          clearTimeout(subSafetyTimer);
+          setLoading(false);
+        },
         onError: (resp: any) => {
+          clearTimeout(subSafetyTimer);
           const desc = resp?.description || "Your mandate authorization was not completed. No amount has been debited.";
           setError(desc);
           setLoading(false);
         },
         onSuccess: async (r) => {
+          clearTimeout(subSafetyTimer);
           // 1. Fire Meta Pixel & Google Ads conversion tracking
           trackDonationSuccess({
             amount: data.amount,
@@ -172,6 +181,7 @@ export function RecurringGivingClient() {
         },
       });
     } catch (err: any) {
+      clearTimeout(subSafetyTimer);
       setError(err.message);
       setLoading(false);
     }

@@ -172,6 +172,9 @@ For queries, call: 9980359595 / 9945223232.`;
     }
 
     setBusy(true);
+    const supSafetyTimer = setTimeout(() => {
+      setBusy(false);
+    }, 15000);
 
     try {
       const idempotencyKey = `sup_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
@@ -251,13 +254,16 @@ For queries, call: 9980359595 / 9945223232.`;
         donorPhone: donor.phone,
         donorEmail: donor.email,
         onDismiss: () => {
+          clearTimeout(supSafetyTimer);
           setBusy(false);
         },
         onError: (err: any) => {
+          clearTimeout(supSafetyTimer);
           setBusy(false);
           setErrorMessage(err?.description || "Payment transaction could not be completed.");
         },
         onSuccess: async (paymentResponse) => {
+          clearTimeout(supSafetyTimer);
           // 1. Fire Meta Pixel & Google Ads conversion tracking
           trackDonationSuccess({
             amount: data.amount,
@@ -294,6 +300,7 @@ For queries, call: 9980359595 / 9945223232.`;
         },
       });
     } catch (err: any) {
+      clearTimeout(supSafetyTimer);
       setErrorMessage(err.message || "An unexpected error occurred. Please try again.");
       setBusy(false);
     }
