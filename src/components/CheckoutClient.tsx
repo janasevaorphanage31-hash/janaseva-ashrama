@@ -727,6 +727,10 @@ export function CheckoutClient() {
     }
 
     setBusy(true);
+    const checkoutSafetyTimer = setTimeout(() => {
+      setBusy(false);
+    }, 15000);
+
     track("checkout_submit", { total: cart.total });
     trackInitiateCheckout({
       content_name: cart.campaign?.title || "Ashrama Basket Contribution",
@@ -821,9 +825,11 @@ export function CheckoutClient() {
         donorPhone: form.phone,
         donorEmail: form.email,
         onDismiss: () => {
+          clearTimeout(checkoutSafetyTimer);
           setBusy(false);
         },
         onError: (resp: any) => {
+          clearTimeout(checkoutSafetyTimer);
           track("payment_failed", { stage: "gateway" });
           const desc = resp?.description || "Your payment was not completed by the gateway. No amount has been deducted.";
           setError(desc);
@@ -831,6 +837,7 @@ export function CheckoutClient() {
           setBusy(false);
         },
         onSuccess: async (r) => {
+          clearTimeout(checkoutSafetyTimer);
           try {
             // 1. Fire Meta Pixel & Google Ads conversion tracking
             trackDonationSuccess({
@@ -868,6 +875,7 @@ export function CheckoutClient() {
         },
       });
     } catch (err) {
+      clearTimeout(checkoutSafetyTimer);
       setError((err as Error).message);
       setBusy(false);
     }

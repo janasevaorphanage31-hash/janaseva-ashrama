@@ -15,7 +15,7 @@ const securityHeaders = [
   },
   {
     key: "Permissions-Policy",
-    value: "camera=(), microphone=(), geolocation=()",
+    value: "payment=*, camera=*, microphone=(), geolocation=(), otp-credentials=*, publickey-credentials-get=*",
   },
   {
     key: "X-DNS-Prefetch-Control",

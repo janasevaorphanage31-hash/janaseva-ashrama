@@ -4,7 +4,7 @@
  * 
  * Provides robust, cross-browser, cross-device loading and opening
  * of the Razorpay Checkout modal with timeout safety, retry polling,
- * and comprehensive error recovery.
+ * DOM body readiness guarantee, and comprehensive error recovery.
  */
 
 declare global {
@@ -14,12 +14,76 @@ declare global {
 }
 
 /**
- * Ensures checkout.js is loaded from checkout.razorpay.com.
- * Uses aggressive polling and a strict 6-second watchdog timeout so it NEVER hangs indefinitely.
+ * Ensures document.body is fully parsed and available before any
+ * iframe or payment container initialization is performed.
  */
-export async function loadRazorpayScript(timeoutMs = 6000): Promise<boolean> {
+async function ensureDocumentBodyReady(): Promise<HTMLElement> {
+  if (typeof document === "undefined") {
+    throw new Error("Document is not available in non-browser environment");
+  }
+  if (document.body) return document.body;
+
+  return new Promise<HTMLElement>((resolve) => {
+    const check = () => {
+      if (document.body) {
+        resolve(document.body);
+        return true;
+      }
+      return false;
+    };
+
+    if (check()) return;
+
+    const onReady = () => {
+      if (check()) {
+        document.removeEventListener("DOMContentLoaded", onReady);
+        window.removeEventListener("load", onReady);
+      }
+    };
+
+    document.addEventListener("DOMContentLoaded", onReady);
+    window.addEventListener("load", onReady);
+
+    const interval = setInterval(() => {
+      if (check()) clearInterval(interval);
+    }, 20);
+  });
+}
+
+/**
+ * Ensures Razorpay container and backdrop DOM elements are properly
+ * attached to document.body, preventing the "This browser is not supported"
+ * iframe detachment error in modern Chromium/WebKit browsers.
+ */
+export function ensureRazorpayContainerAttached(): void {
+  if (typeof document === "undefined" || !document.body) return;
+  try {
+    const container = document.querySelector<HTMLElement>(".razorpay-container");
+    if (container && container.parentNode !== document.body) {
+      document.body.appendChild(container);
+    }
+    const backdrop = document.querySelector<HTMLElement>(".razorpay-backdrop");
+    if (backdrop && backdrop.parentNode !== document.body) {
+      document.body.appendChild(backdrop);
+    }
+  } catch (err) {
+    console.warn("[Razorpay DOM] Container check warning:", err);
+  }
+}
+
+/**
+ * Ensures checkout.js is loaded from checkout.razorpay.com into document.body.
+ * Uses aggressive polling and a strict 8-second watchdog timeout so it NEVER hangs indefinitely.
+ */
+export async function loadRazorpayScript(timeoutMs = 8000): Promise<boolean> {
   if (typeof window === "undefined") return false;
-  if (Boolean(window.Razorpay)) return true;
+
+  const body = await ensureDocumentBodyReady();
+
+  if (Boolean(window.Razorpay)) {
+    ensureRazorpayContainerAttached();
+    return true;
+  }
 
   return new Promise<boolean>((resolve) => {
     let resolved = false;
@@ -28,6 +92,7 @@ export async function loadRazorpayScript(timeoutMs = 6000): Promise<boolean> {
     const timer = setTimeout(() => {
       if (!resolved) {
         resolved = true;
+        ensureRazorpayContainerAttached();
         resolve(Boolean(window.Razorpay));
       }
     }, timeoutMs);
@@ -37,6 +102,7 @@ export async function loadRazorpayScript(timeoutMs = 6000): Promise<boolean> {
         if (!resolved) {
           resolved = true;
           clearTimeout(timer);
+          ensureRazorpayContainerAttached();
           resolve(true);
         }
         return true;
@@ -55,7 +121,7 @@ export async function loadRazorpayScript(timeoutMs = 6000): Promise<boolean> {
       return;
     }
 
-    // 2. Dynamically inject script into head
+    // 2. Dynamically inject script into document.body (NOT head, so body is always active)
     try {
       const script = document.createElement("script");
       script.src = "https://checkout.razorpay.com/v1/checkout.js";
@@ -66,7 +132,7 @@ export async function loadRazorpayScript(timeoutMs = 6000): Promise<boolean> {
           if (checkAvailable() || resolved) {
             clearInterval(pollInterval);
           }
-        }, 50);
+        }, 40);
       };
 
       script.onerror = (e) => {
@@ -78,7 +144,7 @@ export async function loadRazorpayScript(timeoutMs = 6000): Promise<boolean> {
         }
       };
 
-      (document.head || document.body).appendChild(script);
+      body.appendChild(script);
     } catch (err) {
       console.error("[Razorpay SDK] Script injection error:", err);
       if (!resolved) {
@@ -117,12 +183,14 @@ export interface OpenRazorpayOptions {
  * Throws a descriptive error if gateway fails to initialize or load.
  */
 export async function openRazorpayCheckout(opts: OpenRazorpayOptions): Promise<void> {
-  const loaded = await loadRazorpayScript(6000);
+  const loaded = await loadRazorpayScript(8000);
   if (!loaded || !window.Razorpay) {
     throw new Error(
       "Unable to connect to Razorpay payment gateway. Please disable ad-blockers or try direct UPI/bank transfer."
     );
   }
+
+  ensureRazorpayContainerAttached();
 
   const cleanPhone = (opts.donorPhone || "").replace(/\D/g, "").slice(-10);
 
@@ -162,6 +230,7 @@ export async function openRazorpayCheckout(opts: OpenRazorpayOptions): Promise<v
   }
 
   try {
+    ensureRazorpayContainerAttached();
     const rzp = new window.Razorpay(rzpConfig);
 
     rzp.on("payment.failed", (response: any) => {
@@ -172,6 +241,11 @@ export async function openRazorpayCheckout(opts: OpenRazorpayOptions): Promise<v
     });
 
     rzp.open();
+
+    // Secondary watchdog: check if the modal is closed or failed within 500ms
+    setTimeout(() => {
+      ensureRazorpayContainerAttached();
+    }, 200);
   } catch (err: any) {
     console.error("[Razorpay Checkout] Failed to open gateway modal:", err);
     throw new Error(err?.message || "Failed to launch payment window. Please check your browser popup settings.");
