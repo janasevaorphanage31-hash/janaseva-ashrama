@@ -177,7 +177,7 @@ export function middleware(req: NextRequest) {
   response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
   response.headers.set(
     "Permissions-Policy",
-    "camera=(), microphone=(), geolocation=()"
+    "payment=*, camera=*, microphone=(), geolocation=(), otp-credentials=*, publickey-credentials-get=*"
   );
 
   return response;
