@@ -250,6 +250,8 @@ export function DonateClientComponent() {
     try {
       const selectedOccasionLabel =
         OCCASIONS.find((o) => o.id === occasion)?.label || "Special Blessing Seva";
+      const cleanOccasion = selectedOccasionLabel.replace(/[^\w\s-]/g, "").trim() || "Special Blessing Seva";
+      const cleanPrayerNote = prayerNote.replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, "").trim();
 
       const res = await fetch("/api/v1/checkout/create", {
         method: "POST",
@@ -262,8 +264,8 @@ export function DonateClientComponent() {
           donorPhone: donorPhone.trim(),
           donorEmail: donorEmail.trim() || undefined,
           donorPan: donorPan.trim().toUpperCase() || undefined,
-          occasion: selectedOccasionLabel,
-          prayerNote: prayerNote.trim() || undefined,
+          occasion: cleanOccasion,
+          prayerNote: cleanPrayerNote || undefined,
           website_hp: honeypot, // Honeypot field
         }),
       });
@@ -276,7 +278,7 @@ export function DonateClientComponent() {
 
       // Funnel Step 2: Track InitiateCheckout
       trackInitiateCheckout({
-        content_name: selectedOccasionLabel,
+        content_name: cleanOccasion,
         value: finalAmount,
         currency: "INR",
         num_items: 1,
@@ -290,7 +292,7 @@ export function DonateClientComponent() {
           amountPaise: data.amount,
           currency: data.currency || "INR",
           name: "Janaseva Ashrama Bangalore",
-          description: `${selectedOccasionLabel} · 25 Resident Boys Seva`,
+          description: `${cleanOccasion} · 25 Resident Boys Seva`,
           donorName: donorName.trim(),
           donorPhone: donorPhone.trim(),
           donorEmail: donorEmail.trim() || "donor@janasevaashrama.org",
@@ -299,8 +301,8 @@ export function DonateClientComponent() {
             lead_id: leadId || "",
             donor_name: donorName.trim(),
             donor_phone: donorPhone.trim(),
-            occasion: selectedOccasionLabel,
-            prayer_note: prayerNote.trim(),
+            occasion: cleanOccasion,
+            prayer_note: cleanPrayerNote,
           },
           onDismiss: () => {
             clearTimeout(safetyTimer);

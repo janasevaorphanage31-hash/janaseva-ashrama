@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { clean, normalizePhone, isEmail, isPhone } from "@/lib/server-utils";
+import { clean, cleanRazorpayNote, normalizePhone, isEmail, isPhone } from "@/lib/server-utils";
 
 const MAX_DONATION_AMOUNT = 1000000; // ₹10,00,000 maximum per single transaction
 
@@ -72,6 +72,18 @@ export async function POST(req: Request) {
 
     // 4. Live Gateway Execution
     if (keyId && keySecret) {
+      // Build safe notes: strip emojis / 4-byte UTF-8 which Razorpay API strictly rejects
+      const safeNotes: Record<string, string> = {};
+      if (callerRefId) safeNotes.caller_ref_id = cleanRazorpayNote(callerRefId, 30);
+      if (leadId) safeNotes.lead_id = String(leadId);
+      if (donorName) safeNotes.donor_name = cleanRazorpayNote(donorName, 50);
+      if (donorPhone) safeNotes.donor_phone = cleanRazorpayNote(donorPhone, 15);
+      if (donorEmail) safeNotes.donor_email = cleanRazorpayNote(donorEmail, 60);
+      if (donorPan) safeNotes.donor_pan = cleanRazorpayNote(donorPan, 10);
+      if (occasion) safeNotes.occasion = cleanRazorpayNote(occasion, 50);
+      if (prayerNote) safeNotes.prayer_note = cleanRazorpayNote(prayerNote, 120);
+      safeNotes.platform = "antigravity_crm";
+
       const basicAuth = Buffer.from(`${keyId}:${keySecret}`).toString("base64");
       const orderRes = await fetch("https://api.razorpay.com/v1/orders", {
         method: "POST",
@@ -83,17 +95,7 @@ export async function POST(req: Request) {
           amount: Math.round(amount * 100), // in paise
           currency: "INR",
           receipt: `ag_rcpt_${Date.now()}`,
-          notes: {
-            caller_ref_id: callerRefId,
-            lead_id: leadId ? String(leadId) : "",
-            donor_name: donorName,
-            donor_phone: donorPhone,
-            donor_email: donorEmail,
-            donor_pan: donorPan,
-            occasion,
-            prayer_note: prayerNote,
-            platform: "antigravity_crm",
-          },
+          notes: safeNotes,
         }),
       });
 

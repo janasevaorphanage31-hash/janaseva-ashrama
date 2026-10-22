@@ -378,6 +378,8 @@ export function MetaAdsDonateComponent() {
     try {
       const selectedOccasionLabel =
         OCCASIONS.find((o) => o.id === occasion)?.label || "General Seva";
+      const cleanOccasion = selectedOccasionLabel.replace(/[^\w\s-]/g, "").trim() || "General Seva";
+      const cleanPrayerNote = prayerNote.replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, "").trim();
 
       // 1. Initialize Razorpay order on server
       const res = await fetch("/api/v1/checkout/create", {
@@ -391,8 +393,8 @@ export function MetaAdsDonateComponent() {
           donorPhone: donorPhone.trim(),
           donorEmail: donorEmail.trim() || undefined,
           donorPan: donorPan.trim().toUpperCase() || undefined,
-          occasion: selectedOccasionLabel,
-          prayerNote: prayerNote.trim() || undefined,
+          occasion: cleanOccasion,
+          prayerNote: cleanPrayerNote || undefined,
           website_hp: honeypot,
         }),
       });
@@ -419,7 +421,7 @@ export function MetaAdsDonateComponent() {
           amountPaise: data.amount,
           currency: data.currency || "INR",
           name: "Janaseva Ashrama Bangalore",
-          description: `Sponsor 25 Resident Boys · ${selectedOccasionLabel}`,
+          description: `Sponsor 25 Resident Boys · ${cleanOccasion}`,
           donorName: donorName.trim(),
           donorPhone: donorPhone.trim(),
           donorEmail: donorEmail.trim() || "donor@janasevaashrama.org",
@@ -428,8 +430,8 @@ export function MetaAdsDonateComponent() {
             lead_id: leadId || "",
             donor_name: donorName.trim(),
             donor_phone: donorPhone.trim(),
-            occasion: selectedOccasionLabel,
-            prayer_note: prayerNote.trim(),
+            occasion: cleanOccasion,
+            prayer_note: cleanPrayerNote,
           },
           onDismiss: () => {
             clearTimeout(safetyTimer);

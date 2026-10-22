@@ -814,13 +814,17 @@ export function CheckoutClient() {
         throw new Error("Unable to initialize secure payment order. Please try again.");
       }
 
+      const cleanDedicationOccasion = dedicationEnabled
+        ? (dedication.occasion || "").replace(/[^\w\s-]/g, "").trim()
+        : "";
+
       await openRazorpayCheckout({
         keyId: data.keyId,
         orderId: data.orderId,
         amountPaise: data.amount * 100,
         currency: "INR",
         name: "Janaseva Ashrama",
-        description: dedicationEnabled ? `${dedication.occasion} Dedication` : "Child Welfare Contribution",
+        description: cleanDedicationOccasion ? `${cleanDedicationOccasion} Dedication` : "Child Welfare Contribution",
         donorName: form.name,
         donorPhone: form.phone,
         donorEmail: form.email,

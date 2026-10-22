@@ -2,6 +2,7 @@ import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 import { and, eq, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { analyticsEvents, donations, impactGifts, recurringSubscriptions } from "@/db/schema";
+import { cleanRazorpayNote } from "@/lib/server-utils";
 
 const API = "https://api.razorpay.com/v1";
 
@@ -52,7 +53,12 @@ async function rz<T>(path: string, init?: RequestInit): Promise<T> {
 export const createRazorpayOrder = (amountInr: number, receipt: string) =>
   rz<{ id: string; amount: number }>("/orders", {
     method: "POST",
-    body: JSON.stringify({ amount: amountInr * 100, currency: "INR", receipt, notes: { receipt } }),
+    body: JSON.stringify({
+      amount: amountInr * 100,
+      currency: "INR",
+      receipt: cleanRazorpayNote(receipt, 40),
+      notes: { receipt: cleanRazorpayNote(receipt, 40) },
+    }),
   });
 
 export type RzPayment = { id: string; order_id: string; amount: number; currency: string; status: string };
@@ -103,18 +109,26 @@ export const createRazorpaySubscription = (params: {
   customerNotify?: number;
   notes?: Record<string, string>;
   startAt?: number;
-}) =>
-  rz<RzSubscription>("/subscriptions", {
+}) => {
+  const safeNotes: Record<string, string> = {};
+  if (params.notes) {
+    for (const [k, v] of Object.entries(params.notes)) {
+      if (v) safeNotes[k] = cleanRazorpayNote(v, 200);
+    }
+  }
+
+  return rz<RzSubscription>("/subscriptions", {
     method: "POST",
     body: JSON.stringify({
       plan_id: params.planId,
       total_count: params.totalCount || 60, // 5 years monthly default
       quantity: 1,
       customer_notify: params.customerNotify ?? 1,
-      notes: params.notes || {},
+      notes: safeNotes,
       ...(params.startAt ? { start_at: params.startAt } : {}),
     }),
   });
+};
 
 export const fetchRazorpaySubscription = (id: string) =>
   rz<RzSubscription>(`/subscriptions/${encodeURIComponent(id)}`);

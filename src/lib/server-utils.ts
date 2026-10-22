@@ -49,3 +49,19 @@ export function normalizePhone(v: string) {
 
 /** E.164-ish check: 10-15 digits, optional +. */
 export const isPhone = (v: string) => /^\+?\d{10,15}$/.test(v);
+
+/**
+ * Strips 4-byte UTF-8 emojis, surrogates, and special symbols to ensure
+ * Razorpay orders & subscriptions APIs never return 400 BAD_REQUEST_ERROR
+ * ("The notes field should contain valid UTF-8 encoded characters").
+ */
+export function cleanRazorpayNote(val: unknown, max = 250): string {
+  if (typeof val !== "string") return "";
+  return val
+    .replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, "") // surrogate pairs (emojis)
+    .replace(/[\u200B-\u200D\uFEFF]/g, "") // zero-width characters
+    .replace(/[^\x20-\x7E\u0900-\u097F\u0C80-\u0CFF]/g, " ") // keep standard printable ASCII, Devanagari & Kannada
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, max);
+}

@@ -349,8 +349,9 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
           googleAdsConversionLabel={marketingConfig?.googleAdsConversionLabel}
           googleTagManagerId={marketingConfig?.googleTagManagerId}
         />
-        {/* Razorpay Secure Payment Gateway Engine Preload */}
+        {/* Razorpay Secure Payment Gateway Engine Preload & Script */}
         <link rel="preload" href="https://checkout.razorpay.com/v1/checkout.js" as="script" />
+        <script src="https://checkout.razorpay.com/v1/checkout.js" async />
         <script
           id="seo-geo-aeo-jsonld"
           type="application/ld+json"

@@ -4,13 +4,28 @@
  * 
  * Provides robust, cross-browser, cross-device loading and opening
  * of the Razorpay Checkout modal with timeout safety, retry polling,
- * DOM body readiness guarantee, and comprehensive error recovery.
+ * DOM readiness guarantee, and comprehensive error recovery.
  */
 
 declare global {
   interface Window {
     Razorpay?: any;
   }
+}
+
+/**
+ * Strips 4-byte UTF-8 emojis, surrogates, and unprintable characters
+ * from strings passed into Razorpay frontend config.
+ */
+function cleanClientString(val: string | undefined | null, max = 250): string {
+  if (!val) return "";
+  return val
+    .replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, "") // surrogate pairs (emojis)
+    .replace(/[\u200B-\u200D\uFEFF]/g, "") // zero-width spaces
+    .replace(/[^\x20-\x7E\u0900-\u097F\u0C80-\u0CFF]/g, " ") // printable ASCII, Devanagari & Kannada
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, max);
 }
 
 /**
@@ -51,28 +66,31 @@ async function ensureDocumentBodyReady(): Promise<HTMLElement> {
 }
 
 /**
- * Ensures Razorpay container and backdrop DOM elements are properly
- * attached to document.body, preventing the "This browser is not supported"
- * iframe detachment error in modern Chromium/WebKit browsers.
+ * Ensures Razorpay container and backdrop DOM elements have top-level z-index
+ * and visibility without destructively re-parenting iframes.
  */
 export function ensureRazorpayContainerAttached(): void {
-  if (typeof document === "undefined" || !document.body) return;
+  if (typeof document === "undefined") return;
   try {
     const container = document.querySelector<HTMLElement>(".razorpay-container");
-    if (container && container.parentNode !== document.body) {
-      document.body.appendChild(container);
+    if (container) {
+      container.style.zIndex = "2147483647";
+      container.style.display = "block";
+      container.style.visibility = "visible";
     }
     const backdrop = document.querySelector<HTMLElement>(".razorpay-backdrop");
-    if (backdrop && backdrop.parentNode !== document.body) {
-      document.body.appendChild(backdrop);
+    if (backdrop) {
+      backdrop.style.zIndex = "2147483646";
+      backdrop.style.display = "block";
+      backdrop.style.visibility = "visible";
     }
   } catch (err) {
-    console.warn("[Razorpay DOM] Container check warning:", err);
+    console.warn("[Razorpay DOM] Style check warning:", err);
   }
 }
 
 /**
- * Ensures checkout.js is loaded from checkout.razorpay.com into document.body.
+ * Ensures checkout.js is loaded from checkout.razorpay.com into document.
  * Uses aggressive polling and a strict 8-second watchdog timeout so it NEVER hangs indefinitely.
  */
 export async function loadRazorpayScript(timeoutMs = 8000): Promise<boolean> {
@@ -117,11 +135,11 @@ export async function loadRazorpayScript(timeoutMs = 8000): Promise<boolean> {
         if (checkAvailable() || resolved) {
           clearInterval(pollInterval);
         }
-      }, 50);
+      }, 40);
       return;
     }
 
-    // 2. Dynamically inject script into document.body (NOT head, so body is always active)
+    // 2. Dynamically inject script into document.head or body
     try {
       const script = document.createElement("script");
       script.src = "https://checkout.razorpay.com/v1/checkout.js";
@@ -144,7 +162,7 @@ export async function loadRazorpayScript(timeoutMs = 8000): Promise<boolean> {
         }
       };
 
-      body.appendChild(script);
+      (document.head || body).appendChild(script);
     } catch (err) {
       console.error("[Razorpay SDK] Script injection error:", err);
       if (!resolved) {
@@ -194,17 +212,25 @@ export async function openRazorpayCheckout(opts: OpenRazorpayOptions): Promise<v
 
   const cleanPhone = (opts.donorPhone || "").replace(/\D/g, "").slice(-10);
 
+  // Sanitize all notes to remove emojis and length overflows
+  const cleanNotes: Record<string, string> = {};
+  if (opts.notes) {
+    for (const [k, v] of Object.entries(opts.notes)) {
+      if (v) cleanNotes[k] = cleanClientString(String(v), 200);
+    }
+  }
+
   const rzpConfig: Record<string, any> = {
     key: opts.keyId,
     currency: opts.currency || "INR",
-    name: opts.name || "Janaseva Ashrama Bangalore",
-    description: opts.description || "Donation for 25 Resident Children",
+    name: cleanClientString(opts.name || "Janaseva Ashrama Bangalore", 80),
+    description: cleanClientString(opts.description || "Donation for 25 Resident Children", 120),
     prefill: {
-      name: opts.donorName?.trim() || "",
+      name: cleanClientString(opts.donorName?.trim() || "", 60),
       contact: cleanPhone,
       email: opts.donorEmail?.trim() || "donor@janasevaashrama.org",
     },
-    notes: opts.notes || {},
+    notes: cleanNotes,
     theme: { color: "#06312f" },
     modal: {
       ondismiss: () => {
@@ -242,10 +268,10 @@ export async function openRazorpayCheckout(opts: OpenRazorpayOptions): Promise<v
 
     rzp.open();
 
-    // Secondary watchdog: check if the modal is closed or failed within 500ms
+    // Secondary watchdog: guarantee container and backdrop visibility
     setTimeout(() => {
       ensureRazorpayContainerAttached();
-    }, 200);
+    }, 150);
   } catch (err: any) {
     console.error("[Razorpay Checkout] Failed to open gateway modal:", err);
     throw new Error(err?.message || "Failed to launch payment window. Please check your browser popup settings.");
