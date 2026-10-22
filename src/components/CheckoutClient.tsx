@@ -452,8 +452,6 @@ export function CheckoutClient() {
   const [copiedBankField, setCopiedBankField] = useState<string | null>(null);
   const [confirmingClear, setConfirmingClear] = useState(false);
   const [showBankDetails, setShowBankDetails] = useState(false);
-  const [showUpiDetails, setShowUpiDetails] = useState(false);
-  const [copiedUpi, setCopiedUpi] = useState(false);
   const [showCustomInput, setShowCustomInput] = useState(false);
   const [showBasketDetails, setShowBasketDetails] = useState(false);
   const attempt = useRef<{ sig: string; key: string } | null>(null);
@@ -471,7 +469,7 @@ export function CheckoutClient() {
     const amtParam = search.get("amount");
     if (amtParam) {
       const parsed = Number(amtParam);
-      if (!isNaN(parsed) && parsed >= 10 && parsed <= 500000 && cart.custom !== parsed) {
+      if (!isNaN(parsed) && parsed >= 10 && parsed <= 500000) {
         queueMicrotask(() => {
           cart.setCustom(parsed);
         });
@@ -1802,122 +1800,6 @@ export function CheckoutClient() {
               <strong>I confirm my details for official Form 10AC 80G tax receipt generation *</strong> and agree to receive transparent child outcome reports. (Zero marketing spam).
             </span>
           </label>
-        </div>
-
-        {/* ── COLLAPSIBLE DIRECT DYNAMIC UPI QR ACCORDION ── */}
-        <div className="rounded-3xl bg-white p-4 sm:p-5 shadow-xs ring-1 ring-teal-900/10">
-          <button
-            type="button"
-            onClick={() => setShowUpiDetails(!showUpiDetails)}
-            className="flex w-full items-center justify-between text-left cursor-pointer group"
-          >
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-teal-50 text-teal-900 text-lg border border-teal-900/10 group-hover:bg-teal-100 transition">
-                📲
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs sm:text-sm font-bold text-teal-950">
-                    Prefer Direct UPI QR Code (GPay, PhonePe, Paytm)?
-                  </span>
-                  <span className="rounded-md bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold text-emerald-800 border border-emerald-600/20">
-                    0% Gateway Fee
-                  </span>
-                </div>
-                <p className="text-[11px] text-teal-950/60 mt-0.5">
-                  {showUpiDetails ? "Tap to collapse UPI QR" : `Scan dynamic QR to pay ${formatINR(cart.total || 101)} directly`}
-                </p>
-              </div>
-            </div>
-            <span className="text-xs font-bold text-teal-900 bg-cream px-3 py-1.5 rounded-xl border border-teal-900/10 group-hover:bg-sand transition shrink-0 ml-2">
-              {showUpiDetails ? "Hide ▴" : "Scan QR ▾"}
-            </span>
-          </button>
-
-          {showUpiDetails && (
-            <div className="mt-4 pt-4 border-t border-teal-900/10 animate-in fade-in space-y-4">
-              <div className="rounded-2xl bg-teal-950 text-white p-4 text-center">
-                <p className="text-xs font-bold text-amber-300">
-                  Scan to Donate {formatINR(cart.total || 101)} via Any UPI App
-                </p>
-                <div className="my-3 mx-auto w-fit rounded-xl bg-white p-2.5 shadow-md ring-2 ring-amber-400/50">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(
-                      `upi://pay?pa=9980359595@okaxis&pn=Janaseva%20Ashrama&am=${cart.total || 101}&cu=INR&tn=Donation`
-                    )}&margin=1`}
-                    alt={`UPI QR code for ${formatINR(cart.total || 101)}`}
-                    className="h-40 w-40 object-contain"
-                  />
-                  <p className="mt-1 text-[10px] font-bold text-teal-950 font-mono">
-                    {formatINR(cart.total || 101)} · 9980359595@okaxis
-                  </p>
-                </div>
-
-                <div className="sm:hidden grid grid-cols-2 gap-2 pt-1 text-xs">
-                  <a
-                    href={`upi://pay?pa=9980359595@okaxis&pn=Janaseva%20Ashrama&am=${cart.total || 101}&cu=INR&tn=Donation`}
-                    className="flex items-center justify-center py-2 rounded-xl bg-white text-teal-950 font-bold"
-                  >
-                    ⚡ Any UPI App
-                  </a>
-                  <a
-                    href={`phonepe://pay?pa=9980359595@okaxis&pn=Janaseva%20Ashrama&am=${cart.total || 101}&cu=INR&tn=Donation`}
-                    className="flex items-center justify-center py-2 rounded-xl bg-purple-600 text-white font-bold"
-                  >
-                    PhonePe
-                  </a>
-                  <a
-                    href={`gpay://upi/pay?pa=9980359595@okaxis&pn=Janaseva%20Ashrama&am=${cart.total || 101}&cu=INR&tn=Donation`}
-                    className="flex items-center justify-center py-2 rounded-xl bg-blue-600 text-white font-bold"
-                  >
-                    Google Pay
-                  </a>
-                  <a
-                    href={`paytmmp://pay?pa=9980359595@okaxis&pn=Janaseva%20Ashrama&am=${cart.total || 101}&cu=INR&tn=Donation`}
-                    className="flex items-center justify-center py-2 rounded-xl bg-sky-600 text-white font-bold"
-                  >
-                    Paytm
-                  </a>
-                </div>
-
-                <div className="mt-3 flex items-center justify-between rounded-xl bg-white/10 p-2.5 text-left text-xs">
-                  <div>
-                    <span className="text-[9px] uppercase text-white/60 block">UPI ID</span>
-                    <span className="font-mono font-bold text-amber-300">9980359595@okaxis</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (typeof navigator !== "undefined" && navigator.clipboard) {
-                        navigator.clipboard.writeText("9980359595@okaxis");
-                        setCopiedUpi(true);
-                        setTimeout(() => setCopiedUpi(false), 2500);
-                      }
-                    }}
-                    className="rounded-lg bg-amber-400 px-3 py-1 text-[11px] font-black text-teal-950 cursor-pointer"
-                  >
-                    {copiedUpi ? "✓ Copied!" : "Copy"}
-                  </button>
-                </div>
-              </div>
-
-              <p className="text-xs text-teal-950/70">
-                After completing UPI payment, please WhatsApp your receipt/screenshot to{" "}
-                <a
-                  href={`https://wa.me/${SITE.whatsapp}?text=${encodeURIComponent(
-                    `Namaste Janaseva Ashrama, I have completed a direct UPI donation of ₹${cart.total || 101}.`
-                  )}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="font-bold text-teal-900 underline"
-                >
-                  +91 99803 59595
-                </a>{" "}
-                for your official 80G tax receipt.
-              </p>
-            </div>
-          )}
         </div>
 
         {/* ── COLLAPSIBLE DIRECT BANK TRANSFER ACCORDION (NEFT / IMPS / RTGS) ── */}

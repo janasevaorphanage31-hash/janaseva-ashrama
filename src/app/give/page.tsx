@@ -38,7 +38,8 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Support 25 Resident Boys | Janaseva Ashrama Bangalore",
-    description: "₹500 feeds a child for a week. 100% Tax Exemption under Section 80G Form 10AC.",
+    description:
+      "₹500 feeds a child for a week. 100% Tax Exemption under Section 80G Form 10AC.",
     images: [`${SITE.url}/media/annadana-hall-hd.jpg`],
   },
 };
