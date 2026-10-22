@@ -36,6 +36,9 @@ next-env.d.ts
 .DS_Store
 Thumbs.db
 
+# Audit artifacts
+janaseva-audit/
+
 # IDE & Editor settings
 .vscode/
 .idea/

@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
-import Script from "next/script";
 import "./globals.css";
 import { CartProvider } from "@/components/CartProvider";
 import { PublicSiteChrome } from "@/components/PublicSiteChrome";
@@ -17,11 +16,11 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   metadataBase: new URL(SITE.url),
   title: {
-    default: "Janaseva Ashrama: Orphanage & Children's Home in Bangalore | 80G Tax Exemption | Donate Food & Education",
+    default: "Janaseva Ashrama: Orphanage in Bangalore | 80G Tax Exemption",
     template: "%s · Janaseva Ashrama Bangalore",
   },
   description:
-    "Official website of Janaseva Ashrama (Reg: KA18CH0242, 80G Form 10AC: AABTJ7431MF20231), a verified children's home & orphanage in Bengaluru, Karnataka nurturing 25 resident boys with hot meals (Annadana), school education, shelter, and medical care.",
+    "Official website of Janaseva Ashrama, Bangalore. Supporting 25 resident boys with meals, education, and shelter. 80G tax exemption & JJ Act KA18CH0242 registered.",
   keywords: [
     "janaseva ashrama",
     "janaseva ashrama bangalore",
@@ -79,9 +78,9 @@ export const metadata: Metadata = {
     locale: "en_IN",
     url: SITE.url,
     siteName: SITE.name,
-    title: "Janaseva Ashrama: Orphanage & Children's Home in Bangalore | 80G Tax Exemption",
+    title: "Janaseva Ashrama: Orphanage in Bangalore | 80G Tax Exemption",
     description:
-      "Official website of Janaseva Ashrama, Bengaluru. Caring for 25 resident children with daily nutritious meals, schooling, and unconditional love. 100% verified allocation under JJ Act KA18CH0242 and 80G tax benefit.",
+      "Caring for 25 resident children with daily nutritious meals, schooling, and shelter in Bengaluru. 100% direct allocation under JJ Act KA18CH0242 and 80G tax benefit.",
     images: [
       {
         url: `${SITE.url}/media/janaseva-ashrama-original.jpg`,
@@ -350,10 +349,9 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
           googleAdsConversionLabel={marketingConfig?.googleAdsConversionLabel}
           googleTagManagerId={marketingConfig?.googleTagManagerId}
         />
-        <Script
+        <script
           id="seo-geo-aeo-jsonld"
           type="application/ld+json"
-          strategy="beforeInteractive"
           dangerouslySetInnerHTML={{
             __html: JSON.stringify(structuredData),
           }}
