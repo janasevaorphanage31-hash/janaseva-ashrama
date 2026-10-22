@@ -25,6 +25,25 @@ export default function NotFound() {
           </p>
         </div>
 
+        {/* Primary Direct Donation Pathway */}
+        <div className="pt-1">
+          <Link
+            href="/give"
+            className="group block w-full rounded-2xl bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 p-4 text-left shadow-lg hover:from-amber-600 hover:to-amber-800 transition transform hover:-translate-y-0.5 border border-amber-400/40"
+          >
+            <div className="flex items-center justify-between text-white">
+              <span className="font-extrabold text-base flex items-center gap-2">
+                <span>💛</span>
+                <span>Support &amp; Donate to 25 Boys</span>
+              </span>
+              <span className="text-xl font-bold group-hover:translate-x-1 transition-transform">→</span>
+            </div>
+            <p className="text-xs text-amber-100 font-medium mt-1">
+              Start from ₹11 · 100% Tax Deductible (80G Form 10AC) · Instant WhatsApp Receipt
+            </p>
+          </Link>
+        </div>
+
         {/* Quick Return Pathways */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 text-left">
           <Link

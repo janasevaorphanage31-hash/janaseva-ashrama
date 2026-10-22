@@ -23,6 +23,16 @@ function checkRateLimit(ip: string, limit: number, windowMs: number): boolean {
 
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
+
+  // ── 0. SANITIZE ACCIDENTAL TRAILING PUNCTUATION IN URLS ──
+  // Handles links clicked from Instagram captions, WhatsApp messages, or SMS where a trailing period or comma was captured (e.g. /give. or /donate.)
+  if (/[.,;:!]+$/.test(pathname)) {
+    const cleanPath = pathname.replace(/[.,;:!]+$/, "") || "/";
+    const redirectUrl = req.nextUrl.clone();
+    redirectUrl.pathname = cleanPath;
+    return NextResponse.redirect(redirectUrl, 308);
+  }
+
   const ip =
     req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
     req.headers.get("x-real-ip") ||
@@ -152,8 +162,13 @@ export function middleware(req: NextRequest) {
 
 export const config = {
   matcher: [
-    "/admin/:path*",
-    "/api/:path*",
-    "/portal/:path*",
+    /*
+     * Match all request paths except for:
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico, icon.png, apple-touch-icon.png
+     * - public static files matching common extensions
+     */
+    "/((?!_next/static|_next/image|favicon.ico|icon.png|apple-touch-icon.png|.*\\.(?:svg|png|jpg|jpeg|gif|webp|avif|css|js|mp4|pdf|txt|xml)$).*)",
   ],
 };

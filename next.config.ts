@@ -66,6 +66,19 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  async redirects() {
+    return [
+      { source: "/give.", destination: "/give", permanent: true },
+      { source: "/donate.", destination: "/donate", permanent: true },
+      { source: "/support.", destination: "/supporter-form", permanent: true },
+      { source: "/donation", destination: "/give", permanent: true },
+      { source: "/donations", destination: "/give", permanent: true },
+      { source: "/contribute", destination: "/give", permanent: true },
+      { source: "/contributions", destination: "/give", permanent: true },
+      { source: "/sponsor", destination: "/give", permanent: true },
+      { source: "/annadana", destination: "/give", permanent: true },
+    ];
+  },
   async rewrites() {
     return [
       { source: "/support", destination: "/supporter-form" },
