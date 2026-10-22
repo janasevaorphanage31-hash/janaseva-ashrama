@@ -13,6 +13,7 @@ import {
   validatePan,
   sanitizePan,
 } from "@/lib/validation";
+import { openRazorpayCheckout } from "@/lib/razorpay-client";
 
 const PRESET_TIERS = [
   {
@@ -276,30 +277,18 @@ export function DonateClientComponent() {
         num_items: 1,
       });
 
-      // Load Razorpay checkout script if missing
-      if (typeof window !== "undefined" && !(window as any).Razorpay) {
-        await new Promise((resolve, reject) => {
-          const script = document.createElement("script");
-          script.src = "https://checkout.razorpay.com/v1/checkout.js";
-          script.onload = resolve;
-          script.onerror = () => reject(new Error("Unable to reach payment gateway. Please check your internet connection."));
-          document.body.appendChild(script);
-        });
-      }
-
-      if ((window as any).Razorpay && data.mode === "live") {
-        const options = {
-          key: data.keyId,
-          amount: data.amount,
+      // 2. Open Live Razorpay Gateway
+      if (data.orderId && data.keyId) {
+        await openRazorpayCheckout({
+          keyId: data.keyId,
+          orderId: data.orderId,
+          amountPaise: data.amount,
           currency: data.currency || "INR",
           name: "Janaseva Ashrama Bangalore",
           description: `${selectedOccasionLabel} · 25 Resident Boys Seva`,
-          order_id: data.orderId,
-          prefill: {
-            name: donorName.trim(),
-            contact: donorPhone.trim(),
-            email: donorEmail.trim() || "donor@janasevaashrama.org",
-          },
+          donorName: donorName.trim(),
+          donorPhone: donorPhone.trim(),
+          donorEmail: donorEmail.trim() || "donor@janasevaashrama.org",
           notes: {
             caller_ref_id: callerRef,
             lead_id: leadId || "",
@@ -308,13 +297,19 @@ export function DonateClientComponent() {
             occasion: selectedOccasionLabel,
             prayer_note: prayerNote.trim(),
           },
-          theme: { color: "#06312f" },
-          modal: {
-            ondismiss: () => {
-              setLoading(false);
-            },
+          onDismiss: () => {
+            setLoading(false);
           },
-          handler: async function (response: any) {
+          onError: (err: any) => {
+            setLoading(false);
+            setFormErrors({
+              general:
+                err?.description ||
+                err?.message ||
+                "Your payment transaction could not be processed. No money was debited from your account. Please try another payment method.",
+            });
+          },
+          onSuccess: async (response) => {
             // 1. Meta Pixel & Google Ads Conversion Tracking (Donate + Purchase)
             trackDonationSuccess({
               amount: finalAmount,
@@ -367,19 +362,8 @@ export function DonateClientComponent() {
               response.razorpay_order_id || "",
             )}&ref=${encodeURIComponent(callerRef)}`;
           },
-        };
-
-        const rzp = new (window as any).Razorpay(options);
-        rzp.on("payment.failed", (resp: any) => {
-          setLoading(false);
-          setFormErrors({
-            general:
-              resp?.error?.description ||
-              "Your transaction was not completed. No money has been deducted from your account. Please try another payment method.",
-          });
         });
-        rzp.open();
-      } else {
+      } else if (data.mode === "demo") {
         // Staging / Demo simulated donation
         const demoPaymentId = `pay_sim_${Date.now()}`;
         await fetch("/api/v1/webhooks/payment", {
@@ -394,7 +378,7 @@ export function DonateClientComponent() {
             paymentId: demoPaymentId,
             leadId: leadId ? Number(leadId) : undefined,
           }),
-        });
+        }).catch(() => {});
 
         trackDonationSuccess({
           amount: finalAmount,
@@ -409,6 +393,8 @@ export function DonateClientComponent() {
         window.location.href = `/thank-you?amount=${finalAmount}&payment_id=${demoPaymentId}&ref=${encodeURIComponent(
           callerRef,
         )}&demo=true`;
+      } else {
+        throw new Error(data.error || "Payment gateway could not generate an order. Please try again.");
       }
     } catch (err: any) {
       setFormErrors({

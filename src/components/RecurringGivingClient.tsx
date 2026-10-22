@@ -7,6 +7,7 @@ import { ValidationErrorModal } from "@/components/ValidationErrorModal";
 import { formatINR } from "@/lib/site";
 import { track } from "@/lib/track";
 import { trackDonationSuccess } from "@/lib/tracking";
+import { openRazorpayCheckout } from "@/lib/razorpay-client";
 
 function cleanIndianMobile(val: string): string {
   let digits = val.replace(/\D/g, "");
@@ -16,18 +17,6 @@ function cleanIndianMobile(val: string): string {
     digits = digits.slice(1);
   }
   return digits.slice(0, 10);
-}
-
-function loadRazorpay(): Promise<boolean> {
-  if (typeof window === "undefined") return Promise.resolve(false);
-  if ((window as any).Razorpay) return Promise.resolve(true);
-  return new Promise((resolve) => {
-    const s = document.createElement("script");
-    s.src = "https://checkout.razorpay.com/v1/checkout.js";
-    s.onload = () => resolve(true);
-    s.onerror = () => resolve(false);
-    document.body.appendChild(s);
-  });
 }
 
 export function RecurringGivingClient() {
@@ -133,26 +122,25 @@ export function RecurringGivingClient() {
         return;
       }
 
-      const ok = await loadRazorpay();
-      if (!ok || !(window as any).Razorpay) {
-        throw new Error("Could not load the Razorpay payment gateway.");
+      if (!data.keyId || !data.subscriptionId) {
+        throw new Error("Unable to create monthly recurring plan on gateway. Please try again.");
       }
 
-      const rz = new (window as any).Razorpay({
-        key: data.keyId,
-        subscription_id: data.subscriptionId,
+      await openRazorpayCheckout({
+        keyId: data.keyId,
+        subscriptionId: data.subscriptionId,
         name: "Janaseva Ashrama",
         description: `Monthly Child Care Auto-Pay: ₹${data.amount}/month`,
-        prefill: { name, email, contact: phone },
-        theme: { color: "#06312f" },
-        modal: {
-          ondismiss: () => setLoading(false),
+        donorName: name,
+        donorPhone: phone,
+        donorEmail: email,
+        onDismiss: () => setLoading(false),
+        onError: (resp: any) => {
+          const desc = resp?.description || "Your mandate authorization was not completed. No amount has been debited.";
+          setError(desc);
+          setLoading(false);
         },
-        handler: async (r: {
-          razorpay_payment_id: string;
-          razorpay_subscription_id: string;
-          razorpay_signature: string;
-        }) => {
+        onSuccess: async (r) => {
           // 1. Fire Meta Pixel & Google Ads conversion tracking
           trackDonationSuccess({
             amount: data.amount,
@@ -183,13 +171,6 @@ export function RecurringGivingClient() {
           }
         },
       });
-
-      rz.on("payment.failed", () => {
-        setError("Your mandate authorization was not completed. No amount has been debited.");
-        setLoading(false);
-      });
-
-      rz.open();
     } catch (err: any) {
       setError(err.message);
       setLoading(false);

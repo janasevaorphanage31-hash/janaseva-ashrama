@@ -19,6 +19,7 @@ import {
   EMAIL_REGEX,
   PAN_REGEX,
 } from "@/lib/validation";
+import { openRazorpayCheckout } from "@/lib/razorpay-client";
 import { ValidationErrorModal } from "./ValidationErrorModal";
 
 const OCCASION_CHOICES = [
@@ -399,27 +400,6 @@ function cleanIndianMobile(val: string): string {
   return digits.slice(0, 10);
 }
 
-declare global {
-  interface Window {
-    Razorpay?: new (opts: Record<string, unknown>) => {
-      open: () => void;
-      on: (e: string, cb: (r: unknown) => void) => void;
-    };
-  }
-}
-
-function loadRazorpay(): Promise<boolean> {
-  if (typeof window === "undefined") return Promise.resolve(false);
-  if (window.Razorpay) return Promise.resolve(true);
-  return new Promise((resolve) => {
-    const s = document.createElement("script");
-    s.src = "https://checkout.razorpay.com/v1/checkout.js";
-    s.onload = () => resolve(true);
-    s.onerror = () => resolve(false);
-    document.body.appendChild(s);
-  });
-}
-
 const inputCls =
   "w-full rounded-2xl border-2 border-teal-900/15 bg-cream px-4 py-3 text-base text-teal-900 outline-none focus:border-teal-800";
 
@@ -563,13 +543,15 @@ export function CheckoutClient() {
       return;
     }
 
-    // 2. Validate Donor Email (RFC format)
-    const emailCheck = validateEmail(form.email, true);
-    if (!emailCheck.valid) {
-      setError(emailCheck.error!);
-      setValidationModalMessage(emailCheck.error!);
-      setValidationModalOpen(true);
-      return;
+    // 2. Validate Donor Email (RFC format, optional if mobile phone provided)
+    if (form.email.trim()) {
+      const emailCheck = validateEmail(form.email, false);
+      if (!emailCheck.valid) {
+        setError(emailCheck.error!);
+        setValidationModalMessage(emailCheck.error!);
+        setValidationModalOpen(true);
+        return;
+      }
     }
 
     // 3. Validate Mobile Phone (REQUIRED: 10 digits for Indian standard)
@@ -676,28 +658,29 @@ export function CheckoutClient() {
           return;
         }
 
-        const ok = await loadRazorpay();
-        if (!ok || !window.Razorpay) {
-          throw new Error("Could not load the secure payment gateway. Check your connection.");
+        if (!data.keyId || !data.subscriptionId) {
+          throw new Error("Unable to create monthly recurring plan on gateway. Please try again or select one-time contribution.");
         }
 
-        const rz = new window.Razorpay({
-          key: data.keyId,
-          subscription_id: data.subscriptionId,
+        await openRazorpayCheckout({
+          keyId: data.keyId,
+          subscriptionId: data.subscriptionId,
           name: "Janaseva Ashrama",
           description: `Monthly Auto-Pay: ₹${data.amount}/month`,
-          prefill: { name: form.name, email: form.email, contact: form.phone },
-          theme: { color: "#06312f" },
-          modal: {
-            ondismiss: () => {
-              setBusy(false);
-            },
+          donorName: form.name,
+          donorPhone: form.phone,
+          donorEmail: form.email,
+          onDismiss: () => {
+            setBusy(false);
           },
-          handler: async (r: {
-            razorpay_payment_id: string;
-            razorpay_subscription_id: string;
-            razorpay_signature: string;
-          }) => {
+          onError: (resp: any) => {
+            track("subscription_failed", { stage: "gateway" });
+            const desc = resp?.description || "Your recurring mandate authorization was not completed. No amount has been deducted.";
+            setError(desc);
+            setPaymentFailed(true);
+            setBusy(false);
+          },
+          onSuccess: async (r) => {
             try {
               // 1. Fire Meta Pixel & Google Ads conversion tracking
               trackDonationSuccess({
@@ -735,16 +718,6 @@ export function CheckoutClient() {
             }
           },
         });
-
-        rz.on("payment.failed", (resp: any) => {
-          track("subscription_failed", { stage: "gateway" });
-          const desc = resp?.error?.description || "Your recurring mandate authorization was not completed. No amount has been deducted.";
-          setError(desc);
-          setPaymentFailed(true);
-          setBusy(false);
-        });
-
-        rz.open();
 
       } catch (err) {
         setError((err as Error).message || "Could not start recurring mandate. Please try again.");
@@ -833,30 +806,31 @@ export function CheckoutClient() {
         return;
       }
 
-      const ok = await loadRazorpay();
-      if (!ok || !window.Razorpay) {
-        throw new Error("Could not load the secure payment gateway. Check your connection and try again.");
+      if (!data.keyId || !data.orderId) {
+        throw new Error("Unable to initialize secure payment order. Please try again.");
       }
 
-      const rz = new window.Razorpay({
-        key: data.keyId,
-        order_id: data.orderId,
-        amount: data.amount * 100,
+      await openRazorpayCheckout({
+        keyId: data.keyId,
+        orderId: data.orderId,
+        amountPaise: data.amount * 100,
         currency: "INR",
         name: "Janaseva Ashrama",
         description: dedicationEnabled ? `${dedication.occasion} Dedication` : "Child Welfare Contribution",
-        prefill: { name: form.name, email: form.email, contact: form.phone },
-        theme: { color: "#06312f" },
-        modal: {
-          ondismiss: () => {
-            setBusy(false);
-          },
+        donorName: form.name,
+        donorPhone: form.phone,
+        donorEmail: form.email,
+        onDismiss: () => {
+          setBusy(false);
         },
-        handler: async (r: {
-          razorpay_payment_id: string;
-          razorpay_order_id: string;
-          razorpay_signature: string;
-        }) => {
+        onError: (resp: any) => {
+          track("payment_failed", { stage: "gateway" });
+          const desc = resp?.description || "Your payment was not completed by the gateway. No amount has been deducted.";
+          setError(desc);
+          setPaymentFailed(true);
+          setBusy(false);
+        },
+        onSuccess: async (r) => {
           try {
             // 1. Fire Meta Pixel & Google Ads conversion tracking
             trackDonationSuccess({
@@ -893,15 +867,6 @@ export function CheckoutClient() {
           }
         },
       });
-
-      rz.on("payment.failed", () => {
-        track("payment_failed", { stage: "gateway" });
-        setError("Your payment was not completed by the gateway. No amount has been deducted.");
-        setPaymentFailed(true);
-        setBusy(false);
-      });
-
-      rz.open();
     } catch (err) {
       setError((err as Error).message);
       setBusy(false);

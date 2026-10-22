@@ -192,6 +192,13 @@ export function TrackingScripts({
           </noscript>
         </>
       )}
+
+      {/* ── 4. Razorpay Checkout SDK Preload (Immediate 0ms Gateway Readiness) ── */}
+      <Script
+        id="razorpay-checkout-sdk"
+        src="https://checkout.razorpay.com/v1/checkout.js"
+        strategy="afterInteractive"
+      />
     </>
   );
 }

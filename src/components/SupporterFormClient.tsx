@@ -17,18 +17,7 @@ import {
   PAN_REGEX,
 } from "@/lib/validation";
 import { OfficialPrintableSupporterForm } from "./OfficialPrintableSupporterForm";
-
-function loadRazorpay(): Promise<boolean> {
-  if (typeof window === "undefined") return Promise.resolve(false);
-  if ((window as any).Razorpay) return Promise.resolve(true);
-  return new Promise((resolve) => {
-    const s = document.createElement("script");
-    s.src = "https://checkout.razorpay.com/v1/checkout.js";
-    s.onload = () => resolve(true);
-    s.onerror = () => resolve(false);
-    document.body.appendChild(s);
-  });
-}
+import { openRazorpayCheckout } from "@/lib/razorpay-client";
 
 export function SupporterFormClient() {
   const router = useRouter();
@@ -247,26 +236,28 @@ For queries, call: 9980359595 / 9945223232.`;
       }
 
       // If Online Payment via Razorpay
-      const loaded = await loadRazorpay();
-      if (!loaded || !window.Razorpay) {
-        throw new Error("Unable to load secure payment window. Please check your internet connection.");
+      if (!data.keyId || !data.orderId) {
+        throw new Error("Unable to create online payment order. Please try direct bank transfer or try again.");
       }
 
-      const rzp = new window.Razorpay({
-        key: data.keyId,
-        amount: data.amount * 100,
+      await openRazorpayCheckout({
+        keyId: data.keyId,
+        orderId: data.orderId,
+        amountPaise: data.amount * 100,
         currency: "INR",
         name: "Janaseva Ashrama",
         description: `Supporter Form: ${totalAmountWords}`,
-        image: "/logo/janaseva-logo.png",
-        order_id: data.orderId,
-        prefill: {
-          name: donor.name,
-          email: donor.email || "donor@janasevaashrama.org",
-          contact: donor.phone,
+        donorName: donor.name,
+        donorPhone: donor.phone,
+        donorEmail: donor.email,
+        onDismiss: () => {
+          setBusy(false);
         },
-        theme: { color: "#06312f" },
-        handler: async function (paymentResponse: any) {
+        onError: (err: any) => {
+          setBusy(false);
+          setErrorMessage(err?.description || "Payment transaction could not be completed.");
+        },
+        onSuccess: async (paymentResponse) => {
           // 1. Fire Meta Pixel & Google Ads conversion tracking
           trackDonationSuccess({
             amount: data.amount,
@@ -301,14 +292,7 @@ For queries, call: 9980359595 / 9945223232.`;
             paymentResponse.razorpay_order_id || "",
           )}&receipt_id=${encodeURIComponent(data.publicId)}`;
         },
-        modal: {
-          ondismiss: function () {
-            setBusy(false);
-          },
-        },
       });
-
-      rzp.open();
     } catch (err: any) {
       setErrorMessage(err.message || "An unexpected error occurred. Please try again.");
       setBusy(false);

@@ -97,6 +97,7 @@ export function middleware(req: NextRequest) {
   }
 
   // ── 4. CORS LOCKDOWN ON API ROUTES ──
+  let apiOriginToSet: string | null = null;
   if (pathname.startsWith("/api/")) {
     const origin = req.headers.get("origin") || "";
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "";
@@ -107,17 +108,26 @@ export function middleware(req: NextRequest) {
       isAllowedOrigin = true;
     } else {
       try {
-        const originHost = new URL(origin).host;
-        const reqHost = req.headers.get("host") || "";
-        const configuredHost = siteUrl ? new URL(siteUrl).host : "";
+        const originUrl = new URL(origin);
+        const originHost = originUrl.host.toLowerCase();
+        const originHostname = originUrl.hostname.toLowerCase();
+        const reqHost = (req.headers.get("host") || "").toLowerCase();
+        const configuredHost = siteUrl ? new URL(siteUrl).host.toLowerCase() : "";
 
         isAllowedOrigin =
           originHost === reqHost ||
-          originHost.includes("localhost") ||
-          originHost.includes("trycloudflare.com") ||
+          originHostname === "localhost" ||
+          originHostname.endsWith(".localhost") ||
+          originHostname === "127.0.0.1" ||
+          originHostname.includes("trycloudflare.com") ||
           (Boolean(configuredHost) && originHost === configuredHost) ||
-          originHost.endsWith(".janasevaashrama.org") ||
-          originHost.endsWith(".janasevaorphanage.org");
+          originHostname === "janasevaashrama.org" ||
+          originHostname === "www.janasevaashrama.org" ||
+          originHostname.endsWith(".janasevaashrama.org") ||
+          originHostname === "janasevaorphanage.org" ||
+          originHostname === "www.janasevaorphanage.org" ||
+          originHostname.endsWith(".janasevaorphanage.org") ||
+          originHostname.endsWith(".vercel.app");
       } catch {
         isAllowedOrigin = false;
       }
@@ -134,6 +144,7 @@ export function middleware(req: NextRequest) {
           "Access-Control-Allow-Origin": origin || "*",
           "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
           "Access-Control-Allow-Headers": "Content-Type, Authorization, x-caller-id, x-razorpay-signature",
+          "Access-Control-Allow-Credentials": "true",
           "Access-Control-Max-Age": "86400",
         },
       });
@@ -145,10 +156,22 @@ export function middleware(req: NextRequest) {
         { status: 403 }
       );
     }
+
+    if (origin && isAllowedOrigin) {
+      apiOriginToSet = origin;
+    }
   }
 
   // ── 5. SECURITY HEADERS ON ALL RESPONSES ──
   const response = NextResponse.next();
+  if (apiOriginToSet) {
+    response.headers.set("Access-Control-Allow-Origin", apiOriginToSet);
+    response.headers.set("Access-Control-Allow-Credentials", "true");
+    response.headers.set(
+      "Access-Control-Allow-Headers",
+      "Content-Type, Authorization, x-caller-id, x-razorpay-signature"
+    );
+  }
   response.headers.set("X-Frame-Options", "SAMEORIGIN");
   response.headers.set("X-Content-Type-Options", "nosniff");
   response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");

@@ -31,16 +31,19 @@ export async function POST(req: Request) {
     }
 
     const donorName = clean(b.donor?.name, 120);
-    const donorEmail = clean(b.donor?.email, 200).toLowerCase();
     const donorPhoneRaw = clean(b.donor?.phone, 24);
     const donorPhone = normalizePhone(donorPhoneRaw);
+    let donorEmail = clean(b.donor?.email, 200).toLowerCase();
+    if (!donorEmail && donorPhone) {
+      donorEmail = `donor_${donorPhone}@janasevaashrama.org`;
+    }
 
-  const anonymous = !!b.donor?.anonymous;
-  const key = clean(b.idempotencyKey, 80);
+    const anonymous = !!b.donor?.anonymous;
+    const key = clean(b.idempotencyKey, 80);
 
-  if (!donorName || !isEmail(donorEmail)) {
-    return NextResponse.json({ error: "Please enter your name and a valid email for the receipt." }, { status: 400 });
-  }
+    if (!donorName || !isEmail(donorEmail)) {
+      return NextResponse.json({ error: "Please enter your name and a valid email or mobile number for the receipt." }, { status: 400 });
+    }
   if (!NAME_REGEX.test(donorName)) {
     return NextResponse.json({ error: "Please enter a valid donor name (letters only, minimum 2 characters)." }, { status: 400 });
   }
