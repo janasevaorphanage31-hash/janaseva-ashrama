@@ -243,6 +243,10 @@ export function DonateClientComponent() {
     setLoading(true);
     setFormErrors({});
 
+    const safetyTimer = setTimeout(() => {
+      setLoading(false);
+    }, 15000);
+
     try {
       const selectedOccasionLabel =
         OCCASIONS.find((o) => o.id === occasion)?.label || "Special Blessing Seva";
@@ -266,6 +270,7 @@ export function DonateClientComponent() {
 
       const data = await res.json();
       if (!res.ok || !data.success) {
+        clearTimeout(safetyTimer);
         throw new Error(data.error || "Failed to initialize secure checkout. Please try again.");
       }
 
@@ -298,9 +303,11 @@ export function DonateClientComponent() {
             prayer_note: prayerNote.trim(),
           },
           onDismiss: () => {
+            clearTimeout(safetyTimer);
             setLoading(false);
           },
           onError: (err: any) => {
+            clearTimeout(safetyTimer);
             setLoading(false);
             setFormErrors({
               general:
@@ -310,6 +317,7 @@ export function DonateClientComponent() {
             });
           },
           onSuccess: async (response) => {
+            clearTimeout(safetyTimer);
             // 1. Meta Pixel & Google Ads Conversion Tracking (Donate + Purchase)
             trackDonationSuccess({
               amount: finalAmount,

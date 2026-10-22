@@ -371,6 +371,10 @@ export function MetaAdsDonateComponent() {
     setLoading(true);
     setFormErrors({});
 
+    const safetyTimer = setTimeout(() => {
+      setLoading(false);
+    }, 15000);
+
     try {
       const selectedOccasionLabel =
         OCCASIONS.find((o) => o.id === occasion)?.label || "General Seva";
@@ -395,6 +399,7 @@ export function MetaAdsDonateComponent() {
 
       const data = await res.json();
       if (!res.ok || !data.success) {
+        clearTimeout(safetyTimer);
         throw new Error(data.error || "Failed to initialize secure checkout. Please try again.");
       }
 
@@ -427,9 +432,11 @@ export function MetaAdsDonateComponent() {
             prayer_note: prayerNote.trim(),
           },
           onDismiss: () => {
+            clearTimeout(safetyTimer);
             setLoading(false);
           },
           onError: (err: any) => {
+            clearTimeout(safetyTimer);
             setLoading(false);
             setFormErrors({
               general:
@@ -439,6 +446,7 @@ export function MetaAdsDonateComponent() {
             });
           },
           onSuccess: async (response) => {
+            clearTimeout(safetyTimer);
             // Track Meta Pixel Donate & Purchase events
             trackDonationSuccess({
               amount: finalAmount,
@@ -526,6 +534,7 @@ export function MetaAdsDonateComponent() {
         throw new Error(data.error || "Payment gateway could not generate an order. Please try again.");
       }
     } catch (err: any) {
+      clearTimeout(safetyTimer);
       setFormErrors({
         general:
           err.message || "An unexpected error occurred while preparing your donation. Please try again.",

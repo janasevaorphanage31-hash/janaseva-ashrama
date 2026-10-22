@@ -3,8 +3,8 @@
  * Janaseva Ashrama Public Giving Platform
  * 
  * Provides robust, cross-browser, cross-device loading and opening
- * of the Razorpay Checkout modal with retry polling, popup safety,
- * and error recovery.
+ * of the Razorpay Checkout modal with timeout safety, retry polling,
+ * and comprehensive error recovery.
  */
 
 declare global {
@@ -15,51 +15,77 @@ declare global {
 
 /**
  * Ensures checkout.js is loaded from checkout.razorpay.com.
- * Uses aggressive polling and script tag reuse to avoid duplicate injection.
+ * Uses aggressive polling and a strict 6-second watchdog timeout so it NEVER hangs indefinitely.
  */
-export async function loadRazorpayScript(): Promise<boolean> {
+export async function loadRazorpayScript(timeoutMs = 6000): Promise<boolean> {
   if (typeof window === "undefined") return false;
   if (Boolean(window.Razorpay)) return true;
 
-  // 1. If script tag is already in DOM, poll for window.Razorpay
-  const existing = document.querySelector<HTMLScriptElement>('script[src*="checkout.razorpay.com"]');
-  if (existing) {
-    for (let i = 0; i < 50; i++) {
-      if (Boolean(window.Razorpay)) return true;
-      await new Promise((r) => setTimeout(r, 60));
-    }
-    if (Boolean(window.Razorpay)) return true;
-  }
-
-  // 2. Dynamically inject script into head
   return new Promise<boolean>((resolve) => {
+    let resolved = false;
+
+    // Hard safety timer: never block the UI for more than timeoutMs
+    const timer = setTimeout(() => {
+      if (!resolved) {
+        resolved = true;
+        resolve(Boolean(window.Razorpay));
+      }
+    }, timeoutMs);
+
+    const checkAvailable = () => {
+      if (Boolean(window.Razorpay)) {
+        if (!resolved) {
+          resolved = true;
+          clearTimeout(timer);
+          resolve(true);
+        }
+        return true;
+      }
+      return false;
+    };
+
+    // 1. If script tag is already in DOM, poll for window.Razorpay
+    const existing = document.querySelector<HTMLScriptElement>('script[src*="checkout.razorpay.com"]');
+    if (existing) {
+      const pollInterval = setInterval(() => {
+        if (checkAvailable() || resolved) {
+          clearInterval(pollInterval);
+        }
+      }, 50);
+      return;
+    }
+
+    // 2. Dynamically inject script into head
     try {
       const script = document.createElement("script");
       script.src = "https://checkout.razorpay.com/v1/checkout.js";
       script.async = true;
-      script.crossOrigin = "anonymous";
 
-      script.onload = async () => {
-        // Allow constructor initialization
-        for (let i = 0; i < 30; i++) {
-          if (Boolean(window.Razorpay)) {
-            resolve(true);
-            return;
+      script.onload = () => {
+        const pollInterval = setInterval(() => {
+          if (checkAvailable() || resolved) {
+            clearInterval(pollInterval);
           }
-          await new Promise((r) => setTimeout(r, 50));
-        }
-        resolve(Boolean(window.Razorpay));
+        }, 50);
       };
 
       script.onerror = (e) => {
         console.error("[Razorpay SDK] Failed to load checkout script:", e);
-        resolve(false);
+        if (!resolved) {
+          resolved = true;
+          clearTimeout(timer);
+          resolve(false);
+        }
       };
 
       (document.head || document.body).appendChild(script);
     } catch (err) {
-      console.error("[Razorpay SDK] Injection error:", err);
-      resolve(false);
+      console.error("[Razorpay SDK] Script injection error:", err);
+      if (!resolved) {
+        resolved = true;
+        clearTimeout(timer);
+        resolve(false);
+      }
     }
   });
 }
@@ -91,10 +117,10 @@ export interface OpenRazorpayOptions {
  * Throws a descriptive error if gateway fails to initialize or load.
  */
 export async function openRazorpayCheckout(opts: OpenRazorpayOptions): Promise<void> {
-  const loaded = await loadRazorpayScript();
+  const loaded = await loadRazorpayScript(6000);
   if (!loaded || !window.Razorpay) {
     throw new Error(
-      "Unable to open secure payment gateway. Please check your internet connection or disable ad-blockers and try again."
+      "Unable to connect to Razorpay payment gateway. Please disable ad-blockers or try direct UPI/bank transfer."
     );
   }
 
@@ -135,14 +161,19 @@ export async function openRazorpayCheckout(opts: OpenRazorpayOptions): Promise<v
     rzpConfig.amount = opts.amountPaise;
   }
 
-  const rzp = new window.Razorpay(rzpConfig);
+  try {
+    const rzp = new window.Razorpay(rzpConfig);
 
-  rzp.on("payment.failed", (response: any) => {
-    console.error("[Razorpay Checkout] payment.failed event:", response);
-    if (opts.onError) {
-      opts.onError(response?.error || response);
-    }
-  });
+    rzp.on("payment.failed", (response: any) => {
+      console.error("[Razorpay Checkout] payment.failed event:", response);
+      if (opts.onError) {
+        opts.onError(response?.error || response);
+      }
+    });
 
-  rzp.open();
+    rzp.open();
+  } catch (err: any) {
+    console.error("[Razorpay Checkout] Failed to open gateway modal:", err);
+    throw new Error(err?.message || "Failed to launch payment window. Please check your browser popup settings.");
+  }
 }
