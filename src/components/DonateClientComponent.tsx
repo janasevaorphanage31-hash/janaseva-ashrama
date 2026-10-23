@@ -91,6 +91,18 @@ export function DonateClientComponent() {
         return parsed;
       }
     }
+    if (typeof window !== "undefined") {
+      try {
+        const raw = localStorage.getItem("janaseva-cart-v1");
+        if (raw) {
+          const parsedCart = JSON.parse(raw);
+          const savedCustom = Number(parsedCart.custom);
+          if (savedCustom >= 10 && savedCustom <= 500000) {
+            return savedCustom;
+          }
+        }
+      } catch {}
+    }
     return 1000;
   });
   const [customAmount, setCustomAmount] = useState<string>(() => {
@@ -100,6 +112,18 @@ export function DonateClientComponent() {
       if (parsed >= 10 && parsed <= 500000 && !PRESET_TIERS.some((t) => t.amt === parsed)) {
         return String(parsed);
       }
+    }
+    if (typeof window !== "undefined") {
+      try {
+        const raw = localStorage.getItem("janaseva-cart-v1");
+        if (raw) {
+          const parsedCart = JSON.parse(raw);
+          const savedCustom = Number(parsedCart.custom);
+          if (savedCustom >= 10 && savedCustom <= 500000 && !PRESET_TIERS.some((t) => t.amt === savedCustom)) {
+            return String(savedCustom);
+          }
+        }
+      } catch {}
     }
     return "";
   });

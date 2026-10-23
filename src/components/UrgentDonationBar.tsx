@@ -19,12 +19,14 @@ export function UrgentDonationBar() {
   const pathname = usePathname();
   const { openBottomDonate, setDedicatedAmount, isBottomDonateOpen, count, total } = useCart();
   const [minimized, setMinimized] = useState(false);
-  const [activePreset, setActivePreset] = useState<number>(101);
+  const [activePreset, setActivePreset] = useState<number>(() => (total > 0 ? total : 2501));
 
-  // Auto-hide on admin, checkout, supporter-form, or when bottom donation drawer is open
+  // Auto-hide on admin, checkout, donate, give, supporter-form, or when bottom donation drawer is open
   if (
     pathname?.startsWith("/admin") ||
     pathname === "/checkout" ||
+    pathname === "/donate" ||
+    pathname === "/give" ||
     pathname === "/supporter-form" ||
     isBottomDonateOpen
   ) {
@@ -39,9 +41,10 @@ export function UrgentDonationBar() {
   };
 
   const handleDonateNow = () => {
-    track("urgent_bar_donate_click", { amount: activePreset });
-    setDedicatedAmount(activePreset);
-    openBottomDonate(activePreset);
+    const targetAmt = total > 0 ? total : activePreset;
+    track("urgent_bar_donate_click", { amount: targetAmt });
+    setDedicatedAmount(targetAmt);
+    openBottomDonate(targetAmt);
   };
 
   // If minimized by user on mobile, show an unobtrusive floating badge

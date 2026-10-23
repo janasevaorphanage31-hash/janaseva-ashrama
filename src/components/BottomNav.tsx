@@ -126,7 +126,7 @@ function MenuIcon() {
 
 export function BottomNav() {
   const path = usePathname();
-  const { count, openBottomDonate } = useCart();
+  const { count, openBottomDonate, total } = useCart();
   const [open, setOpen] = useState(false);
   const [prevPath, setPrevPath] = useState(path);
 
@@ -469,7 +469,7 @@ export function BottomNav() {
               type="button"
               onClick={() => {
                 track("cta_make_impact", { where: "bottom_nav" });
-                openBottomDonate(101, "meal");
+                openBottomDonate(total > 0 ? total : 2500, "meal");
               }}
               aria-label="Open donation options for 25 boys"
               className="focus-ring -mt-4 relative flex flex-col items-center justify-center group tap-scale cursor-pointer"

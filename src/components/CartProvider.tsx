@@ -65,8 +65,13 @@ export function CartProvider({ catalog, children }: { catalog: ImpactItem[]; chi
       const raw = localStorage.getItem(KEY);
       if (raw) {
         const parsed = JSON.parse(raw);
+        const cleanedQty = { ...(parsed.qty || {}) };
+        // Purge legacy stale "meal" (₹101) slug if stored from older builds
+        if (cleanedQty["meal"] && (!parsed.custom || parsed.custom === 0)) {
+          delete cleanedQty["meal"];
+        }
         queueMicrotask(() => {
-          setState({ ...empty, ...parsed });
+          setState({ ...empty, ...parsed, qty: cleanedQty });
           setHydrated(true);
         });
         return;

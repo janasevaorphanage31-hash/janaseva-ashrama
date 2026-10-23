@@ -110,7 +110,7 @@ function getCustomImpact(amt: number): string {
 
 export function CinematicHero({ content }: { content?: Partial<SiteContentMap> }) {
   const router = useRouter();
-  const { openBottomDonate, setDedicatedAmount } = useCart();
+  const { openBottomDonate, setDedicatedAmount, hydrated, total } = useCart();
   const videoRef = useRef<HTMLVideoElement>(null);
   const [videoReady, setVideoReady] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
@@ -199,6 +199,22 @@ export function CinematicHero({ content }: { content?: Partial<SiteContentMap> }
   useEffect(() => {
     track("hero_view", { type: "cinematic_video_hero" });
   }, []);
+
+  // Synchronize Hero selected scheme with global cart amount across all pages
+  useEffect(() => {
+    if (!hydrated) return;
+    if (total >= 10) {
+      setSelectedAmt(total);
+      if (!heroTiers.some((t) => t.amt === total)) {
+        setCustomAmt(String(total));
+      } else {
+        setCustomAmt("");
+      }
+    } else {
+      // First-time visit: default cart to hero's selected tier
+      setDedicatedAmount(defaultAmt);
+    }
+  }, [hydrated, total, defaultAmt, heroTiers, setDedicatedAmount]);
 
   useEffect(() => {
     if (videoRef.current) {

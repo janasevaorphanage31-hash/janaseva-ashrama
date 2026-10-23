@@ -33,6 +33,7 @@ export function BottomDonationDrawer() {
     donateInitialOccasion,
     setCustom,
     setDedicatedAmount,
+    total,
   } = useCart();
 
   const [quickAmounts, setQuickAmounts] = useState(QUICK_AMOUNTS);
@@ -55,7 +56,7 @@ export function BottomDonationDrawer() {
       .catch(() => {});
   }, []);
 
-  const [selectedAmount, setSelectedAmount] = useState<number>(101);
+  const [selectedAmount, setSelectedAmount] = useState<number>(() => (total > 0 ? total : 2500));
   const [customInput, setCustomInput] = useState<string>("");
   const [frequency, setFrequency] = useState<"onetime" | "monthly">("onetime");
   const [activeTab, setActiveTab] = useState<"quick" | "tiers" | "bank">("quick");
@@ -81,9 +82,15 @@ export function BottomDonationDrawer() {
     setPrevInitialAmount(donateInitialAmount);
     setPrevInitialTierId(donateInitialTierId);
 
-    if (isBottomDonateOpen && donateInitialAmount && donateInitialAmount > 0) {
-      setSelectedAmount(donateInitialAmount);
-      setCustomInput(String(donateInitialAmount));
+    if (isBottomDonateOpen) {
+      const targetAmount =
+        donateInitialAmount && donateInitialAmount > 0
+          ? donateInitialAmount
+          : total > 0
+          ? total
+          : 2500;
+      setSelectedAmount(targetAmount);
+      setCustomInput(String(targetAmount));
     }
     if (donateInitialTierId && donateInitialTierId !== "birthday_feast") {
       const cat = SUPPORTER_CATEGORIES.find((c) => c.id === donateInitialTierId);

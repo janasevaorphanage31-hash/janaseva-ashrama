@@ -6,16 +6,22 @@ import { track } from "@/lib/track";
 
 export function BlinkingDonationFloatingButton() {
   const pathname = usePathname();
-  const { openBottomDonate, isBottomDonateOpen } = useCart();
+  const { openBottomDonate, isBottomDonateOpen, total } = useCart();
 
-  // Hide on admin and checkout pages
-  if (pathname?.startsWith("/admin") || pathname === "/checkout" || isBottomDonateOpen) {
+  // Hide on admin, checkout, and direct donation pages
+  if (
+    pathname?.startsWith("/admin") ||
+    pathname === "/checkout" ||
+    pathname === "/donate" ||
+    pathname === "/give" ||
+    isBottomDonateOpen
+  ) {
     return null;
   }
 
   const handleClick = () => {
     track("floating_blinking_donate_click", { page: pathname });
-    openBottomDonate(101, "meal");
+    openBottomDonate(total > 0 ? total : 2500, "meal");
   };
 
   return (

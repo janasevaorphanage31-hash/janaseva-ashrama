@@ -475,9 +475,9 @@ export function CheckoutClient() {
         });
       }
     } else if (cart.hydrated && cart.total === 0 && cart.lines.length === 0 && cart.custom === 0) {
-      // Default to popular starter amount of ₹501 so donor is immediately ready to pay
+      // Default to popular starter amount of ₹2,500 so donor is immediately ready to pay
       queueMicrotask(() => {
-        cart.setDedicatedAmount(501);
+        cart.setDedicatedAmount(2500);
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

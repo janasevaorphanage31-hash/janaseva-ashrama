@@ -103,7 +103,7 @@ function NavIcon({ type }: { type: string | null }) {
 }
 
 export function SiteHeader() {
-  const { count } = useCart();
+  const { count, total } = useCart();
   const router = useRouter();
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -312,9 +312,9 @@ export function SiteHeader() {
           {/* Right Action: Primary Highlighted Donation CTA */}
           <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
             <Link
-              href="/impact"
-              onClick={() => track("cta_make_impact", { where: "header" })}
-              className="focus-ring tap-scale relative flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-600 hover:to-orange-600 px-3 sm:px-4 py-2 sm:py-2.5 text-xs font-black tracking-wide text-white shadow-md shadow-orange-500/25 transition active:scale-95 whitespace-nowrap"
+              href={total > 0 ? `/give?amount=${total}` : "/give"}
+              onClick={() => track("cta_make_impact", { where: "header", amount: total })}
+              className="focus-ring tap-scale relative flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-600 hover:to-orange-600 px-3 sm:px-4 py-2 sm:py-2.5 text-xs font-black tracking-wide text-white shadow-md shadow-orange-500/25 transition active:scale-95 whitespace-nowrap cursor-pointer"
             >
               <span>DONATE 💝</span>
               {count > 0 && (
@@ -401,7 +401,7 @@ export function SiteHeader() {
             {/* Bottom: Fast Impact CTA */}
             <div className="border-t border-teal-900/60 p-4 space-y-2">
               <Link
-                href="/impact"
+                href={total > 0 ? `/give?amount=${total}` : "/give"}
                 onClick={() => setMobileMenuOpen(false)}
                 className="btn-primary block text-center"
               >

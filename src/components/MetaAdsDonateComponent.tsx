@@ -187,7 +187,7 @@ export function MetaAdsDonateComponent() {
   // Category Filter for Presets ("all" | "shagun" | "meals" | "boys")
   const [activeCategory, setActiveCategory] = useState<string>("all");
 
-  // Amount State (Starts from ₹11 upwards; default ₹101 or ₹500)
+  // Amount State (Starts from ₹11 upwards; default to cart.total if available, or URL param, or ₹2,500 flagship)
   const [amount, setAmount] = useState<number>(() => {
     const urlAmt = searchParams.get("amount");
     if (urlAmt) {
@@ -196,7 +196,19 @@ export function MetaAdsDonateComponent() {
         return parsed;
       }
     }
-    return 101; // Welcoming starter tier
+    if (typeof window !== "undefined") {
+      try {
+        const raw = localStorage.getItem("janaseva-cart-v1");
+        if (raw) {
+          const parsedCart = JSON.parse(raw);
+          const savedCustom = Number(parsedCart.custom);
+          if (savedCustom >= 10 && savedCustom <= 500000) {
+            return savedCustom;
+          }
+        }
+      } catch {}
+    }
+    return 2500; // Flagship 25 boys hot meal tier default
   });
   const [customAmount, setCustomAmount] = useState<string>(() => {
     const urlAmt = searchParams.get("amount");
@@ -205,6 +217,18 @@ export function MetaAdsDonateComponent() {
       if (parsed >= 10 && parsed <= 500000 && !ALL_PRESET_TIERS.some((t) => t.amt === parsed)) {
         return String(parsed);
       }
+    }
+    if (typeof window !== "undefined") {
+      try {
+        const raw = localStorage.getItem("janaseva-cart-v1");
+        if (raw) {
+          const parsedCart = JSON.parse(raw);
+          const savedCustom = Number(parsedCart.custom);
+          if (savedCustom >= 10 && savedCustom <= 500000 && !ALL_PRESET_TIERS.some((t) => t.amt === savedCustom)) {
+            return String(savedCustom);
+          }
+        }
+      } catch {}
     }
     return "";
   });
@@ -225,15 +249,33 @@ export function MetaAdsDonateComponent() {
   const [activeTab, setActiveTab] = useState<"gateway" | "upi" | "bank">("gateway");
   const [qrDataUrl, setQrDataUrl] = useState<string>("");
 
-  // Sync cart amount if coming from homepage or navbar
+  // Dynamically synchronize amount state with cart and searchParams across all pages
   useEffect(() => {
-    if (cart.hydrated && cart.total > 0 && !searchParams.get("amount")) {
-      setAmount(cart.total);
-      if (!ALL_PRESET_TIERS.some((t) => t.amt === cart.total)) {
+    const urlAmt = searchParams.get("amount");
+    if (urlAmt) {
+      const parsed = parseFloat(urlAmt);
+      if (parsed >= 10 && parsed <= 500000) {
+        if (ALL_PRESET_TIERS.some((t) => t.amt === parsed)) {
+          setAmount(parsed);
+          setCustomAmount("");
+        } else {
+          setAmount(parsed);
+          setCustomAmount(String(parsed));
+        }
+        if (cart.setDedicatedAmount) {
+          cart.setDedicatedAmount(parsed);
+        }
+      }
+    } else if (cart.hydrated && cart.total >= 10) {
+      if (ALL_PRESET_TIERS.some((t) => t.amt === cart.total)) {
+        setAmount(cart.total);
+        setCustomAmount("");
+      } else {
+        setAmount(cart.total);
         setCustomAmount(String(cart.total));
       }
     }
-  }, [cart.hydrated, cart.total, searchParams]);
+  }, [cart.hydrated, cart.total, searchParams, cart.setDedicatedAmount]);
 
   // Sync when searchParams change (e.g. user selected a tier from another component)
   useEffect(() => {
