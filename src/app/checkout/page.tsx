@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function CheckoutPage() {
   return (
-    <div className="min-h-screen bg-sand/35 py-4 sm:py-10 px-2.5 sm:px-6">
+    <div className="min-h-screen bg-gradient-to-b from-[#FBF7EE] via-[#F6EFE2] to-[#ECE2D0] py-4 sm:py-10 px-2.5 sm:px-6">
       <Suspense
         fallback={
           <div className="mx-auto max-w-md p-12 text-center text-teal-950 font-bold">

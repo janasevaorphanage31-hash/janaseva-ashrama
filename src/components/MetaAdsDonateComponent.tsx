@@ -23,81 +23,202 @@ import { openRazorpayCheckout } from "@/lib/razorpay-client";
 import { useCart } from "./CartProvider";
 import QRCode from "qrcode";
 
-export interface PresetTier {
+export interface SevaOption {
   amt: number;
   label: string;
   name: string;
   impact: string;
   badge?: string;
   icon: string;
+  image: string;
   featured?: boolean;
+  category: "quick" | "official" | "birthday";
 }
 
-const PRESET_TIERS: PresetTier[] = [
+// ── 1. POPULAR QUICK SEVA TIERS (₹11 to ₹4,500) ──
+const QUICK_SEVA_TIERS: SevaOption[] = [
   {
     amt: 11,
     label: "₹11",
     name: "Cow Milk",
-    impact: "1 warm glass of pure cow milk for 1 boy",
+    impact: "1 warm glass of pure cow milk for 1 young boy before morning prayers",
     badge: "Shagun",
     icon: "🥛",
+    image: "/media/food.jpg",
+    category: "quick",
   },
   {
     amt: 51,
     label: "₹51",
-    name: "Breakfast",
-    impact: "Hot breakfast (steaming idlis & sambar) for a child",
+    name: "Morning Breakfast",
+    impact: "Steaming hot idlis, sambar & fresh chutney from the ashrama kitchen",
     badge: "Shagun",
     icon: "🍲",
+    image: "/media/prayer-meals.jpg",
+    category: "quick",
   },
   {
     amt: 101,
     label: "₹101",
-    name: "Satvik Meal",
-    impact: "Full hot satvik lunch or dinner for 1 boy",
+    name: "Satvik Full Meal",
+    impact: "Hot wholesome satvik lunch with rice, sambar, rasam & fresh vegetables",
     badge: "Daily Punya",
     icon: "🍛",
+    image: "/media/banana-leaf-feast.jpg",
+    category: "quick",
   },
   {
     amt: 251,
     label: "₹251",
-    name: "Vidya Kit",
-    impact: "Full school notebooks & stationery kit",
-    badge: "Education",
+    name: "School Vidya Kit",
+    impact: "Full set of notebooks, geometry box, pencils & academic stationery",
+    badge: "Vidya Dana",
     icon: "📚",
+    image: "/media/school-kit.jpg",
+    category: "quick",
   },
   {
     amt: 501,
     label: "₹501",
-    name: "3-Day Care",
-    impact: "3 days nutritious meals & pediatric doctor care",
-    badge: "Arogya",
+    name: "3-Day Arogya & Care",
+    impact: "3 days nutritious satvik meals, fresh cow milk & pediatric doctor care",
+    badge: "Arogya Seva",
     icon: "🩺",
+    image: "/media/boys-meal-gratitude.jpg",
+    category: "quick",
   },
   {
     amt: 1000,
     label: "₹1,000",
-    name: "Feeds 1 Week",
-    impact: "Feeds an orphaned child for a whole week + tutoring",
-    badge: "1 Week Food",
+    name: "Feeds 1 Boy for 1 Wk",
+    impact: "All 3 daily meals for 1 resident boy for a full week + evening tuition",
+    badge: "Feeds 1 Week",
     icon: "🍲",
+    image: "/media/learning.jpg",
+    category: "quick",
   },
   {
     amt: 2500,
     label: "₹2,500",
-    name: "25 Boys Feast",
-    impact: "Special festive hot lunch feast for all 25 boys",
-    badge: "Most Popular ★",
+    name: "25 Boys Festive Lunch",
+    impact: "Hosts a special festive hot lunch feast with sweet payasam for all 25 boys",
+    badge: "Most Chosen ★",
     icon: "🍛",
+    image: "/media/annadana-hall-hd.jpg",
     featured: true,
+    category: "quick",
   },
   {
     amt: 4500,
     label: "₹4,500",
-    name: "Full Day Seva",
-    impact: "All 4 meals (Full Day Annadana) for all 25 boys",
-    badge: "24-Hr Annadana",
+    name: "Full Day Annadana (25 Boys)",
+    impact: "Sponsors all 4 meals (breakfast, lunch, snacks & dinner) for all 25 boys",
+    badge: "Complete 24-Hr Seva",
     icon: "✨",
+    image: "/media/boys-group-red-assembly.jpg",
+    featured: true,
+    category: "quick",
+  },
+];
+
+// ── 2. OFFICIAL 5 SUPPORT TIERS (FORM 28 JJ ACT REGISTERED) ──
+const OFFICIAL_TIERS: SevaOption[] = [
+  {
+    amt: 1500,
+    label: "₹1,500",
+    name: "Breakfast for 25 Boys",
+    impact: "Nutritious morning idli, vada, sambar & warm cow milk for all 25 boys",
+    badge: "Morning Annadana",
+    icon: "🍲",
+    image: "/media/prayer-meals.jpg",
+    category: "official",
+  },
+  {
+    amt: 2000,
+    label: "₹2,000",
+    name: "1 Mo Ration (1 Boy)",
+    impact: "Full month supply of Sona Masoori rice, toor dal, cooking oil & spices",
+    badge: "Monthly Ration",
+    icon: "🌾",
+    image: "/media/pantry.jpg",
+    category: "official",
+  },
+  {
+    amt: 1800,
+    label: "₹1,800",
+    name: "Clothes (3 Boys)",
+    impact: "3 pairs of durable everyday cotton uniforms & festive traditional outfits",
+    badge: "Vastra Dana",
+    icon: "👕",
+    image: "/media/lawn-cheer-circle.jpg",
+    category: "official",
+  },
+  {
+    amt: 2400,
+    label: "₹2,400",
+    name: "Education (8 Boys)",
+    impact: "1 month schooling fees, textbook sets, and evening tuition for 8 boys",
+    badge: "Vidya Seva",
+    icon: "📚",
+    image: "/media/art-schooling.jpg",
+    category: "official",
+  },
+  {
+    amt: 3200,
+    label: "₹3,200",
+    name: "1 Full Academic Year",
+    impact: "Annual school admission, textbook bundle, school bag & shoes for 1 boy",
+    badge: "Full Year Adoption",
+    icon: "🎓",
+    image: "/media/abacus-math-class.jpg",
+    featured: true,
+    category: "official",
+  },
+  {
+    amt: 8000,
+    label: "₹8,000",
+    name: "1 Mo Ration (4 Boys)",
+    impact: "Comprehensive monthly grocery ration basket feeding 4 resident boys",
+    badge: "Pantry Sponsor",
+    icon: "🌾",
+    image: "/media/grains.jpg",
+    category: "official",
+  },
+];
+
+// ── 3. BIRTHDAY & SPECIAL OCCASION CELEBRATIONS ──
+const BIRTHDAY_CELEBRATIONS: SevaOption[] = [
+  {
+    amt: 2500,
+    label: "₹2,500",
+    name: "Birthday Satvik Feast",
+    impact: "Festive meal feast with sweet payasam served to all 25 resident boys",
+    badge: "Celebration",
+    icon: "🍛",
+    image: "/media/birthday-feast-annadana.jpg",
+    category: "birthday",
+  },
+  {
+    amt: 3500,
+    label: "₹3,500",
+    name: "Cake & Payasam Feast",
+    impact: "Celebration cake, evening sweets, and special feast with resident boys",
+    badge: "Trending 🎂",
+    icon: "🎂",
+    image: "/media/birthday-cake-celebration.jpg",
+    featured: true,
+    category: "birthday",
+  },
+  {
+    amt: 4500,
+    label: "₹4,500",
+    name: "Full Day Birthday Seva",
+    impact: "All 4 meals + birthday song & personalized WhatsApp prayer blessing video",
+    badge: "Special Video Blessing",
+    icon: "✨",
+    image: "/media/birthday-wishes-orange.jpg",
+    featured: true,
+    category: "birthday",
   },
 ];
 
@@ -129,19 +250,26 @@ const FAQS = [
 
 function getDynamicImpactText(amt: number): string {
   if (amt <= 0) return "Choose or enter any sacred amount to support 25 resident boys.";
-  if (amt === 11) return "Provides 1 glass of warm, pure cow milk for a young boy before morning shlokas.";
+  if (amt === 11) return "Provides 1 glass of warm, pure cow milk for a young boy before morning prayers.";
   if (amt === 21) return "Provides fresh bananas & seasonal study fruits for a child.";
   if (amt === 51) return "Serves a steaming hot breakfast (idlis, sambar & chutney) fresh from the kitchen.";
   if (amt === 101) return "Provides a full hot satvik lunch with rice, sambar, and fresh vegetables for 1 boy.";
   if (amt === 251) return "Provides a full set of school notebooks, pencils, and geometry stationery.";
   if (amt === 501) return "Sponsors 3 full days of satvik meals, morning milk, and pediatric wellness care.";
   if (amt === 1000) return "Feeds an orphaned boy with all nutritious meals for an entire week + evening tutoring.";
+  if (amt === 1500) return "Sponsors a nutritious hot breakfast feast with warm cow milk for all 25 boys.";
+  if (amt === 1800) return "Provides 3 pairs of durable everyday cotton uniforms & festival outfits.";
+  if (amt === 2000) return "Provides 1 month full grocery ration basket (rice, dal & staples) for a boy.";
+  if (amt === 2400) return "Covers monthly tuition, exam materials, and academic supplies for 8 boys.";
   if (amt === 2500) return "Hosts a special festive hot lunch feast with sweet payasam for all 25 boys.";
-  if (amt === 4500) return "Sponsors complete 24-hour 4-meal Annadana (breakfast, lunch, evening snacks & dinner) for all 25 boys.";
-  if (amt < 50) return `Your gift of ${formatINR(amt)} provides warm cow milk and morning study fruit for resident boys.`;
-  if (amt < 200) return `Your gift of ${formatINR(amt)} serves wholesome hot meals to the children at Janaseva Ashrama today.`;
-  if (amt < 1000) return `Your noble gift of ${formatINR(amt)} covers fresh kitchen staples, vegetables & doctor care.`;
-  if (amt < 3000) return `Your generous sponsorship of ${formatINR(amt)} provides nutritious feasts & textbooks for resident boys.`;
+  if (amt === 3200) return "Adopts an orphaned child for 1 full academic school year (admissions, books, shoes).";
+  if (amt === 3500) return "Sponsors celebration cake, evening sweet payasam & special feast with 25 boys.";
+  if (amt === 4500) return "Sponsors complete 24-hour 4-meal Annadana (breakfast, lunch, snacks & dinner) for all 25 boys.";
+  if (amt === 8000) return "Covers full monthly pantry groceries & ration staples for 4 resident boys.";
+  if (amt < 100) return `Your gift of ${formatINR(amt)} provides warm cow milk and morning study fruit for resident boys.`;
+  if (amt < 500) return `Your gift of ${formatINR(amt)} serves wholesome hot meals to the children at Janaseva Ashrama today.`;
+  if (amt < 2000) return `Your noble gift of ${formatINR(amt)} covers fresh kitchen staples, vegetables & doctor care.`;
+  if (amt < 5000) return `Your generous sponsorship of ${formatINR(amt)} provides nutritious feasts & textbooks for resident boys.`;
   return `Your noble contribution of ${formatINR(amt)} covers full-day Annadana, monthly pantry staples & holistic shelter care for all 25 boys.`;
 }
 
@@ -165,12 +293,18 @@ export function MetaAdsDonateComponent() {
   });
   const [leadId] = useState<string>(() => searchParams.get("lead_id") || "");
 
+  // Giving frequency (One-Time Seva vs Monthly Punya)
+  const [frequency, setFrequency] = useState<"onetime" | "monthly">("onetime");
+
+  // Active Seva Category Tab ("quick" | "official" | "birthday")
+  const [sevaTab, setSevaTab] = useState<"quick" | "official" | "birthday">("quick");
+
   // Amount State (Starts from ₹11 upwards; defaults to URL param, cart.total, or ₹2,500 flagship)
   const [amount, setAmount] = useState<number>(() => {
     const urlAmt = searchParams.get("amount");
     if (urlAmt) {
       const parsed = parseFloat(urlAmt);
-      if (parsed >= 10 && parsed <= 1000000 && PRESET_TIERS.some((t) => t.amt === parsed)) {
+      if (parsed >= 10 && parsed <= 1000000) {
         return parsed;
       }
     }
@@ -186,28 +320,20 @@ export function MetaAdsDonateComponent() {
         }
       } catch {}
     }
-    return 2500; // Flagship 25 boys feast tier default
+    return 2500; // Flagship 25 boys feast default
   });
 
   const [customAmount, setCustomAmount] = useState<string>(() => {
     const urlAmt = searchParams.get("amount");
     if (urlAmt) {
       const parsed = parseFloat(urlAmt);
-      if (parsed >= 10 && parsed <= 1000000 && !PRESET_TIERS.some((t) => t.amt === parsed)) {
+      const isPreset =
+        QUICK_SEVA_TIERS.some((t) => t.amt === parsed) ||
+        OFFICIAL_TIERS.some((t) => t.amt === parsed) ||
+        BIRTHDAY_CELEBRATIONS.some((t) => t.amt === parsed);
+      if (parsed >= 10 && parsed <= 1000000 && !isPreset) {
         return String(parsed);
       }
-    }
-    if (typeof window !== "undefined") {
-      try {
-        const raw = localStorage.getItem("janaseva-cart-v1");
-        if (raw) {
-          const parsedCart = JSON.parse(raw);
-          const savedCustom = Number(parsedCart.custom);
-          if (savedCustom >= 10 && savedCustom <= 1000000 && !PRESET_TIERS.some((t) => t.amt === savedCustom)) {
-            return String(savedCustom);
-          }
-        }
-      } catch {}
     }
     return "";
   });
@@ -222,7 +348,7 @@ export function MetaAdsDonateComponent() {
   const [showOccasionSelect, setShowOccasionSelect] = useState(() => Boolean(searchParams.get("occasion")));
   const [prayerNote, setPrayerNote] = useState("");
 
-  // Alternate payment rails (Direct UPI / Bank Wire expandable drawers)
+  // Payment drawer toggles
   const [showDirectUpi, setShowDirectUpi] = useState(false);
   const [showBankTransfer, setShowBankTransfer] = useState(false);
 
@@ -266,16 +392,16 @@ export function MetaAdsDonateComponent() {
       const parsed = parseFloat(urlAmt);
       if (parsed >= 10 && parsed <= 1000000) {
         initializedFromCartRef.current = true;
-        if (PRESET_TIERS.some((t) => t.amt === parsed)) {
-          setAmount(parsed);
-          setCustomAmount("");
-        } else {
-          setAmount(parsed);
+        setAmount(parsed);
+        const allKnown = [...QUICK_SEVA_TIERS, ...OFFICIAL_TIERS, ...BIRTHDAY_CELEBRATIONS];
+        if (!allKnown.some((t) => t.amt === parsed)) {
           setCustomAmount(String(parsed));
+        } else {
+          setCustomAmount("");
+          if (OFFICIAL_TIERS.some((t) => t.amt === parsed)) setSevaTab("official");
+          if (BIRTHDAY_CELEBRATIONS.some((t) => t.amt === parsed)) setSevaTab("birthday");
         }
-        if (cart.setDedicatedAmount) {
-          cart.setDedicatedAmount(parsed);
-        }
+        if (cart.setDedicatedAmount) cart.setDedicatedAmount(parsed);
         return;
       }
     }
@@ -283,12 +409,12 @@ export function MetaAdsDonateComponent() {
     if (cart.hydrated) {
       initializedFromCartRef.current = true;
       if (cart.total >= 10) {
-        if (PRESET_TIERS.some((t) => t.amt === cart.total)) {
-          setAmount(cart.total);
-          setCustomAmount("");
-        } else {
-          setAmount(cart.total);
+        setAmount(cart.total);
+        const allKnown = [...QUICK_SEVA_TIERS, ...OFFICIAL_TIERS, ...BIRTHDAY_CELEBRATIONS];
+        if (!allKnown.some((t) => t.amt === cart.total)) {
           setCustomAmount(String(cart.total));
+        } else {
+          setCustomAmount("");
         }
       }
     }
@@ -311,7 +437,7 @@ export function MetaAdsDonateComponent() {
   // Derived effective donation amount
   const finalAmount = customAmount ? parseFloat(customAmount) || 0 : amount;
   const amountWords = finalAmount >= 10 ? numberToIndianWords(finalAmount) : "";
-  const taxDeductionAmount = Math.round(finalAmount * 0.5); // 50% deduction under Section 80G
+  const taxDeductionAmount = Math.round(finalAmount * 0.5); // 50% Section 80G tax benefit
 
   // Dynamic Official UPI Link for Janaseva Ashrama
   const upiId = "9980359595@okbizaxis";
@@ -333,7 +459,7 @@ export function MetaAdsDonateComponent() {
       QRCode.toDataURL(upiUri, {
         width: 220,
         margin: 1,
-        color: { dark: "#052f2c", light: "#ffffff" },
+        color: { dark: "#042825", light: "#ffffff" },
       })
         .then(setQrDataUrl)
         .catch(() => {});
@@ -342,6 +468,13 @@ export function MetaAdsDonateComponent() {
 
   // Dynamic Impact Description
   const impactSummary = getDynamicImpactText(finalAmount);
+
+  // Current active tier list based on selected Seva Tab
+  const activeTiers = useMemo(() => {
+    if (sevaTab === "official") return OFFICIAL_TIERS;
+    if (sevaTab === "birthday") return BIRTHDAY_CELEBRATIONS;
+    return QUICK_SEVA_TIERS;
+  }, [sevaTab]);
 
   // Track ViewContent on mount
   useEffect(() => {
@@ -354,17 +487,17 @@ export function MetaAdsDonateComponent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleSelectTier = (amt: number) => {
-    setAmount(amt);
+  const handleSelectTier = (tier: SevaOption) => {
+    setAmount(tier.amt);
     setCustomAmount("");
     clearFieldError("amount");
     if (cart.setDedicatedAmount) {
-      cart.setDedicatedAmount(amt);
+      cart.setDedicatedAmount(tier.amt);
     }
     trackViewContent({
-      content_name: `Select Tier ₹${amt}`,
+      content_name: `Select ${tier.name} - ₹${tier.amt}`,
       content_category: "Child Welfare",
-      value: amt,
+      value: tier.amt,
       currency: "INR",
     });
   };
@@ -402,7 +535,6 @@ export function MetaAdsDonateComponent() {
   /**
    * Strict Donor Validation Gate:
    * Validates Amount, Name, WhatsApp Mobile, Email, and PAN.
-   * If any field fails, smoothly scrolls to and focuses the first invalid input!
    */
   const validateForm = (): boolean => {
     const errors: typeof formErrors = {};
@@ -466,7 +598,6 @@ export function MetaAdsDonateComponent() {
    * Handles payment initiation after strict validation.
    */
   const handlePayNow = async () => {
-    // 1. Enforce strict validation
     const isValid = validateForm();
     if (!isValid) return;
 
@@ -483,7 +614,6 @@ export function MetaAdsDonateComponent() {
       const cleanOccasion = selectedOccasionLabel.replace(/[^\w\s-]/g, "").trim() || "General Seva";
       const cleanPrayerNote = prayerNote.replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, "").trim();
 
-      // 2. Initialize Razorpay order on server with verified donor details
       const res = await fetch("/api/v1/checkout/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -497,6 +627,7 @@ export function MetaAdsDonateComponent() {
           donorPan: donorPan.trim().toUpperCase() || undefined,
           occasion: cleanOccasion,
           prayerNote: cleanPrayerNote || undefined,
+          frequency,
           website_hp: honeypot,
         }),
       });
@@ -507,15 +638,13 @@ export function MetaAdsDonateComponent() {
         throw new Error(data.error || "Failed to initialize payment gateway. Please try again.");
       }
 
-      // Funnel Step: Meta Pixel InitiateCheckout Event
       trackInitiateCheckout({
-        content_name: `Support 25 Boys - ${cleanOccasion}`,
+        content_name: `Support 25 Boys - ${cleanOccasion} (${frequency})`,
         value: finalAmount,
         currency: "INR",
         num_items: 1,
       });
 
-      // 3. Open Live Razorpay Gateway
       if (data.orderId && data.keyId) {
         await openRazorpayCheckout({
           keyId: data.keyId,
@@ -534,12 +663,13 @@ export function MetaAdsDonateComponent() {
             donor_phone: donorPhone.trim(),
             occasion: cleanOccasion,
             prayer_note: cleanPrayerNote,
+            frequency,
           },
           onDismiss: () => {
             clearTimeout(safetyTimer);
             setLoading(false);
           },
-          onError: (err: any) => {
+          onError: () => {
             clearTimeout(safetyTimer);
             setLoading(false);
             setFormErrors({
@@ -583,6 +713,7 @@ export function MetaAdsDonateComponent() {
                           donor_email: donorEmail.trim(),
                           occasion: cleanOccasion,
                           prayer_note: cleanPrayerNote,
+                          frequency,
                         },
                       },
                     },
@@ -645,7 +776,7 @@ export function MetaAdsDonateComponent() {
   };
 
   return (
-    <div className="mx-auto max-w-lg pb-24 sm:pb-16 animate-fadeIn">
+    <div className="mx-auto max-w-xl pb-24 sm:pb-16 animate-fadeIn">
       {/* Invisible Honeypot anti-bot protection */}
       <input
         type="text"
@@ -659,114 +790,235 @@ export function MetaAdsDonateComponent() {
         style={{ display: "none" }}
       />
 
-      {/* ── 1. UNIFIED COMPACT TRUST & URGENT NEED BAR (Mobile Optimized) ── */}
-      <div className="mb-3 rounded-2xl bg-gradient-to-r from-teal-950 via-teal-900 to-teal-950 p-3 sm:p-3.5 text-white shadow-md border border-amber-400/30">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <LogoMark size={36} className="shadow-xs ring-1 ring-amber-400/60 shrink-0" />
-            <div>
-              <h1 className="text-sm sm:text-base font-black tracking-tight text-white leading-tight">
-                Janaseva Ashrama Bangalore
-              </h1>
-              <p className="text-[10px] sm:text-[11px] font-semibold text-amber-300">
-                Official 80G Tax-Exempt Donation · 25 Resident Boys
-              </p>
+      {/* ── 1. PANTONE-GRADED EMOTIONAL HERO BANNER WITH AUTHENTIC PRAYER PHOTO ── */}
+      <div className="relative overflow-hidden rounded-3xl bg-[#042825] text-white shadow-2xl mb-4 border border-amber-400/40">
+        {/* Authentic Background Photo with Warm Vignette */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/media/boys-meal-gratitude.jpg"
+          alt="Resident orphaned boys praying with gratitude at Janaseva Ashrama Bangalore"
+          className="absolute inset-0 h-full w-full object-cover object-center filter brightness-90 transition-transform duration-700"
+        />
+        {/* High-Contrast Vedic Emerald & Saffron Scrim Overlay (Pantone 567 C & 151 C) */}
+        <div className="absolute inset-0 bg-gradient-to-t from-[#042825] via-[#042825]/85 to-[#042825]/60" />
+
+        <div className="relative z-10 p-4 sm:p-5">
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <div className="flex items-center gap-2">
+              <LogoMark size={40} className="shadow-md ring-2 ring-amber-400/70 shrink-0" />
+              <div>
+                <h1 className="text-sm sm:text-base font-black tracking-tight text-white leading-tight font-display">
+                  Janaseva Ashrama Bangalore
+                </h1>
+                <p className="text-[10px] sm:text-[11px] font-semibold text-amber-300">
+                  Registered Orphanage &amp; Children&apos;s Home · Est. 2000
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-col items-end gap-0.5 shrink-0">
+              <span className="rounded-full bg-emerald-500/30 border border-emerald-400 px-2 py-0.5 text-[9px] font-black uppercase text-emerald-200">
+                🛡️ 80G Tax Free
+              </span>
+              <span className="text-[8px] sm:text-[9px] text-white/70 font-mono">
+                Govt: {JJ_ACT_REGISTRATION.registrationNumber}
+              </span>
             </div>
           </div>
-          <div className="flex flex-col items-end gap-0.5 shrink-0">
-            <span className="rounded-full bg-emerald-500/30 border border-emerald-400/60 px-2 py-0.5 text-[9px] font-black uppercase text-emerald-200">
-              🛡️ 80G Tax Free
-            </span>
-            <span className="text-[8px] sm:text-[9px] text-white/70 font-mono">
-              Govt: {JJ_ACT_REGISTRATION.registrationNumber}
-            </span>
-          </div>
-        </div>
 
-        {/* Live Urgent Need Banner */}
-        <div className="mt-2 pt-2 border-t border-white/10 flex items-center justify-between gap-2 text-[11px]">
-          <div className="flex items-center gap-1.5 min-w-0">
-            <span className="relative flex h-2 w-2 shrink-0">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-90" />
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-300" />
-            </span>
-            <span className="text-white/90 truncate text-[10px] sm:text-[11px] font-medium">
-              <strong className="text-amber-200 font-bold">Urgent Need:</strong> 6 Meals needed tonight. Even ₹11 blesses a child.
+          <p className="text-xs text-amber-100/90 leading-relaxed font-medium mt-1">
+            Every sacred contribution feeds, educates, and protects <strong>25 resident orphaned boys</strong>.
+            All donors are remembered in daily <strong>6:30 AM morning shloka prayers</strong>.
+          </p>
+
+          {/* Urgent Need Strip */}
+          <div className="mt-2.5 pt-2 border-t border-white/15 flex items-center justify-between gap-2 text-[11px]">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className="relative flex h-2.5 w-2.5 shrink-0">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-90" />
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-300" />
+              </span>
+              <span className="text-white truncate text-[11px]">
+                <strong className="text-amber-300">Urgent Tonight:</strong> 6 Meals needed. Even ₹11 provides warm cow milk.
+              </span>
+            </div>
+            <span className="rounded-md bg-amber-400/20 border border-amber-300/40 px-2 py-0.5 text-[10px] font-black text-amber-200 shrink-0">
+              19/25 Sponsored
             </span>
           </div>
-          <span className="text-[10px] font-black text-amber-300 shrink-0 bg-white/10 px-1.5 py-0.5 rounded">
-            19/25 Sponsored
-          </span>
         </div>
       </div>
 
       {/* ── GLOBAL ERROR ALERT ── */}
       {formErrors.general && (
-        <div className="mb-3 rounded-2xl bg-rose-50 border border-rose-300 p-3 text-xs text-rose-800 font-semibold flex items-start gap-2 shadow-sm">
+        <div className="mb-3.5 rounded-2xl bg-rose-50 border border-rose-300 p-3.5 text-xs text-rose-800 font-semibold flex items-start gap-2 shadow-sm">
           <span className="text-base leading-none shrink-0">⚠️</span>
           <div className="flex-1 leading-relaxed">{formErrors.general}</div>
         </div>
       )}
 
-      {/* ── MAIN CHECKOUT CONTAINER ── */}
-      <div className="rounded-3xl bg-white p-4 sm:p-6 shadow-xl border-2 border-amber-400/40 space-y-4">
+      {/* ── MAIN SACRED CHECKOUT CARD (PANTONE SANDALWOOD & TEMPLE EMERALD) ── */}
+      <div className="rounded-3xl bg-white p-4 sm:p-6 shadow-2xl border-2 border-amber-400/40 space-y-5">
 
         {/* ══════════════════════════════════════════════════════════════════
-            STEP 1: CHOOSE CONTRIBUTION AMOUNT (COMPACT MOBILE CHIPS)
+            STEP 1: CHOOSE SACRED SEVA & IMPACT WITH AUTHENTIC PHOTO TILES
         ══════════════════════════════════════════════════════════════════ */}
-        <section ref={topCardRef} aria-labelledby="step-1-heading" className="space-y-2.5">
+        <section ref={topCardRef} aria-labelledby="step-1-heading" className="space-y-3">
           <div className="flex items-center justify-between pb-1 border-b border-teal-900/10">
-            <div className="flex items-center gap-1.5">
-              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-teal-950 text-[11px] font-black text-amber-300">
+            <div className="flex items-center gap-2">
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#042825] text-xs font-black text-amber-300">
                 1
               </span>
-              <h2 id="step-1-heading" className="text-xs sm:text-sm font-black uppercase tracking-wider text-teal-950">
-                Select Sacred Contribution:
+              <h2 id="step-1-heading" className="text-xs sm:text-sm font-black uppercase tracking-wider text-[#042825]">
+                Choose Sacred Seva Scheme:
               </h2>
             </div>
-            <span className="text-[10px] font-bold text-emerald-800">
-              ✓ Starts ₹11 · 80G Tax Free
-            </span>
+
+            {/* Giving Frequency Toggle (One-Time vs Monthly) */}
+            <div className="inline-flex rounded-xl bg-amber-50 p-0.5 border border-amber-300/60 text-[10px] font-bold">
+              <button
+                type="button"
+                onClick={() => setFrequency("onetime")}
+                className={`px-2.5 py-1 rounded-lg transition cursor-pointer ${
+                  frequency === "onetime"
+                    ? "bg-[#042825] text-white shadow-xs font-black"
+                    : "text-teal-950/70 hover:text-teal-950"
+                }`}
+              >
+                One-Time
+              </button>
+              <button
+                type="button"
+                onClick={() => setFrequency("monthly")}
+                className={`px-2.5 py-1 rounded-lg transition cursor-pointer flex items-center gap-1 ${
+                  frequency === "monthly"
+                    ? "bg-[#042825] text-white shadow-xs font-black"
+                    : "text-teal-950/70 hover:text-teal-950"
+                }`}
+              >
+                <span>🔄 Monthly</span>
+                <span className="text-[8px] rounded bg-amber-400 text-teal-950 px-1 font-black">Punya</span>
+              </button>
+            </div>
           </div>
 
-          {/* Compact Amount Chips Grid (4 columns on mobile for maximum space efficiency) */}
-          <div className="grid grid-cols-4 gap-1.5">
-            {PRESET_TIERS.map((tier) => {
+          {/* 3 Dedicated Seva Tabs with Icons */}
+          <div className="grid grid-cols-3 gap-1 rounded-2xl bg-cream/90 p-1 border border-teal-900/10 text-center">
+            <button
+              type="button"
+              onClick={() => setSevaTab("quick")}
+              className={`py-2 px-1 text-[11px] sm:text-xs font-black rounded-xl transition cursor-pointer flex flex-col items-center justify-center ${
+                sevaTab === "quick"
+                  ? "bg-[#042825] text-white shadow-sm ring-1 ring-amber-400"
+                  : "text-teal-950/70 hover:text-teal-950"
+              }`}
+            >
+              <span>🌟 Popular Seva</span>
+              <span className="text-[9px] font-normal opacity-80">₹11 - ₹4,500</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setSevaTab("official")}
+              className={`py-2 px-1 text-[11px] sm:text-xs font-black rounded-xl transition cursor-pointer flex flex-col items-center justify-center ${
+                sevaTab === "official"
+                  ? "bg-[#042825] text-white shadow-sm ring-1 ring-amber-400"
+                  : "text-teal-950/70 hover:text-teal-950"
+              }`}
+            >
+              <span>🏛️ 5 Official Tiers</span>
+              <span className="text-[9px] font-normal opacity-80">JJ Act Form 28</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setSevaTab("birthday")}
+              className={`py-2 px-1 text-[11px] sm:text-xs font-black rounded-xl transition cursor-pointer flex flex-col items-center justify-center ${
+                sevaTab === "birthday"
+                  ? "bg-[#042825] text-white shadow-sm ring-1 ring-amber-400"
+                  : "text-teal-950/70 hover:text-teal-950"
+              }`}
+            >
+              <span>🎂 Celebrations</span>
+              <span className="text-[9px] font-normal opacity-80">Birthday Feast</span>
+            </button>
+          </div>
+
+          {/* ── PHOTO TILES GRID: AUTHENTIC EMOTIONAL BACKGROUNDS (NO EMPTY CARDS!) ── */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            {activeTiers.map((tier) => {
               const isSelected = amount === tier.amt && !customAmount;
               return (
                 <button
-                  key={tier.amt}
+                  key={`${tier.category}-${tier.amt}`}
                   type="button"
-                  onClick={() => handleSelectTier(tier.amt)}
-                  className={`py-2 px-1 rounded-xl text-center border transition-all cursor-pointer tap-scale flex flex-col items-center justify-center ${
+                  onClick={() => handleSelectTier(tier)}
+                  className={`group relative overflow-hidden p-2.5 sm:p-3 rounded-2xl text-left transition-all border cursor-pointer tap-scale flex flex-col justify-between min-h-[105px] sm:min-h-[115px] ${
                     isSelected
-                      ? "bg-teal-950 text-white border-amber-400 ring-2 ring-amber-400 shadow-md font-black"
-                      : "bg-cream/60 hover:bg-cream text-teal-950 border-teal-900/15"
-                  } ${tier.featured ? "col-span-2 bg-gradient-to-r from-amber-50 to-orange-50 border-amber-400" : ""}`}
+                      ? "border-amber-400 ring-2 ring-amber-400 shadow-xl scale-[1.02]"
+                      : "border-teal-900/15 hover:border-amber-400/60"
+                  }`}
                 >
-                  <div className="flex items-center gap-1">
-                    <span className="text-xs">{tier.icon}</span>
-                    <span className={`text-xs sm:text-sm font-black ${isSelected ? "text-amber-300" : "text-teal-950"}`}>
+                  {/* Authentic Photography Background */}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={tier.image}
+                    alt={tier.name}
+                    className="absolute inset-0 h-full w-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
+                  />
+                  {/* Warm Radiant Scrim Overlay for 100% Crisp Legibility */}
+                  <div
+                    className={`absolute inset-0 transition-colors ${
+                      isSelected
+                        ? "bg-gradient-to-t from-[#042825]/95 via-[#042825]/80 to-[#042825]/50"
+                        : "bg-gradient-to-t from-black/90 via-black/75 to-black/45 group-hover:from-black/85"
+                    }`}
+                  />
+
+                  {/* Top Badge */}
+                  <div className="relative z-10 flex items-center justify-between w-full">
+                    <span className="text-base select-none">{tier.icon}</span>
+                    {tier.badge && (
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-[8px] font-black uppercase shadow-xs ${
+                          isSelected
+                            ? "bg-gradient-to-r from-amber-400 to-orange-400 text-[#042825]"
+                            : "bg-white/25 text-white backdrop-blur-xs"
+                        }`}
+                      >
+                        {tier.badge}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Amount & Impact Label */}
+                  <div className="relative z-10 mt-auto">
+                    <span
+                      className={`font-display text-base sm:text-lg font-black leading-none drop-shadow-sm ${
+                        isSelected ? "text-amber-300" : "text-white"
+                      }`}
+                    >
                       {tier.label}
                     </span>
+                    <p className="text-[10px] text-white/95 font-bold line-clamp-1 leading-tight mt-0.5 drop-shadow-xs">
+                      {tier.name}
+                    </p>
+                    <p className="text-[9px] text-white/80 line-clamp-2 leading-tight mt-0.5 font-medium drop-shadow-xs">
+                      {tier.impact}
+                    </p>
                   </div>
-                  <span className={`text-[9px] truncate w-full block mt-0.5 ${isSelected ? "text-white/90" : "text-teal-950/70"}`}>
-                    {tier.name}
-                  </span>
                 </button>
               );
             })}
           </div>
 
-          {/* Custom Amount Input Box */}
-          <div className="rounded-xl bg-cream/40 p-2.5 border border-teal-900/15 space-y-1.5">
+          {/* ── CUSTOM AMOUNT INPUT SECTION ── */}
+          <div className="rounded-2xl bg-cream/70 p-3 sm:p-3.5 border border-teal-900/15 space-y-2">
             <div className="flex items-center justify-between">
               <label
                 htmlFor="meta-custom-amount"
-                className="text-[11px] font-bold uppercase tracking-wider text-teal-950 flex items-center gap-1"
+                className="text-xs font-black uppercase tracking-wider text-[#042825] flex items-center gap-1.5"
               >
                 <span>✏️</span>
-                <span>Or Enter Custom Amount:</span>
+                <span>Or Enter Any Custom Amount (₹11 to ₹10,00,000):</span>
               </label>
               {customAmount && (
                 <button
@@ -776,15 +1028,15 @@ export function MetaAdsDonateComponent() {
                     setAmount(2500);
                     if (cart.setDedicatedAmount) cart.setDedicatedAmount(2500);
                   }}
-                  className="text-[10px] font-bold text-amber-800 hover:text-amber-950 underline cursor-pointer"
+                  className="text-[11px] font-bold text-amber-800 hover:text-amber-950 underline cursor-pointer"
                 >
                   Reset (₹2,500)
                 </button>
               )}
             </div>
 
-            <div className="relative flex items-center rounded-xl border border-teal-900/20 bg-white px-3 py-1 focus-within:border-teal-900 focus-within:ring-2 focus-within:ring-amber-400 transition">
-              <span className="font-display text-lg font-black text-teal-950 select-none mr-1.5">
+            <div className="relative flex items-center rounded-xl border-2 border-teal-900/20 bg-white px-3.5 py-1 focus-within:border-teal-900 focus-within:ring-2 focus-within:ring-amber-400 transition">
+              <span className="font-display text-xl font-black text-[#042825] select-none mr-2">
                 ₹
               </span>
               <input
@@ -793,7 +1045,7 @@ export function MetaAdsDonateComponent() {
                 type="text"
                 inputMode="numeric"
                 pattern="[0-9]*"
-                placeholder="Type amount (e.g. 51, 500, 2500)"
+                placeholder="Type amount (e.g. 51, 151, 2500, 5000)"
                 value={customAmount}
                 onChange={(e) => {
                   const clean = e.target.value.replace(/\D/g, "");
@@ -805,7 +1057,7 @@ export function MetaAdsDonateComponent() {
                     if (cart.setDedicatedAmount) cart.setDedicatedAmount(num);
                   }
                 }}
-                className="w-full bg-transparent py-1.5 text-base font-black text-teal-950 placeholder:text-teal-950/35 placeholder:font-normal outline-none"
+                className="w-full bg-transparent py-2 text-base sm:text-lg font-black text-[#042825] placeholder:text-teal-950/35 placeholder:font-normal outline-none"
               />
               {customAmount && (
                 <button
@@ -823,8 +1075,8 @@ export function MetaAdsDonateComponent() {
             </div>
 
             {/* Quick Add Chips */}
-            <div className="flex items-center gap-1 pt-0.5 overflow-x-auto no-scrollbar">
-              <span className="text-[9px] font-bold text-teal-950/60 uppercase shrink-0">Add:</span>
+            <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+              <span className="text-[10px] font-bold text-[#042825]/60 uppercase">Quick Add:</span>
               {[100, 250, 500, 1000, 2500].map((inc) => (
                 <button
                   key={inc}
@@ -837,7 +1089,7 @@ export function MetaAdsDonateComponent() {
                     clearFieldError("amount");
                     if (cart.setDedicatedAmount) cart.setDedicatedAmount(next);
                   }}
-                  className="rounded-lg bg-white hover:bg-teal-950 hover:text-white border border-teal-900/15 px-2 py-0.5 text-[10px] font-bold text-teal-950 transition cursor-pointer shadow-2xs shrink-0"
+                  className="rounded-lg bg-white hover:bg-[#042825] hover:text-white border border-teal-900/15 px-2.5 py-1 text-[11px] font-black text-[#042825] transition cursor-pointer shadow-2xs"
                 >
                   +{formatINR(inc)}
                 </button>
@@ -851,46 +1103,58 @@ export function MetaAdsDonateComponent() {
             )}
           </div>
 
-          {/* Compact Live Impact & Tax Summary */}
-          <div className="rounded-xl bg-amber-50/70 p-2.5 border border-amber-300/80 text-xs text-amber-950 flex items-center justify-between gap-2 shadow-2xs">
-            <div className="min-w-0 flex items-center gap-1.5">
-              <span className="text-base select-none shrink-0">🌸</span>
-              <p className="font-semibold text-teal-950 leading-snug text-[11px] truncate">
-                {impactSummary}
-              </p>
+          {/* ── REAL-TIME EMOTIONAL SEVA IMPACT & 80G TAX CALCULATION BOX ── */}
+          <div className="rounded-2xl bg-amber-50/90 p-3.5 border border-amber-300 text-xs text-amber-950 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 shadow-sm">
+            <div className="flex items-start gap-2.5 min-w-0">
+              <span className="text-xl select-none shrink-0">🌸</span>
+              <div className="min-w-0">
+                <span className="text-[10px] font-black uppercase tracking-wider text-amber-900 block">
+                  Direct Impact for 25 Resident Boys:
+                </span>
+                <p className="font-bold text-[#042825] leading-snug text-xs mt-0.5">
+                  {impactSummary}
+                </p>
+                {amountWords && (
+                  <p className="text-[10px] text-amber-900/80 font-medium mt-0.5">
+                    Amount in words: <strong>{amountWords}</strong>
+                  </p>
+                )}
+              </div>
             </div>
-            <span className="rounded bg-emerald-100 text-emerald-900 font-bold text-[9px] px-1.5 py-0.5 shrink-0">
-              Claim ₹{taxDeductionAmount.toLocaleString("en-IN")} (80G)
-            </span>
+
+            <div className="shrink-0 self-start sm:self-auto rounded-xl bg-emerald-100 border border-emerald-300 px-3 py-1.5 text-center">
+              <span className="text-[9px] uppercase font-bold text-emerald-800 block">50% Tax Exemption:</span>
+              <span className="text-xs font-black text-emerald-950">Claim ₹{taxDeductionAmount.toLocaleString("en-IN")}</span>
+            </div>
           </div>
         </section>
 
         {/* ══════════════════════════════════════════════════════════════════
-            STEP 2: DONOR DETAILS (REQUIRED FOR 80G RECEIPT & PRAYERS)
+            STEP 2: DONOR & RECEIPT DETAILS (MANDATORY VALIDATION)
         ══════════════════════════════════════════════════════════════════ */}
-        <section ref={detailsCardRef} aria-labelledby="step-2-heading" className="space-y-2.5 pt-1">
+        <section ref={detailsCardRef} aria-labelledby="step-2-heading" className="space-y-3 pt-2">
           <div className="flex items-center justify-between pb-1 border-b border-teal-900/10">
-            <div className="flex items-center gap-1.5">
-              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-teal-950 text-[11px] font-black text-amber-300">
+            <div className="flex items-center gap-2">
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#042825] text-xs font-black text-amber-300">
                 2
               </span>
-              <h2 id="step-2-heading" className="text-xs sm:text-sm font-black uppercase tracking-wider text-teal-950">
+              <h2 id="step-2-heading" className="text-xs sm:text-sm font-black uppercase tracking-wider text-[#042825]">
                 Donor Details for 80G Tax Receipt &amp; Blessings
               </h2>
             </div>
             <span className="text-[10px] font-semibold text-rose-600">
-              * Required
+              * Required fields
             </span>
           </div>
 
-          <div className="space-y-2.5">
+          <div className="space-y-3">
             {/* Full Name Field */}
             <div>
-              <div className="flex items-center justify-between mb-0.5">
-                <label htmlFor="donor-full-name" className="text-xs font-bold text-teal-950">
+              <div className="flex items-center justify-between mb-1">
+                <label htmlFor="donor-full-name" className="text-xs font-bold text-[#042825]">
                   Full Name <span className="text-rose-600 font-black">*</span>
                 </label>
-                <span className="text-[10px] text-teal-950/60">For 80G certificate &amp; prayers</span>
+                <span className="text-[10px] text-teal-950/60 font-medium">Chanted in 6:30 AM morning prayers</span>
               </div>
               <input
                 ref={nameInputRef}
@@ -903,14 +1167,14 @@ export function MetaAdsDonateComponent() {
                   setDonorName(e.target.value);
                   clearFieldError("name");
                 }}
-                className={`w-full rounded-xl border p-2 text-base sm:text-sm text-teal-950 outline-none transition ${
+                className={`w-full rounded-xl border p-2.5 text-base sm:text-sm text-[#042825] outline-none transition ${
                   formErrors.name
                     ? "border-rose-500 ring-2 ring-rose-200 bg-rose-50/20"
                     : "border-teal-900/20 focus:border-teal-900 focus:ring-2 focus:ring-amber-400 bg-white"
                 }`}
               />
               {formErrors.name && (
-                <p className="mt-0.5 text-xs text-rose-600 font-semibold flex items-center gap-1">
+                <p className="mt-1 text-xs text-rose-600 font-semibold flex items-center gap-1">
                   <span>⚠️</span> {formErrors.name}
                 </p>
               )}
@@ -918,14 +1182,14 @@ export function MetaAdsDonateComponent() {
 
             {/* WhatsApp Mobile Number Field */}
             <div>
-              <div className="flex items-center justify-between mb-0.5">
-                <label htmlFor="donor-whatsapp-phone" className="text-xs font-bold text-teal-950">
+              <div className="flex items-center justify-between mb-1">
+                <label htmlFor="donor-whatsapp-phone" className="text-xs font-bold text-[#042825]">
                   WhatsApp Mobile Number <span className="text-rose-600 font-black">*</span>
                 </label>
-                <span className="text-[10px] text-emerald-700 font-bold">Instant receipt delivery</span>
+                <span className="text-[10px] text-emerald-700 font-bold">Instant 80G receipt &amp; prayer video</span>
               </div>
               <div className="relative">
-                <span className="absolute left-3 top-2 text-xs font-black text-teal-950/70 select-none">
+                <span className="absolute left-3.5 top-2.5 text-xs font-black text-teal-950/70 select-none">
                   +91
                 </span>
                 <input
@@ -941,7 +1205,7 @@ export function MetaAdsDonateComponent() {
                     setDonorPhone(e.target.value.replace(/\D/g, "").slice(0, 10));
                     clearFieldError("phone");
                   }}
-                  className={`w-full rounded-xl border py-2 pl-11 pr-3 text-base sm:text-sm font-bold text-teal-950 outline-none transition ${
+                  className={`w-full rounded-xl border py-2.5 pl-12 pr-3 text-base sm:text-sm font-bold text-[#042825] outline-none transition ${
                     formErrors.phone
                       ? "border-rose-500 ring-2 ring-rose-200 bg-rose-50/20"
                       : "border-teal-900/20 focus:border-teal-900 focus:ring-2 focus:ring-amber-400 bg-white"
@@ -949,7 +1213,7 @@ export function MetaAdsDonateComponent() {
                 />
               </div>
               {formErrors.phone && (
-                <p className="mt-0.5 text-xs text-rose-600 font-semibold flex items-center gap-1">
+                <p className="mt-1 text-xs text-rose-600 font-semibold flex items-center gap-1">
                   <span>⚠️</span> {formErrors.phone}
                 </p>
               )}
@@ -957,11 +1221,11 @@ export function MetaAdsDonateComponent() {
 
             {/* Email Address Field (Optional) */}
             <div>
-              <div className="flex items-center justify-between mb-0.5">
-                <label htmlFor="donor-email-address" className="text-xs font-bold text-teal-950">
+              <div className="flex items-center justify-between mb-1">
+                <label htmlFor="donor-email-address" className="text-xs font-bold text-[#042825]">
                   Email Address <span className="text-teal-950/50 font-normal">(Optional)</span>
                 </label>
-                <span className="text-[10px] text-teal-950/60">PDF tax receipt backup</span>
+                <span className="text-[10px] text-teal-950/60 font-medium">For PDF certificate backup</span>
               </div>
               <input
                 id="donor-email-address"
@@ -973,40 +1237,40 @@ export function MetaAdsDonateComponent() {
                   setDonorEmail(e.target.value);
                   clearFieldError("email");
                 }}
-                className={`w-full rounded-xl border p-2 text-base sm:text-sm text-teal-950 outline-none transition ${
+                className={`w-full rounded-xl border p-2.5 text-base sm:text-sm text-[#042825] outline-none transition ${
                   formErrors.email
                     ? "border-rose-500 ring-2 ring-rose-200 bg-rose-50/20"
                     : "border-teal-900/20 focus:border-teal-900 focus:ring-2 focus:ring-amber-400 bg-white"
                 }`}
               />
               {formErrors.email && (
-                <p className="mt-0.5 text-xs text-rose-600 font-semibold flex items-center gap-1">
+                <p className="mt-1 text-xs text-rose-600 font-semibold flex items-center gap-1">
                   <span>⚠️</span> {formErrors.email}
                 </p>
               )}
             </div>
 
             {/* Optional 80G PAN & Dedication Toggles */}
-            <div className="pt-0.5 flex flex-wrap items-center gap-2 text-xs">
+            <div className="pt-1 flex flex-wrap items-center gap-2 text-xs">
               <button
                 type="button"
                 onClick={() => setShowPanInput(!showPanInput)}
-                className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-bold border transition cursor-pointer ${
+                className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 font-bold border transition cursor-pointer ${
                   showPanInput
-                    ? "bg-teal-950 text-white border-teal-950"
+                    ? "bg-[#042825] text-white border-[#042825]"
                     : "bg-cream/70 text-teal-900 border-teal-900/15 hover:bg-cream"
                 }`}
               >
                 <span>📜</span>
-                <span>{showPanInput ? "Hide PAN" : "+ Add PAN (80G Form 10BE)"}</span>
+                <span>{showPanInput ? "Hide PAN Field" : "+ Add PAN (80G Form 10BE)"}</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setShowOccasionSelect(!showOccasionSelect)}
-                className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-bold border transition cursor-pointer ${
+                className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 font-bold border transition cursor-pointer ${
                   showOccasionSelect
-                    ? "bg-teal-950 text-white border-teal-950"
+                    ? "bg-[#042825] text-white border-[#042825]"
                     : "bg-cream/70 text-teal-900 border-teal-900/15 hover:bg-cream"
                 }`}
               >
@@ -1017,12 +1281,12 @@ export function MetaAdsDonateComponent() {
 
             {/* Expandable PAN Input */}
             {showPanInput && (
-              <div className="rounded-xl bg-cream/40 p-3 border border-teal-900/15 animate-fadeIn space-y-1">
+              <div className="rounded-2xl bg-cream/40 p-3.5 border border-teal-900/15 animate-fadeIn space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <label htmlFor="donor-pan-number" className="text-xs font-bold text-teal-950">
-                    PAN Card Number (10 Characters)
+                  <label htmlFor="donor-pan-number" className="text-xs font-bold text-[#042825]">
+                    Income Tax PAN Card Number (10 Characters)
                   </label>
-                  <span className="text-[10px] text-emerald-800 font-bold">Form 10BE</span>
+                  <span className="text-[10px] text-emerald-800 font-bold">Income Tax Form 10BE Filing</span>
                 </div>
                 <input
                   ref={panInputRef}
@@ -1036,7 +1300,7 @@ export function MetaAdsDonateComponent() {
                     setDonorPan(sanitizePan(e.target.value));
                     clearFieldError("pan");
                   }}
-                  className={`w-full rounded-xl border p-2 text-base sm:text-sm font-mono uppercase text-teal-950 outline-none transition ${
+                  className={`w-full rounded-xl border p-2.5 text-base sm:text-sm font-mono uppercase text-[#042825] outline-none transition ${
                     formErrors.pan
                       ? "border-rose-500 ring-2 ring-rose-200 bg-rose-50/20"
                       : "border-teal-900/20 focus:border-teal-900 focus:ring-2 focus:ring-amber-400 bg-white"
@@ -1045,13 +1309,16 @@ export function MetaAdsDonateComponent() {
                 {formErrors.pan && (
                   <p className="text-xs text-rose-600 font-semibold">⚠️ {formErrors.pan}</p>
                 )}
+                <p className="text-[10px] text-teal-950/60 leading-tight">
+                  Required by Income Tax Department (CBDT) for issuing 80G Form 10BE certificate.
+                </p>
               </div>
             )}
 
             {/* Expandable Dedication / Occasion */}
             {showOccasionSelect && (
-              <div className="rounded-xl bg-cream/40 p-3 border border-teal-900/15 animate-fadeIn space-y-2">
-                <label className="block text-xs font-bold text-teal-950">
+              <div className="rounded-2xl bg-cream/40 p-3.5 border border-teal-900/15 animate-fadeIn space-y-2.5">
+                <label className="block text-xs font-bold text-[#042825]">
                   Select Auspicious Dedication:
                 </label>
                 <div className="grid grid-cols-2 gap-1.5">
@@ -1060,39 +1327,48 @@ export function MetaAdsDonateComponent() {
                       key={occ.id}
                       type="button"
                       onClick={() => setOccasion(occ.id)}
-                      className={`p-1.5 rounded-lg text-left border text-xs cursor-pointer transition ${
+                      className={`p-2 rounded-xl text-left border text-xs cursor-pointer transition ${
                         occasion === occ.id
-                          ? "bg-teal-950 text-white font-bold border-teal-950"
-                          : "bg-white text-teal-950 border-teal-900/15"
+                          ? "bg-[#042825] text-white font-bold border-[#042825] shadow-xs"
+                          : "bg-white text-teal-950 border-teal-900/15 hover:bg-sand/30"
                       }`}
                     >
                       <p className="font-bold text-[11px]">{occ.label}</p>
+                      <p className={`text-[9px] ${occasion === occ.id ? "text-amber-300" : "text-teal-950/60"}`}>
+                        {occ.sub}
+                      </p>
                     </button>
                   ))}
                 </div>
 
-                <input
-                  type="text"
-                  placeholder="Prayer wish or family member names..."
-                  value={prayerNote}
-                  onChange={(e) => setPrayerNote(e.target.value)}
-                  className="w-full rounded-xl border border-teal-900/20 bg-white p-2 text-xs text-teal-950 outline-none focus:ring-2 focus:ring-amber-400"
-                />
+                <div>
+                  <label htmlFor="donor-prayer-note" className="block text-[10px] font-bold text-teal-950/70 mb-1">
+                    Special Prayer Note or Family Names:
+                  </label>
+                  <input
+                    id="donor-prayer-note"
+                    type="text"
+                    placeholder="e.g. Birthday of my daughter Ananya / In loving memory of father"
+                    value={prayerNote}
+                    onChange={(e) => setPrayerNote(e.target.value)}
+                    className="w-full rounded-xl border border-teal-900/20 bg-white p-2.5 text-xs text-[#042825] outline-none focus:border-teal-900 focus:ring-2 focus:ring-amber-400"
+                  />
+                </div>
               </div>
             )}
           </div>
         </section>
 
         {/* ══════════════════════════════════════════════════════════════════
-            STEP 3: PRIMARY 1-TAP PAYMENT ACTION (INSTANT GATEWAY)
+            STEP 3: 1-TAP PAYMENT ACTION (PANTONE 151 C SAFFRON-GOLD CTA)
         ══════════════════════════════════════════════════════════════════ */}
-        <section aria-labelledby="step-3-heading" className="space-y-2.5 pt-1">
-          {/* Big Primary CTA Button */}
+        <section aria-labelledby="step-3-heading" className="space-y-3 pt-2">
+          {/* Big High-Converting Primary CTA Button */}
           <button
             type="button"
             onClick={handlePayNow}
             disabled={loading}
-            className="focus-ring tap-scale w-full py-3.5 px-5 rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-600 hover:to-orange-600 text-white font-black text-sm sm:text-base uppercase tracking-wider shadow-lg shadow-orange-500/25 transition active:scale-95 cursor-pointer flex items-center justify-center gap-2 disabled:opacity-75 disabled:cursor-not-allowed animate-heartbeat"
+            className="focus-ring tap-scale w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-[#EA580C] via-[#F97316] to-[#D97706] hover:from-[#D97706] hover:to-[#EA580C] text-white font-black text-base uppercase tracking-wider shadow-xl shadow-orange-600/30 transition active:scale-95 cursor-pointer flex items-center justify-center gap-2 disabled:opacity-75 disabled:cursor-not-allowed animate-heartbeat"
           >
             {loading ? (
               <>
@@ -1101,24 +1377,25 @@ export function MetaAdsDonateComponent() {
               </>
             ) : (
               <>
-                <span>PROCEED TO PAY {formatINR(finalAmount)}</span>
+                <span>PROCEED TO PAY {formatINR(finalAmount)} {frequency === "monthly" ? "/ MONTH" : ""}</span>
                 <span>💝 →</span>
               </>
             )}
           </button>
 
           {/* Trust strip */}
-          <div className="flex flex-wrap items-center justify-center gap-1.5 text-[10px] font-bold text-teal-950/70 text-center">
+          <div className="flex flex-wrap items-center justify-center gap-1.5 text-[11px] font-bold text-teal-950/70 text-center">
             <span>⚡ 1-Tap Pay via</span>
-            <span className="rounded bg-teal-900/10 px-1 py-0.2 text-[9px] font-black text-teal-900">Google Pay</span>
-            <span className="rounded bg-teal-900/10 px-1 py-0.2 text-[9px] font-black text-teal-900">PhonePe</span>
-            <span className="rounded bg-teal-900/10 px-1 py-0.2 text-[9px] font-black text-teal-900">Paytm</span>
-            <span className="rounded bg-teal-900/10 px-1 py-0.2 text-[9px] font-black text-teal-900">Cards</span>
+            <span className="rounded bg-teal-900/10 px-1.5 py-0.5 text-[10px] font-black text-teal-900">Google Pay</span>
+            <span className="rounded bg-teal-900/10 px-1.5 py-0.5 text-[10px] font-black text-teal-900">PhonePe</span>
+            <span className="rounded bg-teal-900/10 px-1.5 py-0.5 text-[10px] font-black text-teal-900">Paytm</span>
+            <span className="rounded bg-teal-900/10 px-1.5 py-0.5 text-[10px] font-black text-teal-900">Cards</span>
+            <span className="rounded bg-teal-900/10 px-1.5 py-0.5 text-[10px] font-black text-teal-900">NetBanking</span>
             <span>· 🔒 256-Bit SSL · Instant 80G Receipt</span>
           </div>
 
           {/* Secondary Direct UPI & Bank Transfer Accordion Links */}
-          <div className="pt-1 flex items-center justify-center gap-3 text-xs">
+          <div className="pt-1 flex items-center justify-center gap-4 text-xs">
             <button
               type="button"
               onClick={() => {
@@ -1128,7 +1405,7 @@ export function MetaAdsDonateComponent() {
               className="font-bold text-emerald-800 hover:text-emerald-950 underline cursor-pointer inline-flex items-center gap-1 text-[11px]"
             >
               <span>📱</span>
-              <span>{showDirectUpi ? "Hide QR Code" : "Pay via Direct UPI / QR Code"}</span>
+              <span>{showDirectUpi ? "Hide QR Code" : "Pay via Direct UPI / Dynamic QR"}</span>
             </button>
 
             <span className="text-teal-950/30">|</span>
@@ -1142,14 +1419,14 @@ export function MetaAdsDonateComponent() {
               className="font-bold text-teal-800 hover:text-teal-950 underline cursor-pointer inline-flex items-center gap-1 text-[11px]"
             >
               <span>🏦</span>
-              <span>{showBankTransfer ? "Hide Bank Wire" : "Axis Bank Wire"}</span>
+              <span>{showBankTransfer ? "Hide Bank Wire" : "Axis Bank Wire Transfer"}</span>
             </button>
           </div>
 
           {/* Direct UPI Drawer */}
           {showDirectUpi && (
-            <div className="rounded-2xl bg-cream/50 p-4 border border-teal-900/15 animate-fadeIn text-center space-y-3">
-              <span className="inline-block rounded-full bg-emerald-100 text-emerald-950 px-2.5 py-0.5 text-[10px] font-black uppercase">
+            <div className="rounded-2xl bg-cream/70 p-4 border border-teal-900/15 animate-fadeIn text-center space-y-3">
+              <span className="inline-block rounded-full bg-emerald-100 text-emerald-950 px-3 py-0.5 text-[10px] font-black uppercase">
                 ⚡ Scan &amp; Pay (0% Platform Fee)
               </span>
 
@@ -1160,37 +1437,37 @@ export function MetaAdsDonateComponent() {
                     <img
                       src={qrDataUrl}
                       alt="Janaseva Ashrama UPI QR Code"
-                      className="w-40 h-40 sm:w-48 sm:h-48 object-contain"
+                      className="w-44 h-44 sm:w-52 sm:h-52 object-contain"
                     />
                   </div>
                 </div>
               )}
 
-              <div className="flex items-center justify-between bg-white p-2 rounded-xl border border-teal-900/15 text-left text-xs">
+              <div className="flex items-center justify-between bg-white p-2.5 rounded-xl border border-teal-900/15 text-left text-xs">
                 <div>
                   <span className="text-[9px] font-bold text-teal-900/60 uppercase block">Official Trust UPI:</span>
-                  <p className="font-mono text-xs font-black text-teal-950">{upiId}</p>
+                  <p className="font-mono text-xs font-black text-[#042825]">{upiId}</p>
                 </div>
                 <button
                   type="button"
                   onClick={() => handleCopyBank(upiId, "upi")}
-                  className="rounded-lg bg-teal-900 text-white px-2 py-1 text-[10px] font-bold hover:bg-teal-950 cursor-pointer"
+                  className="rounded-lg bg-[#042825] text-white px-2.5 py-1 text-[11px] font-bold hover:bg-teal-950 cursor-pointer"
                 >
                   {copiedBankField === "upi" ? "✓ Copied" : "Copy UPI"}
                 </button>
               </div>
 
               {/* 1-Tap Mobile App Links */}
-              <div className="grid grid-cols-2 gap-1.5 pt-1">
+              <div className="grid grid-cols-2 gap-2 pt-1">
                 <a
                   href={gpayUri}
-                  className="p-2 rounded-xl bg-white border border-teal-900/15 hover:border-emerald-600 shadow-2xs font-bold text-teal-950 flex items-center justify-center gap-1.5 text-xs"
+                  className="p-2.5 rounded-xl bg-white border border-teal-900/15 hover:border-emerald-600 shadow-2xs font-bold text-teal-950 flex items-center justify-center gap-1.5 text-xs"
                 >
                   <span>🟢 Google Pay</span>
                 </a>
                 <a
                   href={phonepeUri}
-                  className="p-2 rounded-xl bg-white border border-teal-900/15 hover:border-purple-600 shadow-2xs font-bold text-teal-950 flex items-center justify-center gap-1.5 text-xs"
+                  className="p-2.5 rounded-xl bg-white border border-teal-900/15 hover:border-purple-600 shadow-2xs font-bold text-teal-950 flex items-center justify-center gap-1.5 text-xs"
                 >
                   <span>🟣 PhonePe</span>
                 </a>
@@ -1203,7 +1480,7 @@ export function MetaAdsDonateComponent() {
                 )}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="block w-full rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold py-2.5 px-3 text-center text-xs shadow-sm transition"
+                className="block w-full rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold py-3 px-3 text-center text-xs shadow-sm transition"
               >
                 💬 Confirm on WhatsApp for 80G Receipt
               </a>
@@ -1212,12 +1489,12 @@ export function MetaAdsDonateComponent() {
 
           {/* Bank Wire Drawer */}
           {showBankTransfer && (
-            <div className="rounded-2xl bg-teal-950 text-white p-3.5 border border-amber-400/30 animate-fadeIn text-xs space-y-2">
-              <div className="flex items-center justify-between pb-1.5 border-b border-white/15">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-amber-300">
+            <div className="rounded-2xl bg-[#042825] text-white p-4 border border-amber-400/30 animate-fadeIn text-xs space-y-2.5">
+              <div className="flex items-center justify-between pb-2 border-b border-white/15">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-amber-300">
                   Official Axis Bank Account
                 </span>
-                <span className="rounded bg-emerald-500/20 px-1.5 py-0.2 text-[8px] font-bold text-emerald-300">
+                <span className="rounded bg-emerald-500/20 px-2 py-0.5 text-[9px] font-bold text-emerald-300">
                   0% Fee
                 </span>
               </div>
@@ -1227,29 +1504,40 @@ export function MetaAdsDonateComponent() {
                 <p className="font-bold text-white text-xs">{BANK_DETAILS.accountName}</p>
               </div>
 
-              <div className="grid grid-cols-2 gap-1.5">
-                <div className="rounded-xl bg-white/10 p-2">
-                  <span className="text-[8px] text-white/60 uppercase block">Account Number</span>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="rounded-xl bg-white/10 p-2.5">
+                  <span className="text-[9px] text-white/60 uppercase block">Account Number</span>
                   <p className="font-mono text-xs font-black text-amber-300">{BANK_DETAILS.accountNumber}</p>
                   <button
                     type="button"
                     onClick={() => handleCopyBank(BANK_DETAILS.accountNumber, "acc")}
-                    className="mt-0.5 text-[9px] font-bold text-amber-300 underline cursor-pointer"
+                    className="mt-1 text-[10px] font-bold text-amber-300 underline cursor-pointer"
                   >
                     {copiedBankField === "acc" ? "✓ Copied" : "Copy A/C"}
                   </button>
                 </div>
 
-                <div className="rounded-xl bg-white/10 p-2">
-                  <span className="text-[8px] text-white/60 uppercase block">IFSC Code</span>
+                <div className="rounded-xl bg-white/10 p-2.5">
+                  <span className="text-[9px] text-white/60 uppercase block">IFSC Code</span>
                   <p className="font-mono text-xs font-black text-amber-300">{BANK_DETAILS.ifscCode}</p>
                   <button
                     type="button"
                     onClick={() => handleCopyBank(BANK_DETAILS.ifscCode, "ifsc")}
-                    className="mt-0.5 text-[9px] font-bold text-amber-300 underline cursor-pointer"
+                    className="mt-1 text-[10px] font-bold text-amber-300 underline cursor-pointer"
                   >
                     {copiedBankField === "ifsc" ? "✓ Copied" : "Copy IFSC"}
                   </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 text-white/80 pt-1 text-[11px]">
+                <div>
+                  <span className="text-[9px] text-white/60 uppercase block">Bank &amp; Branch</span>
+                  <p className="font-medium">{BANK_DETAILS.bankName}, {BANK_DETAILS.branch}</p>
+                </div>
+                <div>
+                  <span className="text-[9px] text-white/60 uppercase block">Account Type</span>
+                  <p className="font-medium">{BANK_DETAILS.accountType}</p>
                 </div>
               </div>
             </div>
@@ -1257,12 +1545,12 @@ export function MetaAdsDonateComponent() {
         </section>
       </div>
 
-      {/* ── 4. Authentic Life & Proof of 25 Resident Boys (Below Checkout Card) ── */}
-      <section className="mt-6 rounded-3xl bg-white p-4 sm:p-5 shadow-sm border border-teal-900/10">
-        <h3 className="font-display text-base font-black text-teal-950 mb-0.5">
+      {/* ── 4. AUTHENTIC LIFE & PROOF OF 25 RESIDENT BOYS (Below Checkout Card) ── */}
+      <section className="mt-6 rounded-3xl bg-white p-5 shadow-sm border border-teal-900/10">
+        <h3 className="font-display text-base font-black text-[#042825] mb-1">
           Life at Janaseva Ashrama (25 Resident Boys)
         </h3>
-        <p className="text-xs text-teal-950/70 mb-3">
+        <p className="text-xs text-teal-950/70 mb-3.5">
           Turahalli, Bengaluru · Wholesome satvik meals, school education &amp; loving shelter since 2000.
         </p>
 
@@ -1275,7 +1563,7 @@ export function MetaAdsDonateComponent() {
               className="object-cover"
               sizes="(max-width: 640px) 33vw, 33vw"
             />
-            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-1 text-[9px] text-white font-bold leading-tight">
+            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-1.5 text-[9px] text-white font-bold leading-tight">
               🍲 Satvik Annadana
             </div>
           </div>
@@ -1288,7 +1576,7 @@ export function MetaAdsDonateComponent() {
               className="object-cover"
               sizes="(max-width: 640px) 33vw, 33vw"
             />
-            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-1 text-[9px] text-white font-bold leading-tight">
+            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-1.5 text-[9px] text-white font-bold leading-tight">
               📚 Evening Vidya
             </div>
           </div>
@@ -1301,76 +1589,76 @@ export function MetaAdsDonateComponent() {
               className="object-cover"
               sizes="(max-width: 640px) 33vw, 33vw"
             />
-            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-1 text-[9px] text-white font-bold leading-tight">
+            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-1.5 text-[9px] text-white font-bold leading-tight">
               ✨ 25 Boys
             </div>
           </div>
         </div>
 
-        <div className="mt-3 pt-2.5 border-t border-teal-900/10 grid grid-cols-3 gap-2 text-center text-[10px] font-bold text-teal-950/80">
+        <div className="mt-3.5 pt-3 border-t border-teal-900/10 grid grid-cols-3 gap-2 text-center text-[10px] font-bold text-teal-950/80">
           <div>
-            <span className="block font-black text-xs text-teal-950">25 Boys</span>
+            <span className="block font-black text-sm text-[#042825]">25 Boys</span>
             <span>Loving Care</span>
           </div>
           <div>
-            <span className="block font-black text-xs text-teal-950">4 Meals/Day</span>
+            <span className="block font-black text-sm text-[#042825]">4 Meals/Day</span>
             <span>Satvik Nutrition</span>
           </div>
           <div>
-            <span className="block font-black text-xs text-teal-950">100% Free</span>
+            <span className="block font-black text-sm text-[#042825]">100% Free</span>
             <span>Schooling &amp; Health</span>
           </div>
         </div>
       </section>
 
-      {/* ── 5. Official Government & Tax Credentials ── */}
-      <section className="mt-3.5 rounded-3xl bg-cream/50 p-4 border border-teal-900/10 text-xs text-teal-950">
-        <h4 className="font-bold uppercase tracking-wider text-[10px] text-teal-950/70 mb-2.5">
+      {/* ── 5. OFFICIAL GOVERNMENT & TAX CREDENTIALS ── */}
+      <section className="mt-4 rounded-3xl bg-cream/70 p-4 sm:p-5 border border-teal-900/10 text-xs text-teal-950">
+        <h4 className="font-bold uppercase tracking-wider text-[11px] text-[#042825]/70 mb-3">
           Official Government &amp; Tax Accreditations
         </h4>
 
-        <div className="grid gap-2 sm:grid-cols-3 text-left">
-          <div className="rounded-xl bg-white p-2.5 border border-teal-900/10 shadow-2xs">
-            <span className="text-sm">🏛️</span>
-            <p className="font-bold text-[11px] mt-0.5 text-teal-950">Juvenile Justice Act</p>
-            <p className="text-[9px] text-teal-950/70 font-mono">Reg: {JJ_ACT_REGISTRATION.registrationNumber}</p>
+        <div className="grid gap-2.5 sm:grid-cols-3 text-left">
+          <div className="rounded-xl bg-white p-3 border border-teal-900/10 shadow-2xs">
+            <span className="text-base">🏛️</span>
+            <p className="font-bold text-[11px] mt-1 text-[#042825]">Juvenile Justice Act</p>
+            <p className="text-[10px] text-teal-950/70 font-mono">Reg: {JJ_ACT_REGISTRATION.registrationNumber}</p>
           </div>
 
-          <div className="rounded-xl bg-white p-2.5 border border-teal-900/10 shadow-2xs">
-            <span className="text-sm">📜</span>
-            <p className="font-bold text-[11px] mt-0.5 text-teal-950">Section 80G Form 10AC</p>
-            <p className="text-[9px] text-teal-950/70 font-mono">URN: {FORM_10AC.urn}</p>
+          <div className="rounded-xl bg-white p-3 border border-teal-900/10 shadow-2xs">
+            <span className="text-base">📜</span>
+            <p className="font-bold text-[11px] mt-1 text-[#042825]">Section 80G Form 10AC</p>
+            <p className="text-[10px] text-teal-950/70 font-mono">URN: {FORM_10AC.urn}</p>
           </div>
 
-          <div className="rounded-xl bg-white p-2.5 border border-teal-900/10 shadow-2xs">
-            <span className="text-sm">🛡️</span>
-            <p className="font-bold text-[11px] mt-0.5 text-teal-950">Income Tax PAN</p>
-            <p className="text-[9px] text-teal-950/70 font-mono">PAN: {SITE.pan}</p>
+          <div className="rounded-xl bg-white p-3 border border-teal-900/10 shadow-2xs">
+            <span className="text-base">🛡️</span>
+            <p className="font-bold text-[11px] mt-1 text-[#042825]">Income Tax PAN</p>
+            <p className="text-[10px] text-teal-950/70 font-mono">PAN: {SITE.pan}</p>
           </div>
         </div>
       </section>
 
-      {/* ── 6. Frequently Asked Questions ── */}
-      <section className="mt-3.5 rounded-3xl bg-white p-4 border border-teal-900/10">
-        <h4 className="font-display text-sm font-bold text-teal-950 mb-2">
+      {/* ── 6. FREQUENTLY ASKED QUESTIONS ── */}
+      <section className="mt-4 rounded-3xl bg-white p-5 border border-teal-900/10">
+        <h4 className="font-display text-base font-bold text-[#042825] mb-3">
           Frequently Asked Questions
         </h4>
 
-        <div className="space-y-1.5">
+        <div className="space-y-2">
           {FAQS.map((faq, idx) => {
             const isOpen = openFaqIndex === idx;
             return (
-              <div key={idx} className="rounded-xl border border-teal-900/10 overflow-hidden">
+              <div key={idx} className="rounded-2xl border border-teal-900/10 overflow-hidden">
                 <button
                   type="button"
                   onClick={() => setOpenFaqIndex(isOpen ? null : idx)}
-                  className="w-full p-2.5 text-left font-bold text-xs text-teal-950 flex items-center justify-between gap-2 hover:bg-cream/40 transition cursor-pointer"
+                  className="w-full p-3 text-left font-bold text-xs text-teal-950 flex items-center justify-between gap-2 hover:bg-cream/40 transition cursor-pointer"
                 >
                   <span>{faq.q}</span>
                   <span className="text-sm font-black text-amber-700">{isOpen ? "−" : "+"}</span>
                 </button>
                 {isOpen && (
-                  <div className="p-2.5 pt-0 text-xs text-teal-950/75 leading-relaxed bg-sand/15">
+                  <div className="p-3 pt-0 text-xs text-teal-950/75 leading-relaxed bg-sand/15">
                     {faq.a}
                   </div>
                 )}
@@ -1381,7 +1669,7 @@ export function MetaAdsDonateComponent() {
       </section>
 
       {/* Direct Contact & WhatsApp Help */}
-      <div className="mt-5 text-center text-xs text-teal-950/70 space-y-1.5">
+      <div className="mt-6 text-center text-xs text-teal-950/70 space-y-2">
         <p>
           Need assistance or wish to plan an in-person campus visit?
         </p>
@@ -1391,11 +1679,14 @@ export function MetaAdsDonateComponent() {
           )}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 font-bold text-emerald-800 bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-200 hover:bg-emerald-100 transition shadow-2xs"
+          className="inline-flex items-center gap-1.5 font-bold text-emerald-800 bg-emerald-50 px-4 py-2 rounded-full border border-emerald-200 hover:bg-emerald-100 transition shadow-2xs"
         >
           <span>💬</span>
-          <span>Chat on WhatsApp: +91 99803 59595</span>
+          <span>Chat directly on WhatsApp: +91 99803 59595</span>
         </a>
+        <p className="text-[11px] text-teal-950/60 pt-1">
+          Janaseva Ashrama · Turahalli, Uttarahalli Hobli, Bengaluru 560061
+        </p>
       </div>
 
       {/* ── 7. 📱 MOBILE STICKY BOTTOM DONATION BAR ── */}
@@ -1403,7 +1694,7 @@ export function MetaAdsDonateComponent() {
         <div className="fixed inset-x-0 bottom-0 z-40 bg-white/95 backdrop-blur-md border-t border-teal-900/15 p-2.5 px-4 shadow-2xl sm:hidden flex items-center justify-between gap-3 animate-in slide-in-from-bottom">
           <div className="min-w-0">
             <div className="flex items-center gap-1">
-              <span className="font-display text-base font-black text-teal-950">
+              <span className="font-display text-base font-black text-[#042825]">
                 {formatINR(finalAmount)}
               </span>
               <span className="rounded bg-emerald-100 text-emerald-900 text-[8px] font-black px-1.5 py-0.2">
@@ -1429,7 +1720,7 @@ export function MetaAdsDonateComponent() {
                 handlePayNow();
               }
             }}
-            className="shrink-0 px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-black text-xs uppercase tracking-wider shadow-md active:scale-95 cursor-pointer flex items-center gap-1.5 animate-heartbeat"
+            className="shrink-0 px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#EA580C] to-[#D97706] text-white font-black text-xs uppercase tracking-wider shadow-md active:scale-95 cursor-pointer flex items-center gap-1.5 animate-heartbeat"
           >
             <span>PROCEED TO PAY</span>
             <span>💝</span>
