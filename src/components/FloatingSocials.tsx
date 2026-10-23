@@ -21,8 +21,15 @@ export function FloatingSocials() {
     return () => clearInterval(interval);
   }, [open]);
 
-  // Hide on admin routes or checkout
-  if (pathname?.startsWith("/admin") || pathname === "/checkout") return null;
+  // Hide on admin routes or checkout / direct donation pages
+  if (
+    pathname?.startsWith("/admin") ||
+    pathname === "/checkout" ||
+    pathname === "/donate" ||
+    pathname === "/give"
+  ) {
+    return null;
+  }
 
   // Dynamic clearance: If Giving Basket is active, lift cleanly above it so CHECKOUT NOW is never covered
   const positionClass =

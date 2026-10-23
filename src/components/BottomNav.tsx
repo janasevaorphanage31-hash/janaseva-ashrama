@@ -210,7 +210,14 @@ export function BottomNav() {
     };
   }, [path]);
 
-  if (path?.startsWith("/admin") || path === "/checkout") return null;
+  if (
+    path?.startsWith("/admin") ||
+    path === "/checkout" ||
+    path === "/donate" ||
+    path === "/give"
+  ) {
+    return null;
+  }
 
   const active = (href: string) =>
     href === "/" ? path === "/" : path.startsWith(href);

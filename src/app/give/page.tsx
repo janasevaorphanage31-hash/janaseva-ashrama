@@ -46,7 +46,7 @@ export const metadata: Metadata = {
 
 export default function GivePage() {
   return (
-    <div className="min-h-screen bg-sand/35 py-6 sm:py-12 px-3 sm:px-6">
+    <div className="min-h-screen bg-sand/35 py-4 sm:py-10 px-2.5 sm:px-6">
       <Suspense
         fallback={
           <div className="mx-auto max-w-md p-12 text-center text-teal-950 font-bold">

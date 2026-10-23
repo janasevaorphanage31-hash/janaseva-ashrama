@@ -10,8 +10,15 @@ export const metadata: Metadata = {
 
 export default function CheckoutPage() {
   return (
-    <div className="min-h-screen bg-sand/35 py-6 sm:py-12 px-3 sm:px-6">
-      <Suspense fallback={<div className="text-center py-20 font-bold text-teal-900">Loading donation checkout...</div>}>
+    <div className="min-h-screen bg-sand/35 py-4 sm:py-10 px-2.5 sm:px-6">
+      <Suspense
+        fallback={
+          <div className="mx-auto max-w-md p-12 text-center text-teal-950 font-bold">
+            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-teal-900 border-t-transparent" />
+            <p className="mt-4 text-sm font-semibold">Loading secure donation checkout...</p>
+          </div>
+        }
+      >
         <MetaAdsDonateComponent />
       </Suspense>
     </div>

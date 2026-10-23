@@ -4,7 +4,7 @@ import { useEffect, useState, useRef, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import { formatINR, SITE, FORM_10AC, BANK_DETAILS } from "@/lib/site";
+import { formatINR, SITE, FORM_10AC, BANK_DETAILS, JJ_ACT_REGISTRATION } from "@/lib/site";
 import { LogoMark } from "@/components/Logo";
 import {
   trackDonationSuccess,
@@ -34,7 +34,7 @@ export interface PresetTier {
 }
 
 const ALL_PRESET_TIERS: PresetTier[] = [
-  // ── Shagun Tier (₹11 to ₹51) ──
+  // ── Shagun Micro Contributions (₹11 to ₹51) ──
   {
     amt: 11,
     label: "₹11",
@@ -56,18 +56,18 @@ const ALL_PRESET_TIERS: PresetTier[] = [
   {
     amt: 51,
     label: "₹51",
-    impact: "Hot breakfast (idlis & sambar) for a child",
+    impact: "Hot breakfast (steaming idlis & sambar) for a child",
     badge: "Shagun ₹51",
     icon: "🍲",
     image: "/media/prayer-meals.jpg",
     category: "shagun",
   },
-  // ── Daily Feasts & Care (₹101 to ₹501) ──
+  // ── Daily Nutrition & Care (₹101 to ₹501) ──
   {
     amt: 101,
     label: "₹101",
     impact: "Full hot satvik lunch or dinner for 1 boy",
-    badge: "Most Popular ★",
+    badge: "Daily Punya",
     icon: "🍛",
     image: "/media/banana-leaf-feast.jpg",
     category: "meals",
@@ -94,7 +94,7 @@ const ALL_PRESET_TIERS: PresetTier[] = [
   {
     amt: 1000,
     label: "₹1,000",
-    impact: "Feeds a child for a whole week + tuition",
+    impact: "Feeds an orphaned child for a whole week + tutoring",
     badge: "Feeds 1 Wk ⭐",
     icon: "🍲",
     image: "/media/learning.jpg",
@@ -103,8 +103,8 @@ const ALL_PRESET_TIERS: PresetTier[] = [
   {
     amt: 2500,
     label: "₹2,500",
-    impact: "Special hot lunch feast for all 25 boys",
-    badge: "25 Boys Meal",
+    impact: "Special festive hot lunch feast for all 25 boys",
+    badge: "Most Popular ★",
     icon: "🍛",
     image: "/media/annadana-hall-hd.jpg",
     category: "boys",
@@ -138,7 +138,7 @@ const FAQS = [
   },
   {
     q: "What payment methods are supported?",
-    a: "You can donate instantly with 1 tap via Google Pay, PhonePe, Paytm, BHIM, Cred, any UPI app, Debit Cards, Credit Cards, or Net Banking from all major Indian banks.",
+    a: "You can donate instantly via Google Pay, PhonePe, Paytm, BHIM, Cred, any UPI app, Debit Cards, Credit Cards, or Net Banking from all major Indian banks.",
   },
   {
     q: "How does my contribution reach the 25 resident boys?",
@@ -154,7 +154,7 @@ function getDynamicImpactText(amt: number): string {
   if (amt === 101) return "Provides a full hot satvik lunch with rice, sambar, and fresh vegetables for 1 boy.";
   if (amt === 251) return "Provides a full set of school notebooks, pencils, and geometry stationery.";
   if (amt === 501) return "Sponsors 3 full days of satvik meals, morning milk, and pediatric wellness care.";
-  if (amt === 1000) return "Feeds an orphaned boy with all 3 nutritious meals for an entire week.";
+  if (amt === 1000) return "Feeds an orphaned boy with all nutritious meals for an entire week + evening tutoring.";
   if (amt === 2500) return "Hosts a special festive hot lunch feast with sweet payasam for all 25 boys.";
   if (amt === 4500) return "Sponsors complete 24-hour 4-meal Annadana (breakfast, lunch, evening snacks & dinner) for all 25 boys.";
   if (amt < 50) return `Your gift of ${formatINR(amt)} provides warm cow milk and morning study fruit for resident boys.`;
@@ -176,23 +176,23 @@ export function MetaAdsDonateComponent() {
         return (
           sessionStorage.getItem("antigravity_caller_ref") ||
           localStorage.getItem("antigravity_caller_ref") ||
-          "META_ADS"
+          "DIRECT"
         );
       } catch {}
     }
-    return "META_ADS";
+    return "DIRECT";
   });
   const [leadId] = useState<string>(() => searchParams.get("lead_id") || "");
 
   // Category Filter for Presets ("all" | "shagun" | "meals" | "boys")
   const [activeCategory, setActiveCategory] = useState<string>("all");
 
-  // Amount State (Starts from ₹11 upwards; default to cart.total if available, or URL param, or ₹2,500 flagship)
+  // Amount State (Starts from ₹11 upwards; defaults to URL param, cart.total, or ₹2,500 flagship)
   const [amount, setAmount] = useState<number>(() => {
     const urlAmt = searchParams.get("amount");
     if (urlAmt) {
       const parsed = parseFloat(urlAmt);
-      if (parsed >= 10 && parsed <= 500000 && ALL_PRESET_TIERS.some((t) => t.amt === parsed)) {
+      if (parsed >= 10 && parsed <= 1000000 && ALL_PRESET_TIERS.some((t) => t.amt === parsed)) {
         return parsed;
       }
     }
@@ -202,19 +202,20 @@ export function MetaAdsDonateComponent() {
         if (raw) {
           const parsedCart = JSON.parse(raw);
           const savedCustom = Number(parsedCart.custom);
-          if (savedCustom >= 10 && savedCustom <= 500000) {
+          if (savedCustom >= 10 && savedCustom <= 1000000) {
             return savedCustom;
           }
         }
       } catch {}
     }
-    return 2500; // Flagship 25 boys hot meal tier default
+    return 2500; // Flagship 25 boys feast tier default
   });
+
   const [customAmount, setCustomAmount] = useState<string>(() => {
     const urlAmt = searchParams.get("amount");
     if (urlAmt) {
       const parsed = parseFloat(urlAmt);
-      if (parsed >= 10 && parsed <= 500000 && !ALL_PRESET_TIERS.some((t) => t.amt === parsed)) {
+      if (parsed >= 10 && parsed <= 1000000 && !ALL_PRESET_TIERS.some((t) => t.amt === parsed)) {
         return String(parsed);
       }
     }
@@ -224,7 +225,7 @@ export function MetaAdsDonateComponent() {
         if (raw) {
           const parsedCart = JSON.parse(raw);
           const savedCustom = Number(parsedCart.custom);
-          if (savedCustom >= 10 && savedCustom <= 500000 && !ALL_PRESET_TIERS.some((t) => t.amt === savedCustom)) {
+          if (savedCustom >= 10 && savedCustom <= 1000000 && !ALL_PRESET_TIERS.some((t) => t.amt === savedCustom)) {
             return String(savedCustom);
           }
         }
@@ -233,32 +234,59 @@ export function MetaAdsDonateComponent() {
     return "";
   });
 
-  // Donor Details
+  // Donor Details (Validated before proceeding to payment)
   const [donorName, setDonorName] = useState(() => searchParams.get("name") || "");
   const [donorPhone, setDonorPhone] = useState(() => (searchParams.get("phone") || "").replace(/\D/g, "").slice(-10));
   const [donorEmail, setDonorEmail] = useState(() => (searchParams.get("email") || "").trim().toLowerCase());
   const [donorPan, setDonorPan] = useState("");
   const [showPanInput, setShowPanInput] = useState(false);
   const [occasion, setOccasion] = useState("general");
-  const [showOccasionSelect, setShowOccasionSelect] = useState(false);
+  const [showOccasionSelect, setShowOccasionSelect] = useState(() => Boolean(searchParams.get("occasion")));
   const [prayerNote, setPrayerNote] = useState("");
+
+  // Payment rail mode ("gateway" | "upi" | "bank")
+  const [paymentRail, setPaymentRail] = useState<"gateway" | "upi" | "bank">("gateway");
 
   // UI States
   const [loading, setLoading] = useState(false);
   const cart = useCart();
-  const [activeTab, setActiveTab] = useState<"gateway" | "upi" | "bank">("gateway");
   const [qrDataUrl, setQrDataUrl] = useState<string>("");
+  const [copiedBankField, setCopiedBankField] = useState<string | null>(null);
+  const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
+  const [showStickyBar, setShowStickyBar] = useState(false);
+
+  // Honeypot anti-spam
+  const [honeypot, setHoneypot] = useState("");
+
+  // Form Validation Errors
+  const [formErrors, setFormErrors] = useState<{
+    name?: string;
+    phone?: string;
+    email?: string;
+    pan?: string;
+    amount?: string;
+    general?: string;
+  }>({});
+
+  // DOM Refs for smooth focus and scroll
+  const topCardRef = useRef<HTMLDivElement>(null);
+  const detailsCardRef = useRef<HTMLDivElement>(null);
+  const paymentSectionRef = useRef<HTMLDivElement>(null);
+  const customInputRef = useRef<HTMLInputElement>(null);
+  const nameInputRef = useRef<HTMLInputElement>(null);
+  const phoneInputRef = useRef<HTMLInputElement>(null);
+  const panInputRef = useRef<HTMLInputElement>(null);
+
   const initializedFromCartRef = useRef(false);
 
   // Synchronize amount state ONCE on mount from searchParams or cart
-  // Kept decoupled from live keystroke typing so users can type any custom amount freely
   useEffect(() => {
     if (initializedFromCartRef.current) return;
 
     const urlAmt = searchParams.get("amount");
     if (urlAmt) {
       const parsed = parseFloat(urlAmt);
-      if (parsed >= 10 && parsed <= 500000) {
+      if (parsed >= 10 && parsed <= 1000000) {
         initializedFromCartRef.current = true;
         if (ALL_PRESET_TIERS.some((t) => t.amt === parsed)) {
           setAmount(parsed);
@@ -286,7 +314,7 @@ export function MetaAdsDonateComponent() {
         }
       }
     }
-  }, [cart.hydrated, searchParams, cart.setDedicatedAmount]);
+  }, [cart.hydrated, searchParams, cart.setDedicatedAmount, cart.total]);
 
   // Sync occasion from searchParams
   useEffect(() => {
@@ -301,39 +329,26 @@ export function MetaAdsDonateComponent() {
       }
     }
   }, [searchParams]);
-  const [copiedBankField, setCopiedBankField] = useState<string | null>(null);
-  const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
-  const [showStickyBar, setShowStickyBar] = useState(false);
-
-  // Honeypot anti-spam
-  const [honeypot, setHoneypot] = useState("");
-
-  // Form Validation Errors
-  const [formErrors, setFormErrors] = useState<{
-    name?: string;
-    phone?: string;
-    email?: string;
-    pan?: string;
-    amount?: string;
-    general?: string;
-  }>({});
-
-  // Refs for smooth scroll
-  const topCardRef = useRef<HTMLDivElement>(null);
-  const customInputRef = useRef<HTMLInputElement>(null);
-  const nameInputRef = useRef<HTMLInputElement>(null);
-  const phoneInputRef = useRef<HTMLInputElement>(null);
 
   // Derived effective donation amount
   const finalAmount = customAmount ? parseFloat(customAmount) || 0 : amount;
   const amountWords = finalAmount >= 10 ? numberToIndianWords(finalAmount) : "";
+  const taxDeductionAmount = Math.round(finalAmount * 0.5); // 50% deduction under Section 80G
 
   // Dynamic Official UPI Link for Janaseva Ashrama
   const upiId = "9980359595@okbizaxis";
-  const upiUri = `upi://pay?pa=${upiId}&pn=Janaseva%20Ashrama&am=${finalAmount}&cu=INR&tn=${encodeURIComponent("Donation for 25 Boys")}`;
-  const gpayUri = `gpay://upi/pay?pa=${upiId}&pn=Janaseva%20Ashrama&am=${finalAmount}&cu=INR&tn=${encodeURIComponent("Donation for 25 Boys")}`;
-  const phonepeUri = `phonepe://pay?pa=${upiId}&pn=Janaseva%20Ashrama&am=${finalAmount}&cu=INR&tn=${encodeURIComponent("Donation for 25 Boys")}`;
-  const paytmUri = `paytmmp://pay?pa=${upiId}&pn=Janaseva%20Ashrama&am=${finalAmount}&cu=INR&tn=${encodeURIComponent("Donation for 25 Boys")}`;
+  const upiUri = `upi://pay?pa=${upiId}&pn=Janaseva%20Ashrama&am=${finalAmount}&cu=INR&tn=${encodeURIComponent(
+    `Donation for 25 Boys by ${donorName.trim() || "Supporter"}`
+  )}`;
+  const gpayUri = `gpay://upi/pay?pa=${upiId}&pn=Janaseva%20Ashrama&am=${finalAmount}&cu=INR&tn=${encodeURIComponent(
+    `Donation for 25 Boys by ${donorName.trim() || "Supporter"}`
+  )}`;
+  const phonepeUri = `phonepe://pay?pa=${upiId}&pn=Janaseva%20Ashrama&am=${finalAmount}&cu=INR&tn=${encodeURIComponent(
+    `Donation for 25 Boys by ${donorName.trim() || "Supporter"}`
+  )}`;
+  const paytmUri = `paytmmp://pay?pa=${upiId}&pn=Janaseva%20Ashrama&am=${finalAmount}&cu=INR&tn=${encodeURIComponent(
+    `Donation for 25 Boys by ${donorName.trim() || "Supporter"}`
+  )}`;
 
   useEffect(() => {
     if (finalAmount > 0) {
@@ -359,15 +374,14 @@ export function MetaAdsDonateComponent() {
   // Track ViewContent on mount
   useEffect(() => {
     trackViewContent({
-      content_name: "Meta Ads 25 Boys Donation",
+      content_name: "Standard Donor Checkout",
       content_category: "Child Welfare & Annadana",
-      value: finalAmount || 101,
+      value: finalAmount || 2500,
       currency: "INR",
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Update ViewContent when amount changes
   const handleSelectTier = (amt: number) => {
     setAmount(amt);
     setCustomAmount("");
@@ -376,7 +390,7 @@ export function MetaAdsDonateComponent() {
       cart.setDedicatedAmount(amt);
     }
     trackViewContent({
-      content_name: `Sponsor 25 Boys - ₹${amt}`,
+      content_name: `Select Tier ₹${amt}`,
       content_category: "Child Welfare",
       value: amt,
       currency: "INR",
@@ -388,7 +402,7 @@ export function MetaAdsDonateComponent() {
     const handleScroll = () => {
       if (!topCardRef.current) return;
       const rect = topCardRef.current.getBoundingClientRect();
-      setShowStickyBar(rect.bottom < 100);
+      setShowStickyBar(rect.bottom < 120);
     };
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
@@ -413,30 +427,83 @@ export function MetaAdsDonateComponent() {
     }
   };
 
-  const scrollToTopCard = () => {
-    if (topCardRef.current) {
-      topCardRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+  /**
+   * Strict Donor Validation Gate:
+   * Validates Amount, Name, WhatsApp Mobile, Email, and PAN.
+   * If any field fails, smoothly scrolls to and focuses the first invalid input!
+   */
+  const validateForm = (): boolean => {
+    const errors: typeof formErrors = {};
+
+    // 1. Amount validation
+    if (!finalAmount || isNaN(finalAmount) || finalAmount < 10) {
+      errors.amount = "Please choose or enter a contribution amount (minimum ₹10).";
+      setFormErrors(errors);
+      topCardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return false;
     }
+
+    // 2. Name validation (Mandatory for 80G receipt and morning prayer blessing)
+    const nameVal = validateName(donorName, "Full name");
+    if (!nameVal.valid) {
+      errors.name = nameVal.error || "Please enter your full name for the 80G tax receipt.";
+      setFormErrors(errors);
+      detailsCardRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      setTimeout(() => nameInputRef.current?.focus(), 300);
+      return false;
+    }
+
+    // 3. WhatsApp Mobile validation (Mandatory 10-digit Indian phone)
+    const phoneVal = validatePhone(donorPhone, true, "WhatsApp mobile number");
+    if (!phoneVal.valid) {
+      errors.phone = phoneVal.error || "Please enter a valid 10-digit WhatsApp number to receive your receipt.";
+      setFormErrors(errors);
+      detailsCardRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      setTimeout(() => phoneInputRef.current?.focus(), 300);
+      return false;
+    }
+
+    // 4. Email validation (Optional, but if entered must be valid)
+    if (donorEmail.trim()) {
+      const emailVal = validateEmail(donorEmail, false);
+      if (!emailVal.valid) {
+        errors.email = emailVal.error || "Please enter a valid email address or leave it empty.";
+        setFormErrors(errors);
+        detailsCardRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+        return false;
+      }
+    }
+
+    // 5. PAN validation (If toggle is enabled or PAN is entered)
+    if (showPanInput && donorPan.trim()) {
+      const panVal = validatePan(donorPan, true);
+      if (!panVal.valid) {
+        errors.pan = panVal.error || "Please enter a valid 10-digit Income Tax PAN (e.g. ABCDE1234F).";
+        setFormErrors(errors);
+        detailsCardRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+        setTimeout(() => panInputRef.current?.focus(), 300);
+        return false;
+      }
+    }
+
+    setFormErrors({});
+    return true;
   };
 
+  /**
+   * Handles payment initiation after strict validation.
+   */
   const handlePayNow = async () => {
-    // 1. Amount validation (Starts from ₹10 upwards)
-    if (!finalAmount || isNaN(finalAmount) || finalAmount < 10) {
-      setFormErrors({ amount: "Please choose or enter a valid donation amount (minimum contribution is ₹10)." });
-      if (topCardRef.current) topCardRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
-      return;
-    }
-
-    // Friendly fallback: never hard-block the gateway launch if name/phone aren't filled yet
-    const effectiveName = donorName.trim() || "Janaseva Supporter";
-    const effectivePhone = donorPhone.replace(/\D/g, "").slice(-10) || "9980359595";
+    // 1. Enforce strict validation
+    const isValid = validateForm();
+    if (!isValid) return;
 
     setLoading(true);
     setFormErrors({});
 
     const safetyTimer = setTimeout(() => {
       setLoading(false);
-    }, 12000);
+    }, 15000);
 
     try {
       const selectedOccasionLabel =
@@ -444,7 +511,7 @@ export function MetaAdsDonateComponent() {
       const cleanOccasion = selectedOccasionLabel.replace(/[^\w\s-]/g, "").trim() || "General Seva";
       const cleanPrayerNote = prayerNote.replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, "").trim();
 
-      // 1. Initialize Razorpay order on server
+      // 2. Initialize Razorpay order on server with verified donor details
       const res = await fetch("/api/v1/checkout/create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -452,8 +519,8 @@ export function MetaAdsDonateComponent() {
           amount: finalAmount,
           callerRefId: callerRef,
           leadId: leadId || undefined,
-          donorName: effectiveName,
-          donorPhone: effectivePhone,
+          donorName: donorName.trim(),
+          donorPhone: donorPhone.replace(/\D/g, "").slice(-10),
           donorEmail: donorEmail.trim() || undefined,
           donorPan: donorPan.trim().toUpperCase() || undefined,
           occasion: cleanOccasion,
@@ -465,18 +532,18 @@ export function MetaAdsDonateComponent() {
       const data = await res.json();
       if (!res.ok || !data.success) {
         clearTimeout(safetyTimer);
-        throw new Error(data.error || "Failed to initialize secure checkout. Please try again.");
+        throw new Error(data.error || "Failed to initialize payment gateway. Please try again.");
       }
 
       // Funnel Step: Meta Pixel InitiateCheckout Event
       trackInitiateCheckout({
-        content_name: `Support 25 Boys - ${selectedOccasionLabel}`,
+        content_name: `Support 25 Boys - ${cleanOccasion}`,
         value: finalAmount,
         currency: "INR",
         num_items: 1,
       });
 
-      // 2. Open Live Razorpay Gateway
+      // 3. Open Live Razorpay Gateway
       if (data.orderId && data.keyId) {
         await openRazorpayCheckout({
           keyId: data.keyId,
@@ -485,14 +552,14 @@ export function MetaAdsDonateComponent() {
           currency: data.currency || "INR",
           name: "Janaseva Ashrama Bangalore",
           description: `Sponsor 25 Resident Boys · ${cleanOccasion}`,
-          donorName: donorName.trim() || undefined,
-          donorPhone: donorPhone.trim() || undefined,
-          donorEmail: donorEmail.trim() || "donor@janasevaashrama.org",
+          donorName: donorName.trim(),
+          donorPhone: donorPhone.trim(),
+          donorEmail: donorEmail.trim() || undefined,
           notes: {
             caller_ref_id: callerRef,
             lead_id: leadId || "",
-            donor_name: effectiveName,
-            donor_phone: effectivePhone,
+            donor_name: donorName.trim(),
+            donor_phone: donorPhone.trim(),
             occasion: cleanOccasion,
             prayer_note: cleanPrayerNote,
           },
@@ -503,11 +570,12 @@ export function MetaAdsDonateComponent() {
           onError: (err: any) => {
             clearTimeout(safetyTimer);
             setLoading(false);
-            // Seamless automatic switch to Direct UPI & QR
             setFormErrors({
-              general: "Browser or popup blocker restricted the gateway window. Please use Direct UPI (Google Pay / PhonePe) or scan QR below!",
+              general:
+                "Browser popup was interrupted. You can complete your donation instantly with 0% fee using Direct UPI or QR code below!",
             });
-            setActiveTab("upi");
+            setPaymentRail("upi");
+            paymentSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
           },
           onSuccess: async (response) => {
             clearTimeout(safetyTimer);
@@ -516,9 +584,9 @@ export function MetaAdsDonateComponent() {
               amount: finalAmount,
               paymentId: response.razorpay_payment_id,
               orderId: response.razorpay_order_id,
-              donorName,
-              donorPhone,
-              donorEmail,
+              donorName: donorName.trim(),
+              donorPhone: donorPhone.trim(),
+              donorEmail: donorEmail.trim(),
               callerRef,
               mode: "live",
             });
@@ -541,11 +609,11 @@ export function MetaAdsDonateComponent() {
                         notes: {
                           caller_ref_id: callerRef,
                           lead_id: leadId || "",
-                          donor_name: donorName,
-                          donor_phone: donorPhone,
-                          donor_email: donorEmail,
-                          occasion: selectedOccasionLabel,
-                          prayer_note: prayerNote,
+                          donor_name: donorName.trim(),
+                          donor_phone: donorPhone.trim(),
+                          donor_email: donorEmail.trim(),
+                          occasion: cleanOccasion,
+                          prayer_note: cleanPrayerNote,
                         },
                       },
                     },
@@ -565,7 +633,7 @@ export function MetaAdsDonateComponent() {
           },
         });
       } else if (data.mode === "demo") {
-        // Sandbox fallback for local development without Razorpay keys
+        // Sandbox fallback for local staging without Razorpay keys
         const demoPaymentId = `pay_sim_${Date.now()}`;
         await fetch("/api/v1/webhooks/payment", {
           method: "POST",
@@ -574,8 +642,8 @@ export function MetaAdsDonateComponent() {
             action: "simulate_donation",
             callerRefId: callerRef,
             amount: finalAmount,
-            donorName,
-            donorPhone,
+            donorName: donorName.trim(),
+            donorPhone: donorPhone.trim(),
             paymentId: demoPaymentId,
             leadId: leadId ? Number(leadId) : undefined,
           }),
@@ -584,9 +652,9 @@ export function MetaAdsDonateComponent() {
         trackDonationSuccess({
           amount: finalAmount,
           paymentId: demoPaymentId,
-          donorName,
-          donorPhone,
-          donorEmail,
+          donorName: donorName.trim(),
+          donorPhone: donorPhone.trim(),
+          donorEmail: donorEmail.trim(),
           callerRef,
           mode: "demo",
         });
@@ -601,15 +669,16 @@ export function MetaAdsDonateComponent() {
       clearTimeout(safetyTimer);
       setFormErrors({
         general:
-          err.message || "Payment gateway connection could not be opened. You can complete your donation instantly using Direct UPI or QR code below.",
+          err.message ||
+          "Payment gateway connection could not be opened. You can complete your donation instantly using Direct UPI or QR code below.",
       });
-      setActiveTab("upi");
+      setPaymentRail("upi");
       setLoading(false);
     }
   };
 
   return (
-    <div className="mx-auto max-w-xl pb-24 sm:pb-16 animate-fadeIn">
+    <div className="mx-auto max-w-xl pb-28 sm:pb-16 animate-fadeIn">
       {/* Invisible Honeypot anti-bot protection */}
       <input
         type="text"
@@ -623,7 +692,7 @@ export function MetaAdsDonateComponent() {
         style={{ display: "none" }}
       />
 
-      {/* ── 1. 🚨 LIVE URGENT DONATION BEACON BAR ── */}
+      {/* ── 1. 🚨 LIVE URGENT NEED BEACON BAR ── */}
       <div className="mb-3.5 rounded-2xl bg-gradient-to-r from-red-600 via-orange-600 to-amber-600 p-3 text-white shadow-lg border border-red-400/40">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
@@ -654,740 +723,805 @@ export function MetaAdsDonateComponent() {
         </div>
       </div>
 
-      {/* ── 2. HERO CARD WITH AUTHENTIC PHOTO BACKGROUND & EMOTIONAL HOOK ── */}
-      <div className="relative overflow-hidden rounded-3xl bg-teal-950 p-5 sm:p-7 text-white shadow-2xl mb-4 border border-amber-400/30">
-        {/* Authentic Background Photo with Vignette */}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="/media/boys-meal-gratitude.jpg"
-          alt="Resident orphaned boys praying with gratitude at Janaseva Ashrama Bangalore"
-          className="absolute inset-0 h-full w-full object-cover object-center scale-105 filter brightness-75 transition-transform duration-700"
-        />
-        {/* High-Contrast Gradient Scrim for 100% Text Legibility */}
-        <div className="absolute inset-0 bg-gradient-to-t from-teal-950 via-teal-950/85 to-teal-950/65" />
-
-        {/* Content */}
-        <div className="relative z-10">
-          <div className="flex items-center justify-between gap-2 mb-3">
-            <div className="flex items-center gap-2.5">
-              <LogoMark size={44} className="shadow-md ring-2 ring-amber-400/60" />
-              <div>
-                <h2 className="text-sm sm:text-base font-black tracking-tight text-white leading-tight">
-                  Janaseva Ashrama
-                </h2>
-                <p className="text-[10px] font-semibold text-amber-300">
-                  Registered Orphanage &amp; Children&apos;s Home · Est. 2000
-                </p>
-              </div>
-            </div>
-
-            <div className="flex flex-col items-end gap-1">
-              <span className="rounded-full bg-emerald-500/30 border border-emerald-400 px-2 py-0.5 text-[9px] font-black uppercase text-emerald-200">
-                🛡️ 80G Tax Free
-              </span>
-              <span className="text-[9px] text-white/70 font-mono">
-                Govt: {SITE.jjActNumber}
-              </span>
+      {/* ── 2. TRUST HEADER CARD ── */}
+      <div className="relative overflow-hidden rounded-3xl bg-teal-950 p-5 sm:p-6 text-white shadow-2xl mb-4 border border-amber-400/30">
+        <div className="flex items-center justify-between gap-3 mb-3">
+          <div className="flex items-center gap-2.5">
+            <LogoMark size={44} className="shadow-md ring-2 ring-amber-400/60 shrink-0" />
+            <div>
+              <h1 className="text-base sm:text-lg font-black tracking-tight text-white leading-tight">
+                Janaseva Ashrama Bangalore
+              </h1>
+              <p className="text-[11px] font-semibold text-amber-300">
+                Official 80G Tax-Exempt Donation Portal
+              </p>
             </div>
           </div>
 
-          <h1 className="font-display text-2xl sm:text-3xl font-black text-white tracking-tight leading-tight mt-1">
-            Feed &amp; Educate 25 Orphaned Boys
-          </h1>
-
-          <p className="text-xs sm:text-sm text-teal-100/90 mt-2 leading-relaxed">
-            Every rupee directly provides steaming hot satvik meals, school kits, and loving care. 
-            <strong> All donors are remembered in 6:30 AM morning prayers.</strong>
-          </p>
+          <div className="flex flex-col items-end gap-1 shrink-0">
+            <span className="rounded-full bg-emerald-500/30 border border-emerald-400 px-2 py-0.5 text-[10px] font-black uppercase text-emerald-200">
+              🛡️ 80G Tax Free
+            </span>
+            <span className="text-[9px] text-white/70 font-mono">
+              Govt: {JJ_ACT_REGISTRATION.registrationNumber}
+            </span>
+          </div>
         </div>
+
+        <p className="text-xs sm:text-sm text-teal-100/90 leading-relaxed">
+          100% of your sacred contribution directly feeds, educates, and cares for <strong>25 orphaned and destitute boys</strong>. Every donor is blessed in morning 6:30 AM shloka prayers.
+        </p>
       </div>
 
-      {/* ── 3. 🎯 TOP ACTION DONATION CARD (ABOVE THE MOBILE FOLD) ── */}
-      <div
-        ref={topCardRef}
-        className="rounded-3xl bg-white p-5 sm:p-7 shadow-2xl border-2 border-amber-400/50 relative overflow-hidden ring-4 ring-amber-300/15"
-      >
-        {/* Decorative corner glow */}
-        <div className="absolute top-0 right-0 -mt-8 -mr-8 h-28 w-28 rounded-full bg-amber-400/20 blur-2xl pointer-events-none" />
-
-        {/* 3 Donor-Friendly Payment Options */}
-        <div className="mb-4 grid grid-cols-3 gap-1 rounded-2xl bg-cream/80 p-1 border border-teal-900/10 text-center">
-          <button
-            type="button"
-            onClick={() => setActiveTab("gateway")}
-            className={`py-2 px-1 text-[11px] sm:text-xs font-black rounded-xl transition cursor-pointer flex flex-col items-center justify-center ${
-              activeTab === "gateway"
-                ? "bg-teal-950 text-white shadow-sm ring-1 ring-amber-400"
-                : "text-teal-950/70 hover:text-teal-950"
-            }`}
-          >
-            <span>⚡ Gateway</span>
-            <span className="text-[9px] font-normal opacity-80">UPI / Cards</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("upi")}
-            className={`py-2 px-1 text-[11px] sm:text-xs font-black rounded-xl transition cursor-pointer flex flex-col items-center justify-center ${
-              activeTab === "upi"
-                ? "bg-teal-950 text-white shadow-sm ring-1 ring-amber-400"
-                : "text-teal-950/70 hover:text-teal-950"
-            }`}
-          >
-            <span>📱 Direct UPI</span>
-            <span className="text-[9px] font-normal opacity-80">GPay/QR Code</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("bank")}
-            className={`py-2 px-1 text-[11px] sm:text-xs font-black rounded-xl transition cursor-pointer flex flex-col items-center justify-center ${
-              activeTab === "bank"
-                ? "bg-teal-950 text-white shadow-sm ring-1 ring-amber-400"
-                : "text-teal-950/70 hover:text-teal-950"
-            }`}
-          >
-            <span>🏦 Bank Wire</span>
-            <span className="text-[9px] font-normal opacity-80">Axis Bank</span>
-          </button>
+      {/* ── GLOBAL ERROR ALERT ── */}
+      {formErrors.general && (
+        <div className="mb-4 rounded-2xl bg-rose-50 border border-rose-300 p-4 text-xs text-rose-800 font-semibold flex items-start gap-2.5 shadow-sm">
+          <span className="text-lg leading-none shrink-0">⚠️</span>
+          <div className="flex-1 leading-relaxed">{formErrors.general}</div>
         </div>
+      )}
 
-        {/* Global Error Notice */}
-        {formErrors.general && (
-          <div className="mb-4 rounded-2xl bg-rose-50 border border-rose-200 p-3.5 text-xs text-rose-800 font-semibold flex items-start gap-2.5">
-            <span className="text-base leading-none">⚠️</span>
-            <div className="flex-1 leading-relaxed">{formErrors.general}</div>
+      {/* ── MAIN CHECKOUT CARD (STEP 1 + STEP 2 + STEP 3) ── */}
+      <div className="rounded-3xl bg-white p-5 sm:p-7 shadow-2xl border-2 border-amber-400/40 space-y-6">
+
+        {/* ══════════════════════════════════════════════════════════════════
+            STEP 1: CHOOSE CONTRIBUTION AMOUNT
+        ══════════════════════════════════════════════════════════════════ */}
+        <section ref={topCardRef} aria-labelledby="step-1-heading" className="space-y-3">
+          <div className="flex items-center justify-between pb-1 border-b border-teal-900/10">
+            <div className="flex items-center gap-2">
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-teal-950 text-xs font-black text-amber-300">
+                1
+              </span>
+              <h2 id="step-1-heading" className="text-sm font-black uppercase tracking-wider text-teal-950">
+                Choose Sacred Contribution Amount
+              </h2>
+            </div>
+            <span className="text-[11px] font-bold text-emerald-800 flex items-center gap-1">
+              <span>✓</span> Starts ₹11 · 80G Benefit
+            </span>
           </div>
-        )}
 
-        {/* TAB 1: ONLINE DONATION (UPI / CARDS / RAZORPAY) */}
-        {activeTab === "gateway" && (
-          <div className="space-y-4">
-            {/* ── STEP 1: PRESET AMOUNTS WITH AUTHENTIC PHOTO BACKGROUNDS (Starts from ₹11) ── */}
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="text-xs font-black uppercase tracking-wider text-teal-950 flex items-center gap-1.5">
-                  <span>1.</span>
-                  <span>Choose Sacred Contribution:</span>
-                </label>
-                <span className="text-[11px] font-bold text-emerald-800 flex items-center gap-1">
-                  <span>✓</span> Starts from ₹11 · 80G Tax Free
-                </span>
-              </div>
+          {/* Category Filter Chips */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs no-scrollbar">
+            {[
+              { id: "all", label: "🌟 All Tiers" },
+              { id: "shagun", label: "🥛 Shagun (₹11 - ₹51)" },
+              { id: "meals", label: "🍲 Meals (₹101 - ₹501)" },
+              { id: "boys", label: "🏛️ 25 Boys (₹1k - ₹4.5k)" },
+            ].map((cat) => (
+              <button
+                key={cat.id}
+                type="button"
+                onClick={() => setActiveCategory(cat.id)}
+                className={`px-3 py-1.5 rounded-xl text-[11px] font-bold shrink-0 transition cursor-pointer ${
+                  activeCategory === cat.id
+                    ? "bg-teal-950 text-white shadow-xs font-black ring-1 ring-amber-400"
+                    : "bg-cream text-teal-950 border border-teal-900/10 hover:bg-sand"
+                }`}
+              >
+                {cat.label}
+              </button>
+            ))}
+          </div>
 
-              {/* Category Filter Chips for Fast Selection */}
-              <div className="flex items-center gap-1.5 mb-2.5 overflow-x-auto pb-1 text-xs">
-                {[
-                  { id: "all", label: "🌟 All Tiers" },
-                  { id: "shagun", label: "🥛 Shagun (₹11 - ₹51)" },
-                  { id: "meals", label: "🍲 Meals (₹101 - ₹501)" },
-                  { id: "boys", label: "🏛️ 25 Boys (₹1k - ₹4.5k)" },
-                ].map((cat) => (
-                  <button
-                    key={cat.id}
-                    type="button"
-                    onClick={() => setActiveCategory(cat.id)}
-                    className={`px-3 py-1 rounded-xl text-[11px] font-bold shrink-0 transition cursor-pointer ${
-                      activeCategory === cat.id
-                        ? "bg-teal-950 text-white shadow-xs font-black"
-                        : "bg-cream text-teal-950 border border-teal-900/10 hover:bg-sand"
+          {/* Grid of Preset Cards with Authentic Image Backgrounds */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            {filteredTiers.map((tier) => {
+              const isSelected = amount === tier.amt && !customAmount;
+              return (
+                <button
+                  key={tier.amt}
+                  type="button"
+                  onClick={() => handleSelectTier(tier.amt)}
+                  className={`group relative overflow-hidden p-2.5 sm:p-3 rounded-2xl text-left transition-all border cursor-pointer tap-scale flex flex-col justify-between min-h-[96px] sm:min-h-[104px] ${
+                    isSelected
+                      ? "border-amber-500 ring-2 ring-amber-400 shadow-xl scale-[1.02]"
+                      : "border-teal-900/15 hover:border-amber-400/60"
+                  }`}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={tier.image}
+                    alt={tier.label}
+                    className="absolute inset-0 h-full w-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
+                  />
+                  <div
+                    className={`absolute inset-0 transition-colors ${
+                      isSelected
+                        ? "bg-gradient-to-t from-teal-950/95 via-teal-950/80 to-teal-950/50"
+                        : "bg-gradient-to-t from-black/90 via-black/75 to-black/45 group-hover:from-black/85"
                     }`}
-                  >
-                    {cat.label}
-                  </button>
-                ))}
-              </div>
+                  />
 
-              {/* Grid of Preset Cards with Authentic Image Backgrounds */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {filteredTiers.map((tier) => {
-                  const isSelected = amount === tier.amt && !customAmount;
-                  return (
+                  {/* Badge */}
+                  <div className="relative z-10 flex justify-end w-full">
+                    {tier.badge && (
+                      <span
+                        className={`rounded-full px-1.5 py-0.2 text-[8px] font-black uppercase shadow-xs ${
+                          isSelected
+                            ? "bg-amber-400 text-teal-950"
+                            : "bg-white/25 text-white backdrop-blur-xs"
+                        }`}
+                      >
+                        {tier.badge}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Amount & Impact */}
+                  <div className="relative z-10 mt-auto">
+                    <div className="flex items-center gap-1">
+                      <span className="text-sm select-none">{tier.icon}</span>
+                      <span
+                        className={`font-display text-base sm:text-lg font-black leading-none drop-shadow-sm ${
+                          isSelected ? "text-amber-300" : "text-white"
+                        }`}
+                      >
+                        {tier.label}
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-white/90 line-clamp-2 leading-tight mt-1 font-medium drop-shadow-xs">
+                      {tier.impact}
+                    </p>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Custom Amount Input Box */}
+          <div className="rounded-2xl bg-cream/60 p-3.5 border border-teal-900/15">
+            <div className="flex items-center justify-between mb-1.5">
+              <label
+                htmlFor="meta-custom-amount"
+                className="text-xs font-black uppercase tracking-wider text-teal-950 flex items-center gap-1.5"
+              >
+                <span>✏️</span>
+                <span>Or Enter Any Custom Amount:</span>
+              </label>
+              {customAmount && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCustomAmount("");
+                    setAmount(2500);
+                    if (cart.setDedicatedAmount) cart.setDedicatedAmount(2500);
+                  }}
+                  className="text-[11px] font-bold text-amber-800 hover:text-amber-950 underline cursor-pointer"
+                >
+                  Reset to Tiers
+                </button>
+              )}
+            </div>
+
+            <div className="relative flex items-center rounded-xl border-2 border-teal-900/20 bg-white px-3.5 py-1 focus-within:border-teal-900 focus-within:ring-2 focus-within:ring-amber-400 transition">
+              <span className="font-display text-xl font-black text-teal-950 select-none mr-2">
+                ₹
+              </span>
+              <input
+                ref={customInputRef}
+                id="meta-custom-amount"
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                placeholder="Enter custom amount (e.g. 51, 500, 2500)"
+                value={customAmount}
+                onChange={(e) => {
+                  const clean = e.target.value.replace(/\D/g, "");
+                  setCustomAmount(clean);
+                  clearFieldError("amount");
+                  const num = parseFloat(clean);
+                  if (clean && num >= 10 && num <= 1000000) {
+                    setAmount(num);
+                    if (cart.setDedicatedAmount) cart.setDedicatedAmount(num);
+                  }
+                }}
+                className="w-full bg-transparent py-2 text-lg font-black text-teal-950 placeholder:text-teal-950/35 placeholder:font-normal outline-none"
+              />
+              {customAmount && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCustomAmount("");
+                    if (cart.setDedicatedAmount) cart.setDedicatedAmount(amount);
+                  }}
+                  className="text-xs font-bold text-teal-900/50 hover:text-teal-900 p-1 cursor-pointer shrink-0"
+                  title="Clear amount"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+
+            {/* Quick Add Chips */}
+            <div className="flex flex-wrap items-center gap-1.5 mt-2.5">
+              <span className="text-[10px] font-bold text-teal-950/60 uppercase">Quick Add:</span>
+              {[100, 250, 500, 1000, 2500].map((inc) => (
+                <button
+                  key={inc}
+                  type="button"
+                  onClick={() => {
+                    const current = customAmount ? parseFloat(customAmount) || 0 : amount;
+                    const next = current + inc;
+                    setAmount(next);
+                    setCustomAmount(String(next));
+                    clearFieldError("amount");
+                    if (cart.setDedicatedAmount) cart.setDedicatedAmount(next);
+                  }}
+                  className="rounded-lg bg-white hover:bg-teal-950 hover:text-white border border-teal-900/15 px-2.5 py-1 text-[11px] font-black text-teal-950 transition cursor-pointer shadow-2xs"
+                >
+                  +{formatINR(inc)}
+                </button>
+              ))}
+            </div>
+
+            {formErrors.amount && (
+              <p className="mt-2 text-xs text-rose-600 font-semibold flex items-center gap-1">
+                <span>⚠️</span> {formErrors.amount}
+              </p>
+            )}
+          </div>
+
+          {/* Real-time Dynamic Impact & 80G Tax Calculation Strip */}
+          <div className="rounded-2xl bg-amber-50/80 p-3.5 border border-amber-300 text-xs text-amber-950 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 shadow-2xs">
+            <div className="flex items-start gap-2.5 min-w-0">
+              <span className="text-xl select-none shrink-0">🌸</span>
+              <div className="min-w-0">
+                <span className="text-[10px] font-black uppercase tracking-wider text-amber-900 block">
+                  Direct Impact for 25 Resident Boys:
+                </span>
+                <p className="font-bold text-teal-950 leading-snug text-xs mt-0.5">
+                  {impactSummary}
+                </p>
+                {amountWords && (
+                  <p className="text-[10px] text-amber-900/80 font-medium mt-0.5">
+                    Amount in words: <strong>{amountWords}</strong>
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="shrink-0 self-start sm:self-auto rounded-xl bg-emerald-100 border border-emerald-300 px-3 py-1.5 text-center">
+              <span className="text-[9px] uppercase font-bold text-emerald-800 block">50% Tax Exemption:</span>
+              <span className="text-xs font-black text-emerald-950">Claim ₹{taxDeductionAmount.toLocaleString("en-IN")}</span>
+            </div>
+          </div>
+        </section>
+
+        {/* ══════════════════════════════════════════════════════════════════
+            STEP 2: DONOR DETAILS (REQUIRED FOR 80G RECEIPT & PRAYERS)
+        ══════════════════════════════════════════════════════════════════ */}
+        <section ref={detailsCardRef} aria-labelledby="step-2-heading" className="space-y-3 pt-2">
+          <div className="flex items-center justify-between pb-1 border-b border-teal-900/10">
+            <div className="flex items-center gap-2">
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-teal-950 text-xs font-black text-amber-300">
+                2
+              </span>
+              <h2 id="step-2-heading" className="text-sm font-black uppercase tracking-wider text-teal-950">
+                Donor Details for 80G Tax Receipt &amp; Blessings
+              </h2>
+            </div>
+            <span className="text-[10px] font-semibold text-rose-600">
+              * Required fields
+            </span>
+          </div>
+
+          <div className="space-y-3">
+            {/* Full Name Field */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label htmlFor="donor-full-name" className="text-xs font-bold text-teal-950">
+                  Full Name <span className="text-rose-600 font-black">*</span>
+                </label>
+                <span className="text-[10px] text-teal-950/60 font-medium">Chanted in 6:30 AM morning prayers</span>
+              </div>
+              <input
+                ref={nameInputRef}
+                id="donor-full-name"
+                type="text"
+                autoComplete="name"
+                placeholder="e.g. Ramesh Kumar / Ananya Sharma"
+                value={donorName}
+                onChange={(e) => {
+                  setDonorName(e.target.value);
+                  clearFieldError("name");
+                }}
+                className={`w-full rounded-xl border p-2.5 text-base sm:text-sm text-teal-950 outline-none transition ${
+                  formErrors.name
+                    ? "border-rose-500 ring-2 ring-rose-200 bg-rose-50/20"
+                    : "border-teal-900/20 focus:border-teal-900 focus:ring-2 focus:ring-amber-400 bg-white"
+                }`}
+              />
+              {formErrors.name && (
+                <p className="mt-1 text-xs text-rose-600 font-semibold flex items-center gap-1">
+                  <span>⚠️</span> {formErrors.name}
+                </p>
+              )}
+            </div>
+
+            {/* WhatsApp Mobile Number Field */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label htmlFor="donor-whatsapp-phone" className="text-xs font-bold text-teal-950">
+                  WhatsApp Mobile Number <span className="text-rose-600 font-black">*</span>
+                </label>
+                <span className="text-[10px] text-emerald-700 font-bold">Instant 80G receipt &amp; prayer video</span>
+              </div>
+              <div className="relative">
+                <span className="absolute left-3.5 top-2.5 text-xs font-black text-teal-950/70 select-none">
+                  +91
+                </span>
+                <input
+                  ref={phoneInputRef}
+                  id="donor-whatsapp-phone"
+                  type="tel"
+                  inputMode="tel"
+                  autoComplete="tel"
+                  maxLength={10}
+                  placeholder="9876543210"
+                  value={donorPhone}
+                  onChange={(e) => {
+                    setDonorPhone(e.target.value.replace(/\D/g, "").slice(0, 10));
+                    clearFieldError("phone");
+                  }}
+                  className={`w-full rounded-xl border py-2.5 pl-12 pr-3 text-base sm:text-sm font-bold text-teal-950 outline-none transition ${
+                    formErrors.phone
+                      ? "border-rose-500 ring-2 ring-rose-200 bg-rose-50/20"
+                      : "border-teal-900/20 focus:border-teal-900 focus:ring-2 focus:ring-amber-400 bg-white"
+                  }`}
+                />
+              </div>
+              {formErrors.phone && (
+                <p className="mt-1 text-xs text-rose-600 font-semibold flex items-center gap-1">
+                  <span>⚠️</span> {formErrors.phone}
+                </p>
+              )}
+            </div>
+
+            {/* Email Address Field (Optional) */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <label htmlFor="donor-email-address" className="text-xs font-bold text-teal-950">
+                  Email Address <span className="text-teal-950/50 font-normal">(Optional)</span>
+                </label>
+                <span className="text-[10px] text-teal-950/60 font-medium">For official PDF tax certificate</span>
+              </div>
+              <input
+                id="donor-email-address"
+                type="email"
+                autoComplete="email"
+                placeholder="name@example.com"
+                value={donorEmail}
+                onChange={(e) => {
+                  setDonorEmail(e.target.value);
+                  clearFieldError("email");
+                }}
+                className={`w-full rounded-xl border p-2.5 text-base sm:text-sm text-teal-950 outline-none transition ${
+                  formErrors.email
+                    ? "border-rose-500 ring-2 ring-rose-200 bg-rose-50/20"
+                    : "border-teal-900/20 focus:border-teal-900 focus:ring-2 focus:ring-amber-400 bg-white"
+                }`}
+              />
+              {formErrors.email && (
+                <p className="mt-1 text-xs text-rose-600 font-semibold flex items-center gap-1">
+                  <span>⚠️</span> {formErrors.email}
+                </p>
+              )}
+            </div>
+
+            {/* Optional 80G PAN & Dedication Toggles */}
+            <div className="pt-1 flex flex-wrap items-center gap-2 text-xs">
+              <button
+                type="button"
+                onClick={() => setShowPanInput(!showPanInput)}
+                className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 font-bold border transition cursor-pointer ${
+                  showPanInput
+                    ? "bg-teal-950 text-white border-teal-950"
+                    : "bg-cream/70 text-teal-900 border-teal-900/15 hover:bg-cream"
+                }`}
+              >
+                <span>📜</span>
+                <span>{showPanInput ? "Hide PAN Field" : "+ Add PAN (80G Form 10BE)"}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowOccasionSelect(!showOccasionSelect)}
+                className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 font-bold border transition cursor-pointer ${
+                  showOccasionSelect
+                    ? "bg-teal-950 text-white border-teal-950"
+                    : "bg-cream/70 text-teal-900 border-teal-900/15 hover:bg-cream"
+                }`}
+              >
+                <span>🎂</span>
+                <span>{showOccasionSelect ? "Hide Dedication" : "+ Dedicate (Birthday / Memorial)"}</span>
+              </button>
+            </div>
+
+            {/* Expandable PAN Input */}
+            {showPanInput && (
+              <div className="rounded-2xl bg-cream/40 p-3.5 border border-teal-900/15 animate-fadeIn space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label htmlFor="donor-pan-number" className="text-xs font-bold text-teal-950">
+                    Income Tax PAN Card Number (10 Characters)
+                  </label>
+                  <span className="text-[10px] text-emerald-800 font-bold">Income Tax Form 10BE Filing</span>
+                </div>
+                <input
+                  ref={panInputRef}
+                  id="donor-pan-number"
+                  type="text"
+                  maxLength={10}
+                  autoCapitalize="characters"
+                  placeholder="ABCDE1234F"
+                  value={donorPan}
+                  onChange={(e) => {
+                    setDonorPan(sanitizePan(e.target.value));
+                    clearFieldError("pan");
+                  }}
+                  className={`w-full rounded-xl border p-2.5 text-base sm:text-sm font-mono uppercase text-teal-950 outline-none transition ${
+                    formErrors.pan
+                      ? "border-rose-500 ring-2 ring-rose-200 bg-rose-50/20"
+                      : "border-teal-900/20 focus:border-teal-900 focus:ring-2 focus:ring-amber-400 bg-white"
+                  }`}
+                />
+                {formErrors.pan && (
+                  <p className="text-xs text-rose-600 font-semibold">⚠️ {formErrors.pan}</p>
+                )}
+                <p className="text-[10px] text-teal-950/60 leading-tight">
+                  Required by Income Tax Department (CBDT) for issuing 80G Form 10BE certificate.
+                </p>
+              </div>
+            )}
+
+            {/* Expandable Dedication / Occasion */}
+            {showOccasionSelect && (
+              <div className="rounded-2xl bg-cream/40 p-3.5 border border-teal-900/15 animate-fadeIn space-y-2.5">
+                <label className="block text-xs font-bold text-teal-950">
+                  Select Auspicious Dedication:
+                </label>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {OCCASIONS.map((occ) => (
                     <button
-                      key={tier.amt}
+                      key={occ.id}
                       type="button"
-                      onClick={() => handleSelectTier(tier.amt)}
-                      className={`group relative overflow-hidden p-2.5 sm:p-3 rounded-2xl text-left transition-all border cursor-pointer tap-scale flex flex-col justify-between min-h-[96px] sm:min-h-[104px] ${
-                        isSelected
-                          ? "border-amber-400 ring-2 ring-amber-400 shadow-xl scale-[1.02]"
-                          : "border-teal-900/15 hover:border-amber-400/60"
+                      onClick={() => setOccasion(occ.id)}
+                      className={`p-2 rounded-xl text-left border text-xs cursor-pointer transition ${
+                        occasion === occ.id
+                          ? "bg-teal-950 text-white font-bold border-teal-950 shadow-xs"
+                          : "bg-white text-teal-950 border-teal-900/15 hover:bg-sand/30"
                       }`}
                     >
-                      {/* Authentic Image Background */}
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={tier.image}
-                        alt={tier.label}
-                        className="absolute inset-0 h-full w-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
-                      />
-                      {/* High-contrast gradient overlay */}
-                      <div
-                        className={`absolute inset-0 transition-colors ${
-                          isSelected
-                            ? "bg-gradient-to-t from-teal-950/95 via-teal-950/80 to-teal-950/50"
-                            : "bg-gradient-to-t from-black/90 via-black/75 to-black/45 group-hover:from-black/85"
-                        }`}
-                      />
-
-                      {/* Top Badge */}
-                      <div className="relative z-10 flex justify-end w-full">
-                        {tier.badge && (
-                          <span
-                            className={`rounded-full px-1.5 py-0.2 text-[8px] font-black uppercase shadow-xs ${
-                              isSelected
-                                ? "bg-amber-400 text-teal-950"
-                                : "bg-white/20 text-white backdrop-blur-xs"
-                            }`}
-                          >
-                            {tier.badge}
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Content */}
-                      <div className="relative z-10 mt-auto">
-                        <div className="flex items-center gap-1">
-                          <span className="text-sm select-none">{tier.icon}</span>
-                          <span
-                            className={`font-display text-base sm:text-lg font-black leading-none drop-shadow-sm ${
-                              isSelected ? "text-amber-300" : "text-white"
-                            }`}
-                          >
-                            {tier.label}
-                          </span>
-                        </div>
-                        <p className="text-[10px] text-white/90 line-clamp-2 leading-tight mt-1 font-medium drop-shadow-xs">
-                          {tier.impact}
-                        </p>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* ── STEP 2: DEDICATED PERMANENT CUSTOM AMOUNT INPUT SECTION ── */}
-              <div className="mt-3 rounded-2xl bg-cream/50 p-3.5 border border-teal-900/15">
-                <div className="flex items-center justify-between mb-1.5">
-                  <label
-                    htmlFor="meta-custom-amount"
-                    className="text-xs font-black uppercase tracking-wider text-teal-950 flex items-center gap-1.5"
-                  >
-                    <span>✏️</span>
-                    <span>Or Enter Any Custom Amount (Min ₹11):</span>
-                  </label>
-                  {customAmount && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setCustomAmount("");
-                        setAmount(2500);
-                        if (cart.setDedicatedAmount) {
-                          cart.setDedicatedAmount(2500);
-                        }
-                      }}
-                      className="text-[11px] font-bold text-amber-800 hover:text-amber-950 underline cursor-pointer"
-                    >
-                      Reset to Tiers
-                    </button>
-                  )}
-                </div>
-
-                <div className="relative flex items-center rounded-xl border-2 border-teal-900/20 bg-white px-3.5 py-1 focus-within:border-teal-900 focus-within:ring-2 focus-within:ring-amber-400 transition">
-                  <span className="font-display text-xl font-black text-teal-950 select-none mr-2">
-                    ₹
-                  </span>
-                  <input
-                    ref={customInputRef}
-                    id="meta-custom-amount"
-                    type="text"
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    placeholder="Enter amount (e.g. 51, 151, 1500)"
-                    value={customAmount}
-                    onChange={(e) => {
-                      const clean = e.target.value.replace(/\D/g, "");
-                      setCustomAmount(clean);
-                      clearFieldError("amount");
-                      const num = parseFloat(clean);
-                      if (clean && num >= 10 && num <= 1000000) {
-                        setAmount(num);
-                        if (cart.setDedicatedAmount) {
-                          cart.setDedicatedAmount(num);
-                        }
-                      }
-                    }}
-                    className="w-full bg-transparent py-2 text-lg font-black text-teal-950 placeholder:text-teal-950/35 placeholder:font-normal outline-none"
-                  />
-                  {customAmount && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setCustomAmount("");
-                        if (cart.setDedicatedAmount) {
-                          cart.setDedicatedAmount(amount);
-                        }
-                      }}
-                      className="text-xs font-bold text-teal-900/50 hover:text-teal-900 p-1 cursor-pointer shrink-0"
-                      title="Clear amount"
-                    >
-                      ✕
-                    </button>
-                  )}
-                </div>
-
-                {/* Quick Add Chips (Starting from +₹11) */}
-                <div className="flex flex-wrap items-center gap-1.5 mt-2.5">
-                  <span className="text-[10px] font-bold text-teal-950/60 uppercase">Quick Add:</span>
-                  {[11, 51, 101, 501, 1000, 2500].map((inc) => (
-                    <button
-                      key={inc}
-                      type="button"
-                      onClick={() => {
-                        const current = customAmount ? parseFloat(customAmount) || 0 : amount;
-                        const next = current + inc;
-                        setAmount(next);
-                        setCustomAmount(String(next));
-                        clearFieldError("amount");
-                        if (cart.setDedicatedAmount) {
-                          cart.setDedicatedAmount(next);
-                        }
-                      }}
-                      className="rounded-lg bg-white hover:bg-teal-950 hover:text-white border border-teal-900/15 px-2.5 py-1 text-[11px] font-black text-teal-950 transition cursor-pointer shadow-2xs"
-                    >
-                      +{formatINR(inc)}
+                      <p className="font-bold text-[11px]">{occ.label}</p>
+                      <p className={`text-[9px] ${occasion === occ.id ? "text-amber-300" : "text-teal-950/60"}`}>
+                        {occ.sub}
+                      </p>
                     </button>
                   ))}
                 </div>
 
-                {formErrors.amount && (
-                  <p className="mt-2 text-xs text-rose-600 font-semibold flex items-center gap-1">
-                    <span>⚠️</span> {formErrors.amount}
-                  </p>
-                )}
-              </div>
-
-              {/* Real-time Dynamic Impact Description & 80G Tax Calculation */}
-              <div className="mt-2.5 rounded-2xl bg-amber-50 p-3.5 border border-amber-300/80 text-xs text-amber-950 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 shadow-2xs">
-                <div className="flex items-start gap-2.5 min-w-0">
-                  <span className="text-xl select-none shrink-0">🌸</span>
-                  <div className="min-w-0">
-                    <span className="text-[10px] font-black uppercase tracking-wider text-amber-900 block">
-                      Direct Impact for 25 Resident Boys:
-                    </span>
-                    <p className="font-bold text-teal-950 leading-snug text-xs mt-0.5">
-                      {impactSummary}
-                    </p>
-                    {amountWords && (
-                      <p className="text-[10px] text-amber-900/80 font-medium mt-0.5">
-                        Amount in words: <strong>{amountWords}</strong>
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="shrink-0 self-start sm:self-auto rounded-lg bg-emerald-100 border border-emerald-300 px-2.5 py-1 text-[10px] font-black text-emerald-900 shadow-2xs">
-                  80G Tax Deductible (50%)
-                </div>
-              </div>
-            </div>
-
-            {/* ── STEP 3: DONOR DETAILS (Streamlined 2 Fields: Name + WhatsApp) ── */}
-            <div className="space-y-3 pt-1">
-              <label className="block text-xs font-black uppercase tracking-wider text-teal-950">
-                2. Donor &amp; Receipt Details:
-              </label>
-
-              {/* Full Name */}
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="text-xs font-bold text-teal-950">
-                    Your Full Name <span className="text-rose-500">*</span>
+                <div>
+                  <label htmlFor="donor-prayer-note" className="block text-[10px] font-bold text-teal-950/70 mb-1">
+                    Special Prayer Note or Family Names:
                   </label>
-                  <span className="text-[10px] text-teal-950/60 font-medium">Chanted in morning prayers</span>
-                </div>
-                <input
-                  ref={nameInputRef}
-                  type="text"
-                  autoComplete="name"
-                  placeholder="e.g. Ramesh Kumar / Ananya Sharma"
-                  value={donorName}
-                  onChange={(e) => {
-                    setDonorName(e.target.value);
-                    clearFieldError("name");
-                  }}
-                  className={`w-full rounded-xl border p-2.5 text-base sm:text-sm text-teal-950 outline-none transition ${
-                    formErrors.name
-                      ? "border-rose-500 ring-2 ring-rose-200 bg-rose-50/20"
-                      : "border-teal-900/20 focus:ring-2 focus:ring-amber-500 bg-white"
-                  }`}
-                />
-                {formErrors.name && (
-                  <p className="mt-1 text-xs text-rose-600 font-semibold flex items-center gap-1">
-                    <span>⚠️</span> {formErrors.name}
-                  </p>
-                )}
-              </div>
-
-              {/* WhatsApp Mobile Number */}
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="text-xs font-bold text-teal-950">
-                    WhatsApp Mobile Number <span className="text-rose-500">*</span>
-                  </label>
-                  <span className="text-[10px] text-emerald-700 font-bold">Instant 80G tax receipt</span>
-                </div>
-                <div className="relative">
-                  <span className="absolute left-3 top-2.5 text-xs font-black text-teal-950/70">+91</span>
                   <input
-                    ref={phoneInputRef}
-                    type="tel"
-                    inputMode="tel"
-                    autoComplete="tel"
-                    maxLength={10}
-                    placeholder="9876543210"
-                    value={donorPhone}
-                    onChange={(e) => {
-                      setDonorPhone(e.target.value.replace(/\D/g, "").slice(0, 10));
-                      clearFieldError("phone");
-                    }}
-                    className={`w-full rounded-xl border py-2.5 pl-11 pr-3 text-base sm:text-sm font-bold text-teal-950 outline-none transition ${
-                      formErrors.phone
-                        ? "border-rose-500 ring-2 ring-rose-200 bg-rose-50/20"
-                        : "border-teal-900/20 focus:ring-2 focus:ring-amber-500 bg-white"
-                    }`}
-                  />
-                </div>
-                {formErrors.phone && (
-                  <p className="mt-1 text-xs text-rose-600 font-semibold flex items-center gap-1">
-                    <span>⚠️</span> {formErrors.phone}
-                  </p>
-                )}
-              </div>
-
-              {/* Optional Email & PAN Expandable Accordions */}
-              <div className="flex flex-wrap items-center gap-2 pt-1 text-xs">
-                <button
-                  type="button"
-                  onClick={() => setShowPanInput(!showPanInput)}
-                  className="inline-flex items-center gap-1 rounded-lg bg-cream/70 hover:bg-cream px-2.5 py-1 text-teal-900 font-bold border border-teal-900/10 cursor-pointer"
-                >
-                  <span>📜</span>
-                  <span>{showPanInput ? "Hide PAN" : "+ Add PAN (80G Tax Credit)"}</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setShowOccasionSelect(!showOccasionSelect)}
-                  className="inline-flex items-center gap-1 rounded-lg bg-cream/70 hover:bg-cream px-2.5 py-1 text-teal-900 font-bold border border-teal-900/10 cursor-pointer"
-                >
-                  <span>🎂</span>
-                  <span>{showOccasionSelect ? "Hide Occasion" : "+ Dedicate (Birthday / Memorial)"}</span>
-                </button>
-              </div>
-
-              {/* PAN Input Field */}
-              {showPanInput && (
-                <div className="rounded-2xl bg-cream/30 p-3 border border-teal-900/10 animate-fadeIn space-y-1">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-bold text-teal-950">
-                      Income Tax PAN Number (10 Alphanumeric)
-                    </label>
-                    <span className="text-[10px] text-emerald-800 font-semibold">Form 10BE Filing</span>
-                  </div>
-                  <input
+                    id="donor-prayer-note"
                     type="text"
-                    maxLength={10}
-                    autoCapitalize="characters"
-                    placeholder="ABCDE1234F"
-                    value={donorPan}
-                    onChange={(e) => {
-                      setDonorPan(sanitizePan(e.target.value));
-                      clearFieldError("pan");
-                    }}
-                    className="w-full rounded-xl border border-teal-900/20 bg-white p-2 text-sm font-mono uppercase text-teal-950 outline-none focus:ring-2 focus:ring-amber-500"
-                  />
-                  {formErrors.pan && (
-                    <p className="text-xs text-rose-600 font-semibold">⚠️ {formErrors.pan}</p>
-                  )}
-                </div>
-              )}
-
-              {/* Occasion / Prayer Dedication */}
-              {showOccasionSelect && (
-                <div className="rounded-2xl bg-cream/30 p-3 border border-teal-900/10 animate-fadeIn space-y-2">
-                  <label className="block text-xs font-bold text-teal-950">
-                    Select Auspicious Dedication:
-                  </label>
-                  <div className="grid grid-cols-2 gap-1.5">
-                    {OCCASIONS.map((occ) => (
-                      <button
-                        key={occ.id}
-                        type="button"
-                        onClick={() => setOccasion(occ.id)}
-                        className={`p-2 rounded-xl text-left border text-xs cursor-pointer ${
-                          occasion === occ.id
-                            ? "bg-teal-950 text-white font-bold border-teal-950"
-                            : "bg-white text-teal-950 border-teal-900/10"
-                        }`}
-                      >
-                        <p className="font-bold text-[11px]">{occ.label}</p>
-                      </button>
-                    ))}
-                  </div>
-
-                  <input
-                    type="text"
-                    placeholder="Special prayer wish or family member names..."
+                    placeholder="e.g. In memory of Late Sh. Ramachandra / Ananya's 5th Birthday blessing"
                     value={prayerNote}
                     onChange={(e) => setPrayerNote(e.target.value)}
-                    className="w-full rounded-xl border border-teal-900/20 bg-white p-2 text-xs text-teal-950 outline-none focus:ring-2 focus:ring-amber-500"
+                    className="w-full rounded-xl border border-teal-900/20 bg-white p-2.5 text-xs text-teal-950 outline-none focus:border-teal-900 focus:ring-2 focus:ring-amber-400"
                   />
                 </div>
-              )}
-            </div>
+              </div>
+            )}
+          </div>
+        </section>
 
-            {/* 1-Tap UPI Trust Strip */}
-            <div className="pt-2 flex flex-wrap items-center justify-center gap-1.5 text-[11px] font-bold text-teal-950/70">
-              <span>⚡ 1-Tap Instant Payment via</span>
-              <span className="rounded bg-teal-900/10 px-1.5 py-0.5 text-[10px] font-black text-teal-900">Google Pay</span>
-              <span className="rounded bg-teal-900/10 px-1.5 py-0.5 text-[10px] font-black text-teal-900">PhonePe</span>
-              <span className="rounded bg-teal-900/10 px-1.5 py-0.5 text-[10px] font-black text-teal-900">Paytm</span>
-              <span className="rounded bg-teal-900/10 px-1.5 py-0.5 text-[10px] font-black text-teal-900">UPI / Cards</span>
+        {/* ══════════════════════════════════════════════════════════════════
+            STEP 3: SELECT PAYMENT METHOD & PROCEED
+        ══════════════════════════════════════════════════════════════════ */}
+        <section ref={paymentSectionRef} aria-labelledby="step-3-heading" className="space-y-3 pt-2">
+          <div className="flex items-center justify-between pb-1 border-b border-teal-900/10">
+            <div className="flex items-center gap-2">
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-teal-950 text-xs font-black text-amber-300">
+                3
+              </span>
+              <h2 id="step-3-heading" className="text-sm font-black uppercase tracking-wider text-teal-950">
+                Choose Payment Method
+              </h2>
             </div>
+            <span className="text-[10px] font-bold text-emerald-800">
+              ⚡ 0% Platform Deduction
+            </span>
+          </div>
 
-            {/* ── 4. 🚀 BIG "DONATE NOW" CTA BUTTON (Clear, High-Contrast & Prominent) ── */}
+          {/* 3 Payment Options Tabs */}
+          <div className="grid grid-cols-3 gap-1 rounded-2xl bg-cream/80 p-1 border border-teal-900/10 text-center">
             <button
               type="button"
-              onClick={handlePayNow}
-              disabled={loading}
-              className="focus-ring tap-scale w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-600 hover:to-orange-600 text-white font-black text-base uppercase tracking-wider shadow-xl shadow-orange-500/30 transition active:scale-95 cursor-pointer flex items-center justify-center gap-2 disabled:opacity-75 disabled:cursor-not-allowed animate-heartbeat"
+              onClick={() => setPaymentRail("gateway")}
+              className={`py-2 px-1 text-[11px] sm:text-xs font-black rounded-xl transition cursor-pointer flex flex-col items-center justify-center ${
+                paymentRail === "gateway"
+                  ? "bg-teal-950 text-white shadow-sm ring-1 ring-amber-400"
+                  : "text-teal-950/70 hover:text-teal-950"
+              }`}
             >
-              {loading ? (
-                <>
-                  <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                  <span>Connecting Secure Gateway...</span>
-                </>
-              ) : (
-                <>
-                  <span>DONATE {formatINR(finalAmount)} NOW</span>
-                  <span>💝 →</span>
-                </>
-              )}
+              <span>⚡ 1-Tap Online</span>
+              <span className="text-[9px] font-normal opacity-80">GPay / Cards</span>
             </button>
+            <button
+              type="button"
+              onClick={() => setPaymentRail("upi")}
+              className={`py-2 px-1 text-[11px] sm:text-xs font-black rounded-xl transition cursor-pointer flex flex-col items-center justify-center ${
+                paymentRail === "upi"
+                  ? "bg-teal-950 text-white shadow-sm ring-1 ring-amber-400"
+                  : "text-teal-950/70 hover:text-teal-950"
+              }`}
+            >
+              <span>📱 Direct UPI</span>
+              <span className="text-[9px] font-normal opacity-80">QR / Apps</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setPaymentRail("bank")}
+              className={`py-2 px-1 text-[11px] sm:text-xs font-black rounded-xl transition cursor-pointer flex flex-col items-center justify-center ${
+                paymentRail === "bank"
+                  ? "bg-teal-950 text-white shadow-sm ring-1 ring-amber-400"
+                  : "text-teal-950/70 hover:text-teal-950"
+              }`}
+            >
+              <span>🏦 Bank Wire</span>
+              <span className="text-[9px] font-normal opacity-80">Axis Bank</span>
+            </button>
+          </div>
 
-            {/* Guarantees */}
-            <p className="text-center text-[11px] text-teal-950/70 font-semibold flex items-center justify-center gap-1.5">
-              <span>🔒 256-Bit SSL Encrypted</span>
-              <span>·</span>
-              <span>⚡ Instant 80G Receipt on WhatsApp</span>
-            </p>
+          {/* ── METHOD 1: 1-TAP INSTANT ONLINE PAY (RAZORPAY) ── */}
+          {paymentRail === "gateway" && (
+            <div className="space-y-3 animate-fadeIn">
+              {/* Payment Rail Trust Strip */}
+              <div className="flex flex-wrap items-center justify-center gap-1.5 text-[11px] font-bold text-teal-950/70">
+                <span>⚡ Instant payment supported via</span>
+                <span className="rounded bg-teal-900/10 px-1.5 py-0.5 text-[10px] font-black text-teal-900">Google Pay</span>
+                <span className="rounded bg-teal-900/10 px-1.5 py-0.5 text-[10px] font-black text-teal-900">PhonePe</span>
+                <span className="rounded bg-teal-900/10 px-1.5 py-0.5 text-[10px] font-black text-teal-900">Paytm</span>
+                <span className="rounded bg-teal-900/10 px-1.5 py-0.5 text-[10px] font-black text-teal-900">Cards</span>
+                <span className="rounded bg-teal-900/10 px-1.5 py-0.5 text-[10px] font-black text-teal-900">NetBanking</span>
+              </div>
 
-            {/* Quick direct UPI bridge */}
-            <div className="pt-1 text-center">
+              {/* Big Primary CTA Button */}
               <button
                 type="button"
-                onClick={() => setActiveTab("upi")}
-                className="text-xs font-bold text-emerald-800 hover:text-emerald-950 underline cursor-pointer inline-flex items-center gap-1"
+                onClick={handlePayNow}
+                disabled={loading}
+                className="focus-ring tap-scale w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-600 hover:to-orange-600 text-white font-black text-base uppercase tracking-wider shadow-xl shadow-orange-500/30 transition active:scale-95 cursor-pointer flex items-center justify-center gap-2 disabled:opacity-75 disabled:cursor-not-allowed animate-heartbeat"
               >
-                <span>⚡ Prefer Google Pay / PhonePe / QR Code? Tap Here →</span>
+                {loading ? (
+                  <>
+                    <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    <span>Connecting Secure Gateway...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>PROCEED TO PAY {formatINR(finalAmount)} SECURELY</span>
+                    <span>💝 →</span>
+                  </>
+                )}
               </button>
-            </div>
-          </div>
-        )}
 
-                {/* TAB 2: DIRECT UPI APPS & DYNAMIC QR CODE */}
-        {activeTab === "upi" && (
-          <div className="space-y-4 animate-fadeIn text-xs">
-            {/* Amount confirmation badge */}
-            <div className="rounded-2xl bg-amber-500/10 border border-amber-500/20 p-3 flex items-center justify-between">
-              <div>
-                <span className="text-[10px] uppercase font-bold text-teal-950/60 block">Contribution Amount:</span>
-                <span className="font-display text-xl font-black text-teal-950">{formatINR(finalAmount)}</span>
-              </div>
-              <span className="rounded-lg bg-emerald-100 text-emerald-900 font-black text-[10px] px-2 py-0.5">
-                80G Tax Free
-              </span>
-            </div>
-
-            {/* Dynamic QR Code Card */}
-            <div className="rounded-3xl bg-white p-5 border-2 border-teal-900/15 shadow-md text-center space-y-3">
-              <span className="inline-block rounded-full bg-emerald-100 text-emerald-950 px-3 py-0.5 text-[10px] font-black uppercase tracking-wider">
-                ⚡ Instant Scan &amp; Pay (0% Platform Fee)
-              </span>
-
-              {qrDataUrl ? (
-                <div className="flex justify-center my-2">
-                  <div className="p-2 bg-white rounded-2xl border-2 border-amber-400/50 shadow-inner">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={qrDataUrl}
-                      alt="Janaseva Ashrama UPI Donation QR Code"
-                      className="w-48 h-48 sm:w-52 sm:h-52 object-contain"
-                    />
-                  </div>
-                </div>
-              ) : (
-                <div className="w-48 h-48 mx-auto bg-sand/30 animate-pulse rounded-2xl flex items-center justify-center text-teal-950/40 text-xs">
-                  Generating Dynamic QR...
-                </div>
-              )}
-
-              <p className="text-[11px] font-semibold text-teal-950/80">
-                Scan with <strong>Google Pay</strong>, <strong>PhonePe</strong>, <strong>Paytm</strong>, <strong>BHIM</strong>, or any banking app.
-              </p>
-
-              {/* Copyable UPI ID Box */}
-              <div className="flex items-center justify-between bg-cream/70 p-2.5 rounded-xl border border-teal-900/15 text-left">
-                <div>
-                  <span className="text-[9px] font-bold text-teal-900/60 uppercase block">Official Trust UPI ID:</span>
-                  <p className="font-mono text-xs font-black text-teal-950">{upiId}</p>
-                </div>
+              <div className="text-center space-y-1">
+                <p className="text-[11px] text-teal-950/70 font-semibold flex items-center justify-center gap-1.5">
+                  <span>🔒 256-Bit SSL Encrypted</span>
+                  <span>·</span>
+                  <span>⚡ Instant 80G Receipt on WhatsApp</span>
+                </p>
                 <button
                   type="button"
-                  onClick={() => handleCopyBank(upiId, "upi")}
-                  className="rounded-lg bg-teal-900 text-white px-2.5 py-1 text-[11px] font-bold hover:bg-teal-950 cursor-pointer"
+                  onClick={() => setPaymentRail("upi")}
+                  className="text-xs font-bold text-emerald-800 hover:text-emerald-950 underline cursor-pointer inline-flex items-center gap-1 pt-1"
                 >
-                  {copiedBankField === "upi" ? "✓ Copied!" : "Copy UPI"}
+                  <span>📱 Prefer Direct Google Pay / PhonePe / QR Code? Click Here →</span>
                 </button>
               </div>
             </div>
+          )}
 
-            {/* Mobile 1-Tap App Deep Links */}
-            <div className="space-y-2">
-              <p className="text-center text-[10px] font-bold uppercase tracking-wider text-teal-950/60">
-                Or Tap Your Preferred App on Mobile:
-              </p>
-              <div className="grid grid-cols-2 gap-2">
-                <a
-                  href={gpayUri}
-                  className="p-3 rounded-xl bg-white border border-teal-900/15 hover:border-emerald-600 shadow-2xs font-bold text-teal-950 flex items-center justify-center gap-2 text-xs transition active:scale-95"
-                >
-                  <span className="text-base">🟢</span>
-                  <span>Google Pay</span>
-                </a>
-                <a
-                  href={phonepeUri}
-                  className="p-3 rounded-xl bg-white border border-teal-900/15 hover:border-purple-600 shadow-2xs font-bold text-teal-950 flex items-center justify-center gap-2 text-xs transition active:scale-95"
-                >
-                  <span className="text-base">🟣</span>
-                  <span>PhonePe</span>
-                </a>
-                <a
-                  href={paytmUri}
-                  className="p-3 rounded-xl bg-white border border-teal-900/15 hover:border-blue-600 shadow-2xs font-bold text-teal-950 flex items-center justify-center gap-2 text-xs transition active:scale-95"
-                >
-                  <span className="text-base">🔵</span>
-                  <span>Paytm</span>
-                </a>
-                <a
-                  href={upiUri}
-                  className="p-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-2xs font-black flex items-center justify-center gap-1.5 text-xs transition active:scale-95"
-                >
-                  <span>⚡ Any UPI App</span>
-                </a>
-              </div>
-            </div>
-
-            {/* WhatsApp Confirmation Button */}
-            <div className="pt-2">
-              <a
-                href={`https://wa.me/${SITE.whatsapp}?text=${encodeURIComponent(
-                  `Namaste Janaseva Ashrama, I have completed a direct UPI donation of ₹${finalAmount} for the 25 resident boys.\n\nDonor Name: ${donorName.trim() || "Well-Wisher"}\nMobile: ${donorPhone.trim() || "Mobile"}\nPlease issue my official 80G tax receipt.`
-                )}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-full rounded-2xl bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold py-3.5 px-4 text-center text-xs sm:text-sm shadow-md transition flex items-center justify-center gap-2"
-              >
-                <span>💬 Click Here to Confirm on WhatsApp &amp; Get 80G Receipt</span>
-              </a>
-            </div>
-          </div>
-        )}
-
-        {/* TAB 3: DIRECT BANK TRANSFER (AXIS BANK) */}
-        {activeTab === "bank" && (
-          <div className="space-y-3 animate-fadeIn text-xs">
-            <div className="rounded-2xl bg-teal-950 text-white p-4 shadow-md border border-amber-400/30">
-              <div className="flex items-center justify-between pb-2.5 border-b border-white/15">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-amber-300">
-                  Official Axis Bank Account
-                </span>
-                <span className="rounded bg-emerald-500/20 px-2 py-0.5 text-[9px] font-bold text-emerald-300">
-                  0% Commission
-                </span>
-              </div>
-
-              <div className="mt-3 space-y-2.5">
+          {/* ── METHOD 2: DIRECT UPI APPS & DYNAMIC QR CODE ── */}
+          {paymentRail === "upi" && (
+            <div className="space-y-3.5 animate-fadeIn text-xs">
+              <div className="rounded-2xl bg-amber-500/10 border border-amber-500/20 p-3 flex items-center justify-between">
                 <div>
-                  <span className="text-[10px] text-white/60 uppercase">Beneficiary Name</span>
-                  <p className="font-bold text-white text-xs">{BANK_DETAILS.accountName}</p>
+                  <span className="text-[10px] uppercase font-bold text-teal-950/60 block">Contribution Amount:</span>
+                  <span className="font-display text-xl font-black text-teal-950">{formatINR(finalAmount)}</span>
                 </div>
+                <span className="rounded-lg bg-emerald-100 text-emerald-900 font-black text-[10px] px-2 py-0.5">
+                  80G Tax Free
+                </span>
+              </div>
 
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="rounded-xl bg-white/10 p-2.5">
-                    <span className="text-[9px] text-white/60 uppercase block">Account Number</span>
-                    <p className="font-mono text-sm font-black text-amber-300">{BANK_DETAILS.accountNumber}</p>
-                    <button
-                      type="button"
-                      onClick={() => handleCopyBank(BANK_DETAILS.accountNumber, "acc")}
-                      className="mt-1 text-[10px] font-bold text-amber-300 underline hover:text-white cursor-pointer"
-                    >
-                      {copiedBankField === "acc" ? "✓ Copied!" : "Copy A/C No"}
-                    </button>
+              {/* Dynamic QR Code Card */}
+              <div className="rounded-3xl bg-white p-4 border-2 border-teal-900/15 shadow-sm text-center space-y-3">
+                <span className="inline-block rounded-full bg-emerald-100 text-emerald-950 px-3 py-0.5 text-[10px] font-black uppercase tracking-wider">
+                  ⚡ Instant Scan &amp; Pay (0% Platform Fee)
+                </span>
+
+                {qrDataUrl ? (
+                  <div className="flex justify-center my-2">
+                    <div className="p-2 bg-white rounded-2xl border-2 border-amber-400/50 shadow-inner">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={qrDataUrl}
+                        alt="Janaseva Ashrama UPI Donation QR Code"
+                        className="w-48 h-48 sm:w-52 sm:h-52 object-contain"
+                      />
+                    </div>
                   </div>
-
-                  <div className="rounded-xl bg-white/10 p-2.5">
-                    <span className="text-[9px] text-white/60 uppercase block">IFSC Code</span>
-                    <p className="font-mono text-sm font-black text-amber-300">{BANK_DETAILS.ifscCode}</p>
-                    <button
-                      type="button"
-                      onClick={() => handleCopyBank(BANK_DETAILS.ifscCode, "ifsc")}
-                      className="mt-1 text-[10px] font-bold text-amber-300 underline hover:text-white cursor-pointer"
-                    >
-                      {copiedBankField === "ifsc" ? "✓ Copied!" : "Copy IFSC"}
-                    </button>
+                ) : (
+                  <div className="w-48 h-48 mx-auto bg-sand/30 animate-pulse rounded-2xl flex items-center justify-center text-teal-950/40 text-xs">
+                    Generating Dynamic QR...
                   </div>
-                </div>
+                )}
 
-                <div className="grid grid-cols-2 gap-2 text-white/80 pt-1 text-[11px]">
+                <p className="text-[11px] font-semibold text-teal-950/80">
+                  Scan with <strong>Google Pay</strong>, <strong>PhonePe</strong>, <strong>Paytm</strong>, <strong>BHIM</strong>, or any UPI app.
+                </p>
+
+                {/* Copyable UPI ID Box */}
+                <div className="flex items-center justify-between bg-cream/70 p-2.5 rounded-xl border border-teal-900/15 text-left">
                   <div>
-                    <span className="text-[9px] text-white/60 uppercase block">Bank &amp; Branch</span>
-                    <p className="font-medium">{BANK_DETAILS.bankName}, {BANK_DETAILS.branch}</p>
+                    <span className="text-[9px] font-bold text-teal-900/60 uppercase block">Official Trust UPI ID:</span>
+                    <p className="font-mono text-xs font-black text-teal-950">{upiId}</p>
                   </div>
-                  <div>
-                    <span className="text-[9px] text-white/60 uppercase block">Account Type</span>
-                    <p className="font-medium">{BANK_DETAILS.accountType}</p>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleCopyBank(upiId, "upi")}
+                    className="rounded-lg bg-teal-900 text-white px-2.5 py-1 text-[11px] font-bold hover:bg-teal-950 cursor-pointer"
+                  >
+                    {copiedBankField === "upi" ? "✓ Copied!" : "Copy UPI"}
+                  </button>
                 </div>
               </div>
-            </div>
 
-            <div className="rounded-2xl bg-amber-50 p-3.5 border border-amber-200 text-amber-950 space-y-1 text-xs">
-              <p className="font-bold">After transferring via NetBanking, NEFT or UPI:</p>
-              <p>
-                Please WhatsApp your payment screenshot / UTR to{" "}
+              {/* Mobile 1-Tap App Deep Links */}
+              <div className="space-y-2">
+                <p className="text-center text-[10px] font-bold uppercase tracking-wider text-teal-950/60">
+                  Or Tap Your Preferred App on Mobile:
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  <a
+                    href={gpayUri}
+                    className="p-3 rounded-xl bg-white border border-teal-900/15 hover:border-emerald-600 shadow-2xs font-bold text-teal-950 flex items-center justify-center gap-2 text-xs transition active:scale-95"
+                  >
+                    <span className="text-base">🟢</span>
+                    <span>Google Pay</span>
+                  </a>
+                  <a
+                    href={phonepeUri}
+                    className="p-3 rounded-xl bg-white border border-teal-900/15 hover:border-purple-600 shadow-2xs font-bold text-teal-950 flex items-center justify-center gap-2 text-xs transition active:scale-95"
+                  >
+                    <span className="text-base">🟣</span>
+                    <span>PhonePe</span>
+                  </a>
+                  <a
+                    href={paytmUri}
+                    className="p-3 rounded-xl bg-white border border-teal-900/15 hover:border-blue-600 shadow-2xs font-bold text-teal-950 flex items-center justify-center gap-2 text-xs transition active:scale-95"
+                  >
+                    <span className="text-base">🔵</span>
+                    <span>Paytm</span>
+                  </a>
+                  <a
+                    href={upiUri}
+                    className="p-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-2xs font-black flex items-center justify-center gap-1.5 text-xs transition active:scale-95"
+                  >
+                    <span>⚡ Any UPI App</span>
+                  </a>
+                </div>
+              </div>
+
+              {/* WhatsApp Confirmation Button */}
+              <div className="pt-2">
                 <a
                   href={`https://wa.me/${SITE.whatsapp}?text=${encodeURIComponent(
-                    "Namaste Janaseva Ashrama, I have completed a direct bank transfer donation."
+                    `Namaste Janaseva Ashrama, I have completed a direct UPI donation of ₹${finalAmount} for the 25 resident boys.\n\nDonor Name: ${donorName.trim() || "Well-Wisher"}\nMobile: ${donorPhone.trim() || "Mobile"}${donorPan ? `\nPAN: ${donorPan.trim().toUpperCase()}` : ""}${occasion !== "general" ? `\nOccasion: ${occasion}` : ""}\nPlease issue my official Section 80G tax receipt.`
                   )}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="font-black text-teal-900 underline"
+                  className="w-full rounded-2xl bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold py-3.5 px-4 text-center text-xs sm:text-sm shadow-md transition flex items-center justify-center gap-2 cursor-pointer"
                 >
-                  +91 99803 59595
-                </a>{" "}
-                for your official Section 80G tax receipt.
-              </p>
+                  <span>💬 Confirm on WhatsApp to Receive 80G Receipt</span>
+                </a>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+
+          {/* ── METHOD 3: DIRECT BANK TRANSFER (AXIS BANK) ── */}
+          {paymentRail === "bank" && (
+            <div className="space-y-3 animate-fadeIn text-xs">
+              <div className="rounded-2xl bg-teal-950 text-white p-4 shadow-md border border-amber-400/30">
+                <div className="flex items-center justify-between pb-2.5 border-b border-white/15">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-amber-300">
+                    Official Axis Bank Account
+                  </span>
+                  <span className="rounded bg-emerald-500/20 px-2 py-0.5 text-[9px] font-bold text-emerald-300">
+                    0% Commission
+                  </span>
+                </div>
+
+                <div className="mt-3 space-y-2.5">
+                  <div>
+                    <span className="text-[10px] text-white/60 uppercase">Beneficiary Name</span>
+                    <p className="font-bold text-white text-xs">{BANK_DETAILS.accountName}</p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="rounded-xl bg-white/10 p-2.5">
+                      <span className="text-[9px] text-white/60 uppercase block">Account Number</span>
+                      <p className="font-mono text-sm font-black text-amber-300">{BANK_DETAILS.accountNumber}</p>
+                      <button
+                        type="button"
+                        onClick={() => handleCopyBank(BANK_DETAILS.accountNumber, "acc")}
+                        className="mt-1 text-[10px] font-bold text-amber-300 underline hover:text-white cursor-pointer"
+                      >
+                        {copiedBankField === "acc" ? "✓ Copied!" : "Copy A/C No"}
+                      </button>
+                    </div>
+
+                    <div className="rounded-xl bg-white/10 p-2.5">
+                      <span className="text-[9px] text-white/60 uppercase block">IFSC Code</span>
+                      <p className="font-mono text-sm font-black text-amber-300">{BANK_DETAILS.ifscCode}</p>
+                      <button
+                        type="button"
+                        onClick={() => handleCopyBank(BANK_DETAILS.ifscCode, "ifsc")}
+                        className="mt-1 text-[10px] font-bold text-amber-300 underline hover:text-white cursor-pointer"
+                      >
+                        {copiedBankField === "ifsc" ? "✓ Copied!" : "Copy IFSC"}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-white/80 pt-1 text-[11px]">
+                    <div>
+                      <span className="text-[9px] text-white/60 uppercase block">Bank &amp; Branch</span>
+                      <p className="font-medium">{BANK_DETAILS.bankName}, {BANK_DETAILS.branch}</p>
+                    </div>
+                    <div>
+                      <span className="text-[9px] text-white/60 uppercase block">Account Type</span>
+                      <p className="font-medium">{BANK_DETAILS.accountType}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-2xl bg-amber-50 p-3.5 border border-amber-200 text-amber-950 space-y-1 text-xs">
+                <p className="font-bold">After transferring via NetBanking, NEFT or UPI:</p>
+                <p>
+                  Please WhatsApp your payment screenshot / UTR to{" "}
+                  <a
+                    href={`https://wa.me/${SITE.whatsapp}?text=${encodeURIComponent(
+                      `Namaste Janaseva Ashrama, I have completed a direct bank transfer donation of ₹${finalAmount} for the 25 resident boys.\n\nDonor Name: ${donorName.trim() || "Well-Wisher"}\nMobile: ${donorPhone.trim() || "Mobile"}${donorPan ? `\nPAN: ${donorPan.trim().toUpperCase()}` : ""}\nPlease issue my official 80G tax receipt.`
+                    )}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-black text-teal-900 underline"
+                  >
+                    +91 99803 59595
+                  </a>{" "}
+                  for your official Section 80G tax receipt.
+                </p>
+              </div>
+            </div>
+          )}
+        </section>
       </div>
 
-      {/* ── 5. Authentic Photo Proof & Impact of 25 Resident Boys ── */}
+      {/* ── 4. Authentic Life & Photo Proof of 25 Resident Boys ── */}
       <section className="mt-8 rounded-3xl bg-white p-5 sm:p-6 shadow-sm border border-teal-900/10">
         <h3 className="font-display text-lg font-black text-teal-950 mb-1">
           Life at Janaseva Ashrama (25 Resident Boys)
         </h3>
         <p className="text-xs text-teal-950/70 mb-4">
-          Turahalli, Bengaluru · Providing wholesome satvik meals, education &amp; loving shelter since 2000.
+          Turahalli, Bengaluru · Wholesome satvik meals, school education &amp; loving shelter since 2000.
         </p>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
@@ -1434,20 +1568,20 @@ export function MetaAdsDonateComponent() {
         <div className="mt-4 pt-3 border-t border-teal-900/10 grid grid-cols-3 gap-2 text-center text-[10px] font-bold text-teal-950/80">
           <div>
             <span className="block font-black text-sm text-teal-950">25 Boys</span>
-            <span>Loving Care</span>
+            <span>Loving Shelter</span>
           </div>
           <div>
             <span className="block font-black text-sm text-teal-950">4 Meals/Day</span>
-            <span>Satvik Nutrition</span>
+            <span>Pure Satvik</span>
           </div>
           <div>
             <span className="block font-black text-sm text-teal-950">100% Free</span>
-            <span>Schooling &amp; Health</span>
+            <span>English Schooling</span>
           </div>
         </div>
       </section>
 
-      {/* ── 6. Institutional Trust & Legal Badges ── */}
+      {/* ── 5. Official Government & Tax Credentials ── */}
       <section className="mt-4 rounded-3xl bg-cream/50 p-4 sm:p-5 border border-teal-900/10 text-xs text-teal-950">
         <h4 className="font-bold uppercase tracking-wider text-[11px] text-teal-950/70 mb-3 text-center sm:text-left">
           Official Government &amp; Tax Credentials
@@ -1457,7 +1591,7 @@ export function MetaAdsDonateComponent() {
           <div className="rounded-xl bg-white p-3 border border-teal-900/10 shadow-2xs">
             <span className="text-base">🏛️</span>
             <p className="font-bold text-[11px] mt-1 text-teal-950">Juvenile Justice Act</p>
-            <p className="text-[10px] text-teal-950/70 font-mono">Reg: {SITE.jjActNumber}</p>
+            <p className="text-[10px] text-teal-950/70 font-mono">Reg: {JJ_ACT_REGISTRATION.registrationNumber}</p>
           </div>
 
           <div className="rounded-xl bg-white p-3 border border-teal-900/10 shadow-2xs">
@@ -1474,7 +1608,7 @@ export function MetaAdsDonateComponent() {
         </div>
       </section>
 
-      {/* ── 7. Donor FAQ Accordion ── */}
+      {/* ── 6. Frequently Asked Questions ── */}
       <section className="mt-4 rounded-3xl bg-white p-5 border border-teal-900/10">
         <h4 className="font-display text-base font-bold text-teal-950 mb-3">
           Frequently Asked Questions
@@ -1504,7 +1638,7 @@ export function MetaAdsDonateComponent() {
         </div>
       </section>
 
-      {/* Direct Contact & WhatsApp Help */}
+      {/* ── Direct Contact & WhatsApp Help ── */}
       <div className="mt-6 text-center text-xs text-teal-950/70 space-y-2">
         <p>
           Need assistance or wish to plan an in-person campus visit?
@@ -1525,7 +1659,7 @@ export function MetaAdsDonateComponent() {
         </p>
       </div>
 
-      {/* ── 8. 📱 MOBILE STICKY BOTTOM DONATION BAR ── */}
+      {/* ── 7. 📱 MOBILE STICKY BOTTOM DONATION BAR ── */}
       {showStickyBar && (
         <div className="fixed inset-x-0 bottom-0 z-40 bg-white/95 backdrop-blur-md border-t border-teal-900/15 p-3 px-4 shadow-2xl sm:hidden flex items-center justify-between gap-3 animate-in slide-in-from-bottom">
           <div className="min-w-0">
@@ -1544,10 +1678,21 @@ export function MetaAdsDonateComponent() {
 
           <button
             type="button"
-            onClick={scrollToTopCard}
+            onClick={() => {
+              if (!donorName.trim() || donorPhone.trim().length < 10) {
+                detailsCardRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+                if (!donorName.trim()) {
+                  nameInputRef.current?.focus();
+                } else {
+                  phoneInputRef.current?.focus();
+                }
+              } else {
+                handlePayNow();
+              }
+            }}
             className="shrink-0 px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-black text-xs uppercase tracking-wider shadow-md active:scale-95 cursor-pointer flex items-center gap-1.5 animate-heartbeat"
           >
-            <span>DONATE NOW</span>
+            <span>PROCEED TO PAY</span>
             <span>💝</span>
           </button>
         </div>
@@ -1555,3 +1700,6 @@ export function MetaAdsDonateComponent() {
     </div>
   );
 }
+
+export { MetaAdsDonateComponent as StandardDonorCheckout };
+
