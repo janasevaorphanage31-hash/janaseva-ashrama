@@ -464,7 +464,8 @@ export function CheckoutClient() {
     }
   };
 
-  // Check URL params for pre-set amount
+  // Check URL params for pre-set amount or initialize from cart
+  const hasInitializedAmountRef = useRef(false);
   useEffect(() => {
     const amtParam = search.get("amount");
     if (amtParam) {
@@ -472,16 +473,23 @@ export function CheckoutClient() {
       if (!isNaN(parsed) && parsed >= 10 && parsed <= 500000) {
         queueMicrotask(() => {
           cart.setDedicatedAmount(parsed);
+          setCustomInputValue(String(parsed));
         });
+        hasInitializedAmountRef.current = true;
       }
-    } else if (cart.hydrated && cart.total === 0 && cart.lines.length === 0 && cart.custom === 0) {
-      // Default to popular starter amount of ₹2,500 so donor is immediately ready to pay
-      queueMicrotask(() => {
-        cart.setDedicatedAmount(2500);
-      });
+    } else if (cart.hydrated && !hasInitializedAmountRef.current) {
+      hasInitializedAmountRef.current = true;
+      if (cart.total === 0 && cart.lines.length === 0 && cart.custom === 0) {
+        // Default to popular starter amount of ₹2,500 so donor is immediately ready to pay
+        queueMicrotask(() => {
+          cart.setDedicatedAmount(2500);
+        });
+      } else if (cart.custom) {
+        setCustomInputValue(String(cart.custom));
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search, cart.hydrated, cart.lines.length, cart.total, cart.custom, cart.setDedicatedAmount]);
+  }, [search, cart.hydrated]);
 
   if (!cart.hydrated) {
     return (
@@ -1087,8 +1095,9 @@ export function CheckoutClient() {
               <input
                 type="text"
                 inputMode="numeric"
+                pattern="[0-9]*"
                 value={customInputValue}
-                onChange={(e) => setCustomInputValue(cleanIndianMobile(e.target.value))}
+                onChange={(e) => setCustomInputValue(e.target.value.replace(/\D/g, ""))}
                 placeholder="Enter custom amount (e.g. 500, 1000, 5000)"
                 className="w-full rounded-2xl border-2 border-teal-900/20 bg-cream py-3 pl-8 pr-4 text-base font-mono font-bold text-teal-950 outline-none focus:border-teal-900"
               />
@@ -1336,12 +1345,13 @@ export function CheckoutClient() {
                 <input
                   type="text"
                   inputMode="numeric"
-                  value={customInputValue || (cart.custom ? String(cart.custom) : "")}
+                  pattern="[0-9]*"
+                  value={customInputValue}
                   onChange={(e) => {
-                    const cleanVal = cleanIndianMobile(e.target.value);
+                    const cleanVal = e.target.value.replace(/\D/g, "");
                     setCustomInputValue(cleanVal);
                     const num = Number(cleanVal);
-                    if (num >= 10 && num <= 500000) {
+                    if (cleanVal && num >= 10 && num <= 500000) {
                       cart.setDedicatedAmount(num);
                     }
                   }}

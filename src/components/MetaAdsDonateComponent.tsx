@@ -248,13 +248,18 @@ export function MetaAdsDonateComponent() {
   const cart = useCart();
   const [activeTab, setActiveTab] = useState<"gateway" | "upi" | "bank">("gateway");
   const [qrDataUrl, setQrDataUrl] = useState<string>("");
+  const initializedFromCartRef = useRef(false);
 
-  // Dynamically synchronize amount state with cart and searchParams across all pages
+  // Synchronize amount state ONCE on mount from searchParams or cart
+  // Kept decoupled from live keystroke typing so users can type any custom amount freely
   useEffect(() => {
+    if (initializedFromCartRef.current) return;
+
     const urlAmt = searchParams.get("amount");
     if (urlAmt) {
       const parsed = parseFloat(urlAmt);
       if (parsed >= 10 && parsed <= 500000) {
+        initializedFromCartRef.current = true;
         if (ALL_PRESET_TIERS.some((t) => t.amt === parsed)) {
           setAmount(parsed);
           setCustomAmount("");
@@ -265,33 +270,26 @@ export function MetaAdsDonateComponent() {
         if (cart.setDedicatedAmount) {
           cart.setDedicatedAmount(parsed);
         }
-      }
-    } else if (cart.hydrated && cart.total >= 10) {
-      if (ALL_PRESET_TIERS.some((t) => t.amt === cart.total)) {
-        setAmount(cart.total);
-        setCustomAmount("");
-      } else {
-        setAmount(cart.total);
-        setCustomAmount(String(cart.total));
+        return;
       }
     }
-  }, [cart.hydrated, cart.total, searchParams, cart.setDedicatedAmount]);
 
-  // Sync when searchParams change (e.g. user selected a tier from another component)
-  useEffect(() => {
-    const urlAmt = searchParams.get("amount");
-    if (urlAmt) {
-      const parsed = parseFloat(urlAmt);
-      if (parsed >= 10 && parsed <= 500000) {
-        if (ALL_PRESET_TIERS.some((t) => t.amt === parsed)) {
-          setAmount(parsed);
+    if (cart.hydrated) {
+      initializedFromCartRef.current = true;
+      if (cart.total >= 10) {
+        if (ALL_PRESET_TIERS.some((t) => t.amt === cart.total)) {
+          setAmount(cart.total);
           setCustomAmount("");
         } else {
-          setAmount(parsed);
-          setCustomAmount(String(parsed));
+          setAmount(cart.total);
+          setCustomAmount(String(cart.total));
         }
       }
     }
+  }, [cart.hydrated, searchParams, cart.setDedicatedAmount]);
+
+  // Sync occasion from searchParams
+  useEffect(() => {
     const urlOccasion = searchParams.get("occasion");
     if (urlOccasion) {
       const matchingOcc = OCCASIONS.find(
@@ -880,14 +878,14 @@ export function MetaAdsDonateComponent() {
                       type="button"
                       onClick={() => {
                         setCustomAmount("");
-                        setAmount(101);
+                        setAmount(2500);
                         if (cart.setDedicatedAmount) {
-                          cart.setDedicatedAmount(101);
+                          cart.setDedicatedAmount(2500);
                         }
                       }}
                       className="text-[11px] font-bold text-amber-800 hover:text-amber-950 underline cursor-pointer"
                     >
-                      Reset
+                      Reset to Tiers
                     </button>
                   )}
                 </div>
@@ -899,18 +897,21 @@ export function MetaAdsDonateComponent() {
                   <input
                     ref={customInputRef}
                     id="meta-custom-amount"
-                    type="number"
+                    type="text"
                     inputMode="numeric"
-                    min={11}
-                    max={1000000}
+                    pattern="[0-9]*"
                     placeholder="Enter amount (e.g. 51, 151, 1500)"
                     value={customAmount}
                     onChange={(e) => {
-                      setCustomAmount(e.target.value);
+                      const clean = e.target.value.replace(/\D/g, "");
+                      setCustomAmount(clean);
                       clearFieldError("amount");
-                      const num = parseFloat(e.target.value);
-                      if (num >= 10 && num <= 1000000 && cart.setDedicatedAmount) {
-                        cart.setDedicatedAmount(num);
+                      const num = parseFloat(clean);
+                      if (clean && num >= 10 && num <= 1000000) {
+                        setAmount(num);
+                        if (cart.setDedicatedAmount) {
+                          cart.setDedicatedAmount(num);
+                        }
                       }
                     }}
                     className="w-full bg-transparent py-2 text-lg font-black text-teal-950 placeholder:text-teal-950/35 placeholder:font-normal outline-none"
@@ -942,6 +943,7 @@ export function MetaAdsDonateComponent() {
                       onClick={() => {
                         const current = customAmount ? parseFloat(customAmount) || 0 : amount;
                         const next = current + inc;
+                        setAmount(next);
                         setCustomAmount(String(next));
                         clearFieldError("amount");
                         if (cart.setDedicatedAmount) {

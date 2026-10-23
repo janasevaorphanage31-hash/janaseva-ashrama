@@ -75,11 +75,15 @@ export function TaxSavingsCalculator() {
             <div className="relative">
               <span className="absolute left-3 top-2.5 font-bold text-teal-900/50">₹</span>
               <input
-                type="number"
-                min={100}
-                step={100}
-                value={amount}
-                onChange={(e) => setAmount(Math.max(0, Number(e.target.value) || 0))}
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                value={amount === 0 ? "" : String(amount)}
+                onChange={(e) => {
+                  const cleaned = e.target.value.replace(/\D/g, "");
+                  setAmount(cleaned ? Number(cleaned) : 0);
+                }}
+                placeholder="Enter amount"
                 className="w-full rounded-xl border border-teal-900/15 pl-8 pr-3 py-2 text-base sm:text-sm font-bold text-teal-950 focus:border-teal-900 focus:outline-none"
               />
             </div>

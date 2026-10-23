@@ -406,6 +406,7 @@ export function BottomDonationDrawer() {
                     id="drawer-custom-amount"
                     type="text"
                     inputMode="numeric"
+                    pattern="[0-9]*"
                     placeholder="Enter amount"
                     value={customInput}
                     onChange={(e) => {
@@ -426,8 +427,8 @@ export function BottomDonationDrawer() {
                       type="button"
                       onClick={() => {
                         setCustomInput("");
-                        setSelectedAmount(101);
-                        setDedicatedAmount(101);
+                        setSelectedAmount(2500);
+                        setDedicatedAmount(2500);
                       }}
                       className="text-xs font-bold text-teal-900/50 hover:text-teal-900 cursor-pointer"
                     >

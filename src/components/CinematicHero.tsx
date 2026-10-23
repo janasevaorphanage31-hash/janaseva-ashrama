@@ -186,6 +186,7 @@ export function CinematicHero({ content }: { content?: Partial<SiteContentMap> }
   const defaultAmt = heroTiers.find((t) => t.badge?.includes("⭐"))?.amt || 4500;
   const [selectedAmt, setSelectedAmt] = useState<number>(defaultAmt);
   const [customAmt, setCustomAmt] = useState<string>("");
+  const hasSyncedCartOnceRef = useRef(false);
 
   const posterSrc = content?.heroPosterUrl || "/media/poster-desktop.jpg";
   const videoSrc = content?.heroVideoUrl || "/media/video-chant-prayer.mp4";
@@ -200,21 +201,18 @@ export function CinematicHero({ content }: { content?: Partial<SiteContentMap> }
     track("hero_view", { type: "cinematic_video_hero" });
   }, []);
 
-  // Synchronize Hero selected scheme with global cart amount across all pages
+  // Synchronize Hero selected scheme with global cart amount ONCE on initial hydration
+  // Decoupled from continuous input typing to prevent erasing custom numbers
   useEffect(() => {
-    if (!hydrated) return;
+    if (!hydrated || hasSyncedCartOnceRef.current) return;
+    hasSyncedCartOnceRef.current = true;
     if (total >= 10) {
       setSelectedAmt(total);
       if (!heroTiers.some((t) => t.amt === total)) {
         setCustomAmt(String(total));
-      } else {
-        setCustomAmt("");
       }
-    } else {
-      // First-time visit: default cart to hero's selected tier
-      setDedicatedAmount(defaultAmt);
     }
-  }, [hydrated, total, defaultAmt, heroTiers, setDedicatedAmount]);
+  }, [hydrated, total, heroTiers]);
 
   useEffect(() => {
     if (videoRef.current) {
@@ -234,10 +232,10 @@ export function CinematicHero({ content }: { content?: Partial<SiteContentMap> }
   };
 
   const effectiveAmount = customAmt && Number(customAmt) > 0 ? Number(customAmt) : selectedAmt;
-  const activeTier = heroTiers.find((t) => t.amt === effectiveAmount);
+  const activeTier = !customAmt ? heroTiers.find((t) => t.amt === effectiveAmount) : undefined;
 
   const handleHeroDonate = () => {
-    const finalAmt = effectiveAmount >= 10 ? effectiveAmount : 101;
+    const finalAmt = customAmt && Number(customAmt) >= 10 ? Number(customAmt) : (selectedAmt >= 10 ? selectedAmt : 2500);
     setDedicatedAmount(finalAmt);
     track("hero_quick_donate_click", {
       amount: finalAmt,
@@ -497,7 +495,8 @@ export function CinematicHero({ content }: { content?: Partial<SiteContentMap> }
                       type="button"
                       onClick={() => {
                         setCustomAmt("");
-                        setDedicatedAmount(selectedAmt);
+                        setSelectedAmt(defaultAmt);
+                        setDedicatedAmount(defaultAmt);
                       }}
                       className="text-xs font-bold text-amber-700 hover:text-amber-900 underline cursor-pointer"
                     >
@@ -520,7 +519,8 @@ export function CinematicHero({ content }: { content?: Partial<SiteContentMap> }
                       const cleaned = e.target.value.replace(/\D/g, "");
                       setCustomAmt(cleaned);
                       const num = Number(cleaned);
-                      if (num >= 10 && num <= 500000) {
+                      if (cleaned && num >= 10 && num <= 500000) {
+                        setSelectedAmt(num);
                         setDedicatedAmount(num);
                       }
                     }}
@@ -531,7 +531,8 @@ export function CinematicHero({ content }: { content?: Partial<SiteContentMap> }
                       type="button"
                       onClick={() => {
                         setCustomAmt("");
-                        setDedicatedAmount(selectedAmt);
+                        setSelectedAmt(defaultAmt);
+                        setDedicatedAmount(defaultAmt);
                       }}
                       className="shrink-0 text-xs font-bold text-teal-900/60 hover:text-teal-900 p-1 cursor-pointer"
                       title="Clear amount"

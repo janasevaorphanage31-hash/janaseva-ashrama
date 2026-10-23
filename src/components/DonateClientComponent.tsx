@@ -604,14 +604,14 @@ export function DonateClientComponent() {
             <div className="relative">
               <span className="absolute left-3 top-2.5 text-base font-bold text-teal-950/60">₹</span>
               <input
-                type="number"
+                type="text"
                 inputMode="numeric"
-                min={10}
-                max={1000000}
+                pattern="[0-9]*"
                 placeholder="e.g. 5000"
                 value={customAmount}
                 onChange={(e) => {
-                  setCustomAmount(e.target.value);
+                  const clean = e.target.value.replace(/\D/g, "");
+                  setCustomAmount(clean);
                   clearFieldError("amount");
                 }}
                 className={`w-full rounded-xl border py-2.5 pl-8 pr-3 text-base sm:text-sm font-bold text-teal-950 outline-none transition ${
