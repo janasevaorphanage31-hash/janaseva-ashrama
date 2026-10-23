@@ -644,7 +644,7 @@ export function TeamInbox({ currentUserId }: { currentUserId?: number }) {
                           {d.receiptNo}
                         </span>
                         <Link
-                          href={`/receipts/${encodeURIComponent(d.receiptNo)}`}
+                          href={`/receipt/${encodeURIComponent(d.receiptNo)}`}
                           target="_blank"
                           className="font-bold text-saffron-dark underline"
                         >

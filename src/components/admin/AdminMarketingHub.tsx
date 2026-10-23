@@ -2015,7 +2015,7 @@ fbq('track', 'PageView');
 
                     <div className="mt-4 pt-3 border-t border-teal-900/10 flex flex-wrap items-center justify-between gap-2">
                       <Link
-                        href={`/c/${c.slug}`}
+                        href={`/campaigns/${c.slug}`}
                         target="_blank"
                         className="text-xs font-bold text-teal-900 hover:text-saffron-dark underline"
                       >

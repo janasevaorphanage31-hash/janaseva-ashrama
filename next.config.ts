@@ -91,6 +91,8 @@ const nextConfig: NextConfig = {
       { source: "/bank", destination: "/checkout?method=bank", permanent: true },
       { source: "/upi", destination: "/give", permanent: true },
       { source: "/help", destination: "/contact", permanent: true },
+      { source: "/c/:slug*", destination: "/campaigns/:slug*", permanent: true },
+      { source: "/receipts/:path*", destination: "/receipt/:path*", permanent: true },
     ];
   },
   async rewrites() {

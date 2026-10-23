@@ -433,6 +433,9 @@ export function HomeSectionsHub({
       <div className="space-y-0">
         {/* ── CHAPTER 1: SPONSOR 25 BOYS (OFFICIAL 5 SUPPORT TIERS - 90% FOCUS) ── */}
         <section id="section-tiers" className="scroll-mt-24 sm:scroll-mt-28">
+          <div id="official-tiers" className="scroll-mt-24 sm:scroll-mt-28" />
+          <div id="tiers" className="scroll-mt-24 sm:scroll-mt-28" />
+          <div id="sponsor" className="scroll-mt-24 sm:scroll-mt-28" />
           <OfficialSupportTiersSection
             tiers={siteContent?.supportTiers}
             bankDetails={siteContent?.bankDetails}
@@ -441,6 +444,9 @@ export function HomeSectionsHub({
 
         {/* ── CHAPTER 2: CELEBRATE BIRTHDAYS & MILESTONES ── */}
         <section id="section-celebrate" className="scroll-mt-24 sm:scroll-mt-28">
+          <div id="celebrate" className="scroll-mt-24 sm:scroll-mt-28" />
+          <div id="birthday" className="scroll-mt-24 sm:scroll-mt-28" />
+          <div id="birthdays" className="scroll-mt-24 sm:scroll-mt-28" />
           <TrendingBirthdaySection
             packages={siteContent?.celebrationPackages}
             wishVideos={siteContent?.wishVideos}
@@ -450,6 +456,10 @@ export function HomeSectionsHub({
 
         {/* ── CHAPTER 3: DAILY NEEDS & GIVING CATALOG (ANNADANA) ── */}
         <section id="section-annadana" className="scroll-mt-24 sm:scroll-mt-28">
+          <div id="today" className="scroll-mt-24 sm:scroll-mt-28" />
+          <div id="annadana" className="scroll-mt-24 sm:scroll-mt-28" />
+          <div id="meals" className="scroll-mt-24 sm:scroll-mt-28" />
+          <div id="food" className="scroll-mt-24 sm:scroll-mt-28" />
           <div id="catalog" className="scroll-mt-24 sm:scroll-mt-28" />
           <div id="today-meals" className="scroll-mt-24 sm:scroll-mt-28" />
           <TodaySection updates={updates} mealsStatus={siteContent?.todayMealsStatus} mode="meals-only" />
@@ -458,6 +468,9 @@ export function HomeSectionsHub({
 
         {/* ── CHAPTER 4: CAMPUS LIFE & DOCUMENTARY ── */}
         <section id="section-life" className="scroll-mt-24 sm:scroll-mt-28">
+          <div id="boys-gallery" className="scroll-mt-24 sm:scroll-mt-28" />
+          <div id="life" className="scroll-mt-24 sm:scroll-mt-28" />
+          <div id="gallery" className="scroll-mt-24 sm:scroll-mt-28" />
           <div id="ashrama-life" className="scroll-mt-24 sm:scroll-mt-28" />
           <RealBoysGallerySection customMedia={approvedMedia} />
           <TodaySection updates={updates} mode="updates-only" />
@@ -468,12 +481,21 @@ export function HomeSectionsHub({
 
         {/* ── CHAPTER 5: VOLUNTEER & COMMUNITY OUTREACH ── */}
         <section id="section-community" className="scroll-mt-24 sm:scroll-mt-28">
+          <div id="volunteer" className="scroll-mt-24 sm:scroll-mt-28" />
+          <div id="community" className="scroll-mt-24 sm:scroll-mt-28" />
+          <div id="crew" className="scroll-mt-24 sm:scroll-mt-28" />
           <CommunityV2Section />
           <CommunityActivitiesSection activities={siteContent?.ngoActivities} />
         </section>
 
         {/* ── CHAPTER 6: 80G TRUST, LEGAL ACCREDITATIONS & BANKING ── */}
         <section id="section-trust" className="scroll-mt-24 sm:scroll-mt-28">
+          <div id="transparency" className="scroll-mt-24 sm:scroll-mt-28" />
+          <div id="trust" className="scroll-mt-24 sm:scroll-mt-28" />
+          <div id="80g" className="scroll-mt-24 sm:scroll-mt-28" />
+          <div id="tax" className="scroll-mt-24 sm:scroll-mt-28" />
+          <div id="bank" className="scroll-mt-24 sm:scroll-mt-28" />
+          <div id="contact" className="scroll-mt-24 sm:scroll-mt-28" />
           <TransparencySection docs={docs} />
           <TrustSection content={siteContent} />
           <VerifiedImpactSection metrics={metrics} totals={totals} />
