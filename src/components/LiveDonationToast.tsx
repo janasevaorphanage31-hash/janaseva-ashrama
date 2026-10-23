@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { formatINR } from "@/lib/site";
 import { useCart } from "./CartProvider";
 import { track } from "@/lib/track";
@@ -53,7 +54,17 @@ export function LiveDonationToast() {
     };
   }, [dismissed]);
 
-  if (dismissed || isBottomDonateOpen) return null;
+  const pathname = usePathname();
+  if (
+    dismissed ||
+    isBottomDonateOpen ||
+    pathname?.startsWith("/admin") ||
+    pathname === "/checkout" ||
+    pathname === "/donate" ||
+    pathname === "/give"
+  ) {
+    return null;
+  }
 
   const current = RECENT_DONATIONS[currentIndex];
 

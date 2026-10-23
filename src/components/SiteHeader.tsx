@@ -309,20 +309,27 @@ export function SiteHeader() {
             </div>
           </nav>
 
-          {/* Right Action: Primary Highlighted Donation CTA */}
+          {/* Right Action: Primary Highlighted Donation CTA or Secure Checkout Trust Badge */}
           <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
-            <Link
-              href={total > 0 ? `/give?amount=${total}` : "/give"}
-              onClick={() => track("cta_make_impact", { where: "header", amount: total })}
-              className="focus-ring tap-scale relative flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-600 hover:to-orange-600 px-3 sm:px-4 py-2 sm:py-2.5 text-xs font-black tracking-wide text-white shadow-md shadow-orange-500/25 transition active:scale-95 whitespace-nowrap cursor-pointer"
-            >
-              <span>DONATE 💝</span>
-              {count > 0 && (
-                <span className="grid h-4.5 min-w-4.5 sm:h-5 sm:min-w-5 place-items-center rounded-md bg-teal-950 px-1 text-[10px] font-extrabold text-gold shadow-sm">
-                  {count}
-                </span>
-              )}
-            </Link>
+            {pathname === "/checkout" || pathname === "/donate" || pathname === "/give" ? (
+              <div className="flex items-center gap-1.5 rounded-xl bg-emerald-500/25 border border-emerald-400/50 px-2.5 sm:px-3 py-1.5 text-xs font-bold text-emerald-200">
+                <span>🛡️</span>
+                <span>80G Certified</span>
+              </div>
+            ) : (
+              <Link
+                href={total > 0 ? `/give?amount=${total}` : "/give"}
+                onClick={() => track("cta_make_impact", { where: "header", amount: total })}
+                className="focus-ring tap-scale relative flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-600 hover:to-orange-600 px-3 sm:px-4 py-2 sm:py-2.5 text-xs font-black tracking-wide text-white shadow-md shadow-orange-500/25 transition active:scale-95 whitespace-nowrap cursor-pointer"
+              >
+                <span>DONATE 💝</span>
+                {count > 0 && (
+                  <span className="grid h-4.5 min-w-4.5 sm:h-5 sm:min-w-5 place-items-center rounded-md bg-teal-950 px-1 text-[10px] font-extrabold text-gold shadow-sm">
+                    {count}
+                  </span>
+                )}
+              </Link>
+            )}
           </div>
         </div>
       </header>
