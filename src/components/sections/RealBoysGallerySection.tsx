@@ -18,7 +18,7 @@ export function RealBoysGallerySection({ customMedia }: { customMedia?: any[] } 
   const [activeItem, setActiveItem] = useState<GalleryItem | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [showAll, setShowAll] = useState(false);
-  const { setQty, openBottomDonate } = useCart();
+  const { setDedicatedAmount, openBottomDonate } = useCart();
 
   const allItems = useMemo(() => {
     if (!customMedia || customMedia.length === 0) return CURATED_GALLERY;
@@ -81,14 +81,14 @@ export function RealBoysGallerySection({ customMedia }: { customMedia?: any[] } 
   }, [activeItem]);
 
   const handleSponsorAnnadana = (item: GalleryItem) => {
-    setQty("meal", 1);
+    setDedicatedAmount(101);
     track("add_to_cart", {
       item: "meal",
-      amount: 100,
+      amount: 101,
       source: "gallery_modal",
       mediaId: item.id,
     });
-    openBottomDonate(100, "daily-meal");
+    openBottomDonate(101, "daily-meal");
     setActiveItem(null);
   };
 
@@ -112,10 +112,13 @@ export function RealBoysGallerySection({ customMedia }: { customMedia?: any[] } 
           <div className="shrink-0 flex items-center gap-3">
             <button
               type="button"
-              onClick={() => openBottomDonate(100)}
-              className="focus-ring inline-flex items-center gap-2 rounded-xl bg-saffron px-5 py-3 text-xs font-bold text-white transition hover:bg-saffron-dark shadow-sm"
+              onClick={() => {
+                setDedicatedAmount(101);
+                openBottomDonate(101);
+              }}
+              className="focus-ring inline-flex items-center gap-2 rounded-xl bg-saffron px-5 py-3 text-xs font-bold text-white transition hover:bg-saffron-dark shadow-sm cursor-pointer"
             >
-              <span>🍛 Sponsor ₹100 Annadana</span>
+              <span>🍛 Sponsor ₹101 Annadana</span>
             </button>
             <Link
               href="/contact#visit"

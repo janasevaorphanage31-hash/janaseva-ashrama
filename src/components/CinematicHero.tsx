@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { SiteContentMap } from "@/lib/site-content";
 import { track } from "@/lib/track";
 import { useCart } from "./CartProvider";
@@ -108,7 +109,8 @@ function getCustomImpact(amt: number): string {
 }
 
 export function CinematicHero({ content }: { content?: Partial<SiteContentMap> }) {
-  const { openBottomDonate } = useCart();
+  const router = useRouter();
+  const { openBottomDonate, setDedicatedAmount } = useCart();
   const videoRef = useRef<HTMLVideoElement>(null);
   const [videoReady, setVideoReady] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
@@ -219,16 +221,13 @@ export function CinematicHero({ content }: { content?: Partial<SiteContentMap> }
   const activeTier = heroTiers.find((t) => t.amt === effectiveAmount);
 
   const handleHeroDonate = () => {
+    const finalAmt = effectiveAmount >= 10 ? effectiveAmount : 101;
+    setDedicatedAmount(finalAmt);
     track("hero_quick_donate_click", {
-      amount: effectiveAmount,
+      amount: finalAmt,
       tier: activeTier?.label || "Custom",
     });
-    openBottomDonate(
-      effectiveAmount,
-      activeTier?.categoryId || "food_one_day",
-      activeTier ? `${activeTier.label} (${formatINR(effectiveAmount)}) for 25 Boys` : `Sponsor 25 Boys (${formatINR(effectiveAmount)})`,
-      "Sponsor 25 Boys (Form 28)"
-    );
+    router.push(`/checkout?amount=${finalAmt}`);
   };
 
   return (
@@ -368,6 +367,7 @@ export function CinematicHero({ content }: { content?: Partial<SiteContentMap> }
                     onClick={() => {
                       setSelectedAmt(tier.amt);
                       setCustomAmt("");
+                      setDedicatedAmount(tier.amt);
                     }}
                     className={`group relative overflow-hidden p-2.5 sm:p-3 rounded-2xl text-left transition-all border cursor-pointer tap-scale flex flex-col justify-between min-h-[92px] sm:min-h-[108px] ${
                       isSelected
@@ -453,6 +453,7 @@ export function CinematicHero({ content }: { content?: Partial<SiteContentMap> }
                       onClick={() => {
                         setCustomAmt(String(amt));
                         setSelectedAmt(amt);
+                        setDedicatedAmount(amt);
                       }}
                       className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-2xl text-xs font-black transition focus-ring active:scale-95 cursor-pointer ${
                         isChipActive
@@ -478,7 +479,10 @@ export function CinematicHero({ content }: { content?: Partial<SiteContentMap> }
                   {customAmt && (
                     <button
                       type="button"
-                      onClick={() => setCustomAmt("")}
+                      onClick={() => {
+                        setCustomAmt("");
+                        setDedicatedAmount(selectedAmt);
+                      }}
                       className="text-xs font-bold text-amber-700 hover:text-amber-900 underline cursor-pointer"
                     >
                       Reset to Tier
@@ -499,13 +503,20 @@ export function CinematicHero({ content }: { content?: Partial<SiteContentMap> }
                     onChange={(e) => {
                       const cleaned = e.target.value.replace(/\D/g, "");
                       setCustomAmt(cleaned);
+                      const num = Number(cleaned);
+                      if (num >= 10 && num <= 500000) {
+                        setDedicatedAmount(num);
+                      }
                     }}
                     className="w-full bg-transparent text-base sm:text-lg font-black text-teal-950 placeholder:text-teal-950/40 placeholder:font-normal outline-none"
                   />
                   {customAmt && (
                     <button
                       type="button"
-                      onClick={() => setCustomAmt("")}
+                      onClick={() => {
+                        setCustomAmt("");
+                        setDedicatedAmount(selectedAmt);
+                      }}
                       className="shrink-0 text-xs font-bold text-teal-900/60 hover:text-teal-900 p-1 cursor-pointer"
                       title="Clear amount"
                     >

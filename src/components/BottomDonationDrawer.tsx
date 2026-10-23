@@ -32,6 +32,7 @@ export function BottomDonationDrawer() {
     donateInitialPurpose,
     donateInitialOccasion,
     setCustom,
+    setDedicatedAmount,
   } = useCart();
 
   const [quickAmounts, setQuickAmounts] = useState(QUICK_AMOUNTS);
@@ -125,6 +126,7 @@ export function BottomDonationDrawer() {
   const handleSelectQuick = (amount: number) => {
     setSelectedAmount(amount);
     setCustomInput(String(amount));
+    setDedicatedAmount(amount);
     track("bottom_donate_quick_select", { amount });
   };
 
@@ -132,11 +134,12 @@ export function BottomDonationDrawer() {
     setSelectedTierOption({ categoryId, optionId });
     setSelectedAmount(amount);
     setCustomInput(String(amount));
+    setDedicatedAmount(amount);
     track("bottom_donate_tier_select", { categoryId, optionId, amount });
   };
 
   const handleProceedOnline = () => {
-    setCustom(currentAmount);
+    setDedicatedAmount(currentAmount);
     closeBottomDonate();
     track("bottom_donate_proceed_online", { amount: currentAmount, frequency });
     trackInitiateCheckout({
@@ -401,7 +404,13 @@ export function BottomDonationDrawer() {
                     onChange={(e) => {
                       const val = e.target.value.replace(/\D/g, "");
                       setCustomInput(val);
-                      if (val) setSelectedAmount(Number(val));
+                      if (val) {
+                        const num = Number(val);
+                        setSelectedAmount(num);
+                        if (num >= 10 && num <= 500000) {
+                          setDedicatedAmount(num);
+                        }
+                      }
                     }}
                     className="w-full bg-transparent px-3 py-2.5 text-lg font-bold text-teal-900 outline-none"
                   />
@@ -411,6 +420,7 @@ export function BottomDonationDrawer() {
                       onClick={() => {
                         setCustomInput("");
                         setSelectedAmount(101);
+                        setDedicatedAmount(101);
                       }}
                       className="text-xs font-bold text-teal-900/50 hover:text-teal-900 cursor-pointer"
                     >
@@ -430,6 +440,7 @@ export function BottomDonationDrawer() {
                         const next = currentAmount + inc;
                         setSelectedAmount(next);
                         setCustomInput(String(next));
+                        setDedicatedAmount(next);
                       }}
                       className="rounded-lg bg-sand/50 hover:bg-teal-950 hover:text-white border border-teal-900/15 px-2.5 py-1 text-xs font-bold text-teal-950 transition cursor-pointer"
                     >

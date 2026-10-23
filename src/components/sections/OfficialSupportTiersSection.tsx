@@ -182,7 +182,7 @@ export function OfficialSupportTiersSection({
     bankName: BANK_DETAILS.bankName,
     branch: BANK_DETAILS.branch,
   };
-  const { openBottomDonate, setQty, qty } = useCart();
+  const { openBottomDonate, setQty, setDedicatedAmount, qty, total } = useCart();
 
   // Dynamically compute Scheme Price Selector cards based on activeCategories
   const schemePriceCards = useMemo(() => {
@@ -281,6 +281,7 @@ export function OfficialSupportTiersSection({
     setSelectedExactAmount(amount);
     setSelectedOptions((prev) => ({ ...prev, [categoryId]: optionId }));
     setActiveTab("all");
+    setDedicatedAmount(amount);
     track("tier_exact_amount_select", { amount, categoryId, optionId });
 
     if (typeof document !== "undefined") {
@@ -349,6 +350,8 @@ export function OfficialSupportTiersSection({
       optionId: option.id,
       amount: option.amount,
     });
+
+    setDedicatedAmount(option.amount);
 
     openBottomDonate(
       option.amount,
@@ -434,7 +437,7 @@ export function OfficialSupportTiersSection({
             <div className="mt-3 inline-flex items-center gap-2 rounded-xl bg-teal-900 text-white px-3.5 py-1.5 text-xs font-bold shadow-md animate-fadeIn">
               <span>🛒</span>
               <span>{addedNotification}</span>
-              <Link href="/checkout" className="underline text-gold hover:text-white font-extrabold ml-1">
+              <Link href={`/checkout?amount=${total > 0 ? total : selectedExactAmount}`} className="underline text-gold hover:text-white font-extrabold ml-1 cursor-pointer">
                 Checkout →
               </Link>
             </div>

@@ -14,6 +14,7 @@ import {
   sanitizePan,
 } from "@/lib/validation";
 import { openRazorpayCheckout } from "@/lib/razorpay-client";
+import { useCart } from "@/components/CartProvider";
 
 const PRESET_TIERS = [
   {
@@ -62,6 +63,7 @@ const OCCASIONS = [
 
 export function DonateClientComponent() {
   const searchParams = useSearchParams();
+  const { setDedicatedAmount } = useCart();
 
   // URL / Attribution state
   const [callerRef, setCallerRef] = useState<string>(() => {
@@ -160,6 +162,13 @@ export function DonateClientComponent() {
   // Derived effective donation amount
   const finalAmount = customAmount ? parseFloat(customAmount) || 0 : amount;
   const amountWords = finalAmount >= 10 ? numberToIndianWords(finalAmount) : "";
+
+  // Synchronize cart state and floating Giving Basket bar
+  useEffect(() => {
+    if (finalAmount >= 10 && finalAmount <= 500000) {
+      setDedicatedAmount(finalAmount);
+    }
+  }, [finalAmount, setDedicatedAmount]);
 
   // Track ViewContent on mount for campaign & donation landing
   useEffect(() => {

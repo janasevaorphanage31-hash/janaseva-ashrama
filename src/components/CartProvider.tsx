@@ -23,6 +23,7 @@ type Ctx = CartState & {
   donateInitialOccasion?: string;
   setQty: (slug: string, qty: number) => void;
   setCustom: (amount: number) => void;
+  setDedicatedAmount: (amount: number) => void;
   setCampaign: (c: CartState["campaign"]) => void;
   openBottomDonate: (initialAmount?: number, initialTierId?: string, initialPurpose?: string, initialOccasion?: string) => void;
   closeBottomDonate: () => void;
@@ -92,12 +93,28 @@ export function CartProvider({ catalog, children }: { catalog: ImpactItem[]; chi
     if (q > 0) track("item_add", { slug, qty: q });
   }, []);
   const setCustom = useCallback((amount: number) => setState((s) => ({ ...s, custom: Math.max(0, Math.min(500000, Math.floor(amount || 0))) })), []);
+  const setDedicatedAmount = useCallback((amount: number) => {
+    const validAmount = Math.max(0, Math.min(500000, Math.floor(amount || 0)));
+    setState((s) => ({
+      qty: {}, // Reset individual items to prevent double-counting or invalid arithmetic additions
+      custom: validAmount,
+      campaign: s.campaign,
+    }));
+    setDonateInitialAmount(validAmount);
+  }, []);
   const setCampaign = useCallback((campaign: CartState["campaign"]) => setState((s) => ({ ...s, campaign })), []);
   const clear = useCallback(() => setState((s) => ({ ...empty, campaign: s.campaign })), []);
 
   const openBottomDonate = useCallback((initialAmount?: number, initialTierId?: string, initialPurpose?: string, initialOccasion?: string) => {
     if (initialAmount && initialAmount > 0) {
-      setDonateInitialAmount(initialAmount);
+      const validAmount = Math.max(0, Math.min(500000, Math.floor(initialAmount)));
+      setDonateInitialAmount(validAmount);
+      // Synchronize cart custom amount and clear old item quantities so Giving Basket matches immediately
+      setState((s) => ({
+        qty: {},
+        custom: validAmount,
+        campaign: s.campaign,
+      }));
     }
     if (initialTierId) {
       setDonateInitialTierId(initialTierId);
@@ -145,6 +162,7 @@ export function CartProvider({ catalog, children }: { catalog: ImpactItem[]; chi
       donateInitialOccasion,
       setQty,
       setCustom,
+      setDedicatedAmount,
       setCampaign,
       openBottomDonate,
       closeBottomDonate,
@@ -162,6 +180,7 @@ export function CartProvider({ catalog, children }: { catalog: ImpactItem[]; chi
     donateInitialOccasion,
     setQty,
     setCustom,
+    setDedicatedAmount,
     setCampaign,
     openBottomDonate,
     closeBottomDonate,

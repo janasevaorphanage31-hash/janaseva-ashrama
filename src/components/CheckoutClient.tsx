@@ -471,17 +471,17 @@ export function CheckoutClient() {
       const parsed = Number(amtParam);
       if (!isNaN(parsed) && parsed >= 10 && parsed <= 500000) {
         queueMicrotask(() => {
-          cart.setCustom(parsed);
+          cart.setDedicatedAmount(parsed);
         });
       }
     } else if (cart.hydrated && cart.total === 0 && cart.lines.length === 0 && cart.custom === 0) {
       // Default to popular starter amount of ₹501 so donor is immediately ready to pay
       queueMicrotask(() => {
-        cart.setCustom(501);
+        cart.setDedicatedAmount(501);
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search, cart.hydrated, cart.lines.length, cart.total, cart.custom, cart.setCustom]);
+  }, [search, cart.hydrated, cart.lines.length, cart.total, cart.custom, cart.setDedicatedAmount]);
 
   if (!cart.hydrated) {
     return (
@@ -501,7 +501,7 @@ export function CheckoutClient() {
 
   const handleApplyCustomAmount = (amountNum: number) => {
     if (amountNum >= 10 && amountNum <= 500000) {
-      cart.setCustom(amountNum);
+      cart.setDedicatedAmount(amountNum);
       setCustomInputValue("");
       track("quick_custom_add", { amount: amountNum });
     }
@@ -1186,8 +1186,7 @@ export function CheckoutClient() {
               onClick={() => {
                 setFrequency("monthly");
                 if (!MONTHLY_PRESETS.some((p) => p.amt === cart.total)) {
-                  cart.clear();
-                  cart.setCustom(501);
+                  cart.setDedicatedAmount(501);
                 }
                 track("frequency_switch", { freq: "monthly" });
               }}
@@ -1248,8 +1247,7 @@ export function CheckoutClient() {
                   key={tier.amt}
                   type="button"
                   onClick={() => {
-                    cart.clear();
-                    cart.setCustom(tier.amt);
+                    cart.setDedicatedAmount(tier.amt);
                     setShowCustomInput(false);
                     setCustomInputValue("");
                     track("checkout_amount_select", { amount: tier.amt, frequency });
@@ -1344,8 +1342,7 @@ export function CheckoutClient() {
                     setCustomInputValue(cleanVal);
                     const num = Number(cleanVal);
                     if (num >= 10 && num <= 500000) {
-                      cart.clear();
-                      cart.setCustom(num);
+                      cart.setDedicatedAmount(num);
                     }
                   }}
                   placeholder="e.g. 501, 1501, 3501, 7501"
@@ -1358,8 +1355,7 @@ export function CheckoutClient() {
                     key={quick}
                     type="button"
                     onClick={() => {
-                      cart.clear();
-                      cart.setCustom(quick);
+                      cart.setDedicatedAmount(quick);
                       setCustomInputValue(String(quick));
                     }}
                     className={`rounded-xl px-2.5 py-1 text-xs font-bold transition cursor-pointer border ${

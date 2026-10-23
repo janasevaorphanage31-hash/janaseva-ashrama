@@ -17,7 +17,7 @@ const URGENT_PRESETS = [
 
 export function UrgentDonationBar() {
   const pathname = usePathname();
-  const { openBottomDonate, isBottomDonateOpen, count, total } = useCart();
+  const { openBottomDonate, setDedicatedAmount, isBottomDonateOpen, count, total } = useCart();
   const [minimized, setMinimized] = useState(false);
   const [activePreset, setActivePreset] = useState<number>(101);
 
@@ -34,11 +34,13 @@ export function UrgentDonationBar() {
   const handlePresetClick = (amount: number) => {
     setActivePreset(amount);
     track("urgent_bar_preset_select", { amount });
+    setDedicatedAmount(amount);
     openBottomDonate(amount);
   };
 
   const handleDonateNow = () => {
     track("urgent_bar_donate_click", { amount: activePreset });
+    setDedicatedAmount(activePreset);
     openBottomDonate(activePreset);
   };
 
@@ -95,7 +97,7 @@ export function UrgentDonationBar() {
 
             <div className="flex items-center gap-2 shrink-0">
               <Link
-                href="/checkout"
+                href={`/checkout?amount=${total}`}
                 className="focus-ring tap-scale inline-flex items-center gap-1.5 rounded-xl sm:rounded-2xl bg-gradient-to-r from-saffron to-amber-600 px-4 sm:px-6 py-2 sm:py-2.5 text-xs sm:text-sm font-black uppercase tracking-wider text-white shadow-lg hover:brightness-110 transition active:scale-95"
               >
                 <span>Checkout Now →</span>

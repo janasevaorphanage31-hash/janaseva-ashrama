@@ -332,6 +332,9 @@ export function MetaAdsDonateComponent() {
     setAmount(amt);
     setCustomAmount("");
     clearFieldError("amount");
+    if (cart.setDedicatedAmount) {
+      cart.setDedicatedAmount(amt);
+    }
     trackViewContent({
       content_name: `Sponsor 25 Boys - ₹${amt}`,
       content_category: "Child Welfare",
@@ -836,6 +839,9 @@ export function MetaAdsDonateComponent() {
                       onClick={() => {
                         setCustomAmount("");
                         setAmount(101);
+                        if (cart.setDedicatedAmount) {
+                          cart.setDedicatedAmount(101);
+                        }
                       }}
                       className="text-[11px] font-bold text-amber-800 hover:text-amber-950 underline cursor-pointer"
                     >
@@ -860,13 +866,22 @@ export function MetaAdsDonateComponent() {
                     onChange={(e) => {
                       setCustomAmount(e.target.value);
                       clearFieldError("amount");
+                      const num = parseFloat(e.target.value);
+                      if (num >= 10 && num <= 1000000 && cart.setDedicatedAmount) {
+                        cart.setDedicatedAmount(num);
+                      }
                     }}
                     className="w-full bg-transparent py-2 text-lg font-black text-teal-950 placeholder:text-teal-950/35 placeholder:font-normal outline-none"
                   />
                   {customAmount && (
                     <button
                       type="button"
-                      onClick={() => setCustomAmount("")}
+                      onClick={() => {
+                        setCustomAmount("");
+                        if (cart.setDedicatedAmount) {
+                          cart.setDedicatedAmount(amount);
+                        }
+                      }}
                       className="text-xs font-bold text-teal-900/50 hover:text-teal-900 p-1 cursor-pointer shrink-0"
                       title="Clear amount"
                     >
@@ -884,8 +899,12 @@ export function MetaAdsDonateComponent() {
                       type="button"
                       onClick={() => {
                         const current = customAmount ? parseFloat(customAmount) || 0 : amount;
-                        setCustomAmount(String(current + inc));
+                        const next = current + inc;
+                        setCustomAmount(String(next));
                         clearFieldError("amount");
+                        if (cart.setDedicatedAmount) {
+                          cart.setDedicatedAmount(next);
+                        }
                       }}
                       className="rounded-lg bg-white hover:bg-teal-950 hover:text-white border border-teal-900/15 px-2.5 py-1 text-[11px] font-black text-teal-950 transition cursor-pointer shadow-2xs"
                     >

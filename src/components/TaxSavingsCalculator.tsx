@@ -16,7 +16,7 @@ export function TaxSavingsCalculator() {
 
   const handleApplyDonation = () => {
     if (amount <= 0) return;
-    cart.setCustom((cart.custom || 0) + amount);
+    cart.setDedicatedAmount(amount);
     setAdded(true);
     setTimeout(() => setAdded(false), 3000);
   };

@@ -8,7 +8,7 @@ import { formatINR, SITE } from "@/lib/site";
 
 export function DonationStrategySuite() {
   const router = useRouter();
-  const { setQty, setCustom } = useCart();
+  const { setQty, setCustom, setDedicatedAmount } = useCart();
 
   const [activeStrategy, setActiveStrategy] = useState<"bundle" | "tax" | "occasions" | "monthly" | "daily">("bundle");
   const [taxDonationAmount, setTaxDonationAmount] = useState<number>(10000);
@@ -23,23 +23,24 @@ export function DonationStrategySuite() {
 
   const handleAddBundle = () => {
     // Bundle: 10 Meals (₹1,000) + 1 School Kit (₹250) + 1 Health Care (₹500) + 1 Bedding (₹600) + 1 Fruit Basket (₹150) = ₹2,500
-    setQty("meal", 10);
-    setQty("school-kit", 1);
-    setQty("health", 1);
-    setQty("bedding", 1);
-    setQty("fruits", 1);
+    setDedicatedAmount(2500);
     setBundleAdded(true);
     setTimeout(() => setBundleAdded(false), 3000);
   };
 
   const handleDonateTaxAmount = () => {
-    setCustom(taxDonationAmount);
-    router.push("/checkout");
+    setDedicatedAmount(taxDonationAmount);
+    router.push(`/checkout?amount=${taxDonationAmount}`);
   };
 
-  const handleOccasionSelect = (itemSlug: string, count: number = 1) => {
-    setQty(itemSlug, count);
-    router.push("/checkout");
+  const handleOccasionSelect = (itemSlug: string, count: number = 1, amount?: number) => {
+    if (amount) {
+      setDedicatedAmount(amount);
+      router.push(`/checkout?amount=${amount}`);
+    } else {
+      setQty(itemSlug, count);
+      router.push("/checkout");
+    }
   };
 
   return (
@@ -309,8 +310,8 @@ export function DonationStrategySuite() {
                   <span className="font-display font-bold text-teal-900">{formatINR(1000)}</span>
                   <button
                     type="button"
-                    onClick={() => handleOccasionSelect("memorial-meal")}
-                    className="rounded-lg bg-teal-900 px-3 py-1.5 text-xs font-bold text-white hover:bg-teal-950"
+                    onClick={() => handleOccasionSelect("memorial-meal", 1, 1000)}
+                    className="rounded-lg bg-teal-900 px-3 py-1.5 text-xs font-bold text-white hover:bg-teal-950 cursor-pointer"
                   >
                     Smrithi Seva
                   </button>
@@ -329,8 +330,8 @@ export function DonationStrategySuite() {
                   <span className="font-display font-bold text-teal-900">{formatINR(150)}</span>
                   <button
                     type="button"
-                    onClick={() => handleOccasionSelect("fruits")}
-                    className="rounded-lg bg-teal-900 px-3 py-1.5 text-xs font-bold text-white hover:bg-teal-950"
+                    onClick={() => handleOccasionSelect("fruits", 1, 150)}
+                    className="rounded-lg bg-teal-900 px-3 py-1.5 text-xs font-bold text-white hover:bg-teal-950 cursor-pointer"
                   >
                     Sponsor Fruits
                   </button>
@@ -412,10 +413,10 @@ export function DonationStrategySuite() {
                   key={m.amt}
                   type="button"
                   onClick={() => {
-                    setCustom(m.amt);
-                    router.push("/checkout");
+                    setDedicatedAmount(m.amt);
+                    router.push(`/checkout?amount=${m.amt}`);
                   }}
-                  className="rounded-xl bg-white p-3 border border-teal-900/10 text-left hover:border-saffron hover:shadow-xs transition active:scale-95 group"
+                  className="rounded-xl bg-white p-3 border border-teal-900/10 text-left hover:border-saffron hover:shadow-xs transition active:scale-95 group cursor-pointer"
                 >
                   <span className="text-[10px] font-bold text-saffron-dark uppercase">{m.days}</span>
                   <p className="font-display text-base sm:text-lg font-bold text-teal-950 group-hover:text-saffron-dark">
@@ -451,10 +452,10 @@ export function DonationStrategySuite() {
         <button
           type="button"
           onClick={() => {
-            setQty("meal", 5);
-            router.push("/checkout");
+            setDedicatedAmount(1000);
+            router.push(`/checkout?amount=1000`);
           }}
-          className="focus-ring shrink-0 rounded-xl bg-amber-600 px-4 py-2 text-xs font-bold text-white hover:bg-amber-700 shadow-xs transition active:scale-95"
+          className="focus-ring shrink-0 rounded-xl bg-amber-600 px-4 py-2 text-xs font-bold text-white hover:bg-amber-700 shadow-xs transition active:scale-95 cursor-pointer"
         >
           Sponsor Remaining 10 Meals ({formatINR(1000)}) →
         </button>

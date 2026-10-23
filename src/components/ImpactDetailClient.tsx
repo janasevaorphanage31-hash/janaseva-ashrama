@@ -66,9 +66,9 @@ export function ImpactDetailClient({
   };
 
   const handleGiveNow = () => {
-    cart.setQty(item.slug, selectedQty);
+    cart.setDedicatedAmount(subtotal);
     track("checkout_start", { slug: item.slug, qty: selectedQty, from: "detail_give_now" });
-    router.push("/checkout");
+    router.push(`/checkout?amount=${subtotal}`);
   };
 
   return (
@@ -428,8 +428,8 @@ export function ImpactDetailClient({
                   <p className="font-display text-lg font-bold">{formatINR(cart.total)}</p>
                 </div>
                 <Link
-                  href="/checkout"
-                  className="rounded-xl bg-saffron px-4 py-2 text-xs font-bold text-white shadow hover:bg-saffron-dark"
+                  href={`/checkout?amount=${cart.total}`}
+                  className="rounded-xl bg-saffron px-4 py-2 text-xs font-bold text-white shadow hover:bg-saffron-dark cursor-pointer"
                 >
                   Proceed to Checkout →
                 </Link>

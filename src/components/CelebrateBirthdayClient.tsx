@@ -142,7 +142,7 @@ export function CelebrateBirthdayClient({
   content?: Partial<SiteContentMap>;
   wishVideos?: WishVideoItem[];
 }) {
-  const { setCustom, openBottomDonate } = useCart();
+  const { setCustom, setDedicatedAmount, openBottomDonate } = useCart();
   const rawPackages = content?.celebrationPackages;
   const packages: FeastPackage[] =
     rawPackages && rawPackages.length > 0
@@ -240,7 +240,7 @@ export function CelebrateBirthdayClient({
 
   const handleSponsor = (pkg: FeastPackage) => {
     track("birthday_package_select", { package: pkg.id, price: pkg.price });
-    setCustom(pkg.price);
+    setDedicatedAmount(pkg.price);
   };
 
   // Quick Date Preset Picker
@@ -679,8 +679,8 @@ export function CelebrateBirthdayClient({
 
                 <div className="space-y-2.5 pt-2">
                   <Link
-                    href="/checkout"
-                    onClick={() => setCustom(bookingSuccess.amount)}
+                    href={`/checkout?amount=${bookingSuccess.amount}`}
+                    onClick={() => setDedicatedAmount(bookingSuccess.amount)}
                     className="focus-ring tap-scale block w-full rounded-2xl bg-gradient-celebrate px-5 py-3.5 text-center text-xs sm:text-sm font-black uppercase tracking-wider text-white shadow-xl glow-saffron transition hover:opacity-95 active:scale-95"
                   >
                     Complete Online Contribution ({formatINR(bookingSuccess.amount)} with 80G) →
