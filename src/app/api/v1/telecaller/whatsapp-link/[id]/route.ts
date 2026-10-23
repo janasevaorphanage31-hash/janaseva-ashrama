@@ -45,7 +45,9 @@ export async function GET(
       );
     }
 
-    const host = req.headers.get("host") || "janasevaorphanage.org";
+    let host = req.headers.get("host") || "www.janasevaorphanage.org";
+    if (host === "janasevaorphanage.org") host = "www.janasevaorphanage.org";
+    if (host === "janasevaashrama.org") host = "www.janasevaashrama.org";
     const protocol = host.includes("localhost") ? "http" : "https";
     const baseUrl = `${protocol}://${host}`;
 

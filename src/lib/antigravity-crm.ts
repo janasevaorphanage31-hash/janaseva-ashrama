@@ -220,7 +220,7 @@ export async function generateWhatsAppLink(leadId: number, callerId: string, bas
 
   const cleanPhone = lead[0].phone.replace(/\D/g, "");
   const formattedPhone = cleanPhone.startsWith("91") ? cleanPhone : `91${cleanPhone}`;
-  const siteUrl = baseUrl || process.env.NEXT_PUBLIC_SITE_URL || "https://janasevaorphanage.org";
+  const siteUrl = baseUrl || process.env.NEXT_PUBLIC_SITE_URL || "https://www.janasevaorphanage.org";
 
   const message = `Namaskara ${lead[0].name} Ji! 🙏 Warmest greetings & blessings from all 25 young resident boys at Janaseva Ashrama, Bangalore! 👦✨\n\nOur team is reaching out regarding our 90% Primary NGO Sponsorship Program — 'Sponsor 25 Boys' (Govt Form 28 JJ Act registered: KA18CH0242).\n\nYou can sponsor based on your convenient contribution:\n🍲 Tier 1: One Day Food for 25 Boys (₹4,500 Full Day / ₹3,000 / ₹2,500)\n🌾 Tier 2: One Month Food / Ration (₹6,000 / ₹4,000 / ₹2,000)\n👕 Tier 3: One Set Clothes (₹4,800 / ₹3,600 / ₹1,800)\n📚 Tier 4: Education Support (₹9,600 / ₹6,400 / ₹3,200)\n\nKindly view the official tiers & choose your sponsorship amount here:\n${siteUrl}/#official-tiers?ref=${callerId.toUpperCase()}\n\n100% Tax Exempt under Section 80G (Form 10AC). Instant 80G certificate & photos on WhatsApp.\nThank you for standing with our 25 boys! 🌸`;
 

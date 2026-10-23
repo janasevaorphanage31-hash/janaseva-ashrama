@@ -307,7 +307,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
   // 10. Copy Referral Link
   const handleCopyReferralLink = () => {
     if (!callerProfile) return;
-    const origin = typeof window !== "undefined" ? window.location.origin : "https://janasevaorphanage.org";
+    const origin = typeof window !== "undefined" ? window.location.origin : "https://www.janasevaorphanage.org";
     const refLink = `${origin}/#official-tiers?ref=${callerProfile.callerId}`;
     navigator.clipboard.writeText(refLink);
     showToast("✓ Referral link copied to clipboard: " + refLink);
