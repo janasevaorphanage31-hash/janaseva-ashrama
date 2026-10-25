@@ -297,7 +297,50 @@ export function MetaAdsDonateComponent() {
   const [frequency, setFrequency] = useState<"onetime" | "monthly">("onetime");
 
   // Active Seva Category Tab ("quick" | "official" | "birthday")
-  const [sevaTab, setSevaTab] = useState<"quick" | "official" | "birthday">("quick");
+  const [sevaTab, setSevaTab] = useState<"quick" | "official" | "birthday">(() => {
+    const urlAmt = searchParams.get("amount");
+    if (urlAmt) {
+      const parsed = parseFloat(urlAmt);
+      if (OFFICIAL_TIERS.some((t) => t.amt === parsed)) return "official";
+      if (BIRTHDAY_CELEBRATIONS.some((t) => t.amt === parsed)) return "birthday";
+    }
+    return "quick";
+  });
+
+  // Photo Gallery Accordion toggle (closed by default to guarantee mobile zero-scroll above the fold)
+  const [showPhotoGallery, setShowPhotoGallery] = useState(false);
+  const [showCustomInputInline, setShowCustomInputInline] = useState(() => {
+    const urlAmt = searchParams.get("amount");
+    if (urlAmt) {
+      const parsed = parseFloat(urlAmt);
+      const standardPills = [51, 101, 251, 501, 1000, 2500, 4500];
+      if (parsed >= 10 && parsed <= 1000000 && !standardPills.includes(parsed)) {
+        return true;
+      }
+    }
+    return false;
+  });
+
+  // Paid Ads Tracking (Meta & Google Ads)
+  const [utmSource] = useState(() => searchParams.get("utm_source") || "");
+  const [utmMedium] = useState(() => searchParams.get("utm_medium") || "");
+  const [utmCampaign] = useState(() => searchParams.get("utm_campaign") || "");
+  const [utmTerm] = useState(() => searchParams.get("utm_term") || "");
+  const [utmContent] = useState(() => searchParams.get("utm_content") || "");
+  const [gclid] = useState(() => searchParams.get("gclid") || "");
+  const [fbclid] = useState(() => searchParams.get("fbclid") || "");
+
+  // Persist UTM and Click IDs across session
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      if (utmSource) sessionStorage.setItem("jana_utm_source", utmSource);
+      if (utmMedium) sessionStorage.setItem("jana_utm_medium", utmMedium);
+      if (utmCampaign) sessionStorage.setItem("jana_utm_campaign", utmCampaign);
+      if (gclid) sessionStorage.setItem("jana_gclid", gclid);
+      if (fbclid) sessionStorage.setItem("jana_fbclid", fbclid);
+    } catch {}
+  }, [utmSource, utmMedium, utmCampaign, gclid, fbclid]);
 
   // Amount State (Starts from ₹11 upwards; defaults to URL param, cart.total, or ₹2,500 flagship)
   const [amount, setAmount] = useState<number>(() => {
@@ -393,11 +436,13 @@ export function MetaAdsDonateComponent() {
       if (parsed >= 10 && parsed <= 1000000) {
         initializedFromCartRef.current = true;
         setAmount(parsed);
-        const allKnown = [...QUICK_SEVA_TIERS, ...OFFICIAL_TIERS, ...BIRTHDAY_CELEBRATIONS];
-        if (!allKnown.some((t) => t.amt === parsed)) {
+        const standardPills = [51, 101, 251, 501, 1000, 2500, 4500];
+        if (!standardPills.includes(parsed)) {
           setCustomAmount(String(parsed));
+          setShowCustomInputInline(true);
         } else {
           setCustomAmount("");
+          setShowCustomInputInline(false);
           if (OFFICIAL_TIERS.some((t) => t.amt === parsed)) setSevaTab("official");
           if (BIRTHDAY_CELEBRATIONS.some((t) => t.amt === parsed)) setSevaTab("birthday");
         }
@@ -410,11 +455,13 @@ export function MetaAdsDonateComponent() {
       initializedFromCartRef.current = true;
       if (cart.total >= 10) {
         setAmount(cart.total);
-        const allKnown = [...QUICK_SEVA_TIERS, ...OFFICIAL_TIERS, ...BIRTHDAY_CELEBRATIONS];
-        if (!allKnown.some((t) => t.amt === cart.total)) {
+        const standardPills = [51, 101, 251, 501, 1000, 2500, 4500];
+        if (!standardPills.includes(cart.total)) {
           setCustomAmount(String(cart.total));
+          setShowCustomInputInline(true);
         } else {
           setCustomAmount("");
+          setShowCustomInputInline(false);
         }
       }
     }
@@ -628,6 +675,13 @@ export function MetaAdsDonateComponent() {
           occasion: cleanOccasion,
           prayerNote: cleanPrayerNote || undefined,
           frequency,
+          utmSource,
+          utmMedium,
+          utmCampaign,
+          utmTerm,
+          utmContent,
+          gclid,
+          fbclid,
           website_hp: honeypot,
         }),
       });
@@ -858,24 +912,30 @@ export function MetaAdsDonateComponent() {
       )}
 
       {/* ── MAIN SACRED CHECKOUT CARD (PANTONE SANDALWOOD & TEMPLE EMERALD) ── */}
-      <div className="rounded-3xl bg-white p-4 sm:p-6 shadow-2xl border-2 border-amber-400/40 space-y-5">
+      <div className="rounded-3xl bg-white p-4 sm:p-5 shadow-2xl border-2 border-amber-400/40 space-y-4">
 
         {/* ══════════════════════════════════════════════════════════════════
-            STEP 1: CHOOSE SACRED SEVA & IMPACT WITH AUTHENTIC PHOTO TILES
+            SECTION 1: ACTIVE SEVA CONFIRMATION & GIVING FREQUENCY (ABOVE THE FOLD)
         ══════════════════════════════════════════════════════════════════ */}
-        <section ref={topCardRef} aria-labelledby="step-1-heading" className="space-y-3">
-          <div className="flex items-center justify-between pb-1 border-b border-teal-900/10">
-            <div className="flex items-center gap-2">
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#042825] text-xs font-black text-amber-300">
-                1
+        <div ref={topCardRef} className="pb-3 border-b border-teal-900/10 space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              <span className="text-[10px] font-black uppercase tracking-wider text-amber-800 flex items-center gap-1">
+                <span>🌸</span>
+                <span>Your Sacred Seva Contribution</span>
               </span>
-              <h2 id="step-1-heading" className="text-xs sm:text-sm font-black uppercase tracking-wider text-[#042825]">
-                Choose Sacred Seva Scheme:
-              </h2>
+              <div className="flex items-baseline gap-2 mt-0.5">
+                <span className="font-display text-2xl sm:text-3xl font-black text-[#042825] tracking-tight">
+                  ₹{formatINR(finalAmount)}
+                </span>
+                <span className="rounded-full bg-emerald-100 border border-emerald-300 px-2 py-0.5 text-[10px] font-black text-emerald-900">
+                  50% Tax Saved: ₹{taxDeductionAmount.toLocaleString("en-IN")}
+                </span>
+              </div>
             </div>
 
             {/* Giving Frequency Toggle (One-Time vs Monthly) */}
-            <div className="inline-flex rounded-xl bg-amber-50 p-0.5 border border-amber-300/60 text-[10px] font-bold">
+            <div className="inline-flex rounded-xl bg-amber-50 p-0.5 border border-amber-300/60 text-[10px] font-bold shrink-0">
               <button
                 type="button"
                 onClick={() => setFrequency("onetime")}
@@ -902,260 +962,207 @@ export function MetaAdsDonateComponent() {
             </div>
           </div>
 
-          {/* 3 Dedicated Seva Tabs with Icons */}
-          <div className="grid grid-cols-3 gap-1 rounded-2xl bg-cream/90 p-1 border border-teal-900/10 text-center">
+          {/* Real-time Dynamic Impact line */}
+          <div className="rounded-xl bg-amber-50/70 px-3 py-1.5 border border-amber-200/80 text-xs text-amber-950 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className="text-sm select-none shrink-0">🍲</span>
+              <p className="font-bold text-[#042825] text-[11px] sm:text-xs truncate">
+                {impactSummary}
+              </p>
+            </div>
+            {amountWords && (
+              <span className="text-[9px] text-amber-900/80 font-medium hidden sm:inline shrink-0">
+                ({amountWords})
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* ══════════════════════════════════════════════════════════════════
+            SECTION 2: 1-ROW FAST AMOUNT SWITCHER STRIP + BROWSE PHOTOS TOGGLE
+        ══════════════════════════════════════════════════════════════════ */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[10px] font-black uppercase tracking-wider text-[#042825]/70">
+              Change Seva Amount:
+            </span>
             <button
               type="button"
-              onClick={() => setSevaTab("quick")}
-              className={`py-2 px-1 text-[11px] sm:text-xs font-black rounded-xl transition cursor-pointer flex flex-col items-center justify-center ${
-                sevaTab === "quick"
-                  ? "bg-[#042825] text-white shadow-sm ring-1 ring-amber-400"
-                  : "text-teal-950/70 hover:text-teal-950"
-              }`}
+              onClick={() => setShowPhotoGallery(!showPhotoGallery)}
+              className="text-[11px] font-bold text-amber-900 hover:text-amber-950 flex items-center gap-1 bg-amber-100/60 hover:bg-amber-100 px-2.5 py-0.5 rounded-lg border border-amber-300 transition cursor-pointer"
             >
-              <span>🌟 Popular Seva</span>
-              <span className="text-[9px] font-normal opacity-80">₹11 - ₹4,500</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setSevaTab("official")}
-              className={`py-2 px-1 text-[11px] sm:text-xs font-black rounded-xl transition cursor-pointer flex flex-col items-center justify-center ${
-                sevaTab === "official"
-                  ? "bg-[#042825] text-white shadow-sm ring-1 ring-amber-400"
-                  : "text-teal-950/70 hover:text-teal-950"
-              }`}
-            >
-              <span>🏛️ 5 Official Tiers</span>
-              <span className="text-[9px] font-normal opacity-80">JJ Act Form 28</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setSevaTab("birthday")}
-              className={`py-2 px-1 text-[11px] sm:text-xs font-black rounded-xl transition cursor-pointer flex flex-col items-center justify-center ${
-                sevaTab === "birthday"
-                  ? "bg-[#042825] text-white shadow-sm ring-1 ring-amber-400"
-                  : "text-teal-950/70 hover:text-teal-950"
-              }`}
-            >
-              <span>🎂 Celebrations</span>
-              <span className="text-[9px] font-normal opacity-80">Birthday Feast</span>
+              <span>📷</span>
+              <span>{showPhotoGallery ? "Hide Photos" : "Browse All 8 Seva Photos ▾"}</span>
             </button>
           </div>
 
-          {/* ── PHOTO TILES GRID: AUTHENTIC EMOTIONAL BACKGROUNDS (NO EMPTY CARDS!) ── */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-            {activeTiers.map((tier) => {
-              const isSelected = amount === tier.amt && !customAmount;
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+            {[51, 101, 251, 501, 1000, 2500, 4500].map((amt) => {
+              const isSelected = !customAmount && amount === amt;
               return (
                 <button
-                  key={`${tier.category}-${tier.amt}`}
+                  key={amt}
                   type="button"
-                  onClick={() => handleSelectTier(tier)}
-                  className={`group relative overflow-hidden p-2.5 sm:p-3 rounded-2xl text-left transition-all border cursor-pointer tap-scale flex flex-col justify-between min-h-[105px] sm:min-h-[115px] ${
+                  onClick={() => {
+                    setAmount(amt);
+                    setCustomAmount("");
+                    setShowCustomInputInline(false);
+                    clearFieldError("amount");
+                    if (cart.setDedicatedAmount) cart.setDedicatedAmount(amt);
+                    trackViewContent({
+                      content_name: `Select Quick Chip ₹${amt}`,
+                      content_category: "Child Welfare",
+                      value: amt,
+                      currency: "INR",
+                    });
+                  }}
+                  className={`shrink-0 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-black transition cursor-pointer border ${
                     isSelected
-                      ? "border-amber-400 ring-2 ring-amber-400 shadow-xl scale-[1.02]"
-                      : "border-teal-900/15 hover:border-amber-400/60"
+                      ? "bg-[#042825] text-amber-300 border-[#042825] shadow-sm scale-105 ring-1 ring-amber-400"
+                      : "bg-white text-teal-950 border-teal-900/15 hover:border-amber-400 hover:bg-amber-50/50"
                   }`}
                 >
-                  {/* Authentic Photography Background */}
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={tier.image}
-                    alt={tier.name}
-                    className="absolute inset-0 h-full w-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
-                  />
-                  {/* Warm Radiant Scrim Overlay for 100% Crisp Legibility */}
-                  <div
-                    className={`absolute inset-0 transition-colors ${
-                      isSelected
-                        ? "bg-gradient-to-t from-[#042825]/95 via-[#042825]/80 to-[#042825]/50"
-                        : "bg-gradient-to-t from-black/90 via-black/75 to-black/45 group-hover:from-black/85"
-                    }`}
-                  />
-
-                  {/* Top Badge */}
-                  <div className="relative z-10 flex items-center justify-between w-full">
-                    <span className="text-base select-none">{tier.icon}</span>
-                    {tier.badge && (
-                      <span
-                        className={`rounded-full px-2 py-0.5 text-[8px] font-black uppercase shadow-xs ${
-                          isSelected
-                            ? "bg-gradient-to-r from-amber-400 to-orange-400 text-[#042825]"
-                            : "bg-white/25 text-white backdrop-blur-xs"
-                        }`}
-                      >
-                        {tier.badge}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Amount & Impact Label */}
-                  <div className="relative z-10 mt-auto">
-                    <span
-                      className={`font-display text-base sm:text-lg font-black leading-none drop-shadow-sm ${
-                        isSelected ? "text-amber-300" : "text-white"
-                      }`}
-                    >
-                      {tier.label}
-                    </span>
-                    <p className="text-[10px] text-white/95 font-bold line-clamp-1 leading-tight mt-0.5 drop-shadow-xs">
-                      {tier.name}
-                    </p>
-                    <p className="text-[9px] text-white/80 line-clamp-2 leading-tight mt-0.5 font-medium drop-shadow-xs">
-                      {tier.impact}
-                    </p>
-                  </div>
+                  ₹{amt >= 1000 ? `${(amt / 1000).toFixed(amt % 1000 === 0 ? 0 : 1)}k` : amt}
                 </button>
               );
             })}
+
+            <button
+              type="button"
+              onClick={() => {
+                setShowCustomInputInline(true);
+                if (!customAmount) {
+                  setCustomAmount(String(amount));
+                }
+                setTimeout(() => customInputRef.current?.focus(), 50);
+              }}
+              className={`shrink-0 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-black transition cursor-pointer border ${
+                customAmount || showCustomInputInline
+                  ? "bg-[#042825] text-amber-300 border-[#042825] shadow-sm ring-1 ring-amber-400"
+                  : "bg-white text-teal-950 border-teal-900/15 hover:border-amber-400 hover:bg-amber-50/50"
+              }`}
+            >
+              ✏️ Other
+            </button>
           </div>
 
-          {/* ── CUSTOM AMOUNT INPUT SECTION ── */}
-          <div className="rounded-2xl bg-cream/70 p-3 sm:p-3.5 border border-teal-900/15 space-y-2">
-            <div className="flex items-center justify-between">
-              <label
-                htmlFor="meta-custom-amount"
-                className="text-xs font-black uppercase tracking-wider text-[#042825] flex items-center gap-1.5"
-              >
-                <span>✏️</span>
-                <span>Or Enter Any Custom Amount (₹11 to ₹10,00,000):</span>
-              </label>
-              {customAmount && (
+          {/* Inline Custom Input */}
+          {(showCustomInputInline || customAmount) && (
+            <div className="rounded-2xl bg-cream/70 p-2.5 sm:p-3 border border-amber-300/80 animate-fadeIn space-y-2">
+              <div className="flex items-center justify-between">
+                <label
+                  htmlFor="meta-custom-amount-inline"
+                  className="text-[10px] font-black uppercase tracking-wider text-[#042825] flex items-center gap-1"
+                >
+                  <span>✏️</span>
+                  <span>Enter Custom Amount (₹11 to ₹10,00,000):</span>
+                </label>
                 <button
                   type="button"
                   onClick={() => {
                     setCustomAmount("");
+                    setShowCustomInputInline(false);
                     setAmount(2500);
                     if (cart.setDedicatedAmount) cart.setDedicatedAmount(2500);
                   }}
-                  className="text-[11px] font-bold text-amber-800 hover:text-amber-950 underline cursor-pointer"
+                  className="text-[10px] font-bold text-amber-800 hover:text-amber-950 underline cursor-pointer"
                 >
-                  Reset (₹2,500)
+                  Reset
                 </button>
-              )}
-            </div>
+              </div>
 
-            <div className="relative flex items-center rounded-xl border-2 border-teal-900/20 bg-white px-3.5 py-1 focus-within:border-teal-900 focus-within:ring-2 focus-within:ring-amber-400 transition">
-              <span className="font-display text-xl font-black text-[#042825] select-none mr-2">
-                ₹
-              </span>
-              <input
-                ref={customInputRef}
-                id="meta-custom-amount"
-                type="text"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                placeholder="Type amount (e.g. 51, 151, 2500, 5000)"
-                value={customAmount}
-                onChange={(e) => {
-                  const clean = e.target.value.replace(/\D/g, "");
-                  setCustomAmount(clean);
-                  clearFieldError("amount");
-                  const num = parseFloat(clean);
-                  if (clean && num >= 10 && num <= 1000000) {
-                    setAmount(num);
-                    if (cart.setDedicatedAmount) cart.setDedicatedAmount(num);
-                  }
-                }}
-                className="w-full bg-transparent py-2 text-base sm:text-lg font-black text-[#042825] placeholder:text-teal-950/35 placeholder:font-normal outline-none"
-              />
-              {customAmount && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCustomAmount("");
-                    if (cart.setDedicatedAmount) cart.setDedicatedAmount(amount);
-                  }}
-                  className="text-xs font-bold text-teal-900/50 hover:text-teal-900 p-1 cursor-pointer shrink-0"
-                  title="Clear amount"
-                >
-                  ✕
-                </button>
-              )}
-            </div>
-
-            {/* Quick Add Chips */}
-            <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-              <span className="text-[10px] font-bold text-[#042825]/60 uppercase">Quick Add:</span>
-              {[100, 250, 500, 1000, 2500].map((inc) => (
-                <button
-                  key={inc}
-                  type="button"
-                  onClick={() => {
-                    const current = customAmount ? parseFloat(customAmount) || 0 : amount;
-                    const next = current + inc;
-                    setAmount(next);
-                    setCustomAmount(String(next));
-                    clearFieldError("amount");
-                    if (cart.setDedicatedAmount) cart.setDedicatedAmount(next);
-                  }}
-                  className="rounded-lg bg-white hover:bg-[#042825] hover:text-white border border-teal-900/15 px-2.5 py-1 text-[11px] font-black text-[#042825] transition cursor-pointer shadow-2xs"
-                >
-                  +{formatINR(inc)}
-                </button>
-              ))}
-            </div>
-
-            {formErrors.amount && (
-              <p className="text-xs text-rose-600 font-semibold flex items-center gap-1">
-                <span>⚠️</span> {formErrors.amount}
-              </p>
-            )}
-          </div>
-
-          {/* ── REAL-TIME EMOTIONAL SEVA IMPACT & 80G TAX CALCULATION BOX ── */}
-          <div className="rounded-2xl bg-amber-50/90 p-3.5 border border-amber-300 text-xs text-amber-950 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 shadow-sm">
-            <div className="flex items-start gap-2.5 min-w-0">
-              <span className="text-xl select-none shrink-0">🌸</span>
-              <div className="min-w-0">
-                <span className="text-[10px] font-black uppercase tracking-wider text-amber-900 block">
-                  Direct Impact for 25 Resident Boys:
+              <div className="relative flex items-center rounded-xl border-2 border-teal-900/20 bg-white px-3 py-1 focus-within:border-teal-900 focus-within:ring-2 focus-within:ring-amber-400 transition">
+                <span className="font-display text-lg font-black text-[#042825] select-none mr-2">
+                  ₹
                 </span>
-                <p className="font-bold text-[#042825] leading-snug text-xs mt-0.5">
-                  {impactSummary}
-                </p>
-                {amountWords && (
-                  <p className="text-[10px] text-amber-900/80 font-medium mt-0.5">
-                    Amount in words: <strong>{amountWords}</strong>
-                  </p>
+                <input
+                  ref={customInputRef}
+                  id="meta-custom-amount-inline"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  placeholder="Type any amount (e.g. 500, 1800, 5000)"
+                  value={customAmount}
+                  onChange={(e) => {
+                    const clean = e.target.value.replace(/\D/g, "");
+                    setCustomAmount(clean);
+                    clearFieldError("amount");
+                    const num = parseFloat(clean);
+                    if (clean && num >= 10 && num <= 1000000) {
+                      setAmount(num);
+                      if (cart.setDedicatedAmount) cart.setDedicatedAmount(num);
+                    }
+                  }}
+                  className="w-full bg-transparent py-1 text-base sm:text-lg font-black text-[#042825] placeholder:text-teal-950/35 placeholder:font-normal outline-none"
+                />
+                {customAmount && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCustomAmount("");
+                      if (cart.setDedicatedAmount) cart.setDedicatedAmount(amount);
+                    }}
+                    className="text-xs font-bold text-teal-900/50 hover:text-teal-900 p-1 cursor-pointer shrink-0"
+                    title="Clear amount"
+                  >
+                    ✕
+                  </button>
                 )}
               </div>
-            </div>
 
-            <div className="shrink-0 self-start sm:self-auto rounded-xl bg-emerald-100 border border-emerald-300 px-3 py-1.5 text-center">
-              <span className="text-[9px] uppercase font-bold text-emerald-800 block">50% Tax Exemption:</span>
-              <span className="text-xs font-black text-emerald-950">Claim ₹{taxDeductionAmount.toLocaleString("en-IN")}</span>
+              <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                <span className="text-[10px] font-bold text-[#042825]/60 uppercase">Quick Add:</span>
+                {[100, 250, 500, 1000, 2500].map((inc) => (
+                  <button
+                    key={inc}
+                    type="button"
+                    onClick={() => {
+                      const current = customAmount ? parseFloat(customAmount) || 0 : amount;
+                      const next = current + inc;
+                      setAmount(next);
+                      setCustomAmount(String(next));
+                      clearFieldError("amount");
+                      if (cart.setDedicatedAmount) cart.setDedicatedAmount(next);
+                    }}
+                    className="rounded-lg bg-white hover:bg-[#042825] hover:text-white border border-teal-900/15 px-2 py-0.5 text-[10px] font-black text-[#042825] transition cursor-pointer shadow-2xs"
+                  >
+                    +{formatINR(inc)}
+                  </button>
+                ))}
+              </div>
+
+              {formErrors.amount && (
+                <p className="text-xs text-rose-600 font-semibold flex items-center gap-1">
+                  <span>⚠️</span> {formErrors.amount}
+                </p>
+              )}
             </div>
-          </div>
-        </section>
+          )}
+        </div>
 
         {/* ══════════════════════════════════════════════════════════════════
-            STEP 2: DONOR & RECEIPT DETAILS (MANDATORY VALIDATION)
+            SECTION 3: DONOR DETAILS FORM (ZERO SCROLL ABOVE THE FOLD)
         ══════════════════════════════════════════════════════════════════ */}
-        <section ref={detailsCardRef} aria-labelledby="step-2-heading" className="space-y-3 pt-2">
-          <div className="flex items-center justify-between pb-1 border-b border-teal-900/10">
-            <div className="flex items-center gap-2">
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#042825] text-xs font-black text-amber-300">
+        <div ref={detailsCardRef} className="pt-2 border-t border-teal-900/10 space-y-2.5">
+          <div className="flex items-center justify-between pb-0.5">
+            <div className="flex items-center gap-1.5">
+              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#042825] text-[10px] font-black text-amber-300">
                 2
               </span>
-              <h2 id="step-2-heading" className="text-xs sm:text-sm font-black uppercase tracking-wider text-[#042825]">
-                Donor Details for 80G Tax Receipt &amp; Blessings
+              <h2 className="text-xs font-black uppercase tracking-wider text-[#042825]">
+                Donor Details (80G Tax Receipt &amp; Blessings):
               </h2>
             </div>
-            <span className="text-[10px] font-semibold text-rose-600">
-              * Required fields
-            </span>
+            <span className="text-[9px] font-bold text-rose-600">* Required</span>
           </div>
 
-          <div className="space-y-3">
-            {/* Full Name Field */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            {/* Full Name */}
             <div>
-              <div className="flex items-center justify-between mb-1">
-                <label htmlFor="donor-full-name" className="text-xs font-bold text-[#042825]">
-                  Full Name <span className="text-rose-600 font-black">*</span>
-                </label>
-                <span className="text-[10px] text-teal-950/60 font-medium">Chanted in 6:30 AM morning prayers</span>
-              </div>
+              <label htmlFor="donor-full-name" className="text-[11px] font-bold text-[#042825] flex items-center justify-between mb-1">
+                <span>Full Name <span className="text-rose-600 font-black">*</span></span>
+                <span className="text-[9px] text-teal-950/60 font-medium">Chanted in morning prayer</span>
+              </label>
               <input
                 ref={nameInputRef}
                 id="donor-full-name"
@@ -1167,29 +1174,27 @@ export function MetaAdsDonateComponent() {
                   setDonorName(e.target.value);
                   clearFieldError("name");
                 }}
-                className={`w-full rounded-xl border p-2.5 text-base sm:text-sm text-[#042825] outline-none transition ${
+                className={`w-full rounded-xl border py-2 px-3 text-sm text-[#042825] outline-none transition ${
                   formErrors.name
                     ? "border-rose-500 ring-2 ring-rose-200 bg-rose-50/20"
                     : "border-teal-900/20 focus:border-teal-900 focus:ring-2 focus:ring-amber-400 bg-white"
                 }`}
               />
               {formErrors.name && (
-                <p className="mt-1 text-xs text-rose-600 font-semibold flex items-center gap-1">
+                <p className="mt-0.5 text-[11px] text-rose-600 font-semibold flex items-center gap-1">
                   <span>⚠️</span> {formErrors.name}
                 </p>
               )}
             </div>
 
-            {/* WhatsApp Mobile Number Field */}
+            {/* WhatsApp Mobile */}
             <div>
-              <div className="flex items-center justify-between mb-1">
-                <label htmlFor="donor-whatsapp-phone" className="text-xs font-bold text-[#042825]">
-                  WhatsApp Mobile Number <span className="text-rose-600 font-black">*</span>
-                </label>
-                <span className="text-[10px] text-emerald-700 font-bold">Instant 80G receipt &amp; prayer video</span>
-              </div>
+              <label htmlFor="donor-whatsapp-phone" className="text-[11px] font-bold text-[#042825] flex items-center justify-between mb-1">
+                <span>WhatsApp Mobile <span className="text-rose-600 font-black">*</span></span>
+                <span className="text-[9px] text-emerald-700 font-bold">Instant 80G receipt</span>
+              </label>
               <div className="relative">
-                <span className="absolute left-3.5 top-2.5 text-xs font-black text-teal-950/70 select-none">
+                <span className="absolute left-3 top-2 text-xs font-black text-teal-950/70 select-none">
                   +91
                 </span>
                 <input
@@ -1205,7 +1210,7 @@ export function MetaAdsDonateComponent() {
                     setDonorPhone(e.target.value.replace(/\D/g, "").slice(0, 10));
                     clearFieldError("phone");
                   }}
-                  className={`w-full rounded-xl border py-2.5 pl-12 pr-3 text-base sm:text-sm font-bold text-[#042825] outline-none transition ${
+                  className={`w-full rounded-xl border py-2 pl-11 pr-3 text-sm font-bold text-[#042825] outline-none transition ${
                     formErrors.phone
                       ? "border-rose-500 ring-2 ring-rose-200 bg-rose-50/20"
                       : "border-teal-900/20 focus:border-teal-900 focus:ring-2 focus:ring-amber-400 bg-white"
@@ -1213,80 +1218,51 @@ export function MetaAdsDonateComponent() {
                 />
               </div>
               {formErrors.phone && (
-                <p className="mt-1 text-xs text-rose-600 font-semibold flex items-center gap-1">
+                <p className="mt-0.5 text-[11px] text-rose-600 font-semibold flex items-center gap-1">
                   <span>⚠️</span> {formErrors.phone}
                 </p>
               )}
             </div>
+          </div>
 
-            {/* Email Address Field (Optional) */}
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <label htmlFor="donor-email-address" className="text-xs font-bold text-[#042825]">
-                  Email Address <span className="text-teal-950/50 font-normal">(Optional)</span>
-                </label>
-                <span className="text-[10px] text-teal-950/60 font-medium">For PDF certificate backup</span>
-              </div>
-              <input
-                id="donor-email-address"
-                type="email"
-                autoComplete="email"
-                placeholder="name@example.com"
-                value={donorEmail}
-                onChange={(e) => {
-                  setDonorEmail(e.target.value);
-                  clearFieldError("email");
-                }}
-                className={`w-full rounded-xl border p-2.5 text-base sm:text-sm text-[#042825] outline-none transition ${
-                  formErrors.email
-                    ? "border-rose-500 ring-2 ring-rose-200 bg-rose-50/20"
-                    : "border-teal-900/20 focus:border-teal-900 focus:ring-2 focus:ring-amber-400 bg-white"
-                }`}
-              />
-              {formErrors.email && (
-                <p className="mt-1 text-xs text-rose-600 font-semibold flex items-center gap-1">
-                  <span>⚠️</span> {formErrors.email}
-                </p>
-              )}
-            </div>
+          {/* Clean 1-Row Collapsible Action Pills */}
+          <div className="flex flex-wrap items-center gap-2 pt-0.5 text-xs">
+            <button
+              type="button"
+              onClick={() => setShowPanInput(!showPanInput)}
+              className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-bold border transition cursor-pointer ${
+                showPanInput
+                  ? "bg-[#042825] text-white border-[#042825]"
+                  : "bg-cream/70 text-teal-900 border-teal-900/15 hover:bg-cream"
+              }`}
+            >
+              <span>📜</span>
+              <span>{showPanInput ? "Hide PAN & Email" : "+ Add PAN (80G Form 10BE) & Email"}</span>
+            </button>
 
-            {/* Optional 80G PAN & Dedication Toggles */}
-            <div className="pt-1 flex flex-wrap items-center gap-2 text-xs">
-              <button
-                type="button"
-                onClick={() => setShowPanInput(!showPanInput)}
-                className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 font-bold border transition cursor-pointer ${
-                  showPanInput
-                    ? "bg-[#042825] text-white border-[#042825]"
-                    : "bg-cream/70 text-teal-900 border-teal-900/15 hover:bg-cream"
-                }`}
-              >
-                <span>📜</span>
-                <span>{showPanInput ? "Hide PAN Field" : "+ Add PAN (80G Form 10BE)"}</span>
-              </button>
+            <button
+              type="button"
+              onClick={() => setShowOccasionSelect(!showOccasionSelect)}
+              className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-bold border transition cursor-pointer ${
+                showOccasionSelect
+                  ? "bg-[#042825] text-white border-[#042825]"
+                  : "bg-cream/70 text-teal-900 border-teal-900/15 hover:bg-cream"
+              }`}
+            >
+              <span>🎂</span>
+              <span>{showOccasionSelect ? "Hide Dedication" : "+ Dedicate (Birthday / Memorial)"}</span>
+            </button>
+          </div>
 
-              <button
-                type="button"
-                onClick={() => setShowOccasionSelect(!showOccasionSelect)}
-                className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 font-bold border transition cursor-pointer ${
-                  showOccasionSelect
-                    ? "bg-[#042825] text-white border-[#042825]"
-                    : "bg-cream/70 text-teal-900 border-teal-900/15 hover:bg-cream"
-                }`}
-              >
-                <span>🎂</span>
-                <span>{showOccasionSelect ? "Hide Dedication" : "+ Dedicate (Birthday / Memorial)"}</span>
-              </button>
-            </div>
-
-            {/* Expandable PAN Input */}
-            {showPanInput && (
-              <div className="rounded-2xl bg-cream/40 p-3.5 border border-teal-900/15 animate-fadeIn space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <label htmlFor="donor-pan-number" className="text-xs font-bold text-[#042825]">
-                    Income Tax PAN Card Number (10 Characters)
+          {/* Expandable PAN & Email Section */}
+          {showPanInput && (
+            <div className="rounded-2xl bg-cream/40 p-3 border border-teal-900/15 animate-fadeIn grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label htmlFor="donor-pan-number" className="text-[11px] font-bold text-[#042825]">
+                    Income Tax PAN Card Number
                   </label>
-                  <span className="text-[10px] text-emerald-800 font-bold">Income Tax Form 10BE Filing</span>
+                  <span className="text-[9px] text-emerald-800 font-bold">CBDT Form 10BE</span>
                 </div>
                 <input
                   ref={panInputRef}
@@ -1300,75 +1276,99 @@ export function MetaAdsDonateComponent() {
                     setDonorPan(sanitizePan(e.target.value));
                     clearFieldError("pan");
                   }}
-                  className={`w-full rounded-xl border p-2.5 text-base sm:text-sm font-mono uppercase text-[#042825] outline-none transition ${
+                  className={`w-full rounded-xl border p-2 text-sm font-mono uppercase text-[#042825] outline-none transition ${
                     formErrors.pan
                       ? "border-rose-500 ring-2 ring-rose-200 bg-rose-50/20"
                       : "border-teal-900/20 focus:border-teal-900 focus:ring-2 focus:ring-amber-400 bg-white"
                   }`}
                 />
                 {formErrors.pan && (
-                  <p className="text-xs text-rose-600 font-semibold">⚠️ {formErrors.pan}</p>
+                  <p className="text-[10px] text-rose-600 font-semibold mt-0.5">⚠️ {formErrors.pan}</p>
                 )}
-                <p className="text-[10px] text-teal-950/60 leading-tight">
-                  Required by Income Tax Department (CBDT) for issuing 80G Form 10BE certificate.
-                </p>
               </div>
-            )}
 
-            {/* Expandable Dedication / Occasion */}
-            {showOccasionSelect && (
-              <div className="rounded-2xl bg-cream/40 p-3.5 border border-teal-900/15 animate-fadeIn space-y-2.5">
-                <label className="block text-xs font-bold text-[#042825]">
-                  Select Auspicious Dedication:
-                </label>
-                <div className="grid grid-cols-2 gap-1.5">
-                  {OCCASIONS.map((occ) => (
-                    <button
-                      key={occ.id}
-                      type="button"
-                      onClick={() => setOccasion(occ.id)}
-                      className={`p-2 rounded-xl text-left border text-xs cursor-pointer transition ${
-                        occasion === occ.id
-                          ? "bg-[#042825] text-white font-bold border-[#042825] shadow-xs"
-                          : "bg-white text-teal-950 border-teal-900/15 hover:bg-sand/30"
-                      }`}
-                    >
-                      <p className="font-bold text-[11px]">{occ.label}</p>
-                      <p className={`text-[9px] ${occasion === occ.id ? "text-amber-300" : "text-teal-950/60"}`}>
-                        {occ.sub}
-                      </p>
-                    </button>
-                  ))}
-                </div>
-
-                <div>
-                  <label htmlFor="donor-prayer-note" className="block text-[10px] font-bold text-teal-950/70 mb-1">
-                    Special Prayer Note or Family Names:
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label htmlFor="donor-email-address" className="text-[11px] font-bold text-[#042825]">
+                    Email Address <span className="text-teal-950/50 font-normal">(Optional)</span>
                   </label>
-                  <input
-                    id="donor-prayer-note"
-                    type="text"
-                    placeholder="e.g. Birthday of my daughter Ananya / In loving memory of father"
-                    value={prayerNote}
-                    onChange={(e) => setPrayerNote(e.target.value)}
-                    className="w-full rounded-xl border border-teal-900/20 bg-white p-2.5 text-xs text-[#042825] outline-none focus:border-teal-900 focus:ring-2 focus:ring-amber-400"
-                  />
+                  <span className="text-[9px] text-teal-950/60 font-medium">For PDF backup</span>
                 </div>
+                <input
+                  id="donor-email-address"
+                  type="email"
+                  autoComplete="email"
+                  placeholder="name@example.com"
+                  value={donorEmail}
+                  onChange={(e) => {
+                    setDonorEmail(e.target.value);
+                    clearFieldError("email");
+                  }}
+                  className={`w-full rounded-xl border p-2 text-sm text-[#042825] outline-none transition ${
+                    formErrors.email
+                      ? "border-rose-500 ring-2 ring-rose-200 bg-rose-50/20"
+                      : "border-teal-900/20 focus:border-teal-900 focus:ring-2 focus:ring-amber-400 bg-white"
+                  }`}
+                />
+                {formErrors.email && (
+                  <p className="text-[10px] text-rose-600 font-semibold mt-0.5">⚠️ {formErrors.email}</p>
+                )}
               </div>
-            )}
-          </div>
-        </section>
+            </div>
+          )}
+
+          {/* Expandable Birthday Dedication */}
+          {showOccasionSelect && (
+            <div className="rounded-2xl bg-cream/40 p-3 border border-teal-900/15 animate-fadeIn space-y-2">
+              <label className="block text-[11px] font-bold text-[#042825]">
+                Select Auspicious Dedication:
+              </label>
+              <div className="grid grid-cols-2 gap-1.5">
+                {OCCASIONS.map((occ) => (
+                  <button
+                    key={occ.id}
+                    type="button"
+                    onClick={() => setOccasion(occ.id)}
+                    className={`p-1.5 rounded-xl text-left border text-xs cursor-pointer transition ${
+                      occasion === occ.id
+                        ? "bg-[#042825] text-white font-bold border-[#042825] shadow-xs"
+                        : "bg-white text-teal-950 border-teal-900/15 hover:bg-sand/30"
+                    }`}
+                  >
+                    <p className="font-bold text-[11px]">{occ.label}</p>
+                    <p className={`text-[9px] ${occasion === occ.id ? "text-amber-300" : "text-teal-950/60"}`}>
+                      {occ.sub}
+                    </p>
+                  </button>
+                ))}
+              </div>
+
+              <div>
+                <label htmlFor="donor-prayer-note" className="block text-[10px] font-bold text-teal-950/70 mb-0.5">
+                  Special Prayer Note or Family Names:
+                </label>
+                <input
+                  id="donor-prayer-note"
+                  type="text"
+                  placeholder="e.g. Birthday of my daughter Ananya / In loving memory of father"
+                  value={prayerNote}
+                  onChange={(e) => setPrayerNote(e.target.value)}
+                  className="w-full rounded-xl border border-teal-900/20 bg-white p-2 text-xs text-[#042825] outline-none focus:border-teal-900 focus:ring-2 focus:ring-amber-400"
+                />
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* ══════════════════════════════════════════════════════════════════
-            STEP 3: 1-TAP PAYMENT ACTION (PANTONE 151 C SAFFRON-GOLD CTA)
+            SECTION 4: HIGH-CONVERTING PRIMARY CTA BUTTON & TRUST (ABOVE THE FOLD)
         ══════════════════════════════════════════════════════════════════ */}
-        <section aria-labelledby="step-3-heading" className="space-y-3 pt-2">
-          {/* Big High-Converting Primary CTA Button */}
+        <div className="pt-2 border-t border-teal-900/10 space-y-2.5">
           <button
             type="button"
             onClick={handlePayNow}
             disabled={loading}
-            className="focus-ring tap-scale w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-[#EA580C] via-[#F97316] to-[#D97706] hover:from-[#D97706] hover:to-[#EA580C] text-white font-black text-base uppercase tracking-wider shadow-xl shadow-orange-600/30 transition active:scale-95 cursor-pointer flex items-center justify-center gap-2 disabled:opacity-75 disabled:cursor-not-allowed animate-heartbeat"
+            className="focus-ring tap-scale w-full py-3.5 sm:py-4 px-6 rounded-2xl bg-gradient-to-r from-[#EA580C] via-[#F97316] to-[#D97706] hover:from-[#D97706] hover:to-[#EA580C] text-white font-black text-sm sm:text-base uppercase tracking-wider shadow-xl shadow-orange-600/30 transition active:scale-95 cursor-pointer flex items-center justify-center gap-2 disabled:opacity-75 disabled:cursor-not-allowed animate-heartbeat"
           >
             {loading ? (
               <>
@@ -1383,9 +1383,9 @@ export function MetaAdsDonateComponent() {
             )}
           </button>
 
-          {/* Trust strip */}
-          <div className="flex flex-wrap items-center justify-center gap-1.5 text-[11px] font-bold text-teal-950/70 text-center">
-            <span>⚡ 1-Tap Pay via</span>
+          {/* Trust Strip */}
+          <div className="flex flex-wrap items-center justify-center gap-1.5 text-[10px] sm:text-[11px] font-bold text-teal-950/70 text-center">
+            <span>⚡ Instant 1-Tap Pay via</span>
             <span className="rounded bg-teal-900/10 px-1.5 py-0.5 text-[10px] font-black text-teal-900">Google Pay</span>
             <span className="rounded bg-teal-900/10 px-1.5 py-0.5 text-[10px] font-black text-teal-900">PhonePe</span>
             <span className="rounded bg-teal-900/10 px-1.5 py-0.5 text-[10px] font-black text-teal-900">Paytm</span>
@@ -1394,8 +1394,8 @@ export function MetaAdsDonateComponent() {
             <span>· 🔒 256-Bit SSL · Instant 80G Receipt</span>
           </div>
 
-          {/* Secondary Direct UPI & Bank Transfer Accordion Links */}
-          <div className="pt-1 flex items-center justify-center gap-4 text-xs">
+          {/* Direct QR & Bank Wire Toggles */}
+          <div className="pt-0.5 flex items-center justify-center gap-3 text-xs">
             <button
               type="button"
               onClick={() => {
@@ -1407,9 +1407,7 @@ export function MetaAdsDonateComponent() {
               <span>📱</span>
               <span>{showDirectUpi ? "Hide QR Code" : "Pay via Direct UPI / Dynamic QR"}</span>
             </button>
-
             <span className="text-teal-950/30">|</span>
-
             <button
               type="button"
               onClick={() => {
@@ -1422,127 +1420,265 @@ export function MetaAdsDonateComponent() {
               <span>{showBankTransfer ? "Hide Bank Wire" : "Axis Bank Wire Transfer"}</span>
             </button>
           </div>
+        </div>
 
-          {/* Direct UPI Drawer */}
-          {showDirectUpi && (
-            <div className="rounded-2xl bg-cream/70 p-4 border border-teal-900/15 animate-fadeIn text-center space-y-3">
-              <span className="inline-block rounded-full bg-emerald-100 text-emerald-950 px-3 py-0.5 text-[10px] font-black uppercase">
-                ⚡ Scan &amp; Pay (0% Platform Fee)
-              </span>
+        {/* ══════════════════════════════════════════════════════════════════
+            SECTION 5: EXPANDABLE PHOTO GALLERY ACCORDION (BROWSE ALL 8 SCHEMES)
+        ══════════════════════════════════════════════════════════════════ */}
+        {showPhotoGallery && (
+          <div className="pt-4 border-t-2 border-amber-400/30 space-y-3 animate-fadeIn">
+            <div className="flex items-center justify-between pb-1">
+              <div className="flex items-center gap-1.5">
+                <span className="text-sm">📷</span>
+                <h3 className="text-xs font-black uppercase tracking-wider text-[#042825]">
+                  Browse All Seva Schemes with Authentic Photos:
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowPhotoGallery(false)}
+                className="text-[11px] font-bold text-teal-900/60 hover:text-teal-900 cursor-pointer"
+              >
+                ✕ Close
+              </button>
+            </div>
 
-              {qrDataUrl && (
-                <div className="flex justify-center my-1">
-                  <div className="p-2 bg-white rounded-2xl border-2 border-amber-400/50 shadow-inner">
+            {/* 3 Dedicated Seva Tabs with Icons */}
+            <div className="grid grid-cols-3 gap-1 rounded-2xl bg-cream/90 p-1 border border-teal-900/10 text-center">
+              <button
+                type="button"
+                onClick={() => setSevaTab("quick")}
+                className={`py-2 px-1 text-[11px] sm:text-xs font-black rounded-xl transition cursor-pointer flex flex-col items-center justify-center ${
+                  sevaTab === "quick"
+                    ? "bg-[#042825] text-white shadow-sm ring-1 ring-amber-400"
+                    : "text-teal-950/70 hover:text-teal-950"
+                }`}
+              >
+                <span>🌟 Popular Seva</span>
+                <span className="text-[9px] font-normal opacity-80">₹11 - ₹4,500</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setSevaTab("official")}
+                className={`py-2 px-1 text-[11px] sm:text-xs font-black rounded-xl transition cursor-pointer flex flex-col items-center justify-center ${
+                  sevaTab === "official"
+                    ? "bg-[#042825] text-white shadow-sm ring-1 ring-amber-400"
+                    : "text-teal-950/70 hover:text-teal-950"
+                }`}
+              >
+                <span>🏛️ 5 Official Tiers</span>
+                <span className="text-[9px] font-normal opacity-80">JJ Act Form 28</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setSevaTab("birthday")}
+                className={`py-2 px-1 text-[11px] sm:text-xs font-black rounded-xl transition cursor-pointer flex flex-col items-center justify-center ${
+                  sevaTab === "birthday"
+                    ? "bg-[#042825] text-white shadow-sm ring-1 ring-amber-400"
+                    : "text-teal-950/70 hover:text-teal-950"
+                }`}
+              >
+                <span>🎂 Celebrations</span>
+                <span className="text-[9px] font-normal opacity-80">Birthday Feast</span>
+              </button>
+            </div>
+
+            {/* Photo Tiles Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {activeTiers.map((tier) => {
+                const isSelected = amount === tier.amt && !customAmount;
+                return (
+                  <button
+                    key={`${tier.category}-${tier.amt}`}
+                    type="button"
+                    onClick={() => {
+                      handleSelectTier(tier);
+                      topCardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+                    }}
+                    className={`group relative overflow-hidden p-2.5 sm:p-3 rounded-2xl text-left transition-all border cursor-pointer tap-scale flex flex-col justify-between min-h-[105px] sm:min-h-[115px] ${
+                      isSelected
+                        ? "border-amber-400 ring-2 ring-amber-400 shadow-xl scale-[1.02]"
+                        : "border-teal-900/15 hover:border-amber-400/60"
+                    }`}
+                  >
+                    {/* Authentic Photography Background */}
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={qrDataUrl}
-                      alt="Janaseva Ashrama UPI QR Code"
-                      className="w-44 h-44 sm:w-52 sm:h-52 object-contain"
+                      src={tier.image}
+                      alt={tier.name}
+                      className="absolute inset-0 h-full w-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
                     />
-                  </div>
-                </div>
-              )}
+                    {/* Warm Radiant Scrim Overlay for 100% Crisp Legibility */}
+                    <div
+                      className={`absolute inset-0 transition-colors ${
+                        isSelected
+                          ? "bg-gradient-to-t from-[#042825]/95 via-[#042825]/80 to-[#042825]/50"
+                          : "bg-gradient-to-t from-black/90 via-black/75 to-black/45 group-hover:from-black/85"
+                      }`}
+                    />
 
-              <div className="flex items-center justify-between bg-white p-2.5 rounded-xl border border-teal-900/15 text-left text-xs">
-                <div>
-                  <span className="text-[9px] font-bold text-teal-900/60 uppercase block">Official Trust UPI:</span>
-                  <p className="font-mono text-xs font-black text-[#042825]">{upiId}</p>
+                    {/* Top Badge */}
+                    <div className="relative z-10 flex items-center justify-between w-full">
+                      <span className="text-base select-none">{tier.icon}</span>
+                      {tier.badge && (
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-[8px] font-black uppercase shadow-xs ${
+                            isSelected
+                              ? "bg-gradient-to-r from-amber-400 to-orange-400 text-[#042825]"
+                              : "bg-white/25 text-white backdrop-blur-xs"
+                          }`}
+                        >
+                          {tier.badge}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Amount & Impact Label */}
+                    <div className="relative z-10 mt-auto">
+                      <span
+                        className={`font-display text-base sm:text-lg font-black leading-none drop-shadow-sm ${
+                          isSelected ? "text-amber-300" : "text-white"
+                        }`}
+                      >
+                        {tier.label}
+                      </span>
+                      <p className="text-[10px] text-white/95 font-bold line-clamp-1 leading-tight mt-0.5 drop-shadow-xs">
+                        {tier.name}
+                      </p>
+                      <p className="text-[9px] text-white/80 line-clamp-2 leading-tight mt-0.5 font-medium drop-shadow-xs">
+                        {tier.impact}
+                      </p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* ══════════════════════════════════════════════════════════════════
+            SECTION 6: DIRECT UPI / DYNAMIC QR CODE DRAWER
+        ══════════════════════════════════════════════════════════════════ */}
+        {showDirectUpi && (
+          <div className="rounded-2xl bg-cream/70 p-4 border border-teal-900/15 animate-fadeIn text-center space-y-3">
+            <span className="inline-block rounded-full bg-emerald-100 text-emerald-950 px-3 py-0.5 text-[10px] font-black uppercase">
+              ⚡ Scan &amp; Pay (0% Platform Fee)
+            </span>
+
+            {qrDataUrl && (
+              <div className="flex justify-center my-1">
+                <div className="p-2 bg-white rounded-2xl border-2 border-amber-400/50 shadow-inner">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={qrDataUrl}
+                    alt="Janaseva Ashrama UPI QR Code"
+                    className="w-44 h-44 sm:w-52 sm:h-52 object-contain"
+                  />
                 </div>
+              </div>
+            )}
+
+            <div className="flex items-center justify-between bg-white p-2.5 rounded-xl border border-teal-900/15 text-left text-xs">
+              <div>
+                <span className="text-[9px] font-bold text-teal-900/60 uppercase block">Official Trust UPI:</span>
+                <p className="font-mono text-xs font-black text-[#042825]">{upiId}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleCopyBank(upiId, "upi")}
+                className="rounded-lg bg-[#042825] text-white px-2.5 py-1 text-[11px] font-bold hover:bg-teal-950 cursor-pointer"
+              >
+                {copiedBankField === "upi" ? "✓ Copied" : "Copy UPI"}
+              </button>
+            </div>
+
+            {/* 1-Tap Mobile App Links */}
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <a
+                href={gpayUri}
+                className="p-2.5 rounded-xl bg-white border border-teal-900/15 hover:border-emerald-600 shadow-2xs font-bold text-teal-950 flex items-center justify-center gap-1.5 text-xs"
+              >
+                <span>🟢 Google Pay</span>
+              </a>
+              <a
+                href={phonepeUri}
+                className="p-2.5 rounded-xl bg-white border border-teal-900/15 hover:border-purple-600 shadow-2xs font-bold text-teal-950 flex items-center justify-center gap-1.5 text-xs"
+              >
+                <span>🟣 PhonePe</span>
+              </a>
+            </div>
+
+            {/* WhatsApp Receipt Button */}
+            <a
+              href={`https://wa.me/${SITE.whatsapp}?text=${encodeURIComponent(
+                `Namaste Janaseva Ashrama, I have completed a direct UPI donation of ₹${finalAmount} for the 25 resident boys.\n\nDonor Name: ${donorName.trim() || "Well-Wisher"}\nMobile: ${donorPhone.trim() || "Mobile"}${donorPan ? `\nPAN: ${donorPan.trim().toUpperCase()}` : ""}\nPlease issue my official 80G tax receipt.`
+              )}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block w-full rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold py-3 px-3 text-center text-xs shadow-sm transition"
+            >
+              💬 Confirm on WhatsApp for 80G Receipt
+            </a>
+          </div>
+        )}
+
+        {/* ══════════════════════════════════════════════════════════════════
+            SECTION 7: AXIS BANK WIRE TRANSFER DRAWER
+        ══════════════════════════════════════════════════════════════════ */}
+        {showBankTransfer && (
+          <div className="rounded-2xl bg-[#042825] text-white p-4 border border-amber-400/30 animate-fadeIn text-xs space-y-2.5">
+            <div className="flex items-center justify-between pb-2 border-b border-white/15">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-amber-300">
+                Official Axis Bank Account
+              </span>
+              <span className="rounded bg-emerald-500/20 px-2 py-0.5 text-[9px] font-bold text-emerald-300">
+                0% Fee
+              </span>
+            </div>
+
+            <div>
+              <span className="text-[9px] text-white/60 uppercase block">Beneficiary Name</span>
+              <p className="font-bold text-white text-xs">{BANK_DETAILS.accountName}</p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div className="rounded-xl bg-white/10 p-2.5">
+                <span className="text-[9px] text-white/60 uppercase block">Account Number</span>
+                <p className="font-mono text-xs font-black text-amber-300">{BANK_DETAILS.accountNumber}</p>
                 <button
                   type="button"
-                  onClick={() => handleCopyBank(upiId, "upi")}
-                  className="rounded-lg bg-[#042825] text-white px-2.5 py-1 text-[11px] font-bold hover:bg-teal-950 cursor-pointer"
+                  onClick={() => handleCopyBank(BANK_DETAILS.accountNumber, "acc")}
+                  className="mt-1 text-[10px] font-bold text-amber-300 underline cursor-pointer"
                 >
-                  {copiedBankField === "upi" ? "✓ Copied" : "Copy UPI"}
+                  {copiedBankField === "acc" ? "✓ Copied" : "Copy A/C"}
                 </button>
               </div>
 
-              {/* 1-Tap Mobile App Links */}
-              <div className="grid grid-cols-2 gap-2 pt-1">
-                <a
-                  href={gpayUri}
-                  className="p-2.5 rounded-xl bg-white border border-teal-900/15 hover:border-emerald-600 shadow-2xs font-bold text-teal-950 flex items-center justify-center gap-1.5 text-xs"
+              <div className="rounded-xl bg-white/10 p-2.5">
+                <span className="text-[9px] text-white/60 uppercase block">IFSC Code</span>
+                <p className="font-mono text-xs font-black text-amber-300">{BANK_DETAILS.ifscCode}</p>
+                <button
+                  type="button"
+                  onClick={() => handleCopyBank(BANK_DETAILS.ifscCode, "ifsc")}
+                  className="mt-1 text-[10px] font-bold text-amber-300 underline cursor-pointer"
                 >
-                  <span>🟢 Google Pay</span>
-                </a>
-                <a
-                  href={phonepeUri}
-                  className="p-2.5 rounded-xl bg-white border border-teal-900/15 hover:border-purple-600 shadow-2xs font-bold text-teal-950 flex items-center justify-center gap-1.5 text-xs"
-                >
-                  <span>🟣 PhonePe</span>
-                </a>
+                  {copiedBankField === "ifsc" ? "✓ Copied" : "Copy IFSC"}
+                </button>
               </div>
-
-              {/* WhatsApp Receipt Button */}
-              <a
-                href={`https://wa.me/${SITE.whatsapp}?text=${encodeURIComponent(
-                  `Namaste Janaseva Ashrama, I have completed a direct UPI donation of ₹${finalAmount} for the 25 resident boys.\n\nDonor Name: ${donorName.trim() || "Well-Wisher"}\nMobile: ${donorPhone.trim() || "Mobile"}${donorPan ? `\nPAN: ${donorPan.trim().toUpperCase()}` : ""}\nPlease issue my official 80G tax receipt.`
-                )}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block w-full rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold py-3 px-3 text-center text-xs shadow-sm transition"
-              >
-                💬 Confirm on WhatsApp for 80G Receipt
-              </a>
             </div>
-          )}
 
-          {/* Bank Wire Drawer */}
-          {showBankTransfer && (
-            <div className="rounded-2xl bg-[#042825] text-white p-4 border border-amber-400/30 animate-fadeIn text-xs space-y-2.5">
-              <div className="flex items-center justify-between pb-2 border-b border-white/15">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-amber-300">
-                  Official Axis Bank Account
-                </span>
-                <span className="rounded bg-emerald-500/20 px-2 py-0.5 text-[9px] font-bold text-emerald-300">
-                  0% Fee
-                </span>
-              </div>
-
+            <div className="grid grid-cols-2 gap-2 text-white/80 pt-1 text-[11px]">
               <div>
-                <span className="text-[9px] text-white/60 uppercase block">Beneficiary Name</span>
-                <p className="font-bold text-white text-xs">{BANK_DETAILS.accountName}</p>
+                <span className="text-[9px] text-white/60 uppercase block">Bank &amp; Branch</span>
+                <p className="font-medium">{BANK_DETAILS.bankName}, {BANK_DETAILS.branch}</p>
               </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <div className="rounded-xl bg-white/10 p-2.5">
-                  <span className="text-[9px] text-white/60 uppercase block">Account Number</span>
-                  <p className="font-mono text-xs font-black text-amber-300">{BANK_DETAILS.accountNumber}</p>
-                  <button
-                    type="button"
-                    onClick={() => handleCopyBank(BANK_DETAILS.accountNumber, "acc")}
-                    className="mt-1 text-[10px] font-bold text-amber-300 underline cursor-pointer"
-                  >
-                    {copiedBankField === "acc" ? "✓ Copied" : "Copy A/C"}
-                  </button>
-                </div>
-
-                <div className="rounded-xl bg-white/10 p-2.5">
-                  <span className="text-[9px] text-white/60 uppercase block">IFSC Code</span>
-                  <p className="font-mono text-xs font-black text-amber-300">{BANK_DETAILS.ifscCode}</p>
-                  <button
-                    type="button"
-                    onClick={() => handleCopyBank(BANK_DETAILS.ifscCode, "ifsc")}
-                    className="mt-1 text-[10px] font-bold text-amber-300 underline cursor-pointer"
-                  >
-                    {copiedBankField === "ifsc" ? "✓ Copied" : "Copy IFSC"}
-                  </button>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2 text-white/80 pt-1 text-[11px]">
-                <div>
-                  <span className="text-[9px] text-white/60 uppercase block">Bank &amp; Branch</span>
-                  <p className="font-medium">{BANK_DETAILS.bankName}, {BANK_DETAILS.branch}</p>
-                </div>
-                <div>
-                  <span className="text-[9px] text-white/60 uppercase block">Account Type</span>
-                  <p className="font-medium">{BANK_DETAILS.accountType}</p>
-                </div>
+              <div>
+                <span className="text-[9px] text-white/60 uppercase block">Account Type</span>
+                <p className="font-medium">{BANK_DETAILS.accountType}</p>
               </div>
             </div>
-          )}
-        </section>
+          </div>
+        )}
       </div>
 
       {/* ── 4. AUTHENTIC LIFE & PROOF OF 25 RESIDENT BOYS (Below Checkout Card) ── */}

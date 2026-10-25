@@ -48,6 +48,13 @@ export async function POST(req: Request) {
     const prayerNote = clean(body.prayerNote, 250);
     const donorPan = clean(body.donorPan, 10)?.toUpperCase() || "";
 
+    // Paid Ads Attribution (Meta Ads & Google Ads)
+    const utmSource = clean(body.utmSource || body.utm_source, 40);
+    const utmMedium = clean(body.utmMedium || body.utm_medium, 40);
+    const utmCampaign = clean(body.utmCampaign || body.utm_campaign, 50);
+    const gclid = clean(body.gclid, 60);
+    const fbclid = clean(body.fbclid, 60);
+
     if (donorEmail && !isEmail(donorEmail)) {
       return NextResponse.json(
         { error: "Please provide a valid email address or leave it blank." },
@@ -70,6 +77,11 @@ export async function POST(req: Request) {
       if (donorPan) safeNotes.donor_pan = cleanRazorpayNote(donorPan, 10);
       if (occasion) safeNotes.occasion = cleanRazorpayNote(occasion, 50);
       if (prayerNote) safeNotes.prayer_note = cleanRazorpayNote(prayerNote, 120);
+      if (utmSource) safeNotes.utm_source = cleanRazorpayNote(utmSource, 40);
+      if (utmMedium) safeNotes.utm_medium = cleanRazorpayNote(utmMedium, 40);
+      if (utmCampaign) safeNotes.utm_campaign = cleanRazorpayNote(utmCampaign, 50);
+      if (gclid) safeNotes.gclid = cleanRazorpayNote(gclid, 60);
+      if (fbclid) safeNotes.fbclid = cleanRazorpayNote(fbclid, 60);
       safeNotes.platform = "antigravity_crm";
 
       const basicAuth = Buffer.from(`${keyId}:${keySecret}`).toString("base64");
