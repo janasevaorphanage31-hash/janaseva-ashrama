@@ -8,12 +8,12 @@ import { useCart } from "./CartProvider";
 import { track } from "@/lib/track";
 
 const primaryNavLinks = [
-  { href: "/#official-tiers", label: "Sponsor 25 Boys", badge: "Form 28" },
-  { href: "/#celebrate", label: "Birthdays", trending: true },
-  { href: "/#today", label: "Annadana & Meals" },
-  { href: "/#boys-gallery", label: "Campus Life" },
-  { href: "/#volunteer", label: "Volunteer", badge: "2.5h/wk" },
-  { href: "/#transparency", label: "80G Trust" },
+  { href: "/#official-tiers", label: "Sponsor 25 Boys", badge: "Form 28", alwaysShow: true },
+  { href: "/#celebrate", label: "Birthdays", trending: true, alwaysShow: true },
+  { href: "/#today", label: "Annadana & Meals", alwaysShow: true },
+  { href: "/#boys-gallery", label: "Campus Life", alwaysShow: false },
+  { href: "/#volunteer", label: "Volunteer", badge: "2.5h/wk", alwaysShow: false },
+  { href: "/#transparency", label: "80G Trust", alwaysShow: true },
 ];
 
 const moreMenuLinks = [
@@ -224,14 +224,16 @@ export function SiteHeader() {
 
           {/* Desktop Navigation: Curated, Non-colliding & Spacious */}
           <nav
-            className="hidden items-center gap-2 lg:gap-3.5 xl:gap-5 text-xs font-bold xl:text-sm md:flex"
+            className="hidden items-center justify-center gap-1.5 lg:gap-3 xl:gap-4.5 text-xs font-bold xl:text-sm md:flex min-w-0"
             aria-label="Primary navigation"
           >
             {primaryNavLinks.map((l) => (
               <Link
                 key={l.href}
                 href={l.href}
-                className={`relative inline-flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 transition hover:text-gold hover:bg-white/5 focus-ring whitespace-nowrap ${
+                className={`relative items-center gap-1.5 rounded-xl px-2 lg:px-2.5 py-1.5 transition hover:text-gold hover:bg-white/5 focus-ring whitespace-nowrap ${
+                  l.alwaysShow ? "inline-flex" : "hidden xl:inline-flex"
+                } ${
                   pathname === l.href ? "text-gold font-bold bg-white/10" : "text-white/85"
                 }`}
               >
@@ -242,7 +244,7 @@ export function SiteHeader() {
                   </span>
                 )}
                 {"badge" in l && Boolean((l as any).badge) && (
-                  <span className="rounded-md bg-emerald-400 text-teal-950 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider shadow-sm">
+                  <span className="hidden 2xl:inline-block rounded-md bg-emerald-400 text-teal-950 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider shadow-sm">
                     {(l as any).badge}
                   </span>
                 )}
@@ -310,7 +312,7 @@ export function SiteHeader() {
           </nav>
 
           {/* Right Action: Primary Highlighted Donation CTA or Secure Checkout Trust Badge */}
-          <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+          <div className="flex items-center gap-2 sm:gap-2.5 shrink-0 z-20">
             {pathname === "/checkout" || pathname === "/donate" || pathname === "/give" ? (
               <div className="flex items-center gap-1.5 rounded-xl bg-emerald-500/25 border border-emerald-400/50 px-2.5 sm:px-3 py-1.5 text-xs font-bold text-emerald-200">
                 <span>🛡️</span>
@@ -320,7 +322,7 @@ export function SiteHeader() {
               <Link
                 href={total > 0 ? `/give?amount=${total}` : "/give"}
                 onClick={() => track("cta_make_impact", { where: "header", amount: total })}
-                className="focus-ring tap-scale relative flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-600 hover:to-orange-600 px-3 sm:px-4 py-2 sm:py-2.5 text-xs font-black tracking-wide text-white shadow-md shadow-orange-500/25 transition active:scale-95 whitespace-nowrap cursor-pointer"
+                className="focus-ring tap-scale relative flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-600 hover:to-orange-600 px-3 sm:px-4 py-2 sm:py-2.5 text-xs font-black tracking-wide text-white shadow-md shadow-orange-500/25 transition active:scale-95 whitespace-nowrap cursor-pointer shrink-0"
               >
                 <span>DONATE 💝</span>
                 {count > 0 && (

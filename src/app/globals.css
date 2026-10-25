@@ -11,7 +11,7 @@
   --color-gold: #e8b34a;
   --color-cream: #fcf8f1;
   --color-sand: #f4ead8;
-  --font-display: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  --font-display: Georgia, "Cambria", "Times New Roman", serif;
 }
 
 html {

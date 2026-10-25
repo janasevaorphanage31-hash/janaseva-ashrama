@@ -81,7 +81,7 @@ export function LiveDonationToast() {
 
   return (
     <div
-      className={`fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] left-3 right-auto z-30 max-w-[calc(100vw-5.5rem)] sm:max-w-xs md:bottom-6 md:left-6 no-print ${
+      className={`fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] left-3 right-auto z-30 max-w-[calc(100vw-5.5rem)] sm:max-w-xs md:bottom-24 md:left-6 no-print ${
         visible ? "pointer-events-auto" : "pointer-events-none"
       }`}
     >

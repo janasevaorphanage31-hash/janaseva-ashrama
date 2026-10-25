@@ -250,7 +250,7 @@ export function CinematicHero({ content }: { content?: Partial<SiteContentMap> }
       className="relative w-full max-w-full overflow-hidden bg-teal-950 flex flex-col text-white"
     >
       {/* ── 1. FULL-WIDTH 100% UNOBSTRUCTED CINEMATIC VIDEO VIEWPORT ── */}
-      <div className="relative w-full aspect-[16/10] sm:aspect-[16/9] md:h-[58svh] lg:h-[65svh] min-h-[250px] max-h-[720px] overflow-hidden bg-black select-none flex items-center justify-center">
+      <div className="relative w-full aspect-[16/10] sm:aspect-[16/9] md:h-[50svh] lg:h-[54svh] min-h-[250px] max-h-[580px] overflow-hidden bg-black select-none flex items-center justify-center">
         {/* Background poster */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
@@ -347,7 +347,7 @@ export function CinematicHero({ content }: { content?: Partial<SiteContentMap> }
       {/* ── 2. DYNAMIC MISSION HEADLINE STRIP ── */}
       <div className="w-full bg-gradient-to-r from-teal-950 via-teal-900 to-teal-950 border-b border-teal-800/60 py-3 sm:py-3.5 px-4 text-center">
         <div className="mx-auto max-w-5xl">
-          <h1 className="font-display text-base sm:text-lg md:text-xl font-black tracking-tight text-white leading-snug">
+          <h1 className="font-display text-base sm:text-lg md:text-xl font-bold tracking-normal text-white leading-snug">
             {content?.heroHeadline || "Pure Love, Wholesome Food & Education for 25 Boys"}
           </h1>
           <p className="mt-1 text-xs sm:text-sm text-teal-100/85 max-w-3xl mx-auto leading-relaxed">

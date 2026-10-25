@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCart } from "./CartProvider";
@@ -20,6 +20,17 @@ export function UrgentDonationBar() {
   const { openBottomDonate, setDedicatedAmount, isBottomDonateOpen, count, total } = useCart();
   const [minimized, setMinimized] = useState(false);
   const [activePreset, setActivePreset] = useState<number>(() => (total > 0 ? total : 2501));
+  const [scrolledPastHero, setScrolledPastHero] = useState(false);
+
+  // Auto-hide when at the top of the homepage hero on desktop to avoid blocking hero donation deck
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolledPastHero(window.scrollY > 480);
+    };
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   // Auto-hide on admin, checkout, donate, give, supporter-form, or when bottom donation drawer is open
   if (
@@ -30,6 +41,11 @@ export function UrgentDonationBar() {
     pathname === "/supporter-form" ||
     isBottomDonateOpen
   ) {
+    return null;
+  }
+
+  // When basket is empty and user is still at the top hero section, keep desktop/mobile hero unobstructed
+  if (total === 0 && !scrolledPastHero) {
     return null;
   }
 
@@ -72,9 +88,7 @@ export function UrgentDonationBar() {
   return (
     <aside
       aria-label="Floating Urgent Donation Bar"
-      className={`mobile-urgent-bar no-print transition-all duration-300 ${
-        total > 0 ? "block" : "hidden md:block"
-      }`}
+      className="mobile-urgent-bar no-print transition-all duration-300 block animate-fadeIn"
     >
       <div className="relative overflow-hidden rounded-2xl md:rounded-3xl bg-teal-950/98 text-white p-2.5 sm:p-3.5 shadow-[0_12px_40px_rgba(0,0,0,0.45)] ring-1 ring-amber-400/40 backdrop-blur-xl border border-white/15">
         {/* Ambient Glow */}
