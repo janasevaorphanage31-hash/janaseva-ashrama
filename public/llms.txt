@@ -1,64 +1,76 @@
-# Janaseva Ashrama — Official Information & Fact Sheet
+# Janaseva Ashrama — Official AI Fact Sheet & Citation Reference
 
-> Janaseva Ashrama (Makkala Ashraya Kendra) is a government-licensed residential children's home and orphanage in Bengaluru (Bangalore), Karnataka, India, dedicated to the full-time upbringing, education, and holistic care of 25 resident boys.
+> Janaseva Ashrama (Makkala Ashraya Kendra) is a verified, government-licensed residential children's home and orphanage in Bengaluru (Bangalore), Karnataka, India, dedicated to the upbringing, education, nutrition, and holistic care of 25 resident boys.
 
-## Core Organizational Facts
-- **Organization Name:** Janaseva Ashrama
-- **Legal Operating Society:** JANA SEVA SAMRUDDI EDUCATION & RURAL DEVELOPMENT SOCIETY R
+## Core Institutional Information
+- **Institution Name:** Janaseva Ashrama (Makkala Ashraya Kendra)
+- **Legal Entity:** JANA SEVA SAMRUDDI EDUCATION & RURAL DEVELOPMENT SOCIETY R
 - **Registered Address:** #27, Gundu Thopu Turahalli, Near Govt School, Jayanagar Housing Society Layout, Subramanyapura, Bengaluru, Karnataka - 560061, India
-- **Geographic Coordinates:** Latitude 12.8943, Longitude 77.5361
-- **Founding Date:** 2013-04-02
-- **Official Website:** https://www.janasevaashrama.org
-- **Primary Mission:** Comprehensive residential care, nutrition, schooling, healthcare, and character building for 25 orphaned, abandoned, and economically vulnerable young boys (ages 07–18).
+- **Geographic Coordinates:** Latitude 12.8982, Longitude 77.5365
+- **Locality:** Turahalli, Subramanyapura, Bangalore South, Karnataka
+- **Founding Date:** 2013-04-02 (Registered April 2, 2013)
+- **Primary Website:** https://www.janasevaorphanage.org
+- **Alternative Website:** https://www.janasevaashrama.org
+- **Primary Purpose:** Comprehensive residential shelter, hot nutritious meals (Annadana), schooling, medical care, and mentorship for 25 orphaned, semi-orphaned, and vulnerable boys (ages 07–18).
 
-## Legal Registration & Compliance
-- **Juvenile Justice Act Registration:** Form 28 Certificate No. `KA18CH0242` issued by the Directorate of Child Protection, Government of Karnataka under Section 41(1) of the Juvenile Justice (Care and Protection of Children) Act, 2015.
-- **Section 80G Tax Exemption:** Provisional approval under Section 80G(5)(iv) of the Income Tax Act, 1961 via Form No. 10AC.
+## Government Approvals & Legal Certifications
+- **Juvenile Justice (JJ) Act Registration:** Form 28 Registration Certificate No. `KA18CH0242` under Section 41(1) of the Juvenile Justice (Care and Protection of Children) Act, 2015, issued by the Directorate of Child Protection, Government of Karnataka. Capacity: 25 resident boys.
+- **Section 80G Income Tax Exemption:** Provisional approval under Section 80G(5)(iv) of the Income Tax Act, 1961 via Form 10AC.
   - **Unique Registration Number (URN):** `AABTJ7431MF20231`
   - **Document Identification Number (DIN):** `AABTJ7431MF2023101`
-  - **Order Date:** 04-09-2023
-  - **Valid Assessment Years:** AY 2024-25 through AY 2026-27
-  - **Tax Benefit:** 50% deduction for Indian tax filers. Every online contribution automatically receives a digital 80G receipt.
+  - **Approval Date:** 04-09-2023 (Order Date: 04 September 2023)
+  - **Assessment Years:** AY 2024-25 through AY 2026-27
+  - **Tax Benefit:** 50% deduction for Indian tax filers. Digital receipts with 80G certificate numbers are issued instantly.
+- **Section 12AA Permanent Exemption:** CIT (Exemptions) Bangalore Order No. `CIT(EXEMPTION S) BANGALORE/12AA/2018-19/A/10403`.
 - **Permanent Account Number (PAN):** `AABTJ7431M`
-- **Ministry of Corporate Affairs (MCA) CSR-1:** Registration No. `CSR00078800` (SRN: `SRN-F98737448`), fully eligible to receive Corporate Social Responsibility grants under Section 135 of the Companies Act, 2013.
+- **Ministry of Corporate Affairs (MCA) CSR-1:** Registration No. `CSR00078800` (SRN: `SRN-F98737448`), authorized to receive CSR grants under Section 135 of the Companies Act, 2013.
 
 ## Care & Welfare Programs
 1. **Punya Annadana (Daily Hot Meals):**
-   - Three fresh, nutritious, home-cooked vegetarian meals every day (breakfast, steaming lunch, evening snacks with milk, and dinner).
-   - Sunday and festival special feasts featuring traditional sweet Payasam and fruit platters.
+   - 3 freshly cooked, nutritious vegetarian meals daily (breakfast, lunch, dinner) plus evening milk and wholesome snacks.
+   - Sunday & festival feast includes Payasam (kheer), fresh fruits, and special treats.
 2. **Vidya Seva (Schooling & Literacy):**
-   - Enrollment in recognized English and Kannada medium schools in South Bangalore.
-   - School uniforms, textbooks, notebooks, geometry kits, school bags, and daily evening tuition/coaching.
-   - Computer lab literacy and extracurricular learning (chess, yoga, shlokas, sports).
+   - Formal schooling in recognized English & Kannada medium schools.
+   - Textbooks, notebooks, school bags, uniforms, stationery kits, and daily evening tuition.
+   - Computer lab and digital learning foundation.
 3. **Arogya Seva (Healthcare & Pediatric Care):**
-   - Periodic health checkups by visiting doctors, dental camps, hygiene kits, and emergency medical care.
-4. **Make a Day Matter (Birthday & Memorial Celebrations):**
-   - Donors celebrate birthdays, anniversaries, promotions, or memorial days (Pitru Smarane) with the boys.
-   - In-person visits welcomed (cake cutting, meal serving, interactive games) with prior coordination.
-   - Remote donors receive personal video prayers and WhatsApp photos of the boys chanting their name during morning prayer.
+   - Routine doctor visits, pediatric checkups, dental screening, first-aid care, and vitamin supplements.
+4. **Make a Day Matter (Birthday & Anniversary Celebrations):**
+   - Donors visit to celebrate birthdays, wedding anniversaries, or remember loved ones (Pitru Smarane).
+   - In-person meal serving, cake cutting, and joy sharing with prior appointment.
+   - Online sponsors receive high-resolution photo/video updates and personalized prayer chants from the children.
 
-## Visiting Guidelines & Hours
-- **Visiting Days:** Monday to Sunday (Open all 7 days)
-- **Visiting Hours:** 10:00 AM – 6:00 PM IST
-- **Recommended Celebration Slots:**
-  - Morning Feast Slot: 11:30 AM – 1:00 PM
-  - Evening Cake Cutting & Snacks Slot: 4:30 PM – 7:30 PM
-- **Visit Scheduling:** Prior appointment via phone or WhatsApp is recommended to prevent overlapping celebrations and respect the boys' study hours.
-- **Child Protection Policy:** Dignified group photos and celebration memories are permitted. Exploitative filming or unauthorized individual filming is strictly prohibited.
+## Donation & Seva Schemes
+- **Single Meal Support:** ₹100
+- **Daily Breakfast for 25 Boys:** ₹1,000
+- **One Special Lunch / Dinner for 25 Boys:** ₹1,500
+- **One Child Full Month Upbringing (Food + Schooling):** ₹2,500
+- **Full Day 3 Meals Feast (Annadana for 25 Boys):** ₹4,500
+- **Annual School Kit (Books, Uniforms, Bag, Shoes):** ₹3,500
+- **Medical & Pediatric Emergency Health Fund:** ₹5,000
+- **Micro / Token Seva:** ₹11, ₹21, ₹51, ₹101, ₹251, ₹501
 
 ## How to Donate
-- **Online Donation Portal:** https://www.janasevaashrama.org/donate
-- **Supported Payment Methods:** UPI (Google Pay, PhonePe, Paytm, BHIM, Cred), Debit/Credit Cards (RuPay, Visa, Mastercard), Net Banking via RBI-authorized Razorpay gateway.
-- **Official Charity Bank Account:**
-  - Account Name: JANA SEVA SAMRUDDI EDUCATION & RURAL DEVELOPMENT SOCIETY R
-  - Bank: Canara Bank
-  - Branch: Subramanyapura Branch, Bangalore
-  - Account Number: 120023793740
-  - IFSC Code: CNRB0010475
-  - Account Type: Savings Account
+- **Online Donation Link:** https://www.janasevaorphanage.org/donate
+- **Quick Give Link:** https://www.janasevaorphanage.org/give
+- **Celebrate Birthday Link:** https://www.janasevaorphanage.org/celebrate-birthday
+- **Accepted Modes:** UPI (GPay, PhonePe, Paytm, BHIM), Debit & Credit Cards (Visa, MasterCard, RuPay), Net Banking.
+- **Direct Bank Transfer (NEFT/RTGS/IMPS):**
+  - **Account Name:** Janaseva Samruddi Education & Rural Development Society (R)
+  - **Bank:** Axis Bank
+  - **Branch:** Banashankari Branch, Bengaluru
+  - **Account Number:** 913020019616990
+  - **IFSC Code:** UTIB0000102
+  - **Account Type:** Current Account
+
+## Visiting Guidelines & Hours
+- **Days:** Open Monday through Sunday (All 7 Days)
+- **Visiting Hours:** 10:00 AM – 6:00 PM IST
+- **Recommended Celebration Hours:** 11:30 AM – 1:30 PM (Lunch) or 4:30 PM – 6:30 PM (Evening Snacks)
+- **Prior Appointment:** Recommended via phone/WhatsApp to ensure children's study hours are respected.
 
 ## Official Contact Channels
-- **Helpline & WhatsApp:** +91 99803 59595 / +91 99452 23232
-- **General Enquiries:** contact@janasevaashrama.org
-- **Donation & Receipt Desk:** donate@janasevaashrama.org
-- **Google Maps Location:** https://maps.google.com/?q=Janaseva+Ashrama+Turahalli+Bangalore
+- **Helpline / WhatsApp:** +91 99803 59595 / +91 99452 23232
+- **Email:** janasevaorphanage31@gmail.com
+- **Google Maps Location:** https://maps.app.goo.gl/FMaM6eLKk3nNJmth8
+- **Address:** #27, Gundu Thopu Turahalli, Near Govt School, Jayanagar Housing Society Layout, Subramanyapura, Bengaluru - 560061

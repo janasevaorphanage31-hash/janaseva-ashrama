@@ -95,13 +95,34 @@ export default function StoriesPage() {
 
       <Section tone="cream" className="py-12">
         <Container className="max-w-6xl">
-          {/* Safeguarding Commitment Banner */}
-          <div className="mb-10 rounded-2xl bg-teal-900/10 p-4 border border-teal-900/15 text-xs text-teal-950/80 flex items-start gap-3">
+          {/* Child Safeguarding & Dignity First */}
+          <div className="mb-8 rounded-2xl bg-teal-900/10 p-4 border border-teal-900/15 text-xs text-teal-950/80 flex items-start gap-3">
             <svg className="h-5 w-5 text-teal-800 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
             </svg>
             <div>
               <strong>Child Safeguarding & Dignity First:</strong> We never display children as objects of pity or distress. Our documentary stories respect the dignity, privacy, and identity of all residents.
+            </div>
+          </div>
+
+          {/* Featured Pillar Guide Banner */}
+          <div className="mb-10 overflow-hidden rounded-3xl bg-gradient-to-r from-emerald-950 via-[#042825] to-[#0A4D46] p-6 sm:p-8 text-white shadow-md border border-emerald-800">
+            <div className="max-w-2xl">
+              <span className="inline-block px-3 py-1 bg-amber-400 text-stone-900 text-xs font-bold rounded-full mb-3 uppercase tracking-wider">
+                Comprehensive 2026 Donor Guide
+              </span>
+              <h2 className="text-xl sm:text-2xl font-serif font-bold mb-2">
+                How to Sponsor Meals (Annadana) & Donate to Orphanages in Bangalore
+              </h2>
+              <p className="text-stone-300 text-xs sm:text-sm mb-4 leading-relaxed">
+                A complete, verified guide covering Karnataka JJ Act licensing (KA18CH0242), Form 10AC Section 80G tax exemptions, meal cost breakdowns, and in-person birthday celebration visits.
+              </p>
+              <Link
+                href="/stories/sponsor-meals-orphanage-bangalore-guide"
+                className="inline-flex items-center gap-2 bg-amber-400 hover:bg-amber-300 text-stone-900 text-xs sm:text-sm font-bold px-5 py-2.5 rounded-xl transition shadow"
+              >
+                Read Complete Guide & FAQs &rarr;
+              </Link>
             </div>
           </div>
 

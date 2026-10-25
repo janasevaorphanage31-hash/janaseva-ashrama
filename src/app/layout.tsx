@@ -195,22 +195,110 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
           "Child education sponsorship",
           "80G tax exemption NGO",
           "Birthday celebration in orphanage",
+          "Juvenile Justice Act licensed child care",
+          "Turahalli Bangalore NGO",
+          "South Bangalore charity donation",
         ],
-        potentialAction: {
-          "@type": "DonateAction",
-          target: {
-            "@type": "EntryPoint",
-            urlTemplate: `${SITE.url}/#impact`,
-            inLanguage: "en-IN",
-            actionPlatform: [
-              "http://schema.org/DesktopWebPlatform",
-              "http://schema.org/MobileWebPlatform",
-            ],
+        hasCredential: [
+          {
+            "@type": "GovernmentPermit",
+            name: "Child Care Institution Registration under JJ Act 2015",
+            identifier: SITE.jjActNumber,
+            issuedBy: {
+              "@type": "GovernmentOrganization",
+              name: "Directorate of Child Protection, Government of Karnataka",
+            },
+            validThrough: "2030-03-26",
           },
-          recipient: {
-            "@type": "Organization",
-            name: SITE.name,
+          {
+            "@type": "GovernmentPermit",
+            name: "Section 80G Income Tax Exemption Order (Form 10AC)",
+            identifier: SITE.urn,
+            issuedBy: {
+              "@type": "GovernmentOrganization",
+              name: "Income Tax Department, Government of India",
+            },
+            validThrough: "2027-03-31",
           },
+          {
+            "@type": "GovernmentPermit",
+            name: "MCA CSR-1 Registration for Corporate Social Responsibility",
+            identifier: SITE.csrNumber,
+            issuedBy: {
+              "@type": "GovernmentOrganization",
+              name: "Ministry of Corporate Affairs, Government of India",
+            },
+          },
+        ],
+        potentialAction: [
+          {
+            "@type": "DonateAction",
+            target: {
+              "@type": "EntryPoint",
+              urlTemplate: `${SITE.url}/donate`,
+              inLanguage: "en-IN",
+              actionPlatform: [
+                "http://schema.org/DesktopWebPlatform",
+                "http://schema.org/MobileWebPlatform",
+              ],
+            },
+            recipient: {
+              "@type": "Organization",
+              name: SITE.name,
+            },
+          },
+          {
+            "@type": "DonateAction",
+            target: {
+              "@type": "EntryPoint",
+              urlTemplate: `${SITE.url}/give`,
+              inLanguage: "en-IN",
+              actionPlatform: [
+                "http://schema.org/DesktopWebPlatform",
+                "http://schema.org/MobileWebPlatform",
+              ],
+            },
+            recipient: {
+              "@type": "Organization",
+              name: SITE.name,
+            },
+          },
+        ],
+      },
+      {
+        "@type": "Event",
+        "@id": `${SITE.url}/#birthday-celebrations`,
+        name: "Daily Birthday, Anniversary & Memorial Annadana Celebrations with 25 Children",
+        description:
+          "Celebrate birthdays, marriage anniversaries, or memorial days by sponsoring fresh meals and visiting Janaseva Ashrama Bangalore. Children receive nutritious food and offer heartfelt prayer chants.",
+        eventAttendanceMode: "https://schema.org/MixedEventAttendanceMode",
+        eventStatus: "https://schema.org/EventScheduled",
+        location: {
+          "@type": "Place",
+          name: `${SITE.name} Children's Home`,
+          address: {
+            "@type": "PostalAddress",
+            streetAddress: "#27, Gundu Thopu Turahalli, Near Govt School, Jayanagar housing Society Layout, Subramanyapura",
+            addressLocality: SITE.city,
+            addressRegion: SITE.state,
+            postalCode: SITE.pincode,
+            addressCountry: "IN",
+          },
+          geo: {
+            "@type": "GeoCoordinates",
+            latitude: SITE.geo.latitude,
+            longitude: SITE.geo.longitude,
+          },
+        },
+        organizer: {
+          "@id": `${SITE.url}/#organization`,
+        },
+        offers: {
+          "@type": "Offer",
+          url: `${SITE.url}/celebrate-birthday`,
+          price: "1500",
+          priceCurrency: "INR",
+          availability: "https://schema.org/InStock",
         },
       },
       {
@@ -258,6 +346,14 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         alternateName: "Janaseva Orphanage",
         image: `${SITE.url}/media/janaseva-ashrama-original.jpg`,
         publisher: { "@id": `${SITE.url}/#organization` },
+        potentialAction: {
+          "@type": "SearchAction",
+          target: {
+            "@type": "EntryPoint",
+            urlTemplate: `${SITE.url}/stories?q={search_term_string}`,
+          },
+          "query-input": "required name=search_term_string",
+        },
       },
       {
         "@type": "WebPage",

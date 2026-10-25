@@ -3,6 +3,7 @@ import { and, eq, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { campaigns } from "@/db/schema";
 import { SITE } from "@/lib/site";
+import { BANGALORE_LOCALITIES } from "@/lib/locations-data";
 
 export const revalidate = 86400; // 24 hours
 
@@ -33,6 +34,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { path: "/future", priority: 0.75, changeFrequency: "monthly" as const },
     { path: "/transparency", priority: 0.85, changeFrequency: "monthly" as const },
     { path: "/stories", priority: 0.9, changeFrequency: "weekly" as const },
+    { path: "/stories/sponsor-meals-orphanage-bangalore-guide", priority: 0.95, changeFrequency: "weekly" as const },
+    { path: "/blog", priority: 0.85, changeFrequency: "weekly" as const },
+    { path: "/orphanage-bangalore", priority: 0.95, changeFrequency: "weekly" as const },
     { path: "/contact", priority: 0.7, changeFrequency: "monthly" as const },
     { path: "/recurring-giving", priority: 0.75, changeFrequency: "monthly" as const },
     { path: "/celebrate-special-day", priority: 0.9, changeFrequency: "daily" as const },
@@ -72,7 +76,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.9,
     }));
 
-    dynamicRoutes = [...campaignRoutes, ...impactRoutes];
+    const localityRoutes = BANGALORE_LOCALITIES.map((loc) => ({
+      url: `${baseUrl}/orphanage-bangalore/${loc.slug}`,
+      lastModified: new Date(),
+      changeFrequency: "weekly" as const,
+      priority: 0.9,
+    }));
+
+    dynamicRoutes = [...campaignRoutes, ...impactRoutes, ...localityRoutes];
   } catch (err) {
     console.error("Error generating dynamic sitemap entries:", err);
   }
