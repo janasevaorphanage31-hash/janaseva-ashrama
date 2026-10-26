@@ -181,12 +181,12 @@ export function CommunityAdminClient({ initialMembers, legacyGroups }: Community
           onClick={() => setSelectedRole("INFLUENCER")}
           className={`rounded-2xl p-4 text-left transition border ${
             selectedRole === "INFLUENCER"
-              ? "bg-purple-800 text-white border-purple-800 shadow-sm"
-              : "bg-white text-teal-950 border-purple-900/10 hover:border-purple-800/30"
+              ? "bg-rose-900 text-white border-rose-900 shadow-sm"
+              : "bg-white text-teal-950 border-rose-900/10 hover:border-rose-900/30"
           }`}
         >
           <div className="text-xs font-semibold uppercase tracking-wider opacity-75">📸 Creators</div>
-          <div className="mt-1 text-2xl font-black text-purple-600 dark:text-purple-400">{counts.influencer}</div>
+          <div className="mt-1 text-2xl font-black text-rose-700">{counts.influencer}</div>
         </button>
 
         <button

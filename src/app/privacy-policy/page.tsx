@@ -109,7 +109,7 @@ export default function PrivacyPolicyPage() {
               <p>
                 All online monetary transactions on our platform are processed through accredited, Reserve Bank of India (RBI) authorized payment gateways (including Razorpay) operating under strict PCI-DSS Level 1 compliance.
               </p>
-              <div className="rounded-xl bg-teal-900/5 p-4 border-l-4 border-teal-800">
+              <div className="rounded-xl bg-teal-900/5 p-4 ring-1 ring-teal-900/15">
                 <p className="font-semibold text-teal-900">Important Banking Data Notice:</p>
                 <p className="mt-1 text-xs sm:text-sm text-teal-950/80">
                   Janaseva Ashrama never stores, handles, or has access to your confidential payment credentials, including credit card numbers, debit card PINs, CVV codes, net banking passwords, or UPI MPINs. All credentials are encrypted end-to-end directly by the authorized payment gateway and banking networks.

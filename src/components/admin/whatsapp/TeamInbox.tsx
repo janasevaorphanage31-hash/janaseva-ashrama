@@ -308,8 +308,8 @@ export function TeamInbox({ currentUserId }: { currentUserId?: number }) {
                   key={c.id}
                   type="button"
                   onClick={() => setSelectedConvId(c.id)}
-                  className={`w-full p-3 text-left transition flex items-start gap-2.5 cursor-pointer ${
-                    isSelected ? "bg-amber-50/80 border-l-4 border-saffron" : "hover:bg-white"
+                  className={`w-full p-3 text-left transition flex items-start gap-2.5 cursor-pointer rounded-lg ${
+                    isSelected ? "bg-amber-100/70 ring-1 ring-amber-400/50 shadow-xs" : "hover:bg-white"
                   }`}
                 >
                   <div className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-teal-900/10 font-bold text-teal-950 text-xs">
