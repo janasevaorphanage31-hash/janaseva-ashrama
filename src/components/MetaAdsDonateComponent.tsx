@@ -830,7 +830,7 @@ export function MetaAdsDonateComponent() {
   };
 
   return (
-    <div className="mx-auto max-w-xl pb-24 sm:pb-16 animate-fadeIn">
+    <div className="mx-auto max-w-xl lg:max-w-6xl xl:max-w-7xl pb-24 sm:pb-16 animate-fadeIn">
       {/* Invisible Honeypot anti-bot protection */}
       <input
         type="text"
@@ -844,8 +844,9 @@ export function MetaAdsDonateComponent() {
         style={{ display: "none" }}
       />
 
-      {/* ── 1. PANTONE-GRADED EMOTIONAL HERO BANNER WITH AUTHENTIC PRAYER PHOTO ── */}
-      <div className="relative overflow-hidden rounded-3xl bg-[#042825] text-white shadow-2xl mb-4 border border-amber-400/40">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-8 items-start">
+        {/* ── 1. PANTONE-GRADED EMOTIONAL HERO BANNER WITH AUTHENTIC PRAYER PHOTO ── */}
+        <div className="col-span-1 lg:col-span-5 lg:col-start-1 lg:row-start-1 relative overflow-hidden rounded-3xl bg-[#042825] text-white shadow-2xl mb-2 lg:mb-0 border border-amber-400/40">
         {/* Authentic Background Photo with Warm Vignette */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
@@ -903,16 +904,17 @@ export function MetaAdsDonateComponent() {
         </div>
       </div>
 
-      {/* ── GLOBAL ERROR ALERT ── */}
-      {formErrors.general && (
-        <div className="mb-3.5 rounded-2xl bg-rose-50 border border-rose-300 p-3.5 text-xs text-rose-800 font-semibold flex items-start gap-2 shadow-sm">
-          <span className="text-base leading-none shrink-0">⚠️</span>
-          <div className="flex-1 leading-relaxed">{formErrors.general}</div>
-        </div>
-      )}
+      {/* ── RIGHT COLUMN: STICKY MAIN CHECKOUT CARD (PANTONE SANDALWOOD & TEMPLE EMERALD) ── */}
+      <div className="col-span-1 lg:col-span-7 lg:col-start-6 lg:row-start-1 lg:row-span-6 lg:sticky lg:top-20 space-y-4">
+        {/* ── GLOBAL ERROR ALERT ── */}
+        {formErrors.general && (
+          <div className="rounded-2xl bg-rose-50 border border-rose-300 p-3.5 text-xs text-rose-800 font-semibold flex items-start gap-2 shadow-sm">
+            <span className="text-base leading-none shrink-0">⚠️</span>
+            <div className="flex-1 leading-relaxed">{formErrors.general}</div>
+          </div>
+        )}
 
-      {/* ── MAIN SACRED CHECKOUT CARD (PANTONE SANDALWOOD & TEMPLE EMERALD) ── */}
-      <div className="rounded-3xl bg-white p-4 sm:p-5 shadow-2xl border-2 border-amber-400/40 space-y-4">
+        <div className="rounded-3xl bg-white p-4 sm:p-5 shadow-2xl border-2 border-amber-400/40 space-y-4">
 
         {/* ══════════════════════════════════════════════════════════════════
             SECTION 1: ACTIVE SEVA CONFIRMATION & GIVING FREQUENCY (ABOVE THE FOLD)
@@ -1680,9 +1682,10 @@ export function MetaAdsDonateComponent() {
           </div>
         )}
       </div>
+      </div>
 
-      {/* ── 4. AUTHENTIC LIFE & PROOF OF 25 RESIDENT BOYS (Below Checkout Card) ── */}
-      <section className="mt-6 rounded-3xl bg-white p-5 shadow-sm border border-teal-900/10">
+      {/* ── 4. AUTHENTIC LIFE & PROOF OF 25 RESIDENT BOYS (Below Checkout Card on Mobile, Left Column on Desktop) ── */}
+      <section className="col-span-1 lg:col-span-5 lg:col-start-1 lg:row-start-2 mt-4 lg:mt-0 rounded-3xl bg-white p-5 shadow-sm border border-teal-900/10">
         <h3 className="font-display text-base font-black text-[#042825] mb-1">
           Life at Janaseva Ashrama (25 Resident Boys)
         </h3>
@@ -1748,7 +1751,7 @@ export function MetaAdsDonateComponent() {
       </section>
 
       {/* ── 5. OFFICIAL GOVERNMENT & TAX CREDENTIALS ── */}
-      <section className="mt-4 rounded-3xl bg-cream/70 p-4 sm:p-5 border border-teal-900/10 text-xs text-teal-950">
+      <section className="col-span-1 lg:col-span-5 lg:col-start-1 lg:row-start-3 mt-4 lg:mt-0 rounded-3xl bg-cream/70 p-4 sm:p-5 border border-teal-900/10 text-xs text-teal-950">
         <h4 className="font-bold uppercase tracking-wider text-[11px] text-[#042825]/70 mb-3">
           Official Government &amp; Tax Accreditations
         </h4>
@@ -1775,7 +1778,7 @@ export function MetaAdsDonateComponent() {
       </section>
 
       {/* ── 6. FREQUENTLY ASKED QUESTIONS ── */}
-      <section className="mt-4 rounded-3xl bg-white p-5 border border-teal-900/10">
+      <section className="col-span-1 lg:col-span-5 lg:col-start-1 lg:row-start-4 mt-4 lg:mt-0 rounded-3xl bg-white p-5 border border-teal-900/10">
         <h4 className="font-display text-base font-bold text-[#042825] mb-3">
           Frequently Asked Questions
         </h4>
@@ -1805,7 +1808,7 @@ export function MetaAdsDonateComponent() {
       </section>
 
       {/* Direct Contact & WhatsApp Help */}
-      <div className="mt-6 text-center text-xs text-teal-950/70 space-y-2">
+      <div className="col-span-1 lg:col-span-5 lg:col-start-1 lg:row-start-5 mt-6 lg:mt-0 text-center text-xs text-teal-950/70 space-y-2">
         <p>
           Need assistance or wish to plan an in-person campus visit?
         </p>
@@ -1823,6 +1826,7 @@ export function MetaAdsDonateComponent() {
         <p className="text-[11px] text-teal-950/60 pt-1">
           Janaseva Ashrama · Turahalli, Uttarahalli Hobli, Bengaluru 560061
         </p>
+      </div>
       </div>
 
       {/* ── 7. 📱 MOBILE STICKY BOTTOM DONATION BAR ── */}
