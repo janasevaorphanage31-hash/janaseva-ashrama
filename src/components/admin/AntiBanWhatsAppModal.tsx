@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import type { AntiBanLanguage, OutreachAngle, MediaAsset } from "@/lib/whatsapp-antiban";
 import { CURATED_OUTREACH_MEDIA } from "@/lib/whatsapp-antiban";
+import { SITE } from "@/lib/site";
 
 export interface AntiBanLeadData {
   leadId: number;
@@ -42,7 +43,7 @@ export function AntiBanWhatsAppModal({
   initialSenderMode = "central",
   onDispositionLogged,
 }: AntiBanWhatsAppModalProps) {
-  const [language, setLanguage] = useState<AntiBanLanguage>("en");
+  const [language, setLanguage] = useState<AntiBanLanguage>("kanglish");
   const [angle, setAngle] = useState<OutreachAngle>("annadana");
   const [selectedMediaId, setSelectedMediaId] = useState<string>("annadana_feast");
   const [senderMode, setSenderMode] = useState<"central" | "individual">(initialSenderMode);
@@ -50,11 +51,17 @@ export function AntiBanWhatsAppModal({
 
   // Generated state
   const [messageText, setMessageText] = useState<string>("");
+  const [captionText, setCaptionText] = useState<string>("");
   const [saltToken, setSaltToken] = useState<string>("");
   const [whatsappUrl, setWhatsappUrl] = useState<string>("");
   const [activeMedia, setActiveMedia] = useState<MediaAsset>(CURATED_OUTREACH_MEDIA.annadana_feast);
   const [loading, setLoading] = useState<boolean>(false);
   const [copied, setCopied] = useState<boolean>(false);
+  const [photoCopied, setPhotoCopied] = useState<boolean>(false);
+
+  // Meta Cloud API Card dispatch state
+  const [sendingApiCard, setSendingApiCard] = useState<boolean>(false);
+  const [apiCardMessage, setApiCardMessage] = useState<string>("");
 
   // Live File / Camera Upload state
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -118,6 +125,7 @@ export function AntiBanWhatsAppModal({
 
       if (data.success) {
         setMessageText(data.messageText);
+        setCaptionText(data.captionText || data.messageText);
         setSaltToken(data.saltToken);
         setWhatsappUrl(data.whatsappUrl);
         if (data.mediaAsset) {
@@ -149,6 +157,7 @@ export function AntiBanWhatsAppModal({
       setCallbackTime("");
       setDispSuccess(false);
       setCustomUploadedFile(null);
+      setApiCardMessage("");
 
       generateMessage({ ang: initialAngle, media: initialMedia });
     }
@@ -230,7 +239,116 @@ export function AntiBanWhatsAppModal({
     }
   };
 
-  // Automatic Attended Marking when launching WhatsApp
+  // 1-Click Copy Photo to Clipboard (so telecaller can Paste Ctrl+V directly into WhatsApp)
+  const handleCopyPhotoToClipboard = async () => {
+    try {
+      const mediaUrl = customUploadedFile?.previewUrl || activeMedia.url;
+      const res = await fetch(mediaUrl);
+      const blob = await res.blob();
+
+      // Convert to PNG on canvas to ensure clipboard API compatibility across Chrome/Safari
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.src = mediaUrl;
+      await new Promise((resolve) => {
+        img.onload = resolve;
+      });
+
+      const canvas = document.createElement("canvas");
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext("2d");
+      ctx?.drawImage(img, 0, 0);
+
+      canvas.toBlob(async (pngBlob) => {
+        if (!pngBlob) return;
+        await navigator.clipboard.write([
+          new ClipboardItem({ "image/png": pngBlob }),
+        ]);
+        setPhotoCopied(true);
+        setTimeout(() => setPhotoCopied(false), 3500);
+      }, "image/png");
+    } catch (err) {
+      console.warn("Clipboard photo copy fallback:", err);
+      alert("Photo copy not supported on this browser. Use 'Share Real Photo' button instead.");
+    }
+  };
+
+  // NATIVE MOBILE SHARE: Attaches REAL IMAGE with clean caption (Solves Image 2 raw URL issue!)
+  const handleShareNativeMedia = async () => {
+    if (!lead) return;
+    if (!lead.status || lead.status === "Pending") {
+      void handleSaveDisposition("Contacted");
+    }
+    setCooldownSeconds(15);
+
+    try {
+      const mediaUrl = customUploadedFile?.previewUrl || activeMedia.url;
+      const filename = customUploadedFile?.name || activeMedia.filename || "janaseva-photo.jpg";
+
+      const res = await fetch(mediaUrl);
+      const blob = await res.blob();
+      const file = new File([blob], filename, { type: blob.type || "image/jpeg" });
+
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          text: captionText || messageText,
+          title: "Janaseva Ashrama",
+        });
+        setApiCardMessage("✓ Real photo & caption shared directly to WhatsApp!");
+        setTimeout(() => setApiCardMessage(""), 4500);
+        return;
+      }
+    } catch (err: any) {
+      if (err.name === "AbortError") return;
+      console.warn("Native share unsupported, falling back to standard web launch:", err);
+    }
+
+    // Fallback: Copy photo to clipboard and open wa.me
+    await handleCopyPhotoToClipboard();
+    const targetUrl = whatsappUrl || `https://wa.me/${formattedPhone}?text=${encodeURIComponent(messageText)}`;
+    window.open(targetUrl, "_blank", "noopener,noreferrer");
+  };
+
+  // META CLOUD API CARD DISPATCH (Akshayakalpa-Style Card with Real Header Image & Action Buttons)
+  const handleSendMetaApiCard = async () => {
+    if (!lead) return;
+    setSendingApiCard(true);
+    setApiCardMessage("");
+    try {
+      const res = await fetch("/api/v1/telecaller/dispatch-card", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          leadId: lead.leadId,
+          mediaUrl: activeMedia.url,
+          captionText: captionText || messageText,
+          mediaType: activeMedia.type === "video" ? "video" : activeMedia.type === "document" ? "document" : "image",
+        }),
+      });
+      const data = await res.json();
+      if (data.success && data.isApiConfigured) {
+        setApiCardMessage("🎉 Verified Meta Card delivered directly to donor's WhatsApp!");
+        setDisposition("Contacted");
+        if (onDispositionLogged) {
+          onDispositionLogged(lead.leadId, "Contacted", "Meta WhatsApp API Card dispatched");
+        }
+        setTimeout(() => setApiCardMessage(""), 5000);
+      } else {
+        // Fallback to native mobile share
+        setApiCardMessage("ℹ️ Meta Cloud API token not set; opening via Native WhatsApp with real image attached!");
+        setTimeout(() => setApiCardMessage(""), 4500);
+        await handleShareNativeMedia();
+      }
+    } catch (err: any) {
+      alert("Error dispatching Meta Card: " + err.message);
+    } finally {
+      setSendingApiCard(false);
+    }
+  };
+
+  // Standard Click-to-Chat (wa.me)
   const handleLaunchWhatsApp = () => {
     if (!lead.status || lead.status === "Pending") {
       void handleSaveDisposition("Contacted");
@@ -298,7 +416,7 @@ export function AntiBanWhatsAppModal({
                 </span>
               </div>
               <p className="text-xs text-white/75 truncate mt-0.5">
-                50,000+ Permutations · Zero-Width Hash Salt · Bangalore Location Proof · 300-500/day safe
+                Kanglish + Kannada + English · Real Media Cards · Action Call Buttons · Verified Maps Pin
               </p>
             </div>
           </div>
@@ -378,50 +496,82 @@ export function AntiBanWhatsAppModal({
         </div>
 
         {/* ── MODAL BODY: 2-COLUMN WORKSPACE ── */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-5 pb-32 sm:pb-5 grid grid-cols-1 lg:grid-cols-12 gap-5">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-5 pb-36 sm:pb-5 grid grid-cols-1 lg:grid-cols-12 gap-5">
           {/* LEFT COLUMN: Controls, Language, Angle, Media Picker, Camera (5 cols) */}
           <div className="lg:col-span-5 space-y-4">
-            {/* 1. Language Pill Selector */}
+            {/* 1. Language Pill Selector (Now includes Kanglish prominently!) */}
             <div>
-              <label className="block text-[11px] font-black uppercase tracking-wider text-teal-950/70 mb-1.5">
-                🌐 Outreach Language
-              </label>
-              <div className="grid grid-cols-3 gap-1.5">
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-[11px] font-black uppercase tracking-wider text-teal-950/70">
+                  🌐 Outreach Language
+                </label>
+                <span className="text-[10px] text-amber-900 bg-amber-100 px-2 py-0.2 rounded-full font-bold">
+                  Recommended: Kanglish
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-1.5">
                 <button
                   type="button"
-                  onClick={() => handleLanguageChange("en")}
-                  className={`flex flex-col items-center justify-center p-2 rounded-xl border text-xs font-bold transition cursor-pointer ${
-                    language === "en"
-                      ? "bg-teal-950 text-white border-teal-950 shadow-xs"
+                  onClick={() => handleLanguageChange("kanglish")}
+                  className={`flex items-center gap-2 p-2.5 rounded-xl border text-xs font-bold transition cursor-pointer ${
+                    language === "kanglish"
+                      ? "bg-teal-950 text-white border-teal-950 shadow-xs ring-2 ring-amber-400"
                       : "bg-white text-teal-950 border-teal-900/15 hover:bg-cream"
                   }`}
                 >
-                  <span className="text-sm">🇬🇧</span>
-                  <span>English</span>
+                  <span className="text-base">🔤</span>
+                  <div className="text-left">
+                    <div>Kanglish</div>
+                    <div className="text-[10px] opacity-75 font-normal">Kannada in English script</div>
+                  </div>
                 </button>
+
                 <button
                   type="button"
                   onClick={() => handleLanguageChange("kn")}
-                  className={`flex flex-col items-center justify-center p-2 rounded-xl border text-xs font-bold transition cursor-pointer ${
+                  className={`flex items-center gap-2 p-2.5 rounded-xl border text-xs font-bold transition cursor-pointer ${
                     language === "kn"
                       ? "bg-teal-950 text-white border-teal-950 shadow-xs"
                       : "bg-white text-teal-950 border-teal-900/15 hover:bg-cream"
                   }`}
                 >
-                  <span className="text-sm">🇮🇳</span>
-                  <span>ಕನ್ನಡ (Kannada)</span>
+                  <span className="text-base">🇮🇳</span>
+                  <div className="text-left">
+                    <div>ಕನ್ನಡ (Pure)</div>
+                    <div className="text-[10px] opacity-75 font-normal">Kannada script</div>
+                  </div>
                 </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleLanguageChange("en")}
+                  className={`flex items-center gap-2 p-2.5 rounded-xl border text-xs font-bold transition cursor-pointer ${
+                    language === "en"
+                      ? "bg-teal-950 text-white border-teal-950 shadow-xs"
+                      : "bg-white text-teal-950 border-teal-900/15 hover:bg-cream"
+                  }`}
+                >
+                  <span className="text-base">🇬🇧</span>
+                  <div className="text-left">
+                    <div>English</div>
+                    <div className="text-[10px] opacity-75 font-normal">Formal &amp; Corporate</div>
+                  </div>
+                </button>
+
                 <button
                   type="button"
                   onClick={() => handleLanguageChange("mixed")}
-                  className={`flex flex-col items-center justify-center p-2 rounded-xl border text-xs font-bold transition cursor-pointer ${
+                  className={`flex items-center gap-2 p-2.5 rounded-xl border text-xs font-bold transition cursor-pointer ${
                     language === "mixed"
                       ? "bg-teal-950 text-white border-teal-950 shadow-xs"
                       : "bg-white text-teal-950 border-teal-900/15 hover:bg-cream"
                   }`}
                 >
-                  <span className="text-sm">🔤</span>
-                  <span>Manglish</span>
+                  <span className="text-base">💬</span>
+                  <div className="text-left">
+                    <div>Manglish</div>
+                    <div className="text-[10px] opacity-75 font-normal">Casual urban mix</div>
+                  </div>
                 </button>
               </div>
             </div>
@@ -531,13 +681,13 @@ export function AntiBanWhatsAppModal({
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="text-[11px] font-black uppercase tracking-wider text-teal-950/70">
-                  📎 Official Ashrama Media Library
+                  📎 Media Asset to Attach (Real Photo/Video)
                 </label>
-                <span className="text-[10px] text-teal-950/60">
-                  Select 1 asset to send
+                <span className="text-[10px] text-teal-950/60 font-semibold">
+                  1 Asset Embedded
                 </span>
               </div>
-              <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+              <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
                 {mediaList.map((m) => {
                   const isSelected = selectedMediaId === m.id;
                   return (
@@ -597,26 +747,26 @@ export function AntiBanWhatsAppModal({
               {activeMedia && (
                 <div className="mt-2 rounded-2xl bg-cream/60 p-2.5 border border-teal-900/10 flex items-center justify-between">
                   <div className="min-w-0">
-                    <p className="text-[10px] font-bold text-teal-950/60 uppercase">Selected Asset</p>
+                    <p className="text-[10px] font-bold text-teal-950/60 uppercase">Selected Photo</p>
                     <p className="text-xs font-bold text-teal-950 truncate">{activeMedia.title}</p>
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                      type="button"
+                      onClick={handleCopyPhotoToClipboard}
+                      className="rounded-lg bg-white px-2 py-1 text-[10px] font-bold text-teal-950 border border-teal-900/15 hover:bg-cream cursor-pointer"
+                      title="Copy photo to clipboard so you can paste (Ctrl+V) directly into WhatsApp"
+                    >
+                      {photoCopied ? "✓ Copied!" : "📋 Copy Photo"}
+                    </button>
                     <a
                       href={activeMedia.url}
                       target="_blank"
                       rel="noreferrer"
-                      className="rounded-lg bg-white px-2 py-1 text-[10px] font-bold text-teal-950 border border-teal-900/15 hover:bg-cream"
+                      className="rounded-lg bg-teal-950 px-2 py-1 text-[10px] font-bold text-white hover:bg-teal-900"
                       title="Open full resolution in new tab"
                     >
                       👁️ View
-                    </a>
-                    <a
-                      href={activeMedia.url}
-                      download={activeMedia.filename}
-                      className="rounded-lg bg-teal-950 px-2 py-1 text-[10px] font-bold text-white hover:bg-teal-900"
-                      title="Download file to attach in WhatsApp"
-                    >
-                      ⬇️ Download
                     </a>
                   </div>
                 </div>
@@ -634,7 +784,6 @@ export function AntiBanWhatsAppModal({
                 </span>
               </div>
 
-              {/* Hidden file inputs */}
               <input
                 type="file"
                 ref={fileInputRef}
@@ -687,7 +836,7 @@ export function AntiBanWhatsAppModal({
                         {customUploadedFile.name}
                       </p>
                       <p className="text-[10px] text-emerald-700">
-                        {customUploadedFile.size} · Ready to attach in chat
+                        {customUploadedFile.size} · Ready to attach
                       </p>
                     </div>
                   </div>
@@ -703,38 +852,47 @@ export function AntiBanWhatsAppModal({
               )}
             </div>
 
-            {/* 6. Bangalore Physical Location & Govt Legitimacy Badge */}
-            <div className="rounded-2xl bg-cream/70 p-3 border border-teal-900/10 text-xs space-y-1">
+            {/* 6. Bangalore Physical Location & Exact Verified Google Maps Pin from SITE */}
+            <div className="rounded-2xl bg-cream/70 p-3 border border-teal-900/10 text-xs space-y-1.5">
               <div className="flex items-center justify-between">
                 <span className="font-bold text-teal-950 flex items-center gap-1.5">
                   <span>📍</span>
-                  <span>Bangalore Calling Proof</span>
+                  <span>Official Bangalore Location Proof</span>
                 </span>
                 <span className="text-[10px] font-mono text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full font-bold">
-                  JJ Act KA18CH0242
+                  Verified Ashrama
                 </span>
               </div>
-              <p className="text-[11px] text-teal-950/70">
-                Janaseva Ashrama, Turahalli, Bengaluru - 560062
+              <p className="text-[11px] text-teal-950/80 leading-relaxed">
+                {SITE.address}
               </p>
-              <a
-                href="https://maps.google.com/?q=Janaseva+Trust+Ashrama+Turahalli+Bengaluru"
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1 text-[11px] font-bold text-teal-900 hover:underline"
-              >
-                <span>🗺️ Verified Google Maps Pin</span>
-              </a>
+              <div className="flex items-center gap-3 pt-0.5">
+                <a
+                  href={SITE.mapsUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-800 hover:text-emerald-900 hover:underline"
+                >
+                  <span>🗺️ Open Google Maps Pin ({SITE.mapsUrl.split("/").pop()})</span>
+                </a>
+                <span>·</span>
+                <a
+                  href={`tel:${SITE.phoneIntl}`}
+                  className="inline-flex items-center gap-1 text-[11px] font-bold text-teal-900 hover:underline"
+                >
+                  <span>📞 {SITE.phoneIntl}</span>
+                </a>
+              </div>
             </div>
           </div>
 
-          {/* RIGHT COLUMN: Live Message Preview, Anti-Ban Badge, Actions & Quick Logging (7 cols) */}
+          {/* RIGHT COLUMN: Live Message Preview, Action Buttons, Media Share & Quick Logging (7 cols) */}
           <div className="lg:col-span-7 flex flex-col space-y-4">
             {/* Live Message Preview Header */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="text-[11px] font-black uppercase tracking-wider text-teal-950/70 flex items-center gap-2">
-                  <span>📝 Altered Message Preview</span>
+                  <span>📝 Altered Message Preview ({language.toUpperCase()})</span>
                   {saltToken && (
                     <span className="font-mono text-[10px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
                       Shield #{saltToken}
@@ -759,7 +917,10 @@ export function AntiBanWhatsAppModal({
                 <textarea
                   rows={9}
                   value={messageText}
-                  onChange={(e) => setMessageText(e.target.value)}
+                  onChange={(e) => {
+                    setMessageText(e.target.value);
+                    setCaptionText(e.target.value);
+                  }}
                   className="w-full bg-transparent text-xs sm:text-sm text-teal-950 leading-relaxed focus:outline-hidden resize-none font-sans"
                   placeholder="Generating unique personalized message..."
                 />
@@ -773,6 +934,36 @@ export function AntiBanWhatsAppModal({
                     <span>✓</span> Zero-Width Hash Salted · Anti-Ban Active
                   </span>
                 </div>
+              </div>
+            </div>
+
+            {/* Visual Action Buttons Embedded in Card (Matching Akshayakalpa Sample) */}
+            <div className="rounded-2xl bg-cream/70 p-3 border border-teal-900/15 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-black uppercase text-teal-950">
+                  🎯 WhatsApp Action Buttons (Call-to-Action)
+                </span>
+                <span className="text-[10px] font-mono text-emerald-800 bg-emerald-100 px-2 py-0.2 rounded-full font-bold">
+                  Interactive Links
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <a
+                  href={`${SITE.url}/give?ref=${callerId}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center justify-center gap-1.5 p-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-xs transition"
+                >
+                  <span>🌐</span>
+                  <span>1-Tap Donate Button</span>
+                </a>
+                <a
+                  href={`tel:${SITE.phoneIntl}`}
+                  className="flex items-center justify-center gap-1.5 p-2 rounded-xl bg-teal-950 hover:bg-teal-900 text-white text-xs font-black shadow-xs transition"
+                >
+                  <span>📞</span>
+                  <span>Call Ashrama ({SITE.phoneIntl})</span>
+                </a>
               </div>
             </div>
 
@@ -799,32 +990,68 @@ export function AntiBanWhatsAppModal({
               </div>
             )}
 
-            {/* Main Action Buttons */}
+            {apiCardMessage && (
+              <div className="rounded-2xl bg-teal-950 text-gold p-3 text-xs font-bold border border-amber-400/30 animate-fadeIn">
+                {apiCardMessage}
+              </div>
+            )}
+
+            {/* ── PRIMARY DISPATCH ACTION BUTTONS ── */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              {/* Copy Message Text Button */}
+              {/* PRIMARY ACTION 1: Native Mobile Share (Sends Real Photo as Header + Caption) */}
+              <button
+                type="button"
+                onClick={handleShareNativeMedia}
+                className="focus-ring tap-scale inline-flex items-center justify-center gap-2 rounded-2xl bg-[#25D366] hover:brightness-105 active:bg-[#1faa53] text-white px-4 py-3 text-xs sm:text-sm font-black shadow-md transition cursor-pointer min-h-[48px]"
+                title="Attaches the actual photo with text as caption - completely eliminates ugly raw URLs!"
+              >
+                <span className="text-lg">📲</span>
+                <div className="text-left">
+                  <div>Send Real Photo + Message</div>
+                  <div className="text-[10px] font-normal opacity-90">Embeds photo directly into chat bubble</div>
+                </div>
+              </button>
+
+              {/* PRIMARY ACTION 2: Meta Cloud API Verified Card */}
+              <button
+                type="button"
+                onClick={handleSendMetaApiCard}
+                disabled={sendingApiCard}
+                className="focus-ring tap-scale inline-flex items-center justify-center gap-2 rounded-2xl bg-teal-950 hover:bg-teal-900 text-gold px-4 py-3 text-xs sm:text-sm font-black shadow-md transition cursor-pointer min-h-[48px] disabled:opacity-60"
+                title="Dispatches official verified card with buttons directly via Meta API"
+              >
+                <span className="text-lg">{sendingApiCard ? "⏳" : "🚀"}</span>
+                <div className="text-left">
+                  <div>{sendingApiCard ? "Dispatching..." : "Send Meta Verified Card"}</div>
+                  <div className="text-[10px] font-normal opacity-75">Akshayakalpa-style interactive card</div>
+                </div>
+              </button>
+
+              {/* ACTION 3: Copy Photo to Clipboard (for Web / Desktop Ctrl+V) */}
+              <button
+                type="button"
+                onClick={handleCopyPhotoToClipboard}
+                className="focus-ring tap-scale inline-flex items-center justify-center gap-2 rounded-2xl bg-white hover:bg-cream text-teal-950 px-4 py-2.5 text-xs font-bold border border-teal-900/15 shadow-xs transition cursor-pointer min-h-[44px]"
+                title="Copies photo binary so you can Paste (Ctrl+V) directly into WhatsApp Web"
+              >
+                <span>{photoCopied ? "✓" : "🖼️"}</span>
+                <span>{photoCopied ? "Photo Copied (Press Ctrl+V)!" : "Copy Photo to Clipboard"}</span>
+              </button>
+
+              {/* ACTION 4: Copy Message Text */}
               <button
                 type="button"
                 onClick={handleCopyText}
-                className="focus-ring tap-scale inline-flex items-center justify-center gap-2 rounded-2xl bg-white hover:bg-cream text-teal-950 px-4 py-3 text-xs sm:text-sm font-bold border border-teal-900/15 shadow-xs transition cursor-pointer min-h-[46px]"
+                className="focus-ring tap-scale inline-flex items-center justify-center gap-2 rounded-2xl bg-white hover:bg-cream text-teal-950 px-4 py-2.5 text-xs font-bold border border-teal-900/15 shadow-xs transition cursor-pointer min-h-[44px]"
               >
                 <span>{copied ? "✓" : "📋"}</span>
-                <span>{copied ? "Copied to Clipboard!" : "Copy Message Text"}</span>
-              </button>
-
-              {/* Open in WhatsApp Web / App (Auto marks attended) */}
-              <button
-                type="button"
-                onClick={handleLaunchWhatsApp}
-                className="focus-ring tap-scale inline-flex items-center justify-center gap-2 rounded-2xl bg-[#25D366] hover:brightness-105 active:bg-[#1faa53] text-white px-4 py-3 text-xs sm:text-sm font-black shadow-md transition cursor-pointer min-h-[46px]"
-              >
-                <span>💬</span>
-                <span>Send via WhatsApp</span>
+                <span>{copied ? "Text Copied!" : "Copy Formatted Text"}</span>
               </button>
             </div>
 
             {/* Direct Phone Call Button (Auto marks attended) */}
             <div className="flex items-center justify-between bg-cream/40 p-2.5 rounded-2xl border border-teal-900/10 text-xs">
-              <span className="text-teal-950/70 font-medium">Prefer speaking first?</span>
+              <span className="text-teal-950/70 font-medium">Prefer speaking on call first?</span>
               <button
                 type="button"
                 onClick={handleLaunchCall}
@@ -921,17 +1148,17 @@ export function AntiBanWhatsAppModal({
 
         {/* ── STICKY MOBILE ACTION BAR ── */}
         <div className="sm:hidden sticky bottom-0 bg-white/95 backdrop-blur-md border-t border-teal-900/15 p-3 shadow-lg z-20 space-y-2">
-          {/* Main 1-tap WhatsApp trigger */}
+          {/* Main 1-tap Native Real Photo + Caption trigger */}
           <button
             type="button"
-            onClick={handleLaunchWhatsApp}
+            onClick={handleShareNativeMedia}
             className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#25D366] active:bg-[#1faa53] text-white font-black text-sm shadow-md transition cursor-pointer"
           >
-            <span className="text-lg">💬</span>
-            <span>Send via WhatsApp</span>
+            <span className="text-lg">📲</span>
+            <span>Send Real Photo + Message to WhatsApp</span>
           </button>
 
-          {/* Quick Row: Call, Copy, Alter */}
+          {/* Quick Row: Call, Copy Photo, Web wa.me */}
           <div className="grid grid-cols-3 gap-2">
             <button
               type="button"
@@ -943,20 +1170,20 @@ export function AntiBanWhatsAppModal({
             </button>
             <button
               type="button"
-              onClick={handleCopyText}
+              onClick={handleCopyPhotoToClipboard}
               className="flex h-10 items-center justify-center gap-1 rounded-xl bg-cream border border-teal-900/15 text-teal-950 text-xs font-bold active:scale-95 transition cursor-pointer"
             >
-              <span>{copied ? "✓" : "📋"}</span>
-              <span>{copied ? "Copied" : "Copy"}</span>
+              <span>{photoCopied ? "✓" : "🖼️"}</span>
+              <span>{photoCopied ? "Copied" : "Photo"}</span>
             </button>
             <button
               type="button"
-              onClick={() => generateMessage()}
-              disabled={loading}
-              className="flex h-10 items-center justify-center gap-1 rounded-xl bg-purple-50 border border-purple-200 text-purple-900 text-xs font-bold active:scale-95 transition cursor-pointer disabled:opacity-50"
+              onClick={handleLaunchWhatsApp}
+              className="flex h-10 items-center justify-center gap-1 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-bold active:scale-95 transition cursor-pointer"
+              title="Open standard wa.me click-to-chat"
             >
-              <span className={loading ? "animate-spin" : ""}>🔄</span>
-              <span>Alter</span>
+              <span>💬</span>
+              <span>wa.me</span>
             </button>
           </div>
         </div>
