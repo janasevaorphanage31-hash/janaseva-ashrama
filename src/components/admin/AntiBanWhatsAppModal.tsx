@@ -1154,66 +1154,102 @@ export function AntiBanWhatsAppModal({
               </div>
             )}
 
-            {/* ── PRIMARY DISPATCH ACTION BUTTONS ── */}
-            <div className="space-y-2">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                {/* PRIMARY ACTION 1: Share Real Photo File + Caption directly to WhatsApp */}
-                <button
-                  type="button"
-                  onClick={handleShareRealMedia}
-                  className="focus-ring tap-scale inline-flex items-center justify-center gap-2 rounded-2xl bg-[#25D366] hover:brightness-105 active:bg-[#1faa53] text-white px-3.5 py-3 text-xs sm:text-sm font-black shadow-md transition cursor-pointer min-h-[48px]"
-                  title="Shares the actual photo file directly into WhatsApp bubble with Kanglish caption"
-                >
-                  <span className="text-xl">📲</span>
-                  <div className="text-left">
-                    <div>Share Real Photo + Message</div>
-                    <div className="text-[10px] font-normal opacity-90">Embeds photo into WhatsApp · Phone copied</div>
+            {/* ── PROGRESSIVE DISPATCH WORKFLOW (AUTOMATED OR STEP-WISE) ── */}
+            <div className="space-y-3">
+              {baileysStatus === "connected" ? (
+                /* ⚡ AUTOMATED 1-CLICK DISPATCH (WHEN SCANNER IS LINKED) */
+                <div className="rounded-2xl bg-gradient-to-r from-emerald-900 to-teal-950 p-4 text-white shadow-lg border border-emerald-500/30 animate-fadeIn">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <span className="flex h-3 w-3 rounded-full bg-emerald-400 animate-ping" />
+                      <span className="text-xs font-black uppercase text-emerald-300 tracking-wider">
+                        Live Image Sharing Scanner Active (+{baileysPhone || "Linked"})
+                      </span>
+                    </div>
+                    <span className="text-[10px] text-white/70 bg-white/10 px-2 py-0.5 rounded-full border border-white/20">
+                      ⚡ 100% Complete Auto-Send
+                    </span>
                   </div>
-                </button>
 
-                {/* PRIMARY ACTION 2: Direct 1-Tap WhatsApp strictly targeting the CUSTOMER's number */}
-                <button
-                  type="button"
-                  onClick={handleSendDirectToCustomer}
-                  className="focus-ring tap-scale inline-flex items-center justify-center gap-2 rounded-2xl bg-teal-900 hover:bg-teal-950 active:scale-95 text-white px-3.5 py-3 text-xs sm:text-sm font-black shadow-md transition cursor-pointer min-h-[48px]"
-                  title={`Directly opens WhatsApp with Customer ${lead.name} (${displayPhone}) with pre-filled Kanglish text`}
-                >
-                  <span className="text-xl">💬</span>
-                  <div className="text-left">
-                    <div>Direct Chat ({displayPhone})</div>
-                    <div className="text-[10px] font-normal opacity-90">1-Tap chat to customer · Photo on clipboard</div>
-                  </div>
-                </button>
-
-                {/* PRIMARY ACTION 3: Baileys WhatsApp Gateway (Open-Source GitHub Bridge) */}
-                <button
-                  type="button"
-                  onClick={baileysStatus === "connected" ? handleSendBaileys : handleConnectBaileys}
-                  disabled={sendingBaileys || connectingBaileys}
-                  className={`focus-ring tap-scale inline-flex items-center justify-center gap-2 rounded-2xl px-3.5 py-3 text-xs sm:text-sm font-black shadow-md transition cursor-pointer min-h-[48px] ${
-                    baileysStatus === "connected"
-                      ? "bg-emerald-700 hover:bg-emerald-800 text-white"
-                      : "bg-teal-950 hover:bg-teal-900 text-gold"
-                  }`}
-                  title="Sends real photo directly via linked Ashrama WhatsApp using Baileys engine"
-                >
-                  <span className="text-lg">{sendingBaileys || connectingBaileys ? "⏳" : "⚡"}</span>
-                  <div className="text-left">
-                    <div>
+                  <button
+                    type="button"
+                    onClick={handleSendBaileys}
+                    disabled={sendingBaileys}
+                    className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-[#25D366] to-[#128C7E] hover:brightness-105 active:scale-95 text-white font-black text-xs sm:text-sm shadow-md transition cursor-pointer flex items-center justify-center gap-2"
+                  >
+                    <span className="text-xl">{sendingBaileys ? "⏳" : "⚡"}</span>
+                    <span>
                       {sendingBaileys
-                        ? `Sending to ${displayPhone}...`
-                        : baileysStatus === "connected"
-                        ? `Send Real Photo (${displayPhone})`
-                        : "Connect Ashrama WhatsApp"}
+                        ? `Sending Complete Media Package to ${displayPhone}...`
+                        : `1-Click Complete Send to ${lead.name} (${displayPhone})`}
+                    </span>
+                  </button>
+                  <p className="text-[10px] text-white/75 text-center mt-2">
+                    Delivers real photo + donor-friendly Kanglish message directly to customer&apos;s WhatsApp!
+                  </p>
+                </div>
+              ) : (
+                /* 📋 STEP-WISE GUIDED OUTREACH (WHEN SCANNER NOT YET LINKED) */
+                <div className="rounded-2xl bg-cream/40 border border-teal-900/15 p-3.5 space-y-3 shadow-2xs">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-base">📋</span>
+                      <span className="text-xs font-black uppercase tracking-wider text-teal-950">
+                        Step-Wise Outreach Workflow:
+                      </span>
                     </div>
-                    <div className="text-[10px] font-normal opacity-85">
-                      {baileysStatus === "connected"
-                        ? `🟢 Gateway Active · Direct to ${displayPhone}`
-                        : "Baileys engine · Scan QR once"}
-                    </div>
+                    <button
+                      type="button"
+                      onClick={handleConnectBaileys}
+                      className="inline-flex items-center gap-1 text-[11px] font-black text-teal-900 bg-white px-2.5 py-1 rounded-lg border border-teal-900/20 shadow-2xs hover:bg-sand transition cursor-pointer"
+                      title="Scan QR once to enable 1-click automated photo sending"
+                    >
+                      <span>📱</span>
+                      <span>Link WhatsApp Scanner</span>
+                    </button>
                   </div>
-                </button>
-              </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {/* Step 1: Open Customer Chat */}
+                    <button
+                      type="button"
+                      onClick={handleSendDirectToCustomer}
+                      className="p-3 rounded-2xl bg-teal-950 hover:bg-teal-900 active:scale-95 text-white text-left font-bold text-xs shadow-md transition flex items-center gap-3 cursor-pointer min-h-[56px]"
+                    >
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-amber-400 text-teal-950 text-sm font-black shadow-xs">
+                        1
+                      </span>
+                      <div className="min-w-0">
+                        <div className="font-black text-amber-300 truncate">Step 1: Open Customer Chat</div>
+                        <div className="text-[10px] font-normal opacity-85 truncate">
+                          Opens {displayPhone} with pre-filled Kanglish text
+                        </div>
+                      </div>
+                    </button>
+
+                    {/* Step 2: Share Real Seva Photo */}
+                    <button
+                      type="button"
+                      onClick={handleShareRealMedia}
+                      className="p-3 rounded-2xl bg-[#25D366] hover:brightness-105 active:scale-95 text-white text-left font-bold text-xs shadow-md transition flex items-center gap-3 cursor-pointer min-h-[56px]"
+                    >
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white text-emerald-900 text-sm font-black shadow-xs">
+                        2
+                      </span>
+                      <div className="min-w-0">
+                        <div className="font-black text-white truncate">Step 2: Share Real Seva Photo</div>
+                        <div className="text-[10px] font-normal opacity-90 truncate">
+                          Attaches actual meal photo into WhatsApp
+                        </div>
+                      </div>
+                    </button>
+                  </div>
+
+                  <p className="text-[10px] text-teal-950/70 text-center font-medium">
+                    💡 <strong>Pro-Tip</strong>: Tap <strong>Link WhatsApp Scanner</strong> above to pair your Ashrama WhatsApp once, and unlock 1-click automated complete sending!
+                  </p>
+                </div>
+              )}
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 {/* ACTION 3: Meta Cloud API Verified Card */}
@@ -1362,16 +1398,29 @@ export function AntiBanWhatsAppModal({
 
         {/* ── STICKY MOBILE ACTION BAR ── */}
         <div className="sm:hidden sticky bottom-0 bg-white/95 backdrop-blur-md border-t border-teal-900/15 p-3 shadow-lg z-20 space-y-2">
-          {/* Main 1-tap Real Photo + Kanglish Message to WhatsApp */}
+          {/* Main 1-tap Action: Baileys 1-Click if connected, or Share Real Photo if disconnected */}
           <button
             type="button"
-            onClick={handleShareRealMedia}
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#25D366] active:bg-[#1faa53] text-white font-black text-xs sm:text-sm shadow-md transition cursor-pointer"
+            onClick={baileysStatus === "connected" ? handleSendBaileys : handleShareRealMedia}
+            disabled={sendingBaileys}
+            className={`flex h-12 w-full items-center justify-center gap-2 rounded-2xl active:scale-95 text-white font-black text-xs sm:text-sm shadow-md transition cursor-pointer ${
+              baileysStatus === "connected"
+                ? "bg-gradient-to-r from-emerald-600 to-teal-800"
+                : "bg-[#25D366] active:bg-[#1faa53]"
+            }`}
           >
-            <span className="text-xl">📲</span>
+            <span className="text-xl">{baileysStatus === "connected" ? (sendingBaileys ? "⏳" : "⚡") : "📲"}</span>
             <div className="text-left">
-              <div className="font-black leading-tight">Share Real Photo + Message ({displayPhone})</div>
-              <div className="text-[10px] font-normal opacity-90 leading-tight">Attaches photo file to WhatsApp · Customer phone copied</div>
+              <div className="font-black leading-tight">
+                {baileysStatus === "connected"
+                  ? (sendingBaileys ? `Sending to ${displayPhone}...` : `1-Click Auto-Send (${displayPhone})`)
+                  : `Share Real Photo + Message (${displayPhone})`}
+              </div>
+              <div className="text-[10px] font-normal opacity-90 leading-tight">
+                {baileysStatus === "connected"
+                  ? "Real photo & message delivered via Ashrama WhatsApp"
+                  : "Attaches photo file to WhatsApp · Customer phone copied"}
+              </div>
             </div>
           </button>
 

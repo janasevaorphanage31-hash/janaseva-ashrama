@@ -265,26 +265,26 @@ export function generateAntiBanMessage(options: AntiBanGenerateOptions): AntiBan
         `Nimma athava nimma family members birthday / anniversary dina Janaseva Ashrama 25 resident makkalige special festive feast sponsor maadi celebrate maadi! Turahalli Ashrama ge neevê direct aagi banni, cake cut maadi, makkalige baale eleyalli bisi payasa oota badisi aashirvada thagoli.`,
         `Milestone day celebrate maadalu idhu thumbe shreshtavaada seva. Namma 25 makkalu direct aagi nimma hesaralli Vedic prayer maadi, nimage video blessing kalisuththeve.`,
       ]);
-      tierBreakdown = `🎂 Birthday & Special Day Seva Options:\n• ₹2,500 — Festive Lunch Feast with Sweet Payasam (25 Boys)\n• ₹3,500 — Celebration Cake, Evening Snacks & Feast\n• ₹4,500 — Full Day 4-Meal Annadana & Personalized WhatsApp Video Blessing\n\nCelebrate or book visit: ${birthdayUrl}`;
+      tierBreakdown = `🎂 Birthday & Special Day Seva Options:\n• ₹2,500 — Festive Lunch Feast with Sweet Payasam (25 Boys)\n• ₹3,500 — Celebration Cake, Evening Snacks & Feast\n• ₹4,500 — Full Day 4-Meal Annadana & Personalized Video Blessing`;
     } else if (angle === "vidya") {
       body = pick([
         `Vidya daanavê mahaa daana. Namma Ashrama da 25 makkalu local Bengaluru recognized shaalegalalli oduthidhaare. Evening study hour nalli tuition mattu computers kalisthiddivi. Makkala school uniforms, textbooks, bags mattu exam fees ge nimma sahaya kodi.`,
         `Anatha makkala shikshanadalli sahaya maadi avara bhavishyavannu ujwala maadalu nimage idhu uttama avakasha.`,
       ]);
-      tierBreakdown = `📚 Vidya Support Tiers:\n• ₹1,800 — 3 Pairs Durable Cotton School Uniforms\n• ₹2,400 — 1 Month Tuition & Notebooks for 8 Boys\n• ₹3,200 — 1 Year School Adoption (Admissions & Books)\n\nSponsor child education: ${portalUrl}`;
+      tierBreakdown = `📚 Vidya Support Tiers:\n• ₹1,800 — 3 Pairs Durable Cotton School Uniforms\n• ₹2,400 — 1 Month Tuition & Notebooks for 8 Boys\n• ₹3,200 — 1 Year School Adoption (Admissions & Books)`;
     } else if (angle === "trust_80g") {
       body = pick([
         `Janaseva Ashrama Karnataka Sarkarada Juvenile Justice Act (JJ Act KA18CH0242) nalli registered aagiruvudhu. 100% direct allocation for 25 boys. Neevu kodo prathi roopayigu Income Tax Act Section 80G (Form 10AC: ${FORM_10AC.urn}) nalli 50% tax exemption siguththe. Instant WhatsApp receipt barcode bandubiduththe.`,
         `Registered child care institution. Zero middlemen. 100% seva direct makkala thalupathe. Instant 80G tax receipt WhatsApp nalli siguththe.`,
       ]);
-      tierBreakdown = `📜 Govt Accreditations & 80G Tax Exemption:\n• Karnataka JJ Act Registration: ${JJ_ACT_REGISTRATION.registrationNumber}\n• Form 10AC 80G Approval URN: ${FORM_10AC.urn}\n• MCA CSR-1 Registration: CSR00078800\n\nMake tax-exempt contribution: ${portalUrl}`;
+      tierBreakdown = `📜 Govt Accreditations & 80G Tax Exemption:\n• Karnataka JJ Act Registration: ${JJ_ACT_REGISTRATION.registrationNumber}\n• Form 10AC 80G Approval URN: ${FORM_10AC.urn}\n• MCA CSR-1 Registration: CSR00078800`;
     } else {
       // Default Annadana
       body = pick([
         `Namma Ashrama dalli 25 beliyuva baalakarige nithya 4 hothu shuddha, bisi-bisi satvik oota (pure cow milk, bisi thindi, baale ele oota mattu raatri oota) needalaaguthide. Groceries (Sona Masoori akki, toor dal, fresh tharakaari) purchase maadalu nimma sahayavannu bedtidivi.`,
         `Namma kitchen grocery supply ge nimma chikka sahaya saaku. ₹501 kottaru 3 dinada makkala haalina karchige sahayavaaguththe.`,
       ]);
-      tierBreakdown = `🍲 Pavitra Annadana Seva Tiers:\n• ₹501 — 3 Dinada Cow Milk & Pediatric Care\n• ₹1,500 — 25 Makkalige Bisi Breakfast Feast\n• ₹2,500 — Wholesome Festive Lunch Feast (Payasa + Sweets)\n• ₹4,500 — Full Day 4-Meal Annadana (All 25 Boys)\n\nInstant UPI Donation: ${portalUrl}`;
+      tierBreakdown = `🍲 Pavitra Annadana Seva Tiers:\n• ₹501 — 3 Dinada Cow Milk & Pediatric Care\n• ₹1,500 — 25 Makkalige Bisi Breakfast Feast\n• ₹2,500 — Wholesome Festive Lunch Feast (Payasa + Sweets)\n• ₹4,500 — Full Day 4-Meal Annadana (All 25 Boys)`;
     }
 
     trustProof = `🏛️ Govt Form 28 JJ Act: ${JJ_ACT_REGISTRATION.registrationNumber} · 100% 80G Tax Exemption (Form 10AC: ${FORM_10AC.urn}). Instant WhatsApp receipt.`;
@@ -319,26 +319,26 @@ export function generateAntiBanMessage(options: AntiBanGenerateOptions): AntiBan
         `ತಮ್ಮ ಅಥವಾ ಕುಟುಂಬದವರ ಹುಟ್ಟುಹಬ್ಬ, ವಿವಾಹ ವಾರ್ಷಿಕೋತ್ಸವ ಅಥವಾ ಪುಣ್ಯತಿಥಿಯ ಸವಿ ನೆನಪಿನಲ್ಲಿ ನಮ್ಮ 25 ಮಕ್ಕಳಿಗೆ ಸಿಹಿ ಪಾಯಸದೊಂದಿಗೆ ಊಟ ಬಡಿಸಿ ಆಶೀರ್ವಾದ ಪಡೆಯಿರಿ. ವಿಶೇಷ ದಿನದಂದು ಆಶ್ರಮಕ್ಕೆ ನೇರವಾಗಿ ಭೇಟಿ ನೀಡಿ ಮಕ್ಕಳೊಂದಿಗೆ ಕೇಕ್ ಕತ್ತರಿಸಿ, ಅನ್ನದಾನ ನೆರವೇರಿಸಿ ಸಾರ್ಥಕತೆ ಪಡೆಯಬಹುದು.`,
         `ವಿಶೇಷ ದಿನದಂದು ಆಶ್ರಮಕ್ಕೆ ನೇರವಾಗಿ ಭೇಟಿ ನೀಡಿ ಮಕ್ಕಳೊಂದಿಗೆ ಕೇಕ್ ಕತ್ತರಿಸಿ, ಅನ್ನದಾನ ನೆರವೇರಿಸಿ ಸಾರ್ಥಕತೆ ಪಡೆಯಬಹುದು. ಮಕ್ಕಳು ತಮ್ಮ ಹೆಸರಿನಲ್ಲಿ ವಿಶೇಷ ಪ್ರಾರ್ಥನೆ ಮಾಡುತ್ತಾರೆ.`,
       ]);
-      tierBreakdown = `🎂 ಜನ್ಮದಿನ ಮಹಾ ಅನ್ನದಾನ ಕೊಡುಗೆಗಳು:\n• ₹2,500 - ಸಿಹಿ ಪಾಯಸದ ವಿಶೇಷ ಭೋಜನ (25 ಮಕ್ಕಳಿಗೆ)\n• ₹3,500 - ಕೇಕ್, ಸಂಜೆ ತಿಂಡಿ ಮತ್ತು ಹಬ್ಬದ ಊಟ\n• ₹4,500 - ಇಡೀ ದಿನದ 4 ಹೊತ್ತಿನ ಪೂರ್ಣ ಅನ್ನದಾನ\n\nತಮ್ಮ ಜನ್ಮದಿನ ಸೇವೆ ಕಾಯ್ದಿರಿಸಲು: ${birthdayUrl}`;
+      tierBreakdown = `🎂 ಜನ್ಮದಿನ ಮಹಾ ಅನ್ನದಾನ ಕೊಡುಗೆಗಳು:\n• ₹2,500 - ಸಿಹಿ ಪಾಯಸದ ವಿಶೇಷ ಭೋಜನ (25 ಮಕ್ಕಳಿಗೆ)\n• ₹3,500 - ಕೇಕ್, ಸಂಜೆ ತಿಂಡಿ ಮತ್ತು ಹಬ್ಬದ ಊಟ\n• ₹4,500 - ಇಡೀ ದಿನದ 4 ಹೊತ್ತಿನ ಪೂರ್ಣ ಅನ್ನದಾನ`;
     } else if (angle === "vidya") {
       body = pick([
         `ನಮ್ಮ ಆಶ್ರಮದ 25 ಬಾಲಕರು ಶಾಲಾ ಶಿಕ್ಷಣ, ಟ್ಯೂಷನ್ ಮತ್ತು ಕಂಪ್ಯೂಟರ್ ತರಬೇತಿ ಪಡೆಯುತ್ತಿದ್ದಾರೆ. ಅವರ ಸಮವಸ್ತ್ರ, ಪುಸ್ತಕ ಹಾಗೂ ಶಾಲಾ ಶುಲ್ಕಕ್ಕೆ ತಮ್ಮ ಪ್ರೋತ್ಸಾಹ ಅತ್ಯಮೂಲ್ಯ.`,
         `ವಿದ್ಯಾದಾನವೇ ಮಹಾದಾನ. ಅನಾಥ ಮಕ್ಕಳ ಶಿಕ್ಷಣಕ್ಕೆ ನೆರವು ನೀಡಿ ಅವರ ಭವಿಷ್ಯಕ್ಕೆ ಬೆಳಕಾಗಿ.`,
       ]);
-      tierBreakdown = `📚 ವಿದ್ಯಾ ಸೇವಾ ಕೊಡುಗೆಗಳು:\n• ₹1,800 - 3 ಜೊತೆ ಕಾಟನ್ ಸಮವಸ್ತ್ರಗಳು\n• ₹2,400 - 8 ಮಕ್ಕಳ 1 ತಿಂಗಳ ಟ್ಯೂಷನ್ ಹಾಗೂ ನೋಟ್‌ಬುಕ್‌ಗಳು\n• ₹3,200 - 1 ಮಗುವಿನ ವಾರ್ಷಿಕ ಶಾಲಾ ಪ್ರವೇಶ ಹಾಗೂ ಪಠ್ಯಪುಸ್ತಕಗಳು\n\nವಿದ್ಯಾದಾನ ಮಾಡಲು: ${portalUrl}`;
+      tierBreakdown = `📚 ವಿದ್ಯಾ ಸೇವಾ ಕೊಡುಗೆಗಳು:\n• ₹1,800 - 3 ಜೊತೆ ಕಾಟನ್ ಸಮವಸ್ತ್ರಗಳು\n• ₹2,400 - 8 ಮಕ್ಕಳ 1 ತಿಂಗಳ ಟ್ಯೂಷನ್ ಹಾಗೂ ನೋಟ್‌ಬುಕ್‌ಗಳು\n• ₹3,200 - 1 ಮಗುವಿನ ವಾರ್ಷಿಕ ಶಾಲಾ ಪ್ರವೇಶ ಹಾಗೂ ಪಠ್ಯಪುಸ್ತಕಗಳು`;
     } else if (angle === "trust_80g") {
       body = pick([
         `ಜನಸೇವಾ ಆಶ್ರಮವು ಕರ್ನಾಟಕ ಸರ್ಕಾರದ ಬಾಲನ್ಯಾಯ ಕಾಯ್ದೆ (JJ Act KA18CH0242) ಅಡಿಯಲ್ಲಿ ನೋಂದಾಯಿತ ಅಧಿಕೃತ ಸಂಸ್ಥೆಯಾಗಿದೆ. ನೀವು ನೀಡುವ ಪ್ರತಿಯೊಂದು ರೂಪಾಯಿಯೂ ನೇರವಾಗಿ 25 ಮಕ್ಕಳ ಆಹಾರ, ವಸತಿ ಮತ್ತು ವೈದ್ಯಕೀಯ ವೆಚ್ಚಕ್ಕೆ ಬಳಕೆಯಾಗುತ್ತದೆ.`,
         `ಆದಾಯ ತೆರಿಗೆ ಕಾಯ್ದೆ 80G ಅಡಿಯಲ್ಲಿ 50% ತೆರಿಗೆ ವಿನಾಯಿತಿ ಮತ್ತು ತಕ್ಷಣದ ಡಿಜಿಟಲ್ ರಸೀದಿ WhatsApp ಮೂಲಕ ತಲುಪುತ್ತದೆ.`,
       ]);
-      tierBreakdown = `📜 ಸರ್ಕಾರದ ಅಧಿಕೃತ 80G ವಿನಾಯಿತಿ:\n• ಆದಾಯ ತೆರಿಗೆ ಕಾಯ್ದೆ 80G (Form 10AC: ${FORM_10AC.urn}) ಅಡಿಯಲ್ಲಿ 50% ತೆರಿಗೆ ವಿನಾಯಿತಿ ಲಭ್ಯ.\n• ತಕ್ಷಣದ ಡಿಜಿಟಲ್ ರಸೀದಿ WhatsApp ಮೂಲಕ ತಲುಪುತ್ತದೆ.\n\nನೇರ ದೇಣಿಗೆಗೆ: ${portalUrl}`;
+      tierBreakdown = `📜 ಸರ್ಕಾರದ ಅಧಿಕೃತ 80G ವಿನಾಯಿತಿ:\n• ಆದಾಯ ತೆರಿಗೆ ಕಾಯ್ದೆ 80G (Form 10AC: ${FORM_10AC.urn}) ಅಡಿಯಲ್ಲಿ 50% ತೆರಿಗೆ ವಿನಾಯಿತಿ ಲಭ್ಯ.\n• ತಕ್ಷಣದ ಡಿಜಿಟಲ್ ರಸೀದಿ WhatsApp ಮೂಲಕ ತಲುಪುತ್ತದೆ.`;
     } else {
       // Default Annadana
       body = pick([
         `ನಮ್ಮ ಆಶ್ರಮದಲ್ಲಿ 25 ಬೆಳೆಯುವ ಬಾಲಕರಿಗೆ ಪ್ರತಿದಿನ ಶುದ್ಧ, ಸಾತ್ವಿಕ ಮತ್ತು ಪೌಷ್ಟಿಕ 4 ಹೊತ್ತಿನ ಆಹಾರ (ಹಾಲು, ಇಡ್ಲಿ, ಮಧ್ಯಾಹ್ನ-ರಾತ್ರಿಯ ಅನ್ನ ಸಾಂಬಾರ್) ನೀಡಲಾಗುತ್ತಿದೆ. ಇಂದಿನ ತುರ್ತು ಅನ್ನದಾನ ಸೇವೆಗೆ ಕೈಜೋಡಿಸಿ.`,
         `ಇಂದಿನ ತುರ್ತು ಅನ್ನದಾನ ಸೇವೆಗೆ ಕೈಜೋಡಿಸಿ. ನಿಮ್ಮ ಪುಟ್ಟ ನೆರವು ಒಂದು ಮಗುವಿನ ಹಸಿವನ್ನು ನೀಗಿಸುತ್ತದೆ.`,
       ]);
-      tierBreakdown = `🍲 ಪವಿತ್ರ ಅನ್ನದಾನ ಸೇವಾ ವಿವರ:\n• ₹501 - 3 ದಿನಗಳ ಪೌಷ್ಟಿಕ ಆಹಾರ ಹಾಗೂ ಹಾಲಿನ ಸೇವೆ\n• ₹1,500 - 25 ಮಕ್ಕಳಿಗೆ ಬೆಳಗಿನ ಬಿಸಿ ಉಪಹಾರ ಹಾಗೂ ಹಾಲು\n• ₹2,500 - 25 ಮಕ್ಕಳಿಗೆ ಸಾತ್ವಿಕ ಮಧ್ಯಾಹ್ನದ ಊಟ\n• ₹4,500 - ಇಡೀ ದಿನದ 4 ಹೊತ್ತಿನ ಸಂಪೂರ್ಣ ಅನ್ನದಾನ\n\nತಕ್ಷಣದ UPI ದೇಣಿಗೆಗೆ: ${portalUrl}`;
+      tierBreakdown = `🍲 ಪವಿತ್ರ ಅನ್ನದಾನ ಸೇವಾ ವಿವರ:\n• ₹501 - 3 ದಿನಗಳ ಪೌಷ್ಟಿಕ ಆಹಾರ ಹಾಗೂ ಹಾಲಿನ ಸೇವೆ\n• ₹1,500 - 25 ಮಕ್ಕಳಿಗೆ ಬೆಳಗಿನ ಬಿಸಿ ಉಪಹಾರ ಹಾಗೂ ಹಾಲು\n• ₹2,500 - 25 ಮಕ್ಕಳಿಗೆ ಸಾತ್ವಿಕ ಮಧ್ಯಾಹ್ನದ ಊಟ\n• ₹4,500 - ಇಡೀ ದಿನದ 4 ಹೊತ್ತಿನ ಸಂಪೂರ್ಣ ಅನ್ನದಾನ`;
     }
 
     trustProof = `🛡️ 100% ಪಾರದರ್ಶಕತೆ · ಸರ್ಕಾರದ ನೋಂದಣಿ: ${JJ_ACT_REGISTRATION.registrationNumber} · 80G ತೆರಿಗೆ ವಿನಾಯಿತಿ ರಸೀದಿ.`;
@@ -373,26 +373,26 @@ export function generateAntiBanMessage(options: AntiBanGenerateOptions): AntiBan
         `Celebrate your upcoming birthday, wedding anniversary, or memorial day in the most meaningful way—by feeding 25 orphaned boys a fresh festive feast. You are warmly welcome to visit our Turahalli campus to cut cake and serve the meal in person!`,
         `Make your milestone day truly memorable. Sponsoring a festive feast with sweet payasam brings pure joy to our resident boys, and the children will chant heartfelt Vedic prayers for your family's health and prosperity.`,
       ]);
-      tierBreakdown = `🎂 Milestone Celebration Sponsorship Options:\n• ₹2,500 — Festive Lunch Feast with Sweet Payasam (25 Boys)\n• ₹3,500 — Celebration Cake, Evening Fruit Basket & Special Feast\n• ₹4,500 — Full Day 4-Meal Annadana & Personalized WhatsApp Video Blessing\n\nBook celebration online: ${birthdayUrl}`;
+      tierBreakdown = `🎂 Milestone Celebration Sponsorship Options:\n• ₹2,500 — Festive Lunch Feast with Sweet Payasam (25 Boys)\n• ₹3,500 — Celebration Cake, Evening Fruit Basket & Special Feast\n• ₹4,500 — Full Day 4-Meal Annadana & Personalized WhatsApp Video Blessing`;
     } else if (angle === "vidya") {
       body = pick([
         `True empowerment begins with education. All 25 resident boys attend accredited local schools in Bengaluru, followed by evening science and mathematics tuition at our ashrama. Your kind support provides textbooks, school uniforms, and exam stationery.`,
         `Vidya Dana is the highest form of seva. Support an orphaned child's academic journey this academic year and help him build an independent, dignified future.`,
       ]);
-      tierBreakdown = `📚 Education & Vidya Support Tiers:\n• ₹1,800 — 3 Pairs of Durable Cotton School Uniforms\n• ₹2,400 — 1 Month Tuition, Textbooks & Notebooks for 8 Boys\n• ₹3,200 — 1 Full Academic Year School Adoption (Admissions, Bags & Books)\n\nSponsor child education: ${portalUrl}`;
+      tierBreakdown = `📚 Education & Vidya Support Tiers:\n• ₹1,800 — 3 Pairs of Durable Cotton School Uniforms\n• ₹2,400 — 1 Month Tuition, Textbooks & Notebooks for 8 Boys\n• ₹3,200 — 1 Full Academic Year School Adoption (Admissions, Bags & Books)`;
     } else if (angle === "trust_80g") {
       body = pick([
         `Janaseva Ashrama is a registered public charitable trust and licensed Child Care Institution under Karnataka Govt JJ Act registration KA18CH0242. Unlike large aggregator charities, 100% of public sponsorships directly feed and educate 25 specific resident boys.`,
         `Every contribution to Janaseva Ashrama is fully eligible for 50% tax deduction under Section 80G Form 10AC of the Income Tax Act. Instant 80G tax receipt is sent to your WhatsApp immediately upon payment.`,
       ]);
-      tierBreakdown = `📜 Verified Accreditations & 80G Tax Exemption:\n• Govt Juvenile Justice Act: ${JJ_ACT_REGISTRATION.registrationNumber}\n• Form 10AC Section 80G URN: ${FORM_10AC.urn}\n• MCA CSR-1 Registration: CSR00078800\n\nMake a tax-exempt contribution: ${portalUrl}`;
+      tierBreakdown = `📜 Verified Accreditations & 80G Tax Exemption:\n• Govt Juvenile Justice Act: ${JJ_ACT_REGISTRATION.registrationNumber}\n• Form 10AC Section 80G URN: ${FORM_10AC.urn}\n• MCA CSR-1 Registration: CSR00078800`;
     } else {
       // Default Annadana
       body = pick([
         `Our kitchen serves 4 fresh satvik meals every single day (morning pure cow milk, hot breakfast, wholesome lunch, and dinner) to 25 growing boys. We rely purely on voluntary kindness from benevolent citizens to keep our kitchen stocked with rice, dal, and fresh vegetables.`,
         `Every sacred meal counts. Whether you sponsor hot breakfast for ₹1,500 or contribute ₹501 for a child's weekly care, your gift directly reaches the dining leaf of our 25 resident boys.`,
       ]);
-      tierBreakdown = `🍲 Sacred Annadana Sponsorship Tiers:\n• ₹501 — 3 Days Satvik Meals & Pediatric Cow Milk\n• ₹1,500 — Nutritious Breakfast Feast for all 25 Boys\n• ₹2,500 — Festive Lunch Feast with Vegetables & Sweet\n• ₹4,500 — Complete 24-Hr Full-Day Annadana (All 4 Meals)\n\nContribute securely via UPI / Cards / NetBanking:\n${portalUrl}`;
+      tierBreakdown = `🍲 Sacred Annadana Sponsorship Tiers:\n• ₹501 — 3 Days Satvik Meals & Pediatric Cow Milk\n• ₹1,500 — Nutritious Breakfast Feast for all 25 Boys\n• ₹2,500 — Festive Lunch Feast with Vegetables & Sweet\n• ₹4,500 — Complete 24-Hr Full-Day Annadana (All 4 Meals)`;
     }
 
     trustProof = `🛡️ 100% Direct Allocation · Licensed Govt Home (JJ Act ${JJ_ACT_REGISTRATION.registrationNumber}) · Instant 80G Receipt.`;
@@ -480,13 +480,11 @@ export function generateAntiBanMessage(options: AntiBanGenerateOptions): AntiBan
     intro,
     "",
     body,
-    mediaNote ? mediaNote : "",
-    "",
-    actionButtonsBlock,
     "",
     tierBreakdown,
+    mediaNote ? `\n${mediaNote}` : "",
     "",
-    interactiveMenu,
+    actionButtonsBlock,
     "",
     trustProof,
     locationBlock,
@@ -504,11 +502,9 @@ export function generateAntiBanMessage(options: AntiBanGenerateOptions): AntiBan
     "",
     body,
     "",
-    actionButtonsBlock,
-    "",
     tierBreakdown,
     "",
-    interactiveMenu,
+    actionButtonsBlock,
     "",
     trustProof,
     locationBlock,
