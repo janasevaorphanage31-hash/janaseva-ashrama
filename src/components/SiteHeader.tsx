@@ -163,9 +163,18 @@ export function SiteHeader() {
     };
   }, [mobileMenuOpen]);
 
-  const goBack = () => {
-    if (typeof window !== "undefined" && window.history.length > 1) {
-      router.back(); return;
+  const goBack = (e?: React.MouseEvent) => {
+    if (e) e.preventDefault();
+    if (
+      typeof window !== "undefined" &&
+      document.referrer &&
+      document.referrer.includes(window.location.host) &&
+      !document.referrer.includes("/checkout") &&
+      !document.referrer.includes("/donate") &&
+      !document.referrer.includes("/give")
+    ) {
+      router.back();
+      return;
     }
     router.push("/");
   };
@@ -202,14 +211,15 @@ export function SiteHeader() {
               </button>
             ) : (
               <button
+                type="button"
                 onClick={goBack}
-                aria-label="Go back"
-                className="focus-ring tap-scale flex items-center gap-1 rounded-xl border border-white/30 bg-white/15 px-2 sm:px-2.5 py-1.5 text-xs font-bold text-white hover:bg-white/25 shadow-sm shrink-0"
+                aria-label="Go back to Janaseva Ashrama"
+                className="focus-ring tap-scale relative z-50 pointer-events-auto touch-manipulation flex items-center gap-1.5 rounded-xl border border-white/35 bg-white/20 active:bg-white/30 px-3 py-2 text-xs font-extrabold text-white hover:bg-white/25 shadow-sm shrink-0 min-h-[40px] cursor-pointer"
               >
-                <svg className="h-4 w-4 fill-none stroke-current stroke-2" viewBox="0 0 24 24" aria-hidden="true">
+                <svg className="h-4 w-4 fill-none stroke-current stroke-2 shrink-0" viewBox="0 0 24 24" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
                 </svg>
-                <span className="text-xs">Back</span>
+                <span className="text-xs font-bold">Back</span>
               </button>
             )}
 

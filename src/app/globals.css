@@ -69,6 +69,7 @@ h1, h2, h3, .font-display {
    ============================================= */
 .tap-scale {
   -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
   transition: transform 0.1s ease;
 }
 .tap-scale:active { transform: scale(0.97); }
@@ -210,26 +211,23 @@ h1, h2, h3, .font-display {
 
 /* =============================================
    BLINKING / HEARTBEAT DONATION GLOW
+   Uses pure box-shadow without transform:scale to guarantee
+   100% reliable touch/click hit-testing across mobile Safari & Chrome
    ============================================= */
 @keyframes donor-heartbeat {
   0%, 100% {
-    transform: scale(1);
     box-shadow: 0 4px 18px rgba(217, 121, 36, 0.35);
   }
-  14% {
-    transform: scale(1.04);
-    box-shadow: 0 8px 26px rgba(217, 121, 36, 0.65), 0 0 0 4px rgba(232, 179, 74, 0.4);
+  20% {
+    box-shadow: 0 8px 28px rgba(217, 121, 36, 0.75), 0 0 0 4px rgba(232, 179, 74, 0.45);
   }
-  28% {
-    transform: scale(1);
+  40% {
     box-shadow: 0 4px 18px rgba(217, 121, 36, 0.35);
   }
-  42% {
-    transform: scale(1.03);
-    box-shadow: 0 6px 22px rgba(217, 121, 36, 0.55), 0 0 0 3px rgba(232, 179, 74, 0.3);
+  60% {
+    box-shadow: 0 8px 24px rgba(217, 121, 36, 0.65), 0 0 0 3px rgba(232, 179, 74, 0.35);
   }
-  70% {
-    transform: scale(1);
+  80%, 100% {
     box-shadow: 0 4px 18px rgba(217, 121, 36, 0.35);
   }
 }

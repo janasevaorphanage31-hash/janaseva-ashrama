@@ -21,12 +21,25 @@ import { BottomNav } from "@/components/BottomNav";
 export function PublicSiteChrome({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const isAdmin = pathname?.startsWith("/admin");
+  const isCheckout = pathname === "/checkout" || pathname === "/donate" || pathname === "/give";
 
   if (isAdmin) {
     return (
       <div className="w-full max-w-full min-h-screen bg-sand/30 font-sans text-teal-950">
         {children}
       </div>
+    );
+  }
+
+  // Pure focused checkout experience: strictly omit floating drawers, sticky bars, toasts,
+  // and bottom nav to eliminate any possibility of overlays intercepting mobile touch events.
+  if (isCheckout) {
+    return (
+      <>
+        <SiteHeader />
+        <main className="w-full max-w-full min-w-0 overflow-x-clip">{children}</main>
+        <SiteFooter />
+      </>
     );
   }
 

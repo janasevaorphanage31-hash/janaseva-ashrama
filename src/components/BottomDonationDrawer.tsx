@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useCart } from "./CartProvider";
 import { formatINR, BANK_DETAILS, SITE } from "@/lib/site";
 import { SUPPORTER_CATEGORIES } from "@/lib/supporter-form";
@@ -24,6 +24,8 @@ const QUICK_AMOUNTS = [
 
 export function BottomDonationDrawer() {
   const router = useRouter();
+  const pathname = usePathname();
+  const isCheckoutRoute = pathname === "/checkout" || pathname === "/donate" || pathname === "/give";
   const {
     isBottomDonateOpen,
     closeBottomDonate,
@@ -108,6 +110,11 @@ export function BottomDonationDrawer() {
 
   // Handle ESC key
   useEffect(() => {
+    if (isCheckoutRoute) {
+      if (isBottomDonateOpen) closeBottomDonate();
+      document.body.style.overflow = "";
+      return;
+    }
     if (!isBottomDonateOpen) return;
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -123,9 +130,9 @@ export function BottomDonationDrawer() {
       document.body.style.overflow = prevOverflow;
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [isBottomDonateOpen, closeBottomDonate]);
+  }, [isBottomDonateOpen, closeBottomDonate, isCheckoutRoute]);
 
-  if (!isBottomDonateOpen) return null;
+  if (isCheckoutRoute || !isBottomDonateOpen) return null;
 
   const currentAmount = customInput && Number(customInput) > 0 ? Number(customInput) : selectedAmount;
   const amountInWords = numberToIndianWords(currentAmount);

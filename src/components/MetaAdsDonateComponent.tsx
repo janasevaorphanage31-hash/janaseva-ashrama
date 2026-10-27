@@ -346,6 +346,22 @@ export function MetaAdsDonateComponent() {
     } catch {}
   }, [utmSource, utmMedium, utmCampaign, gclid, fbclid]);
 
+  // Ensure body scroll lock and stale modal backdrops are always removed on checkout
+  useEffect(() => {
+    if (typeof document !== "undefined") {
+      document.body.style.overflow = "";
+      const staleBackdrops = document.querySelectorAll(".razorpay-backdrop, .razorpay-container");
+      staleBackdrops.forEach((el) => {
+        if (!el.querySelector("iframe")) el.remove();
+      });
+    }
+    return () => {
+      if (typeof document !== "undefined") {
+        document.body.style.overflow = "";
+      }
+    };
+  }, []);
+
   // Amount State (Starts from ₹11 upwards; defaults to URL param, cart.total, or ₹2,500 flagship)
   const [amount, setAmount] = useState<number>(() => {
     const urlAmt = searchParams.get("amount");
@@ -584,8 +600,9 @@ export function MetaAdsDonateComponent() {
   };
 
   /**
-   * Strict Donor Validation Gate:
-   * Validates Amount, Name, WhatsApp Mobile, Email, and PAN.
+   * Fast, Friction-Free Donor Validation Gate:
+   * Validates Amount, Name, Email (if given), and PAN (if given).
+   * Phone is gracefully prefilled or prompted in Razorpay modal if left blank.
    */
   const validateForm = (): boolean => {
     const errors: typeof formErrors = {};
@@ -603,14 +620,13 @@ export function MetaAdsDonateComponent() {
       setDonorName("Janaseva Supporter");
     }
 
-    // 3. WhatsApp Mobile validation (10-digit Indian phone)
+    // 3. WhatsApp Mobile validation (if entered partially)
     const cleanPhone = donorPhone.replace(/\D/g, "");
-    if (!cleanPhone || cleanPhone.length < 10) {
-      errors.phone = "Please enter your 10-digit WhatsApp number to receive your instant receipt.";
-      errors.general = "Please enter your 10-digit WhatsApp number above to receive your official 80G tax receipt.";
+    if (cleanPhone.length > 0 && cleanPhone.length < 10) {
+      errors.phone = "Please enter a valid 10-digit Indian mobile number.";
       setFormErrors(errors);
       detailsCardRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-      setTimeout(() => phoneInputRef.current?.focus(), 250);
+      phoneInputRef.current?.focus();
       return false;
     }
 
@@ -642,7 +658,7 @@ export function MetaAdsDonateComponent() {
   };
 
   /**
-   * Handles payment initiation after strict validation.
+   * Handles payment initiation without friction.
    */
   const handlePayNow = async () => {
     const isValid = validateForm();
@@ -658,6 +674,7 @@ export function MetaAdsDonateComponent() {
     try {
       const effectiveName = donorName.trim() || "Janaseva Supporter";
       const cleanPhone = donorPhone.replace(/\D/g, "").slice(-10);
+      const effectivePhone = cleanPhone.length >= 10 ? cleanPhone : "9980359595";
       const selectedOccasionLabel =
         OCCASIONS.find((o) => o.id === occasion)?.label || "General Seva";
       const cleanOccasion = selectedOccasionLabel.replace(/[^\w\s-]/g, "").trim() || "General Seva";
@@ -671,7 +688,7 @@ export function MetaAdsDonateComponent() {
           callerRefId: callerRef,
           leadId: leadId || undefined,
           donorName: effectiveName,
-          donorPhone: cleanPhone,
+          donorPhone: effectivePhone,
           donorEmail: donorEmail.trim() || undefined,
           donorPan: donorPan.trim().toUpperCase() || undefined,
           occasion: cleanOccasion,
@@ -709,14 +726,14 @@ export function MetaAdsDonateComponent() {
           currency: data.currency || "INR",
           name: "Janaseva Ashrama Bangalore",
           description: `Sponsor 25 Resident Boys · ${cleanOccasion}`,
-          donorName: donorName.trim(),
-          donorPhone: donorPhone.trim(),
+          donorName: effectiveName,
+          donorPhone: cleanPhone.length >= 10 ? cleanPhone : "",
           donorEmail: donorEmail.trim() || undefined,
           notes: {
             caller_ref_id: callerRef,
             lead_id: leadId || "",
-            donor_name: donorName.trim(),
-            donor_phone: donorPhone.trim(),
+            donor_name: effectiveName,
+            donor_phone: cleanPhone.length >= 10 ? cleanPhone : "",
             occasion: cleanOccasion,
             prayer_note: cleanPrayerNote,
             frequency,
@@ -724,15 +741,29 @@ export function MetaAdsDonateComponent() {
           onDismiss: () => {
             clearTimeout(safetyTimer);
             setLoading(false);
+            if (typeof document !== "undefined") {
+              document.body.style.overflow = "";
+              const stale = document.querySelectorAll(".razorpay-backdrop, .razorpay-container");
+              stale.forEach((el) => {
+                if (!el.querySelector("iframe")) el.remove();
+              });
+            }
           },
           onError: () => {
             clearTimeout(safetyTimer);
             setLoading(false);
             setFormErrors({
               general:
-                "Browser popup was interrupted. You can complete your donation instantly with 0% fee using Direct UPI or QR code below!",
+                "Payment was interrupted. You can complete your donation instantly with 0% fee using Direct UPI or QR code below!",
             });
             setShowDirectUpi(true);
+            if (typeof document !== "undefined") {
+              document.body.style.overflow = "";
+              const stale = document.querySelectorAll(".razorpay-backdrop, .razorpay-container");
+              stale.forEach((el) => {
+                if (!el.querySelector("iframe")) el.remove();
+              });
+            }
           },
           onSuccess: async (response) => {
             clearTimeout(safetyTimer);
@@ -828,6 +859,13 @@ export function MetaAdsDonateComponent() {
       });
       setShowDirectUpi(true);
       setLoading(false);
+      if (typeof document !== "undefined") {
+        document.body.style.overflow = "";
+        const stale = document.querySelectorAll(".razorpay-backdrop, .razorpay-container");
+        stale.forEach((el) => {
+          if (!el.querySelector("iframe")) el.remove();
+        });
+      }
     }
   };
 
@@ -846,82 +884,25 @@ export function MetaAdsDonateComponent() {
         style={{ display: "none" }}
       />
 
-      {/* ── MOBILE TRUST HEADER BAR (< lg only) ── */}
-      <div className="lg:hidden mb-3 rounded-2xl bg-[#042825] p-3 text-white flex items-center justify-between border border-amber-400/30 shadow-md">
-        <div className="flex items-center gap-2.5 min-w-0">
-          <LogoMark size={34} className="shrink-0 ring-1 ring-amber-400/50 rounded-xl" />
-          <div className="min-w-0">
-            <h1 className="text-xs font-black font-display text-white truncate">Janaseva Ashrama Bangalore</h1>
-            <p className="text-[10px] text-amber-300 font-semibold truncate">25 Resident Orphaned Boys · 80G Tax Free</p>
-          </div>
+      {/* ── COMPACT MOBILE TRUST STRIP ── */}
+      <div className="lg:hidden mb-2.5 rounded-xl bg-teal-950 text-white px-3 py-2 flex items-center justify-between text-xs border border-amber-400/30 shadow-xs">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="relative flex h-2 w-2 shrink-0">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-90" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-300" />
+          </span>
+          <span className="text-[11px] font-bold text-amber-200 truncate">
+            Direct Ashrama Seva · 25 Resident Boys
+          </span>
         </div>
-        <span className="shrink-0 rounded-full bg-emerald-500/25 text-emerald-300 border border-emerald-400/40 px-2 py-0.5 text-[9px] font-black uppercase">
-          🛡️ 80G Certified
+        <span className="rounded bg-emerald-500/25 text-emerald-300 border border-emerald-400/40 px-2 py-0.5 text-[9px] font-black uppercase shrink-0">
+          ✓ 80G Form 10AC
         </span>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-8 items-start">
-        {/* ── 1. PANTONE-GRADED EMOTIONAL HERO BANNER WITH AUTHENTIC PRAYER PHOTO (ORDER-2 ON MOBILE, LEFT COLUMN ON DESKTOP) ── */}
-        <div className="order-2 lg:order-1 col-span-1 lg:col-span-5 lg:col-start-1 lg:row-start-1 relative overflow-hidden rounded-3xl bg-[#042825] text-white shadow-2xl mb-2 lg:mb-0 border border-amber-400/40">
-        {/* Authentic Background Photo with Warm Vignette */}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="/media/boys-meal-gratitude.jpg"
-          alt="Resident orphaned boys praying with gratitude at Janaseva Ashrama Bangalore"
-          className="absolute inset-0 h-full w-full object-cover object-center filter brightness-90 transition-transform duration-700"
-        />
-        {/* High-Contrast Vedic Emerald & Saffron Scrim Overlay (Pantone 567 C & 151 C) */}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#042825] via-[#042825]/85 to-[#042825]/60" />
-
-        <div className="relative z-10 p-4 sm:p-5">
-          <div className="flex items-center justify-between gap-2 mb-2">
-            <div className="flex items-center gap-2">
-              <LogoMark size={40} className="shadow-md ring-2 ring-amber-400/70 shrink-0" />
-              <div>
-                <h1 className="text-sm sm:text-base font-black tracking-tight text-white leading-tight font-display">
-                  Janaseva Ashrama Bangalore
-                </h1>
-                <p className="text-[10px] sm:text-[11px] font-semibold text-amber-300">
-                  Registered Orphanage &amp; Children&apos;s Home · Est. 2000
-                </p>
-              </div>
-            </div>
-
-            <div className="flex flex-col items-end gap-0.5 shrink-0">
-              <span className="rounded-full bg-emerald-500/30 border border-emerald-400 px-2 py-0.5 text-[9px] font-black uppercase text-emerald-200">
-                🛡️ 80G Tax Free
-              </span>
-              <span className="text-[8px] sm:text-[9px] text-white/70 font-mono">
-                Govt: {JJ_ACT_REGISTRATION.registrationNumber}
-              </span>
-            </div>
-          </div>
-
-          <p className="text-xs text-amber-100/90 leading-relaxed font-medium mt-1">
-            Every sacred contribution feeds, educates, and protects <strong>25 resident orphaned boys</strong>.
-            All donors are remembered in daily <strong>6:30 AM morning shloka prayers</strong>.
-          </p>
-
-          {/* Urgent Need Strip */}
-          <div className="mt-2.5 pt-2 border-t border-white/15 flex items-center justify-between gap-2 text-[11px]">
-            <div className="flex items-center gap-1.5 min-w-0">
-              <span className="relative flex h-2.5 w-2.5 shrink-0">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-90" />
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-300" />
-              </span>
-              <span className="text-white truncate text-[11px]">
-                <strong className="text-amber-300">Urgent Tonight:</strong> 6 Meals needed. Even ₹11 provides warm cow milk.
-              </span>
-            </div>
-            <span className="rounded-md bg-amber-400/20 border border-amber-300/40 px-2 py-0.5 text-[10px] font-black text-amber-200 shrink-0">
-              19/25 Sponsored
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* ── MAIN CHECKOUT CARD (ORDER-1 ON MOBILE FOR ZERO-SCROLL, RIGHT COLUMN ON DESKTOP) ── */}
-      <div className="order-1 lg:order-2 col-span-1 lg:col-span-7 lg:col-start-6 lg:row-start-1 lg:row-span-6 lg:sticky lg:top-20 space-y-4">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-8 items-start">
+        {/* ── MAIN CHECKOUT CARD (ORDER-1 ON MOBILE FOR ZERO-SCROLL, RIGHT COLUMN ON DESKTOP) ── */}
+        <div className="order-1 lg:order-2 col-span-1 lg:col-span-7 lg:sticky lg:top-20 space-y-4">
         {/* ── GLOBAL ERROR ALERT ── */}
         {formErrors.general && (
           <div className="rounded-2xl bg-rose-50 border border-rose-300 p-3.5 text-xs text-rose-800 font-semibold flex items-start gap-2 shadow-sm">
@@ -1386,7 +1367,7 @@ export function MetaAdsDonateComponent() {
             type="button"
             onClick={handlePayNow}
             disabled={loading}
-            className="focus-ring tap-scale w-full py-3.5 sm:py-4 px-6 rounded-2xl bg-gradient-to-r from-[#EA580C] via-[#F97316] to-[#D97706] hover:from-[#D97706] hover:to-[#EA580C] text-white font-black text-sm sm:text-base uppercase tracking-wider shadow-xl shadow-orange-600/30 transition active:scale-95 cursor-pointer flex items-center justify-center gap-2 disabled:opacity-75 disabled:cursor-not-allowed animate-heartbeat"
+            className="focus-ring tap-scale relative z-30 touch-manipulation min-h-[52px] w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-[#EA580C] via-[#F97316] to-[#D97706] hover:from-[#D97706] hover:to-[#EA580C] text-white font-black text-sm sm:text-base uppercase tracking-wider shadow-xl shadow-orange-600/30 transition active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2 disabled:opacity-75 disabled:cursor-not-allowed animate-heartbeat pointer-events-auto"
           >
             {loading ? (
               <>
@@ -1440,10 +1421,10 @@ export function MetaAdsDonateComponent() {
           </div>
 
           {/* Quick Mobile UPI App Direct Launch Row */}
-          <div className="grid grid-cols-3 gap-1.5 pt-1">
+          <div className="grid grid-cols-3 gap-2 pt-1">
             <a
               href={gpayUri}
-              className="py-2.5 px-1 rounded-xl bg-white border border-teal-900/15 hover:border-emerald-600 shadow-2xs font-bold text-teal-950 flex items-center justify-center gap-1 text-[11px] active:scale-95 transition"
+              className="py-2.5 px-1 rounded-xl bg-white border border-teal-900/15 hover:border-emerald-600 shadow-2xs font-bold text-teal-950 flex items-center justify-center gap-1 text-[11px] active:scale-95 transition min-h-[44px] touch-manipulation pointer-events-auto"
               title="Open Google Pay"
             >
               <span>🟢</span>
@@ -1451,7 +1432,7 @@ export function MetaAdsDonateComponent() {
             </a>
             <a
               href={phonepeUri}
-              className="py-2.5 px-1 rounded-xl bg-white border border-teal-900/15 hover:border-purple-600 shadow-2xs font-bold text-teal-950 flex items-center justify-center gap-1 text-[11px] active:scale-95 transition"
+              className="py-2.5 px-1 rounded-xl bg-white border border-teal-900/15 hover:border-purple-600 shadow-2xs font-bold text-teal-950 flex items-center justify-center gap-1 text-[11px] active:scale-95 transition min-h-[44px] touch-manipulation pointer-events-auto"
               title="Open PhonePe"
             >
               <span>🟣</span>
@@ -1459,7 +1440,7 @@ export function MetaAdsDonateComponent() {
             </a>
             <a
               href={paytmUri}
-              className="py-2.5 px-1 rounded-xl bg-white border border-teal-900/15 hover:border-blue-600 shadow-2xs font-bold text-teal-950 flex items-center justify-center gap-1 text-[11px] active:scale-95 transition"
+              className="py-2.5 px-1 rounded-xl bg-white border border-teal-900/15 hover:border-blue-600 shadow-2xs font-bold text-teal-950 flex items-center justify-center gap-1 text-[11px] active:scale-95 transition min-h-[44px] touch-manipulation pointer-events-auto"
               title="Open Paytm"
             >
               <span>🔵</span>
@@ -1708,148 +1689,210 @@ export function MetaAdsDonateComponent() {
       </div>
       </div>
 
-      {/* ── 4. AUTHENTIC LIFE & PROOF OF 25 RESIDENT BOYS (Below Checkout Card on Mobile, Left Column on Desktop) ── */}
-      <section className="col-span-1 lg:col-span-5 lg:col-start-1 lg:row-start-2 mt-4 lg:mt-0 rounded-3xl bg-white p-5 shadow-sm border border-teal-900/10">
-        <h3 className="font-display text-base font-black text-[#042825] mb-1">
-          Life at Janaseva Ashrama (25 Resident Boys)
-        </h3>
-        <p className="text-xs text-teal-950/70 mb-3.5">
-          Turahalli, Bengaluru · Wholesome satvik meals, school education &amp; loving shelter since 2000.
-        </p>
+      {/* ── LEFT COLUMN: AUTHENTIC PROOF, STORIES & CREDENTIALS (ORDER-2 ON MOBILE, LEFT COLUMN ON DESKTOP) ── */}
+      <div className="order-2 lg:order-1 col-span-1 lg:col-span-5 space-y-4">
+        {/* ── 1. PANTONE-GRADED EMOTIONAL HERO BANNER WITH AUTHENTIC PRAYER PHOTO ── */}
+        <div className="relative overflow-hidden rounded-3xl bg-[#042825] text-white shadow-2xl border border-amber-400/40">
+          {/* Authentic Background Photo with Warm Vignette */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/media/boys-meal-gratitude.jpg"
+            alt="Resident orphaned boys praying with gratitude at Janaseva Ashrama Bangalore"
+            className="absolute inset-0 h-full w-full object-cover object-center filter brightness-90 transition-transform duration-700"
+          />
+          {/* High-Contrast Vedic Emerald & Saffron Scrim Overlay (Pantone 567 C & 151 C) */}
+          <div className="absolute inset-0 bg-gradient-to-t from-[#042825] via-[#042825]/85 to-[#042825]/60" />
 
-        <div className="grid grid-cols-3 gap-2">
-          <div className="relative rounded-xl overflow-hidden aspect-[4/3] bg-teal-950/10">
-            <Image
-              src="/media/annadana-hall-hd.jpg"
-              alt="Annadana Hall at Janaseva Ashrama Bangalore"
-              fill
-              className="object-cover"
-              sizes="(max-width: 640px) 33vw, 33vw"
-            />
-            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-1.5 text-[9px] text-white font-bold leading-tight">
-              🍲 Satvik Annadana
-            </div>
-          </div>
-
-          <div className="relative rounded-xl overflow-hidden aspect-[4/3] bg-teal-950/10">
-            <Image
-              src="/media/learning.jpg"
-              alt="Resident boys studying at Janaseva Ashrama"
-              fill
-              className="object-cover"
-              sizes="(max-width: 640px) 33vw, 33vw"
-            />
-            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-1.5 text-[9px] text-white font-bold leading-tight">
-              📚 Evening Vidya
-            </div>
-          </div>
-
-          <div className="relative rounded-xl overflow-hidden aspect-[4/3] bg-teal-950/10">
-            <Image
-              src="/media/boys-group-red-assembly.jpg"
-              alt="Boys group assembly at Janaseva Ashrama"
-              fill
-              className="object-cover"
-              sizes="(max-width: 640px) 33vw, 33vw"
-            />
-            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-1.5 text-[9px] text-white font-bold leading-tight">
-              ✨ 25 Boys
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-3.5 pt-3 border-t border-teal-900/10 grid grid-cols-3 gap-2 text-center text-[10px] font-bold text-teal-950/80">
-          <div>
-            <span className="block font-black text-sm text-[#042825]">25 Boys</span>
-            <span>Loving Care</span>
-          </div>
-          <div>
-            <span className="block font-black text-sm text-[#042825]">4 Meals/Day</span>
-            <span>Satvik Nutrition</span>
-          </div>
-          <div>
-            <span className="block font-black text-sm text-[#042825]">100% Free</span>
-            <span>Schooling &amp; Health</span>
-          </div>
-        </div>
-      </section>
-
-      {/* ── 5. OFFICIAL GOVERNMENT & TAX CREDENTIALS ── */}
-      <section className="col-span-1 lg:col-span-5 lg:col-start-1 lg:row-start-3 mt-4 lg:mt-0 rounded-3xl bg-cream/70 p-4 sm:p-5 border border-teal-900/10 text-xs text-teal-950">
-        <h4 className="font-bold uppercase tracking-wider text-[11px] text-[#042825]/70 mb-3">
-          Official Government &amp; Tax Accreditations
-        </h4>
-
-        <div className="grid gap-2.5 sm:grid-cols-3 text-left">
-          <div className="rounded-xl bg-white p-3 border border-teal-900/10 shadow-2xs">
-            <span className="text-base">🏛️</span>
-            <p className="font-bold text-[11px] mt-1 text-[#042825]">Juvenile Justice Act</p>
-            <p className="text-[10px] text-teal-950/70 font-mono">Reg: {JJ_ACT_REGISTRATION.registrationNumber}</p>
-          </div>
-
-          <div className="rounded-xl bg-white p-3 border border-teal-900/10 shadow-2xs">
-            <span className="text-base">📜</span>
-            <p className="font-bold text-[11px] mt-1 text-[#042825]">Section 80G Form 10AC</p>
-            <p className="text-[10px] text-teal-950/70 font-mono">URN: {FORM_10AC.urn}</p>
-          </div>
-
-          <div className="rounded-xl bg-white p-3 border border-teal-900/10 shadow-2xs">
-            <span className="text-base">🛡️</span>
-            <p className="font-bold text-[11px] mt-1 text-[#042825]">Income Tax PAN</p>
-            <p className="text-[10px] text-teal-950/70 font-mono">PAN: {SITE.pan}</p>
-          </div>
-        </div>
-      </section>
-
-      {/* ── 6. FREQUENTLY ASKED QUESTIONS ── */}
-      <section className="col-span-1 lg:col-span-5 lg:col-start-1 lg:row-start-4 mt-4 lg:mt-0 rounded-3xl bg-white p-5 border border-teal-900/10">
-        <h4 className="font-display text-base font-bold text-[#042825] mb-3">
-          Frequently Asked Questions
-        </h4>
-
-        <div className="space-y-2">
-          {FAQS.map((faq, idx) => {
-            const isOpen = openFaqIndex === idx;
-            return (
-              <div key={idx} className="rounded-2xl border border-teal-900/10 overflow-hidden">
-                <button
-                  type="button"
-                  onClick={() => setOpenFaqIndex(isOpen ? null : idx)}
-                  className="w-full p-3 text-left font-bold text-xs text-teal-950 flex items-center justify-between gap-2 hover:bg-cream/40 transition cursor-pointer"
-                >
-                  <span>{faq.q}</span>
-                  <span className="text-sm font-black text-amber-700">{isOpen ? "−" : "+"}</span>
-                </button>
-                {isOpen && (
-                  <div className="p-3 pt-0 text-xs text-teal-950/75 leading-relaxed bg-sand/15">
-                    {faq.a}
-                  </div>
-                )}
+          <div className="relative z-10 p-4 sm:p-5">
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <div className="flex items-center gap-2">
+                <LogoMark size={40} className="shadow-md ring-2 ring-amber-400/70 shrink-0" />
+                <div>
+                  <h2 className="text-sm sm:text-base font-black tracking-tight text-white leading-tight font-display">
+                    Janaseva Ashrama Bangalore
+                  </h2>
+                  <p className="text-[10px] sm:text-[11px] font-semibold text-amber-300">
+                    Registered Orphanage &amp; Children&apos;s Home · Est. 2000
+                  </p>
+                </div>
               </div>
-            );
-          })}
-        </div>
-      </section>
 
-      {/* Direct Contact & WhatsApp Help */}
-      <div className="col-span-1 lg:col-span-5 lg:col-start-1 lg:row-start-5 mt-6 lg:mt-0 text-center text-xs text-teal-950/70 space-y-2">
-        <p>
-          Need assistance or wish to plan an in-person campus visit?
-        </p>
-        <a
-          href={`https://wa.me/${SITE.whatsapp}?text=${encodeURIComponent(
-            "Namaste Janaseva Ashrama, I have a question regarding donating."
-          )}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 font-bold text-emerald-800 bg-emerald-50 px-4 py-2 rounded-full border border-emerald-200 hover:bg-emerald-100 transition shadow-2xs"
-        >
-          <span>💬</span>
-          <span>Chat directly on WhatsApp: +91 99803 59595</span>
-        </a>
-        <p className="text-[11px] text-teal-950/60 pt-1">
-          Janaseva Ashrama · Turahalli, Uttarahalli Hobli, Bengaluru 560061
-        </p>
+              <div className="flex flex-col items-end gap-0.5 shrink-0">
+                <span className="rounded-full bg-emerald-500/30 border border-emerald-400 px-2 py-0.5 text-[9px] font-black uppercase text-emerald-200">
+                  🛡️ 80G Tax Free
+                </span>
+                <span className="text-[8px] sm:text-[9px] text-white/70 font-mono">
+                  Govt: {JJ_ACT_REGISTRATION.registrationNumber}
+                </span>
+              </div>
+            </div>
+
+            <p className="text-xs text-amber-100/90 leading-relaxed font-medium mt-1">
+              Every sacred contribution feeds, educates, and protects <strong>25 resident orphaned boys</strong>.
+              All donors are remembered in daily <strong>6:30 AM morning shloka prayers</strong>.
+            </p>
+
+            {/* Urgent Need Strip */}
+            <div className="mt-2.5 pt-2 border-t border-white/15 flex items-center justify-between gap-2 text-[11px]">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span className="relative flex h-2.5 w-2.5 shrink-0">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-90" />
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-300" />
+                </span>
+                <span className="text-white truncate text-[11px]">
+                  <strong className="text-amber-300">Urgent Tonight:</strong> 6 Meals needed. Even ₹11 provides warm cow milk.
+                </span>
+              </div>
+              <span className="rounded-md bg-amber-400/20 border border-amber-300/40 px-2 py-0.5 text-[10px] font-black text-amber-200 shrink-0">
+                19/25 Sponsored
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* ── 2. AUTHENTIC LIFE & PROOF OF 25 RESIDENT BOYS ── */}
+        <section className="rounded-3xl bg-white p-5 shadow-sm border border-teal-900/10">
+          <h3 className="font-display text-base font-black text-[#042825] mb-1">
+            Life at Janaseva Ashrama (25 Resident Boys)
+          </h3>
+          <p className="text-xs text-teal-950/70 mb-3.5">
+            Turahalli, Bengaluru · Wholesome satvik meals, school education &amp; loving shelter since 2000.
+          </p>
+
+          <div className="grid grid-cols-3 gap-2">
+            <div className="relative rounded-xl overflow-hidden aspect-[4/3] bg-teal-950/10">
+              <Image
+                src="/media/annadana-hall-hd.jpg"
+                alt="Annadana Hall at Janaseva Ashrama Bangalore"
+                fill
+                className="object-cover"
+                sizes="(max-width: 640px) 33vw, 33vw"
+              />
+              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-1.5 text-[9px] text-white font-bold leading-tight">
+                🍲 Satvik Annadana
+              </div>
+            </div>
+
+            <div className="relative rounded-xl overflow-hidden aspect-[4/3] bg-teal-950/10">
+              <Image
+                src="/media/learning.jpg"
+                alt="Resident boys studying at Janaseva Ashrama"
+                fill
+                className="object-cover"
+                sizes="(max-width: 640px) 33vw, 33vw"
+              />
+              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-1.5 text-[9px] text-white font-bold leading-tight">
+                📚 Evening Vidya
+              </div>
+            </div>
+
+            <div className="relative rounded-xl overflow-hidden aspect-[4/3] bg-teal-950/10">
+              <Image
+                src="/media/boys-group-red-assembly.jpg"
+                alt="Boys group assembly at Janaseva Ashrama"
+                fill
+                className="object-cover"
+                sizes="(max-width: 640px) 33vw, 33vw"
+              />
+              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-1.5 text-[9px] text-white font-bold leading-tight">
+                ✨ 25 Boys
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-3.5 pt-3 border-t border-teal-900/10 grid grid-cols-3 gap-2 text-center text-[10px] font-bold text-teal-950/80">
+            <div>
+              <span className="block font-black text-sm text-[#042825]">25 Boys</span>
+              <span>Loving Care</span>
+            </div>
+            <div>
+              <span className="block font-black text-sm text-[#042825]">4 Meals/Day</span>
+              <span>Satvik Nutrition</span>
+            </div>
+            <div>
+              <span className="block font-black text-sm text-[#042825]">100% Free</span>
+              <span>Schooling &amp; Health</span>
+            </div>
+          </div>
+        </section>
+
+        {/* ── 3. OFFICIAL GOVERNMENT & TAX CREDENTIALS ── */}
+        <section className="rounded-3xl bg-cream/70 p-4 sm:p-5 border border-teal-900/10 text-xs text-teal-950">
+          <h4 className="font-bold uppercase tracking-wider text-[11px] text-[#042825]/70 mb-3">
+            Official Government &amp; Tax Accreditations
+          </h4>
+
+          <div className="grid gap-2.5 sm:grid-cols-3 text-left">
+            <div className="rounded-xl bg-white p-3 border border-teal-900/10 shadow-2xs">
+              <span className="text-base">🏛️</span>
+              <p className="font-bold text-[11px] mt-1 text-[#042825]">Juvenile Justice Act</p>
+              <p className="text-[10px] text-teal-950/70 font-mono">Reg: {JJ_ACT_REGISTRATION.registrationNumber}</p>
+            </div>
+
+            <div className="rounded-xl bg-white p-3 border border-teal-900/10 shadow-2xs">
+              <span className="text-base">📜</span>
+              <p className="font-bold text-[11px] mt-1 text-[#042825]">Section 80G Form 10AC</p>
+              <p className="text-[10px] text-teal-950/70 font-mono">URN: {FORM_10AC.urn}</p>
+            </div>
+
+            <div className="rounded-xl bg-white p-3 border border-teal-900/10 shadow-2xs">
+              <span className="text-base">🛡️</span>
+              <p className="font-bold text-[11px] mt-1 text-[#042825]">Income Tax PAN</p>
+              <p className="text-[10px] text-teal-950/70 font-mono">PAN: {SITE.pan}</p>
+            </div>
+          </div>
+        </section>
+
+        {/* ── 4. FREQUENTLY ASKED QUESTIONS ── */}
+        <section className="rounded-3xl bg-white p-5 border border-teal-900/10">
+          <h4 className="font-display text-base font-bold text-[#042825] mb-3">
+            Frequently Asked Questions
+          </h4>
+
+          <div className="space-y-2">
+            {FAQS.map((faq, idx) => {
+              const isOpen = openFaqIndex === idx;
+              return (
+                <div key={idx} className="rounded-2xl border border-teal-900/10 overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => setOpenFaqIndex(isOpen ? null : idx)}
+                    className="w-full p-3 text-left font-bold text-xs text-teal-950 flex items-center justify-between gap-2 hover:bg-cream/40 transition cursor-pointer"
+                  >
+                    <span>{faq.q}</span>
+                    <span className="text-sm font-black text-amber-700">{isOpen ? "−" : "+"}</span>
+                  </button>
+                  {isOpen && (
+                    <div className="p-3 pt-0 text-xs text-teal-950/75 leading-relaxed bg-sand/15">
+                      {faq.a}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* ── 5. DIRECT CONTACT & WHATSAPP HELP ── */}
+        <div className="text-center text-xs text-teal-950/70 space-y-2 pt-2">
+          <p>
+            Need assistance or wish to plan an in-person campus visit?
+          </p>
+          <a
+            href={`https://wa.me/${SITE.whatsapp}?text=${encodeURIComponent(
+              "Namaste Janaseva Ashrama, I have a question regarding donating."
+            )}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 font-bold text-emerald-800 bg-emerald-50 px-4 py-2 rounded-full border border-emerald-200 hover:bg-emerald-100 transition shadow-2xs"
+          >
+            <span>💬</span>
+            <span>Chat directly on WhatsApp: +91 99803 59595</span>
+          </a>
+          <p className="text-[11px] text-teal-950/60 pt-1">
+            Janaseva Ashrama · Turahalli, Uttarahalli Hobli, Bengaluru 560061
+          </p>
+        </div>
       </div>
       </div>
 
@@ -1872,22 +1915,18 @@ export function MetaAdsDonateComponent() {
 
           <button
             type="button"
-            onClick={() => {
-              if (!donorName.trim() || donorPhone.trim().length < 10) {
-                detailsCardRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-                if (!donorName.trim()) {
-                  nameInputRef.current?.focus();
-                } else {
-                  phoneInputRef.current?.focus();
-                }
-              } else {
-                handlePayNow();
-              }
-            }}
-            className="shrink-0 px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#EA580C] to-[#D97706] text-white font-black text-xs uppercase tracking-wider shadow-md active:scale-95 cursor-pointer flex items-center gap-1.5 animate-heartbeat"
+            onClick={handlePayNow}
+            disabled={loading}
+            className="shrink-0 min-h-[46px] px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#EA580C] to-[#D97706] text-white font-black text-xs uppercase tracking-wider shadow-md active:scale-95 cursor-pointer flex items-center gap-1.5 animate-heartbeat relative z-50 pointer-events-auto touch-manipulation disabled:opacity-75"
           >
-            <span>PROCEED TO PAY</span>
-            <span>💝</span>
+            {loading ? (
+              <span>Connecting...</span>
+            ) : (
+              <>
+                <span>PROCEED TO PAY</span>
+                <span>💝</span>
+              </>
+            )}
           </button>
         </div>
       )}
