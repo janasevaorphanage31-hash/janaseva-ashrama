@@ -470,6 +470,7 @@ export function MetaAdsDonateComponent() {
   const [copiedBankField, setCopiedBankField] = useState<string | null>(null);
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
   const [showStickyBar, setShowStickyBar] = useState(false);
+  const [showMissingDetailsModal, setShowMissingDetailsModal] = useState(false);
 
   // Honeypot anti-spam
   const [honeypot, setHoneypot] = useState("");
@@ -719,18 +720,21 @@ export function MetaAdsDonateComponent() {
       return false;
     }
 
-    // 2. Name validation: Auto-fallback to "Janaseva Supporter" if left blank
-    if (!donorName.trim()) {
-      setDonorName("Janaseva Supporter");
+    // 2. Mandatory Full Name validation (Required for 80G Tax Exemption & Satsang Prayer)
+    if (!donorName.trim() || donorName.trim().length < 2) {
+      errors.name = "Please enter your Full Name for your 80G tax receipt & prayer blessings.";
     }
 
-    // 3. WhatsApp Mobile validation (if entered partially)
+    // 3. Mandatory WhatsApp Mobile validation (Required for 80G instant receipt delivery)
     const cleanPhone = donorPhone.replace(/\D/g, "");
-    if (cleanPhone.length > 0 && cleanPhone.length < 10) {
-      errors.phone = "Please enter a valid 10-digit Indian mobile number.";
+    if (!cleanPhone || cleanPhone.length !== 10 || !/^[6-9]\d{9}$/.test(cleanPhone)) {
+      errors.phone = "Please enter a valid 10-digit Indian WhatsApp mobile number (e.g. 9876543210).";
+    }
+
+    // If Name or Phone is missing, display high-visibility popup and focus field
+    if (errors.name || errors.phone) {
       setFormErrors(errors);
-      detailsCardRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-      phoneInputRef.current?.focus();
+      setShowMissingDetailsModal(true);
       return false;
     }
 
@@ -2373,6 +2377,60 @@ export function MetaAdsDonateComponent() {
               </>
             )}
           </button>
+        </div>
+      )}
+
+      {/* ── 8. ⚠️ MISSING DONOR DETAILS POPUP MODAL ── */}
+      {showMissingDetailsModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs animate-fadeIn"
+          onClick={() => setShowMissingDetailsModal(false)}
+        >
+          <div
+            className="relative w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl border border-teal-900/15 text-center text-teal-950 animate-fadeIn"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-100 text-amber-800 text-3xl mb-3 shadow-sm">
+              ⚠️
+            </div>
+            <h3 className="font-display text-lg font-black text-[#042825]">
+              Please Enter Details to Proceed
+            </h3>
+            <p className="mt-2 text-xs text-teal-950/75 leading-relaxed">
+              Your <strong>Full Name</strong> and <strong>WhatsApp Mobile Number</strong> are required to issue your instant <strong>80G Tax Exemption Certificate</strong> and chant your family&apos;s name in morning prayers.
+            </p>
+
+            <div className="mt-4 text-left space-y-2 bg-cream/40 p-3 rounded-2xl border border-teal-900/10 text-xs">
+              {formErrors.name && (
+                <div className="flex items-start gap-2 text-rose-700 font-bold">
+                  <span className="text-sm">❌</span>
+                  <span>{formErrors.name}</span>
+                </div>
+              )}
+              {formErrors.phone && (
+                <div className="flex items-start gap-2 text-rose-700 font-bold">
+                  <span className="text-sm">❌</span>
+                  <span>{formErrors.phone}</span>
+                </div>
+              )}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                setShowMissingDetailsModal(false);
+                detailsCardRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+                if (formErrors.name) {
+                  setTimeout(() => nameInputRef.current?.focus(), 300);
+                } else {
+                  setTimeout(() => phoneInputRef.current?.focus(), 300);
+                }
+              }}
+              className="mt-5 w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-[#EA580C] to-[#D97706] text-white font-black text-xs uppercase tracking-wider shadow-md hover:brightness-105 active:scale-95 transition cursor-pointer flex items-center justify-center gap-2"
+            >
+              <span>👉 Fill Details Now</span>
+            </button>
+          </div>
         </div>
       )}
     </div>

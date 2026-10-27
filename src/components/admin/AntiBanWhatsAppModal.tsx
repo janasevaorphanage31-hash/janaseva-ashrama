@@ -340,6 +340,50 @@ export function AntiBanWhatsAppModal({
     }
   };
 
+  // NATIVE MOBILE SHARE: Attaches REAL IMAGE FILE with Kanglish caption (100% matches Akshayakalpa card!)
+  const handleShareRealMedia = async () => {
+    if (!lead) return;
+    if (!lead.status || lead.status === "Pending") {
+      void handleSaveDisposition("Contacted");
+    }
+    setCooldownSeconds(10);
+
+    // Pre-copy customer phone number to clipboard for convenient paste into search
+    try {
+      await navigator.clipboard.writeText(formattedPhone);
+    } catch {}
+
+    try {
+      const mediaUrl = customUploadedFile?.previewUrl || activeMedia.url;
+      const filename = customUploadedFile?.name || activeMedia.filename || "janaseva-photo.jpg";
+
+      const res = await fetch(mediaUrl);
+      const blob = await res.blob();
+      const file = new File([blob], filename, { type: blob.type || "image/jpeg" });
+
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          text: captionText || messageText,
+          title: "Janaseva Ashrama",
+        });
+        setApiCardMessage(`✓ Real photo & Kanglish message shared! Customer phone (${displayPhone}) copied to clipboard.`);
+        setTimeout(() => setApiCardMessage(""), 5000);
+        return;
+      }
+    } catch (err: any) {
+      if (err.name === "AbortError") return;
+      console.warn("Native share unsupported, falling back to direct web launch:", err);
+    }
+
+    // Fallback: Copy photo to clipboard and open wa.me directly
+    await handleCopyPhotoToClipboard();
+    const targetUrl = `https://wa.me/${formattedPhone}?text=${encodeURIComponent(messageText)}`;
+    window.open(targetUrl, "_blank", "noopener,noreferrer");
+    setApiCardMessage(`✓ Opened WhatsApp directly to ${displayPhone}! Photo is copied to clipboard.`);
+    setTimeout(() => setApiCardMessage(""), 5000);
+  };
+
   // DIRECT CUSTOMER WHATSAPP: 1-Tap launch strictly targeting the CUSTOMER's phone number in Kanglish
   const handleSendDirectToCustomer = async () => {
     if (!lead) return;
@@ -1112,27 +1156,41 @@ export function AntiBanWhatsAppModal({
 
             {/* ── PRIMARY DISPATCH ACTION BUTTONS ── */}
             <div className="space-y-2">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                {/* PRIMARY ACTION 1: Direct 1-Tap WhatsApp strictly targeting the CUSTOMER's number */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                {/* PRIMARY ACTION 1: Share Real Photo File + Caption directly to WhatsApp */}
+                <button
+                  type="button"
+                  onClick={handleShareRealMedia}
+                  className="focus-ring tap-scale inline-flex items-center justify-center gap-2 rounded-2xl bg-[#25D366] hover:brightness-105 active:bg-[#1faa53] text-white px-3.5 py-3 text-xs sm:text-sm font-black shadow-md transition cursor-pointer min-h-[48px]"
+                  title="Shares the actual photo file directly into WhatsApp bubble with Kanglish caption"
+                >
+                  <span className="text-xl">📲</span>
+                  <div className="text-left">
+                    <div>Share Real Photo + Message</div>
+                    <div className="text-[10px] font-normal opacity-90">Embeds photo into WhatsApp · Phone copied</div>
+                  </div>
+                </button>
+
+                {/* PRIMARY ACTION 2: Direct 1-Tap WhatsApp strictly targeting the CUSTOMER's number */}
                 <button
                   type="button"
                   onClick={handleSendDirectToCustomer}
-                  className="focus-ring tap-scale inline-flex items-center justify-center gap-2 rounded-2xl bg-[#25D366] hover:brightness-105 active:bg-[#1faa53] text-white px-4 py-3 text-xs sm:text-sm font-black shadow-md transition cursor-pointer min-h-[48px]"
+                  className="focus-ring tap-scale inline-flex items-center justify-center gap-2 rounded-2xl bg-teal-900 hover:bg-teal-950 active:scale-95 text-white px-3.5 py-3 text-xs sm:text-sm font-black shadow-md transition cursor-pointer min-h-[48px]"
                   title={`Directly opens WhatsApp with Customer ${lead.name} (${displayPhone}) with pre-filled Kanglish text`}
                 >
                   <span className="text-xl">💬</span>
                   <div className="text-left">
-                    <div>Open Customer WhatsApp ({displayPhone})</div>
-                    <div className="text-[10px] font-normal opacity-90">1-Tap direct chat to customer · Photo on clipboard</div>
+                    <div>Direct Chat ({displayPhone})</div>
+                    <div className="text-[10px] font-normal opacity-90">1-Tap chat to customer · Photo on clipboard</div>
                   </div>
                 </button>
 
-                {/* PRIMARY ACTION 2: Baileys WhatsApp Gateway (Open-Source GitHub Bridge) */}
+                {/* PRIMARY ACTION 3: Baileys WhatsApp Gateway (Open-Source GitHub Bridge) */}
                 <button
                   type="button"
                   onClick={baileysStatus === "connected" ? handleSendBaileys : handleConnectBaileys}
                   disabled={sendingBaileys || connectingBaileys}
-                  className={`focus-ring tap-scale inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-3 text-xs sm:text-sm font-black shadow-md transition cursor-pointer min-h-[48px] ${
+                  className={`focus-ring tap-scale inline-flex items-center justify-center gap-2 rounded-2xl px-3.5 py-3 text-xs sm:text-sm font-black shadow-md transition cursor-pointer min-h-[48px] ${
                     baileysStatus === "connected"
                       ? "bg-emerald-700 hover:bg-emerald-800 text-white"
                       : "bg-teal-950 hover:bg-teal-900 text-gold"
@@ -1143,15 +1201,15 @@ export function AntiBanWhatsAppModal({
                   <div className="text-left">
                     <div>
                       {sendingBaileys
-                        ? `Sending to Customer ${displayPhone}...`
+                        ? `Sending to ${displayPhone}...`
                         : baileysStatus === "connected"
-                        ? `Send Real Photo to Customer (${displayPhone})`
-                        : "Connect Ashrama WhatsApp (Scan QR)"}
+                        ? `Send Real Photo (${displayPhone})`
+                        : "Connect Ashrama WhatsApp"}
                     </div>
                     <div className="text-[10px] font-normal opacity-85">
                       {baileysStatus === "connected"
-                        ? `🟢 Ashrama Gateway Active · Sends direct to ${displayPhone}`
-                        : "Open-source Baileys engine · 1-click connect"}
+                        ? `🟢 Gateway Active · Direct to ${displayPhone}`
+                        : "Baileys engine · Scan QR once"}
                     </div>
                   </div>
                 </button>
@@ -1304,20 +1362,20 @@ export function AntiBanWhatsAppModal({
 
         {/* ── STICKY MOBILE ACTION BAR ── */}
         <div className="sm:hidden sticky bottom-0 bg-white/95 backdrop-blur-md border-t border-teal-900/15 p-3 shadow-lg z-20 space-y-2">
-          {/* Main 1-tap Direct WhatsApp to Customer */}
+          {/* Main 1-tap Real Photo + Kanglish Message to WhatsApp */}
           <button
             type="button"
-            onClick={handleSendDirectToCustomer}
+            onClick={handleShareRealMedia}
             className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#25D366] active:bg-[#1faa53] text-white font-black text-xs sm:text-sm shadow-md transition cursor-pointer"
           >
-            <span className="text-xl">💬</span>
+            <span className="text-xl">📲</span>
             <div className="text-left">
-              <div className="font-black leading-tight">Send to Customer ({displayPhone})</div>
-              <div className="text-[10px] font-normal opacity-90 leading-tight">1-Tap WhatsApp · Photo on clipboard</div>
+              <div className="font-black leading-tight">Share Real Photo + Message ({displayPhone})</div>
+              <div className="text-[10px] font-normal opacity-90 leading-tight">Attaches photo file to WhatsApp · Customer phone copied</div>
             </div>
           </button>
 
-          {/* Quick Row: Call Customer, Copy Photo, Baileys/wa.me */}
+          {/* Quick Row: Call Customer, Direct Chat (wa.me), Baileys Gateway */}
           <div className="grid grid-cols-3 gap-2">
             <button
               type="button"
@@ -1330,21 +1388,21 @@ export function AntiBanWhatsAppModal({
             </button>
             <button
               type="button"
-              onClick={handleCopyPhotoToClipboard}
-              className="flex h-10 items-center justify-center gap-1 rounded-xl bg-cream border border-teal-900/15 text-teal-950 text-xs font-bold active:scale-95 transition cursor-pointer"
-              title="Copy photo to clipboard for Ctrl+V paste"
+              onClick={handleSendDirectToCustomer}
+              className="flex h-10 items-center justify-center gap-1 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-bold active:scale-95 transition cursor-pointer"
+              title="Open customer chat directly"
             >
-              <span>{photoCopied ? "✓" : "🖼️"}</span>
-              <span>{photoCopied ? "Copied" : "Photo"}</span>
+              <span>💬</span>
+              <span>Direct Chat</span>
             </button>
             <button
               type="button"
-              onClick={baileysStatus === "connected" ? handleSendBaileys : handleLaunchWhatsApp}
-              className="flex h-10 items-center justify-center gap-1 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-bold active:scale-95 transition cursor-pointer"
-              title={baileysStatus === "connected" ? "Send real media via Ashrama Gateway" : "Open wa.me click-to-chat"}
+              onClick={baileysStatus === "connected" ? handleSendBaileys : handleConnectBaileys}
+              className="flex h-10 items-center justify-center gap-1 rounded-xl bg-cream border border-teal-900/15 text-teal-950 text-xs font-bold active:scale-95 transition cursor-pointer"
+              title={baileysStatus === "connected" ? "Send real media via Ashrama Gateway" : "Connect Gateway"}
             >
-              <span>{baileysStatus === "connected" ? "⚡" : "💬"}</span>
-              <span>{baileysStatus === "connected" ? "Gateway" : "Chat"}</span>
+              <span>{baileysStatus === "connected" ? "⚡" : "📱"}</span>
+              <span>{baileysStatus === "connected" ? "Gateway" : "Link QR"}</span>
             </button>
           </div>
         </div>
