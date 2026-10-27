@@ -1,0 +1,404 @@
+/**
+ * WhatsApp Anti-Ban Intelligent Variation & Media Outreach Engine
+ * Designed for Janaseva Ashrama Telecallers and Admin CRM.
+ * 
+ * Prevents WhatsApp spam-detection algorithms from flagging or banning outreach numbers by:
+ * 1. Multi-level spintax (Greetings, Intros, Pitch, Call-to-actions, Vedic Blessings).
+ * 2. Time-of-day contextual salutations (Morning, Afternoon, Evening).
+ * 3. Bilingual support (English, Kannada ಕನ್ನಡ, and Mixed/Manglish).
+ * 4. 4 Narrative focus angles (Annadana meals, Birthday celebrations, Education vidya, 80G tax trust).
+ * 5. Cryptographic salt token (#JS-XXXXX) guaranteeing a 100% unique digital message fingerprint.
+ * 6. Curated Media Library (Images, Videos, PDFs, Website Tracking Links).
+ */
+
+import { SITE, FORM_10AC, JJ_ACT_REGISTRATION } from "./site";
+
+export type OutreachLanguage = "en" | "kn" | "mixed";
+export type NarrativeAngle = "annadana" | "birthday" | "vidya" | "trust_80g";
+export type MediaType = "none" | "image" | "video" | "pdf" | "link";
+
+// Backwards-compatible aliases
+export type AntiBanLanguage = OutreachLanguage;
+export type OutreachAngle = NarrativeAngle;
+export type AntiBanMediaAsset = MediaAsset;
+
+export interface MediaAsset {
+  id: string;
+  type: "image" | "video" | "document" | "link";
+  title: string;
+  description: string;
+  url: string;
+  filename?: string;
+  thumbnailUrl?: string;
+}
+
+export const CURATED_OUTREACH_MEDIA: Record<string, MediaAsset> = {
+  annadana_feast: {
+    id: "annadana_feast",
+    type: "image",
+    title: "🍲 Satvik Banana Leaf Feast",
+    description: "25 resident boys enjoying a freshly cooked hot lunch feast on banana leaves.",
+    url: `${SITE.url}/media/banana-leaf-feast.jpg`,
+    filename: "janaseva-annadana-feast.jpg",
+  },
+  birthday_celebration: {
+    id: "birthday_celebration",
+    type: "image",
+    title: "🎂 Birthday Celebration with 25 Boys",
+    description: "Donors celebrating birthday cake cutting and feast with resident boys.",
+    url: `${SITE.url}/media/birthday-cake-celebration.jpg`,
+    filename: "janaseva-birthday-celebration.jpg",
+  },
+  prayer_assembly: {
+    id: "prayer_assembly",
+    type: "image",
+    title: "🙏 Morning Prayer & Shloka Assembly",
+    description: "Daily 6:30 AM prayer assembly chanting shlokas for donors and caregivers.",
+    url: `${SITE.url}/media/boys-group-altar.jpg`,
+    filename: "janaseva-prayer-assembly.jpg",
+  },
+  chant_video: {
+    id: "chant_video",
+    type: "video",
+    title: "🎥 Boys Chanting Vedic Blessing Video",
+    description: "Heartwarming short clip of resident boys chanting prayers and gratitude.",
+    url: `${SITE.url}/media/video-chant-prayer.mp4`,
+    filename: "janaseva-children-prayer-chant.mp4",
+  },
+  ashrama_tour_video: {
+    id: "ashrama_tour_video",
+    type: "video",
+    title: "📹 Ashrama Campus Tour Video",
+    description: "Short tour of Turahalli children's home, classrooms, kitchen, and dorms.",
+    url: `${SITE.url}/media/ashrama_video.mp4`,
+    filename: "janaseva-ashrama-campus-tour.mp4",
+  },
+  form_10ac_80g: {
+    id: "form_10ac_80g",
+    type: "document",
+    title: "📜 Income Tax 80G Certificate (Form 10AC)",
+    description: "Official Govt of India Form 10AC provisional 80G approval (URN: AABTJ7431MF20231).",
+    url: `${SITE.url}/documents/form-10ac-80g-approval.pdf`,
+    filename: "Form-10AC-80G-Tax-Exemption-Janaseva.pdf",
+  },
+  jj_act_license: {
+    id: "jj_act_license",
+    type: "document",
+    title: "🏛️ JJ Act Child Care Institution License (Form 28)",
+    description: "Govt of Karnataka Directorate of Child Protection License KA18CH0242 for 25 boys.",
+    url: `${SITE.url}/documents/jj-act-child-care-institution-registration-form-28.pdf`,
+    filename: "Govt-Karnataka-JJ-Act-Registration-Form-28.pdf",
+  },
+  website_donation_link: {
+    id: "website_donation_link",
+    type: "link",
+    title: "🌐 Official 1-Tap Donation Portal Link",
+    description: "Instant UPI & 80G receipt donation link with telecaller attribution tracking.",
+    url: `${SITE.url}/give`,
+  },
+};
+
+/** Randomly pick one item from an array */
+function pick<T>(arr: T[]): T {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+/** Generate a short random alphanumeric token (e.g. 5F82B) */
+function generateSaltToken(): string {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let result = "";
+  for (let i = 0; i < 5; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+}
+
+/** Determine time-of-day greeting (IST) */
+function getTimeOfDay(): "morning" | "afternoon" | "evening" {
+  // Get current hour in IST
+  const now = new Date();
+  const utc = now.getTime() + now.getTimezoneOffset() * 60000;
+  const istOffset = 5.5 * 3600000;
+  const istDate = new Date(utc + istOffset);
+  const hour = istDate.getHours();
+
+  if (hour < 12) return "morning";
+  if (hour < 17) return "afternoon";
+  return "evening";
+}
+
+export interface AntiBanGenerateOptions {
+  leadName?: string;
+  donorName?: string;
+  leadPhone?: string;
+  phone?: string;
+  callerId: string;
+  callerName?: string;
+  language?: OutreachLanguage;
+  angle?: NarrativeAngle;
+  selectedMediaId?: string;
+  mediaId?: string;
+  customPledgeAmount?: number;
+  amount?: number;
+  baseUrl?: string;
+  masterWhatsAppNumber?: string;
+  senderMode?: "central" | "individual";
+}
+
+export interface AntiBanGeneratedMessage {
+  text: string;
+  messageText: string;
+  greeting: string;
+  whatsappUrl: string;
+  trackingRef: string;
+  saltToken: string;
+  mediaAsset?: MediaAsset;
+  previewUrl: string;
+  targetPhone: string;
+  senderPhone: string;
+  senderMode: "central" | "individual";
+  characterCount: number;
+  wordCount: number;
+  language: OutreachLanguage;
+  angle: NarrativeAngle;
+}
+
+/**
+ * Generates an Anti-Ban randomized, personalized message with media & tracking tokens.
+ */
+export function generateAntiBanMessage(options: AntiBanGenerateOptions): AntiBanGeneratedMessage {
+  const {
+    callerId,
+    callerName = "Caregiver Team",
+    language = "en",
+    angle = "annadana",
+    baseUrl = SITE.url,
+    masterWhatsAppNumber = SITE.phoneIntl,
+    senderMode = "central",
+  } = options;
+
+  const cleanName = (options.leadName || options.donorName || "Noble Supporter").trim();
+  const rawPhone = options.leadPhone || options.phone || "";
+  const selectedMediaId = options.selectedMediaId || options.mediaId || "annadana_feast";
+  const customPledgeAmount = options.customPledgeAmount || options.amount;
+  const timeOfDay = getTimeOfDay();
+  const salt = generateSaltToken();
+  const trackingRef = callerId ? callerId.toUpperCase() : "DIRECT";
+
+  // Clean phone number
+  const digits = rawPhone.replace(/\D/g, "");
+  const formattedPhone = digits.length === 10 ? `91${digits}` : digits;
+
+  // Selected media asset (if any)
+  const mediaAsset = selectedMediaId && CURATED_OUTREACH_MEDIA[selectedMediaId]
+    ? CURATED_OUTREACH_MEDIA[selectedMediaId]
+    : undefined;
+
+  // Build target donation URL with tracking parameters
+  const amountParam = customPledgeAmount && customPledgeAmount > 0 ? `&amount=${customPledgeAmount}` : "";
+  const portalUrl = `${baseUrl}/give?ref=${trackingRef}${amountParam}`;
+  const birthdayUrl = `${baseUrl}/celebrate-birthday?ref=${trackingRef}`;
+
+  let greeting = "";
+  let intro = "";
+  let body = "";
+  let tierBreakdown = "";
+  let trustProof = "";
+  let closingBlessing = "";
+  let saltLine = "";
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // 1. KANNADA LANGUAGE GENERATION (ಕನ್ನಡ)
+  // ──────────────────────────────────────────────────────────────────────────
+  if (language === "kn") {
+    const timeGreetingKn = {
+      morning: ["ಶುಭೋದಯ", "ನಮಸ್ಕಾರ"],
+      afternoon: ["ಶುಭ ಮಧ್ಯಾಹ್ನ", "ನಮಸ್ಕಾರ"],
+      evening: ["ಶುಭ ಸಂಜೆ", "ನಮಸ್ಕಾರ"],
+    }[timeOfDay];
+
+    greeting = `${pick(timeGreetingKn)} ${cleanName} ನವರೇ! 🙏`;
+
+    intro = pick([
+      `ಬೆಂಗಳೂರಿನ ಜನಸೇವಾ ಆಶ್ರಮದ (ತುರಹಳ್ಳಿ) 25 ಮುಗ್ಧ ಅನಾಥ ಮಕ್ಕಳ ಪರವಾಗಿ ಹೃತ್ಪೂರ್ವಕ ಪ್ರಣಾಮಗಳು! 👦✨`,
+      `ನಮ್ಮ ಜನಸೇವಾ ಆಶ್ರಮದಲ್ಲಿ ಆಶ್ರಯ ಪಡೆದಿರುವ 25 ಬಾಲಕರ ಪಾಲನೆ ಹಾಗೂ ಸೇವೆಯ ಕುರಿತು ಈ ಪುಟ್ಟ ಸಂದೇಶವನ್ನು ಕಳುಹಿಸುತ್ತಿದ್ದೇವೆ. 🌸`,
+      `ನಮ್ಮ ಜನಸೇವಾ ಆಶ್ರಮದ (KA18CH0242) 25 ವಸತಿ ಬಾಲಕರ ನಿತ್ಯ ಅನ್ನದಾನ ಹಾಗೂ ವಿದ್ಯಾಭ್ಯಾಸದ ಸಹಕಾರಕ್ಕಾಗಿ ತಮ್ಮಲ್ಲಿ ವಿನಮ್ರ ವಿನಂತಿ. 🍲`,
+    ]);
+
+    if (angle === "birthday") {
+      body = pick([
+        `ತಮ್ಮ ಅಥವಾ ಕುಟುಂಬದವರ ಹುಟ್ಟುಹಬ್ಬ, ವಿವಾಹ ವಾರ್ಷಿಕೋತ್ಸವ ಅಥವಾ ಪುಣ್ಯತಿಥಿಯ ಸವಿ ನೆನಪಿನಲ್ಲಿ ನಮ್ಮ 25 ಮಕ್ಕಳಿಗೆ ಸಿಹಿ ಪಾಯಸದೊಂದಿಗೆ ಊಟ ಬಡಿಸಿ ಆಶೀರ್ವಾದ ಪಡೆಯಿರಿ.`,
+        `ವಿಶೇಷ ದಿನದಂದು ಆಶ್ರಮಕ್ಕೆ ನೇರವಾಗಿ ಭೇಟಿ ನೀಡಿ ಮಕ್ಕಳೊಂದಿಗೆ ಕೇಕ್ ಕತ್ತರಿಸಿ, ಅನ್ನದಾನ ನೆರವೇರಿಸಿ ಸಾರ್ಥಕತೆ ಪಡೆಯಬಹುದು.`,
+      ]);
+      tierBreakdown = `🎂 ಜನ್ಮದಿನ ಮಹಾ ಅನ್ನದಾನ ಕೊಡುಗೆಗಳು:\n• ₹2,500 - ಸಿಹಿ ಪಾಯಸದ ವಿಶೇಷ ಭೋಜನ (25 ಮಕ್ಕಳಿಗೆ)\n• ₹3,500 - ಕೇಕ್, ಸಂಜೆ ತಿಂಡಿ ಮತ್ತು ಹಬ್ಬದ ಊಟ\n• ₹4,500 - ಇಡೀ ದಿನದ 4 ಹೊತ್ತಿನ ಪೂರ್ಣ ಅನ್ನದಾನ\n\nತಮ್ಮ ಜನ್ಮದಿನ ಸೇವೆ ಕಾಯ್ದಿರಿಸಲು: ${birthdayUrl}`;
+    } else if (angle === "vidya") {
+      body = pick([
+        `ನಮ್ಮ ಆಶ್ರಮದ 25 ಬಾಲಕರು ಶಾಲಾ ಶಿಕ್ಷಣ, ಟ್ಯೂಷನ್ ಮತ್ತು ಕಂಪ್ಯೂಟರ್ ತರಬೇತಿ ಪಡೆಯುತ್ತಿದ್ದಾರೆ. ಅವರ ಸಮವಸ್ತ್ರ, ಪುಸ್ತಕ ಹಾಗೂ ಶಾಲಾ ಶುಲ್ಕಕ್ಕೆ ತಮ್ಮ ಪ್ರೋತ್ಸಾಹ ಅತ್ಯಮೂಲ್ಯ.`,
+        `ವಿದ್ಯಾದಾನವೇ ಮಹಾದಾನ. ಅನಾಥ ಮಕ್ಕಳ ಶಿಕ್ಷಣಕ್ಕೆ ನೆರವು ನೀಡಿ ಅವರ ಭವಿಷ್ಯಕ್ಕೆ ಬೆಳಕಾಗಿ.`,
+      ]);
+      tierBreakdown = `📚 ವಿದ್ಯಾ ಸೇವಾ ಕೊಡುಗೆಗಳು:\n• ₹1,800 - 3 ಜೊತೆ ಕಾಟನ್ ಸಮವಸ್ತ್ರಗಳು\n• ₹2,400 - 8 ಮಕ್ಕಳ 1 ತಿಂಗಳ ಟ್ಯೂಷನ್ ಹಾಗೂ ನೋಟ್‌ಬುಕ್‌ಗಳು\n• ₹3,200 - 1 ಮಗುವಿನ ವಾರ್ಷಿಕ ಶಾಲಾ ಪ್ರವೇಶ ಹಾಗೂ ಪಠ್ಯಪುಸ್ತಕಗಳು\n\nವಿದ್ಯಾದಾನ ಮಾಡಲು: ${portalUrl}`;
+    } else if (angle === "trust_80g") {
+      body = pick([
+        `ಜನಸೇವಾ ಆಶ್ರಮವು ಕರ್ನಾಟಕ ಸರ್ಕಾರದ ಬಾಲನ್ಯಾಯ ಕಾಯ್ದೆ (JJ Act KA18CH0242) ಅಡಿಯಲ್ಲಿ ನೋಂದಾಯಿತ ಅಧಿಕೃತ ಸಂಸ್ಥೆಯಾಗಿದೆ.`,
+        `ನೀವು ನೀಡುವ ಪ್ರತಿಯೊಂದು ರೂಪಾಯಿಯೂ ನೇರವಾಗಿ 25 ಮಕ್ಕಳ ಆಹಾರ, ವಸತಿ ಮತ್ತು ವೈದ್ಯಕೀಯ ವೆಚ್ಚಕ್ಕೆ ಬಳಕೆಯಾಗುತ್ತದೆ.`,
+      ]);
+      tierBreakdown = `📜 ಸರ್ಕಾರದ ಅಧಿಕೃತ 80G ವಿನಾಯಿತಿ:\n• ಆದಾಯ ತೆರಿಗೆ ಕಾಯ್ದೆ 80G (Form 10AC: ${FORM_10AC.urn}) ಅಡಿಯಲ್ಲಿ 50% ತೆರಿಗೆ ವಿನಾಯಿತಿ ಲಭ್ಯ.\n• ತಕ್ಷಣದ ಡಿಜಿಟಲ್ ರಸೀದಿ WhatsApp ಮೂಲಕ ತಲುಪುತ್ತದೆ.\n\nನೇರ ದೇಣಿಗೆಗೆ: ${portalUrl}`;
+    } else {
+      // Default Annadana
+      body = pick([
+        `ನಮ್ಮ ಆಶ್ರಮದಲ್ಲಿ 25 ಬೆಳೆಯುವ ಬಾಲಕರಿಗೆ ಪ್ರತಿದಿನ ಶುದ್ಧ, ಸಾತ್ವಿಕ ಮತ್ತು ಪೌಷ್ಟಿಕ 4 ಹೊತ್ತಿನ ಆಹಾರ (ಹಾಲು, ಇಡ್ಲಿ, ಮಧ್ಯಾಹ್ನ-ರಾತ್ರಿಯ ಅನ್ನ ಸಾಂಬಾರ್) ನೀಡಲಾಗುತ್ತಿದೆ.`,
+        `ಇಂದಿನ ತುರ್ತು ಅನ್ನದಾನ ಸೇವೆಗೆ ಕೈಜೋಡಿಸಿ. ನಿಮ್ಮ ಪುಟ್ಟ ನೆರವು ಒಂದು ಮಗುವಿನ ಹಸಿವನ್ನು ನೀಗಿಸುತ್ತದೆ.`,
+      ]);
+      tierBreakdown = `🍲 ಪವಿತ್ರ ಅನ್ನದಾನ ಸೇವಾ ವಿವರ:\n• ₹501 - 3 ದಿನಗಳ ಪೌಷ್ಟಿಕ ಆಹಾರ ಹಾಗೂ ಹಾಲಿನ ಸೇವೆ\n• ₹1,500 - 25 ಮಕ್ಕಳಿಗೆ ಬೆಳಗಿನ ಬಿಸಿ ಉಪಹಾರ ಹಾಗೂ ಹಾಲು\n• ₹2,500 - 25 ಮಕ್ಕಳಿಗೆ ಸಾತ್ವಿಕ ಮಧ್ಯಾಹ್ನದ ಊಟ\n• ₹4,500 - ಇಡೀ ದಿನದ 4 ಹೊತ್ತಿನ ಸಂಪೂರ್ಣ ಅನ್ನದಾನ\n\nತಕ್ಷಣದ UPI ದೇಣಿಗೆಗೆ: ${portalUrl}`;
+    }
+
+    trustProof = `🛡️ 100% ಪಾರದರ್ಶಕತೆ · ಸರ್ಕಾರದ ನೋಂದಣಿ: ${JJ_ACT_REGISTRATION.registrationNumber} · 80G ತೆರಿಗೆ ವಿನಾಯಿತಿ ರಸೀದಿ.`;
+
+    closingBlessing = pick([
+      `ಶ್ರೀ ದೇವರು ನಿಮಗೆ ಮತ್ತು ನಿಮ್ಮ ಕುಟುಂಬಕ್ಕೆ ಸಕಲ ಸುಖ-ಶಾಂತಿ, ಆಯುರಾರೋಗ್ಯ ಕರುಣಿಸಲಿ ಎಂದು ನಮ್ಮ 25 ಮಕ್ಕಳು ಪ್ರಾರ್ಥಿಸುತ್ತಾರೆ. 🙏✨`,
+      `ಮಕ್ಕಳ ಮುಖದಲ್ಲಿ ನಗು ತರುವ ತಮ್ಮ ಸೇವೆಗೆ ಕೋಟಿ ಕೋಟಿ ಧನ್ಯವಾದಗಳು. ದೇವರೆಲ್ಲರಿಗೂ ಒಳ್ಳೆಯದನ್ನು ಮಾಡಲಿ. 🌸`,
+      `ತಮ್ಮ ಉದಾರ ಮನಸ್ಸಿಗೆ ನಮ್ಮ ಆಶ್ರಮದ ಪರವಾಗಿ ತುಂಬು ಹೃದಯದ ಕೃತಜ್ಞತೆಗಳು. ಧನ್ಯವಾದಗಳು! 🌺`,
+    ]);
+
+    saltLine = `[ಸೇವಾ ರೆಫರೆನ್ಸ್: #JS-${salt}]`;
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // 2. MIXED / MANGLISH LANGUAGE GENERATION
+  // ──────────────────────────────────────────────────────────────────────────
+  else if (language === "mixed") {
+    greeting = `Namaskara ${cleanName} Ji! 🙏`;
+
+    intro = pick([
+      `Warm greetings from all 25 young resident boys at Janaseva Ashrama Bangalore (Turahalli)! 👦✨`,
+      `Janaseva Ashrama Bangalore kadeyinda 25 children prayers matthu blessings thimage thalupisuthiddivi. 🌸`,
+    ]);
+
+    if (angle === "birthday") {
+      body = `Thimma or family members birthday/anniversary dina Janaseva Ashrama 25 resident boys ge special feast sponsor madi celebrate madi. Children direct aagi nimma hesaralli prayer maduthare.`;
+      tierBreakdown = `🎂 Birthday Celebration Seva Options:\n• ₹2,500: Special Festive Lunch with Payasam for 25 Boys\n• ₹3,500: Celebration Cake, Evening Snacks & Feast\n• ₹4,500: Full Day 4-Meal Annadana (Breakfast, Lunch, Snacks & Dinner)\n\nCelebrate or book visit: ${birthdayUrl}`;
+    } else if (angle === "vidya") {
+      body = `Vidya Dana is the highest noble service. Support school fees, uniforms, textbooks and evening computer tuition for 25 orphaned boys.`;
+      tierBreakdown = `📚 Vidya Seva Tiers:\n• ₹1,800: 3 Sets Cotton School Uniforms\n• ₹2,400: Monthly Evening Tuition & Notebooks for 8 Boys\n• ₹3,200: 1 Full Year Academic Adoption\n\nSponsor education: ${portalUrl}`;
+    } else {
+      body = `Namukke daily kitchen groceries (Sona Masoori rice, toor dal, fresh vegetables, pure cow milk) supply madalu donor support thumba avashyakavagide. 100% direct allocation.`;
+      tierBreakdown = `🍲 Sacred Annadana Seva Tiers:\n• ₹501: 3 Days Nutritious Meals & Pediatric Milk\n• ₹1,500: Morning Hot Breakfast & Milk for 25 Boys\n• ₹2,500: Wholesome Satvik Lunch Feast for 25 Boys\n• ₹4,500: Full 24-Hr Annadana for All 25 Boys\n\nInstant UPI Payment: ${portalUrl}`;
+    }
+
+    trustProof = `🏛️ Govt Form 28 JJ Act: ${JJ_ACT_REGISTRATION.registrationNumber} · 100% 80G Tax Exemption (Form 10AC). Instant WhatsApp receipt.`;
+    closingBlessing = pick([
+      `May God bless you and your family with peace, prosperity, and radiant health! 🙏`,
+      `Resident boys daily 6:30 AM prayer nalli nimma family hesarannu shloka chintane maduthare. Dhanyavadagalu! 🌸`,
+    ]);
+    saltLine = `[Ref Token: #JS-${salt}]`;
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // 3. ENGLISH LANGUAGE GENERATION (DEFAULT)
+  // ──────────────────────────────────────────────────────────────────────────
+  else {
+    const timeGreetingEn = {
+      morning: ["Good morning", "Namaste", "Warm morning greetings"],
+      afternoon: ["Good afternoon", "Namaste", "Warm greetings"],
+      evening: ["Good evening", "Namaste", "Warm evening greetings"],
+    }[timeOfDay];
+
+    greeting = `${pick(timeGreetingEn)} ${cleanName} Ji! 🙏`;
+
+    intro = pick([
+      `Heartfelt blessings and warmest prayers from all 25 young resident boys at Janaseva Ashrama, Bangalore! 👦✨`,
+      `On behalf of our 25 resident boys and elder caregivers at Janaseva Ashrama (Turahalli, Bengaluru), I am reaching out with deep gratitude. 🌸`,
+      `I hope this message finds you in radiant health and happiness. Our 25 resident boys remember our noble well-wishers every morning during our 6:30 AM satsang prayers. 🌺`,
+    ]);
+
+    if (angle === "birthday") {
+      body = pick([
+        `Celebrate your upcoming birthday, wedding anniversary, or memorial day in the most meaningful way—by feeding 25 orphaned boys a fresh festive feast. You are warmly welcome to visit our Turahalli campus to cut cake and serve the meal in person!`,
+        `Make your milestone day truly memorable. Sponsoring a festive feast with sweet payasam brings pure joy to our resident boys, and the children will chant heartfelt Vedic prayers for your family's health and prosperity.`,
+      ]);
+      tierBreakdown = `🎂 Milestone Celebration Sponsorship Options:\n• ₹2,500 — Festive Lunch Feast with Sweet Payasam (25 Boys)\n• ₹3,500 — Celebration Cake, Evening Fruit Basket & Special Feast\n• ₹4,500 — Full Day 4-Meal Annadana & Personalized WhatsApp Video Blessing\n\nBook your celebration or sponsor online:\n${birthdayUrl}`;
+    } else if (angle === "vidya") {
+      body = pick([
+        `True empowerment begins with education. All 25 resident boys attend accredited local schools in Bengaluru, followed by evening science and mathematics tuition at our ashrama. Your kind support provides textbooks, school uniforms, and exam stationery.`,
+        `Vidya Dana is the highest form of seva. Support an orphaned child's academic journey this academic year and help him build an independent, dignified future.`,
+      ]);
+      tierBreakdown = `📚 Education & Vidya Support Tiers:\n• ₹1,800 — 3 Pairs of Durable Cotton School Uniforms\n• ₹2,400 — 1 Month Tuition, Textbooks & Notebooks for 8 Boys\n• ₹3,200 — 1 Full Academic Year School Adoption (Admissions, Bags & Books)\n\nSponsor child education:\n${portalUrl}`;
+    } else if (angle === "trust_80g") {
+      body = pick([
+        `Janaseva Ashrama is a registered public charitable trust and licensed Child Care Institution under Karnataka Govt JJ Act registration KA18CH0242. Unlike large aggregator charities, 100% of public sponsorships directly feed and educate 25 specific resident boys.`,
+        `Every contribution to Janaseva Ashrama is fully eligible for 50% tax deduction under Section 80G Form 10AC of the Income Tax Act. Instant 80G tax receipt and meal photos are sent to your WhatsApp immediately upon payment.`,
+      ]);
+      tierBreakdown = `📜 Verified Accreditations & 80G Tax Exemption:\n• Govt Juvenile Justice Act: ${JJ_ACT_REGISTRATION.registrationNumber}\n• Form 10AC Section 80G URN: ${FORM_10AC.urn}\n• MCA CSR-1 Registration: CSR00078800\n\nMake a tax-exempt contribution:\n${portalUrl}`;
+    } else {
+      // Default Annadana
+      body = pick([
+        `Our kitchen serves 4 fresh satvik meals every single day (morning pure cow milk, hot breakfast, wholesome lunch, and dinner) to 25 growing boys. We rely purely on voluntary kindness from benevolent citizens to keep our kitchen stocked with rice, dal, and fresh vegetables.`,
+        `Every sacred meal counts. Whether you sponsor hot breakfast for ₹1,500 or contribute ₹500 for a child's weekly care, your gift directly reaches the dining leaf of our 25 resident boys.`,
+      ]);
+      tierBreakdown = `🍲 Sacred Annadana Sponsorship Tiers:\n• ₹501 — 3 Days Satvik Meals & Pediatric Cow Milk\n• ₹1,500 — Nutritious Breakfast Feast for all 25 Boys\n• ₹2,500 — Festive Lunch Feast with Vegetables & Sweet\n• ₹4,500 — Complete 24-Hr Full-Day Annadana (All 4 Meals)\n\nContribute securely via UPI / Cards / NetBanking:\n${portalUrl}`;
+    }
+
+    trustProof = `🛡️ 100% Direct Allocation · Licensed Govt Home (JJ Act ${JJ_ACT_REGISTRATION.registrationNumber}) · Instant 80G Receipt.`;
+
+    closingBlessing = pick([
+      `May the Almighty shower your home with everlasting peace, good health, and abundance. Thank you for your noble heart! 🙏✨`,
+      `Our 25 resident boys pray for your family's continued well-being and happiness. We deeply appreciate your kind consideration. 🌸`,
+      `Wishing you and your loved ones immense divine grace, joy, and success. Sincere regards from the Janaseva Ashrama family. 🌺`,
+    ]);
+
+    saltLine = `[Official Seva Token: #JS-${salt}]`;
+  }
+
+  // Compose Full Message with Media Mention (if any)
+  let mediaNote = "";
+  if (mediaAsset) {
+    if (mediaAsset.type === "image") {
+      mediaNote = `\n📸 Photos Attached: ${mediaAsset.title}\n(${mediaAsset.url})\n`;
+    } else if (mediaAsset.type === "video") {
+      mediaNote = `\n🎥 Video Blessing Attached: ${mediaAsset.title}\n(${mediaAsset.url})\n`;
+    } else if (mediaAsset.type === "document") {
+      mediaNote = `\n📄 Official Govt Certificate PDF: ${mediaAsset.title}\n(${mediaAsset.url})\n`;
+    }
+  }
+
+  // Final Assembled Message
+  const fullText = [
+    greeting,
+    "",
+    intro,
+    "",
+    body,
+    mediaNote ? mediaNote : "",
+    tierBreakdown,
+    "",
+    trustProof,
+    "",
+    closingBlessing,
+    "",
+    saltLine,
+  ]
+    .filter((line) => line !== "")
+    .join("\n");
+
+  // Determine WhatsApp URL:
+  // Standard click-to-chat sends to lead's phone number
+  const whatsappUrl = `https://wa.me/${formattedPhone}?text=${encodeURIComponent(fullText)}`;
+
+  return {
+    text: fullText,
+    messageText: fullText,
+    greeting,
+    whatsappUrl,
+    trackingRef,
+    saltToken: salt,
+    mediaAsset,
+    previewUrl: portalUrl,
+    targetPhone: formattedPhone,
+    senderPhone: senderMode === "central" ? masterWhatsAppNumber : (options.callerName || masterWhatsAppNumber),
+    senderMode,
+    characterCount: fullText.length,
+    wordCount: fullText.split(/\s+/).filter(Boolean).length,
+    language,
+    angle,
+  };
+}

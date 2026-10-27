@@ -4,7 +4,8 @@ import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { formatINR } from "@/lib/site";
 import { LogoMark } from "@/components/Logo";
-import type { TelecallerStats } from "@/lib/antigravity-crm";
+import type { TelecallerStats, CrmWhatsAppSettings } from "@/lib/antigravity-crm";
+import { AntiBanWhatsAppModal } from "@/components/admin/AntiBanWhatsAppModal";
 
 export function AdminTelecallerCRM() {
   const [loading, setLoading] = useState(true);
@@ -60,6 +61,31 @@ export function AdminTelecallerCRM() {
   const [newPasswordInput, setNewPasswordInput] = useState("");
   const [resettingPassword, setResettingPassword] = useState(false);
 
+  // 6. CRM Central WhatsApp Settings
+  const [crmSettings, setCrmSettings] = useState<CrmWhatsAppSettings>({
+    masterWhatsAppNumber: "+91 99803 59595",
+    senderMode: "central",
+    defaultLanguage: "en",
+    defaultAngle: "annadana",
+    enableAntiBan: true,
+  });
+  const [savingCrmSettings, setSavingCrmSettings] = useState(false);
+
+  // 7. Edit Telecaller Details Modal State
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingCaller, setEditingCaller] = useState<TelecallerStats | null>(null);
+  const [editCallerForm, setEditCallerForm] = useState({
+    name: "",
+    whatsappNumber: "",
+    email: "",
+    dailyQuota: 50,
+    isActive: true,
+  });
+
+  // 8. Anti-Ban WhatsApp Modal in Admin CRM
+  const [isAntiBanModalOpen, setIsAntiBanModalOpen] = useState(false);
+  const [selectedLeadForWhatsApp, setSelectedLeadForWhatsApp] = useState<any | null>(null);
+
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(""), 5000);
@@ -85,6 +111,10 @@ export function AdminTelecallerCRM() {
         setTotalLeads(data.totalLeads || 0);
         setTotalDonations(data.totalDonations || 0);
         setTotalRevenue(data.totalRevenue || 0);
+
+        if (data.crmWhatsAppSettings) {
+          setCrmSettings(data.crmWhatsAppSettings);
+        }
 
         // Pre-fill targetCallerId if valid
         if (data.callers && data.callers.length > 0) {
@@ -674,6 +704,82 @@ export function AdminTelecallerCRM() {
     setIsExportMenuOpen(false);
   };
 
+  // ── SAVE CENTRAL WHATSAPP CRM SETTINGS ──
+  const handleSaveCrmSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingCrmSettings(true);
+    try {
+      const res = await fetch("/api/v1/admin/telecallers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "save_whatsapp_settings",
+          settings: crmSettings,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast("✓ Central WhatsApp outreach settings saved successfully!");
+        if (data.settings) setCrmSettings(data.settings);
+      } else {
+        showToast("Failed to save settings: " + (data.error || "Unknown error"));
+      }
+    } catch (err: any) {
+      showToast("Error saving settings: " + err.message);
+    } finally {
+      setSavingCrmSettings(false);
+    }
+  };
+
+  // ── EDIT TELECALLER DETAILS MODAL HANDLERS ──
+  const handleOpenEditModal = (c: TelecallerStats) => {
+    setEditingCaller(c);
+    setEditCallerForm({
+      name: c.name,
+      whatsappNumber: c.whatsappNumber,
+      email: c.email || "",
+      dailyQuota: c.dailyQuota || 50,
+      isActive: c.isActive,
+    });
+    setIsEditModalOpen(true);
+  };
+
+  const handleSaveCallerEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingCaller) return;
+    setActionLoading(true);
+    try {
+      const res = await fetch("/api/v1/admin/telecallers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "update_caller",
+          callerId: editingCaller.callerId,
+          ...editCallerForm,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast(`✓ Telecaller ${editingCaller.callerId} details updated successfully!`);
+        setIsEditModalOpen(false);
+        setEditingCaller(null);
+        await loadAdminData();
+      } else {
+        showToast("Failed to update telecaller: " + (data.error || "Unknown error"));
+      }
+    } catch (err: any) {
+      showToast("Error updating telecaller: " + err.message);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // ── OPEN ADMIN WHATSAPP ANTI-BAN MODAL ──
+  const handleOpenAdminWhatsApp = (lead: any) => {
+    setSelectedLeadForWhatsApp(lead);
+    setIsAntiBanModalOpen(true);
+  };
+
   const toggleSelectAllLeads = () => {
     if (selectedLeadIds.length === filteredLeads.length) {
       setSelectedLeadIds([]);
@@ -928,6 +1034,142 @@ export function AdminTelecallerCRM() {
         </div>
       </div>
 
+      {/* ── 2.5 CENTRAL WHATSAPP OUTREACH & ANTI-BAN CONFIGURATION ── */}
+      <div className="rounded-3xl bg-white p-6 shadow-sm border border-teal-900/10">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-4 border-b border-teal-900/10">
+          <div className="flex items-center gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700 text-xl font-bold ring-1 ring-emerald-200">
+              📲
+            </span>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="font-display text-base sm:text-lg font-bold text-teal-950">
+                  Central Outreach WhatsApp &amp; Anti-Ban Controls
+                </h3>
+                <span className="rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-black uppercase px-2 py-0.5 border border-emerald-300">
+                  🛡️ Active Protection
+                </span>
+              </div>
+              <p className="text-xs text-teal-950/70 mt-0.5">
+                Configure the organization master WhatsApp number, toggle sender mode (central vs. telecaller individual), and manage automated spintax parameters.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <form onSubmit={handleSaveCrmSettings} className="mt-5 space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Central Master WhatsApp Number */}
+            <div className="space-y-1.5">
+              <label className="block text-xs font-bold text-teal-950">
+                🏢 Master Central WhatsApp Number
+              </label>
+              <input
+                type="text"
+                value={crmSettings.masterWhatsAppNumber}
+                onChange={(e) =>
+                  setCrmSettings((prev) => ({ ...prev, masterWhatsAppNumber: e.target.value }))
+                }
+                placeholder="+91 99803 59595"
+                className="w-full rounded-xl border border-teal-900/20 bg-cream/30 px-3.5 py-2 text-xs font-mono font-bold text-teal-950 focus:border-teal-900 focus:outline-hidden"
+              />
+              <p className="text-[10px] text-teal-950/60">
+                Official Janaseva Ashrama WhatsApp number shown to donors.
+              </p>
+            </div>
+
+            {/* Sender Mode Selector */}
+            <div className="space-y-1.5">
+              <label className="block text-xs font-bold text-teal-950">
+                📡 Outbound Sender Channel Mode
+              </label>
+              <select
+                value={crmSettings.senderMode}
+                onChange={(e) =>
+                  setCrmSettings((prev) => ({
+                    ...prev,
+                    senderMode: e.target.value as "central" | "individual",
+                  }))
+                }
+                className="w-full rounded-xl border border-teal-900/20 bg-cream/30 px-3 py-2 text-xs font-bold text-teal-950 focus:border-teal-900 focus:outline-hidden cursor-pointer"
+              >
+                <option value="central">🏢 Send as Central Number for All Callers</option>
+                <option value="individual">👤 Each Caller sends from Own WhatsApp</option>
+              </select>
+              <p className="text-[10px] text-teal-950/60">
+                Controls which number is used when telecallers click &apos;Send WhatsApp&apos;.
+              </p>
+            </div>
+
+            {/* Default Outreach Language */}
+            <div className="space-y-1.5">
+              <label className="block text-xs font-bold text-teal-950">
+                🌐 Default Outreach Language
+              </label>
+              <select
+                value={crmSettings.defaultLanguage}
+                onChange={(e) =>
+                  setCrmSettings((prev) => ({
+                    ...prev,
+                    defaultLanguage: e.target.value as any,
+                  }))
+                }
+                className="w-full rounded-xl border border-teal-900/20 bg-cream/30 px-3 py-2 text-xs font-bold text-teal-950 focus:border-teal-900 focus:outline-hidden cursor-pointer"
+              >
+                <option value="en">🇬🇧 English (Default)</option>
+                <option value="kn">🇮🇳 ಕನ್ನಡ (Kannada)</option>
+                <option value="mixed">🔤 Manglish (Mixed)</option>
+              </select>
+              <p className="text-[10px] text-teal-950/60">
+                Initial template selected in caller modal.
+              </p>
+            </div>
+
+            {/* Default Narrative Angle */}
+            <div className="space-y-1.5">
+              <label className="block text-xs font-bold text-teal-950">
+                🎯 Default Narrative Focus
+              </label>
+              <select
+                value={crmSettings.defaultAngle}
+                onChange={(e) =>
+                  setCrmSettings((prev) => ({
+                    ...prev,
+                    defaultAngle: e.target.value as any,
+                  }))
+                }
+                className="w-full rounded-xl border border-teal-900/20 bg-cream/30 px-3 py-2 text-xs font-bold text-teal-950 focus:border-teal-900 focus:outline-hidden cursor-pointer"
+              >
+                <option value="annadana">🍲 Annadana Meals (₹4,500 Full Day)</option>
+                <option value="birthday">🎂 Birthday Seva Feast (₹5,000)</option>
+                <option value="vidya">📚 Vidya &amp; School Kits (₹9,600)</option>
+                <option value="trust_80g">📜 80G Tax Exemption &amp; Govt Registration</option>
+              </select>
+              <p className="text-[10px] text-teal-950/60">
+                Primary sponsorship angle highlighted.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-teal-900/10">
+            <div className="flex items-center gap-2 text-xs text-emerald-800 font-medium">
+              <span>🛡️</span>
+              <span>
+                Anti-Ban Engine auto-spins unique greetings, permutations &amp; cryptographic salt tokens (#JS-xxxxx) on every click.
+              </span>
+            </div>
+
+            <button
+              type="submit"
+              disabled={savingCrmSettings}
+              className="focus-ring tap-scale inline-flex items-center gap-1.5 rounded-xl bg-teal-950 hover:bg-teal-900 text-gold px-4 py-2 text-xs font-black shadow-xs transition cursor-pointer disabled:opacity-50"
+            >
+              <span>{savingCrmSettings ? "Saving..." : "💾 Save WhatsApp Settings"}</span>
+            </button>
+          </div>
+        </form>
+      </div>
+
       {/* ── 3. TELECALLER LEADERBOARD TABLE WITH CRUD ── */}
       <div className="rounded-3xl bg-white p-6 shadow-sm border border-teal-900/10">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
@@ -1028,6 +1270,14 @@ export function AdminTelecallerCRM() {
                     </td>
                     <td className="p-3 text-right">
                       <div className="flex items-center justify-end gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEditModal(c)}
+                          title="Edit telecaller name, individual WhatsApp number, email, and quota"
+                          className="rounded-lg bg-teal-50 hover:bg-teal-100 text-teal-950 border border-teal-200 px-2 py-1 text-[10px] font-bold transition cursor-pointer"
+                        >
+                          ✏️ Edit
+                        </button>
                         <button
                           type="button"
                           onClick={() => handleOpenAccessModal(c)}
@@ -1143,12 +1393,13 @@ export function AdminTelecallerCRM() {
                 <th className="p-3">Birthday Date</th>
                 <th className="p-3">Status</th>
                 <th className="p-3">Assigned To</th>
+                <th className="p-3 text-right">Outreach</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-teal-900/5">
               {filteredLeads.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="p-6 text-center text-teal-950/50">
+                  <td colSpan={7} className="p-6 text-center text-teal-950/50">
                     No leads found matching filter.
                   </td>
                 </tr>
@@ -1195,6 +1446,25 @@ export function AdminTelecallerCRM() {
                       </td>
                       <td className="p-3 font-mono font-bold text-teal-900">
                         {lead.assignedCallerId || "Unassigned"}
+                      </td>
+                      <td className="p-3 text-right" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenAdminWhatsApp(lead)}
+                            className="focus-ring tap-scale inline-flex items-center gap-1 rounded-xl bg-[#25D366] hover:brightness-105 text-white px-2 py-1 text-[11px] font-bold shadow-2xs cursor-pointer"
+                            title="Send Anti-Ban WhatsApp Message"
+                          >
+                            <span>💬</span> WhatsApp
+                          </button>
+                          <a
+                            href={`tel:${lead.phone}`}
+                            className="rounded-xl bg-teal-950 hover:bg-teal-900 text-white px-2 py-1 text-[11px] font-bold shadow-2xs inline-flex items-center justify-center"
+                            title="Call donor directly"
+                          >
+                            📞
+                          </a>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -1738,6 +2008,182 @@ export function AdminTelecallerCRM() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════════
+          MODAL 6: EDIT TELECALLER DETAILS & INDIVIDUAL WHATSAPP NUMBER
+      ══════════════════════════════════════════════════════════════════ */}
+      {isEditModalOpen && editingCaller && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-teal-950/60 backdrop-blur-xs animate-fadeIn">
+          <div className="w-full max-w-md bg-white rounded-3xl p-6 shadow-2xl border border-teal-900/10">
+            <div className="flex items-center justify-between pb-4 border-b border-teal-900/10">
+              <div className="flex items-center gap-2.5">
+                <span className="flex h-9 w-9 items-center justify-center rounded-2xl bg-teal-50 text-teal-950 font-bold text-sm">
+                  ✏️
+                </span>
+                <div>
+                  <h3 className="font-display text-base font-bold text-teal-950">
+                    Edit Telecaller: {editingCaller.callerId}
+                  </h3>
+                  <p className="text-[11px] text-teal-950/60">
+                    Update caller details, individual WhatsApp number, and daily quota.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsEditModalOpen(false);
+                  setEditingCaller(null);
+                }}
+                className="text-teal-950/50 hover:text-teal-950 text-lg cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveCallerEdit} className="mt-4 space-y-3.5">
+              <div>
+                <label className="block text-xs font-bold text-teal-950 mb-1">
+                  Full Name
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editCallerForm.name}
+                  onChange={(e) =>
+                    setEditCallerForm((prev) => ({ ...prev, name: e.target.value }))
+                  }
+                  className="w-full rounded-xl border border-teal-900/20 px-3 py-2 text-xs text-teal-950 focus:border-amber-500 outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-teal-950 mb-1">
+                  Individual WhatsApp Mobile Number
+                </label>
+                <div className="flex items-center">
+                  <span className="bg-cream px-3 py-2 border border-r-0 border-teal-900/20 rounded-l-xl text-xs font-mono font-bold text-teal-950">
+                    +91
+                  </span>
+                  <input
+                    type="tel"
+                    required
+                    value={editCallerForm.whatsappNumber}
+                    onChange={(e) =>
+                      setEditCallerForm((prev) => ({
+                        ...prev,
+                        whatsappNumber: e.target.value.replace(/\D/g, "").slice(0, 10),
+                      }))
+                    }
+                    className="w-full rounded-r-xl border border-teal-900/20 px-3 py-2 text-xs font-mono font-semibold text-teal-950 focus:border-amber-500 outline-none"
+                    placeholder="9845011001"
+                  />
+                </div>
+                <p className="text-[10px] text-teal-950/60 mt-1">
+                  Used when outreach sender mode is set to &apos;individual&apos;.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-teal-950 mb-1">
+                  Email Address
+                </label>
+                <input
+                  type="email"
+                  value={editCallerForm.email}
+                  onChange={(e) =>
+                    setEditCallerForm((prev) => ({ ...prev, email: e.target.value }))
+                  }
+                  className="w-full rounded-xl border border-teal-900/20 px-3 py-2 text-xs text-teal-950 focus:border-amber-500 outline-none"
+                  placeholder="advisor@janaseva.org"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-teal-950 mb-1">
+                    Daily Quota
+                  </label>
+                  <input
+                    type="number"
+                    min="10"
+                    max="500"
+                    value={editCallerForm.dailyQuota}
+                    onChange={(e) =>
+                      setEditCallerForm((prev) => ({
+                        ...prev,
+                        dailyQuota: parseInt(e.target.value, 10) || 50,
+                      }))
+                    }
+                    className="w-full rounded-xl border border-teal-900/20 px-3 py-2 text-xs text-teal-950 focus:border-amber-500 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-teal-950 mb-1">
+                    Account Status
+                  </label>
+                  <select
+                    value={editCallerForm.isActive ? "active" : "inactive"}
+                    onChange={(e) =>
+                      setEditCallerForm((prev) => ({
+                        ...prev,
+                        isActive: e.target.value === "active",
+                      }))
+                    }
+                    className="w-full rounded-xl border border-teal-900/20 px-3 py-2 text-xs font-bold text-teal-950 bg-white"
+                  >
+                    <option value="active">Active (Receiving Leads)</option>
+                    <option value="inactive">Paused (No New Leads)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-teal-900/10">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsEditModalOpen(false);
+                    setEditingCaller(null);
+                  }}
+                  className="rounded-xl border border-teal-900/20 px-3.5 py-2 text-xs font-bold text-teal-950 hover:bg-sand cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={actionLoading}
+                  className="rounded-xl bg-teal-950 hover:bg-teal-900 text-gold px-4 py-2 text-xs font-black shadow-sm cursor-pointer disabled:opacity-50"
+                >
+                  {actionLoading ? "Saving..." : "Save Telecaller Details"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── ANTI-BAN WHATSAPP OUTREACH MODAL IN ADMIN CRM ── */}
+      {selectedLeadForWhatsApp && (
+        <AntiBanWhatsAppModal
+          isOpen={isAntiBanModalOpen}
+          onClose={() => {
+            setIsAntiBanModalOpen(false);
+            setSelectedLeadForWhatsApp(null);
+          }}
+          lead={selectedLeadForWhatsApp}
+          callerId="ADMIN"
+          callerName="Janaseva Ashrama Administrator"
+          masterWhatsAppNumber={crmSettings.masterWhatsAppNumber}
+          initialSenderMode={crmSettings.senderMode}
+          onDispositionLogged={(leadId, disp) => {
+            setLeadsList((prev) =>
+              prev.map((l) => (l.leadId === leadId ? { ...l, status: disp } : l))
+            );
+            showToast(`✓ Updated lead #${leadId} status to ${disp}`);
+          }}
+        />
       )}
     </div>
   );

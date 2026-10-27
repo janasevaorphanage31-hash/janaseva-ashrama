@@ -3,6 +3,11 @@
 import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { formatINR } from "@/lib/site";
+import {
+  generateAntiBanMessage,
+  CURATED_OUTREACH_MEDIA,
+  type MediaAsset,
+} from "@/lib/whatsapp-antiban";
 
 interface Contact {
   id: number;
@@ -78,6 +83,10 @@ export function TeamInbox({ currentUserId }: { currentUserId?: number }) {
   const [newChatPhone, setNewChatPhone] = useState("");
   const [newChatName, setNewChatName] = useState("");
 
+  // Media Attachment & Anti-Ban State
+  const [selectedMedia, setSelectedMedia] = useState<MediaAsset | null>(null);
+  const [isMediaDrawerOpen, setIsMediaDrawerOpen] = useState(false);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Load conversations list
@@ -134,17 +143,51 @@ export function TeamInbox({ currentUserId }: { currentUserId?: number }) {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [selectedConvData?.messages]);
 
-  // Handle Send Manual Message
+  // Handle Anti-Ban Spintax Spin
+  const handleAntiBanAlter = () => {
+    if (!selectedConvData) return;
+    const donorName = selectedConvData.contact.displayName || "Noble Supporter";
+    const generated = generateAntiBanMessage({
+      donorName,
+      callerId: "ADMIN",
+      callerName: "Janaseva Ashrama",
+      language: (selectedConvData.contact.preferredLanguage === "kn" ? "kn" : "en") as any,
+      angle: "annadana",
+      mediaId: selectedMedia?.id,
+    });
+    setReplyText(generated.messageText);
+    if (!selectedMedia && generated.mediaAsset) {
+      setSelectedMedia(generated.mediaAsset);
+    }
+  };
+
+  // Handle Send Manual Message (Text, Image, Video, PDF Document, or Website Link)
   async function handleSendMessage(e?: React.FormEvent) {
     if (e) e.preventDefault();
-    if (!replyText.trim() || !selectedConvId || sending) return;
+    if ((!replyText.trim() && !selectedMedia) || !selectedConvId || sending) return;
 
     setSending(true);
     try {
+      const payload: any = {
+        message: replyText.trim(),
+      };
+      if (selectedMedia) {
+        payload.mediaUrl = selectedMedia.url;
+        payload.messageType =
+          selectedMedia.type === "document"
+            ? "document"
+            : selectedMedia.type === "video"
+            ? "video"
+            : selectedMedia.type === "image"
+            ? "image"
+            : "text";
+        payload.caption = replyText.trim();
+      }
+
       const res = await fetch(`/api/admin/whatsapp/conversations/${selectedConvId}/messages`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: replyText.trim() }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (res.ok && data.message) {
@@ -152,6 +195,8 @@ export function TeamInbox({ currentUserId }: { currentUserId?: number }) {
           prev ? { ...prev, messages: [...prev.messages, data.message] } : null
         );
         setReplyText("");
+        setSelectedMedia(null);
+        setIsMediaDrawerOpen(false);
         loadConversations();
       }
     } catch {
@@ -423,6 +468,20 @@ export function TeamInbox({ currentUserId }: { currentUserId?: number }) {
                   <option value="RESOLVED">Resolved</option>
                   <option value="CLOSED">Closed</option>
                 </select>
+
+                {/* Direct Click-to-Chat Fallback */}
+                <a
+                  href={`https://wa.me/${selectedConvData.contact.normalizedPhone}?text=${encodeURIComponent(
+                    replyText || "Namaskara Ji 🙏 Warm greetings from Janaseva Ashrama!"
+                  )}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="rounded-xl bg-[#25D366] hover:brightness-105 text-white px-2.5 py-1 text-xs font-bold flex items-center gap-1 shadow-2xs cursor-pointer"
+                  title="Open direct WhatsApp conversation on phone or WhatsApp Web"
+                >
+                  <span>💬</span>
+                  <span className="hidden sm:inline">wa.me</span>
+                </a>
               </div>
             </div>
 
@@ -494,32 +553,155 @@ export function TeamInbox({ currentUserId }: { currentUserId?: number }) {
             </div>
 
             {/* Canned Quick Replies Drawer */}
-            <div className="flex gap-1.5 overflow-x-auto no-scrollbar p-2 bg-white/70 border-t border-teal-900/10">
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar p-2 bg-white/70 border-t border-teal-900/10">
+              <span className="text-[10px] font-bold uppercase text-teal-950/50 shrink-0">Templates:</span>
               {CANNED_RESPONSES.map((cr, idx) => (
                 <button
                   key={idx}
                   type="button"
                   onClick={() => setReplyText(cr.text)}
-                  className="rounded-lg bg-cream px-2.5 py-1 text-[11px] font-semibold text-teal-950 hover:bg-cream-dark transition whitespace-nowrap border border-teal-900/10 cursor-pointer"
+                  className="rounded-lg bg-cream px-2.5 py-1 text-[11px] font-semibold text-teal-950 hover:bg-cream-dark transition whitespace-nowrap border border-teal-900/10 cursor-pointer shrink-0"
                 >
                   {cr.label}
                 </button>
               ))}
             </div>
 
+            {/* Media Asset Picker Drawer */}
+            {isMediaDrawerOpen && (
+              <div className="p-3 bg-amber-50/70 border-t border-amber-200/80 space-y-2 animate-fadeIn">
+                <div className="flex items-center justify-between text-xs font-bold text-teal-950">
+                  <span className="flex items-center gap-1.5">
+                    <span>📎</span> Attach Verified Media Asset (Image, Video, PDF, or Link)
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setIsMediaDrawerOpen(false)}
+                    className="text-teal-950/60 hover:text-teal-950 font-bold"
+                  >
+                    ✕
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {Object.values(CURATED_OUTREACH_MEDIA).map((m) => {
+                    const isSelected = selectedMedia?.id === m.id;
+                    return (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedMedia(m);
+                          setIsMediaDrawerOpen(false);
+                        }}
+                        className={`p-2 rounded-xl border text-left text-xs transition cursor-pointer flex flex-col justify-between ${
+                          isSelected
+                            ? "bg-amber-100 border-amber-400 ring-1 ring-amber-400"
+                            : "bg-white border-teal-900/10 hover:bg-cream"
+                        }`}
+                      >
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <span className="text-sm">
+                            {m.type === "image"
+                              ? "🖼️"
+                              : m.type === "video"
+                              ? "🎥"
+                              : m.type === "document"
+                              ? "📄"
+                              : "🔗"}
+                          </span>
+                          <span className="font-bold text-[11px] text-teal-950 truncate">
+                            {m.title}
+                          </span>
+                        </div>
+                        <span
+                          className={`self-start text-[9px] font-black uppercase rounded px-1.5 py-0.5 ${
+                            m.type === "image"
+                              ? "bg-blue-100 text-blue-800"
+                              : m.type === "video"
+                              ? "bg-purple-100 text-purple-800"
+                              : m.type === "document"
+                              ? "bg-rose-100 text-rose-800"
+                              : "bg-emerald-100 text-emerald-800"
+                          }`}
+                        >
+                          {m.type}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* Interactive Composer */}
-            <form onSubmit={handleSendMessage} className="border-t border-teal-900/10 bg-white p-3">
+            <form onSubmit={handleSendMessage} className="border-t border-teal-900/10 bg-white p-3 space-y-2">
+              {/* Selected Media Chip */}
+              {selectedMedia && (
+                <div className="flex items-center justify-between rounded-xl bg-amber-50 px-3 py-1.5 border border-amber-300 text-xs animate-fadeIn">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span>
+                      {selectedMedia.type === "image"
+                        ? "🖼️"
+                        : selectedMedia.type === "video"
+                        ? "🎥"
+                        : selectedMedia.type === "document"
+                        ? "📄"
+                        : "🔗"}
+                    </span>
+                    <span className="font-bold text-teal-950 truncate">
+                      {selectedMedia.title}
+                    </span>
+                    <span className="text-[10px] uppercase font-bold text-teal-950/60 bg-white px-1.5 py-0.5 rounded border border-teal-900/10">
+                      {selectedMedia.type}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedMedia(null)}
+                    className="text-teal-950/60 hover:text-rose-600 font-bold ml-2 cursor-pointer"
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
+
               <div className="flex items-center gap-2">
+                {/* Media Attachment Drawer Toggle */}
+                <button
+                  type="button"
+                  onClick={() => setIsMediaDrawerOpen(!isMediaDrawerOpen)}
+                  className={`rounded-2xl p-2.5 transition border cursor-pointer ${
+                    isMediaDrawerOpen || selectedMedia
+                      ? "bg-amber-100 text-amber-900 border-amber-300 shadow-2xs"
+                      : "bg-cream/40 text-teal-950 border-teal-900/15 hover:bg-cream"
+                  }`}
+                  title="Attach Image, Video, 80G Certificate PDF, or Web Link"
+                >
+                  📎
+                </button>
+
+                {/* Anti-Ban Spintax Spin Button */}
+                <button
+                  type="button"
+                  onClick={handleAntiBanAlter}
+                  className="rounded-2xl px-3 py-2.5 bg-purple-50 text-purple-900 border border-purple-200 hover:bg-purple-100 text-xs font-bold transition flex items-center gap-1 cursor-pointer shrink-0"
+                  title="Generate or rewrite message with anti-ban variations and unique cryptographic token"
+                >
+                  <span>🛡️</span>
+                  <span className="hidden sm:inline">Anti-Ban Spin</span>
+                </button>
+
                 <input
                   type="text"
-                  placeholder="Type a verified message to donor..."
+                  placeholder="Type a verified message or caption to donor..."
                   value={replyText}
                   onChange={(e) => setReplyText(e.target.value)}
                   className="flex-1 rounded-2xl border border-teal-900/15 bg-cream/30 px-4 py-2.5 text-xs sm:text-sm text-teal-950 placeholder:text-teal-950/40 focus:border-teal-900 focus:outline-hidden"
                 />
+
                 <button
                   type="submit"
-                  disabled={sending || !replyText.trim()}
+                  disabled={sending || (!replyText.trim() && !selectedMedia)}
                   className="rounded-2xl bg-emerald-600 px-5 py-2.5 text-xs sm:text-sm font-bold text-white hover:bg-emerald-700 transition disabled:opacity-50 shadow-md cursor-pointer flex items-center gap-1.5"
                 >
                   {sending ? "Sending..." : "Send"}

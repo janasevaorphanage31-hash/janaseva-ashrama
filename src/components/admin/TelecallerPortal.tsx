@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { formatINR } from "@/lib/site";
 import { LogoMark } from "@/components/Logo";
+import { AntiBanWhatsAppModal } from "@/components/admin/AntiBanWhatsAppModal";
 
 interface CallerProfile {
   callerId: string;
@@ -45,6 +46,10 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
   const [notesText, setNotesText] = useState("");
   const [callbackDateTime, setCallbackDateTime] = useState("");
   const [savingNotes, setSavingNotes] = useState(false);
+
+  // Anti-Ban WhatsApp Modal state
+  const [isAntiBanModalOpen, setIsAntiBanModalOpen] = useState(false);
+  const [selectedLeadForWhatsApp, setSelectedLeadForWhatsApp] = useState<any | null>(null);
 
   // Stats state
   const [stats, setStats] = useState({
@@ -219,23 +224,19 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
     }
   };
 
-  // 6. 1-Tap WhatsApp Tracking Link
-  const handleOpenWhatsApp = async (leadId: number) => {
-    if (!callerProfile) return;
-    try {
-      const res = await fetch(
-        `/api/v1/telecaller/whatsapp-link/${leadId}?callerId=${encodeURIComponent(callerProfile.callerId)}`
-      );
-      const data = await res.json();
-      if (data.success && data.whatsappUrl) {
-        window.open(data.whatsappUrl, "_blank");
-        showToast(`✓ Opened WhatsApp message for ${data.leadName} with referral token: ${callerProfile.callerId}`);
-      } else {
-        alert("Failed to create WhatsApp link: " + (data.error || "Unknown error"));
-      }
-    } catch (err: any) {
-      alert("WhatsApp link generation error: " + err.message);
+  // 6. Anti-Ban WhatsApp Modal Trigger
+  const handleOpenWhatsAppModal = (lead: any) => {
+    setSelectedLeadForWhatsApp(lead);
+    setIsAntiBanModalOpen(true);
+  };
+
+  const handleDispositionLoggedFromModal = (leadId: number, disp: string) => {
+    const updatedList = leads.map((l) => (l.leadId === leadId ? { ...l, status: disp } : l));
+    setLeads(updatedList);
+    if (callerProfile) {
+      computeStats(updatedList, callerProfile.callerId);
     }
+    showToast(`✓ Updated lead #${leadId} status to ${disp}`);
   };
 
   // 7. Update Call Disposition
@@ -315,8 +316,18 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
 
   // Filter & Search Leads
   const filteredLeads = useMemo(() => {
+    const now = new Date();
+    const curDay = now.getDate();
+    const curMonth = now.getMonth() + 1;
+
     return leads.filter((l) => {
-      const matchesFilter = filter === "ALL" ? true : l.status === filter;
+      let matchesFilter = true;
+      if (filter === "Today_Birthday") {
+        matchesFilter = l.dobDay === curDay && l.dobMonth === curMonth;
+      } else if (filter !== "ALL") {
+        matchesFilter = l.status === filter;
+      }
+
       const q = searchQuery.toLowerCase().trim();
       const matchesSearch =
         !q ||
@@ -575,6 +586,31 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
             <p className="text-[10px] text-white/70 mt-0.5">via ref={callerProfile.callerId}</p>
           </div>
         </div>
+
+        {/* ── DAILY OUTREACH QUOTA PROGRESS TRACKER ── */}
+        <div className="mt-5 rounded-2xl bg-cream/70 p-4 border border-teal-900/10">
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-bold text-teal-950 mb-2">
+            <div className="flex items-center gap-2">
+              <span className="text-sm">🎯</span>
+              <span>Daily Call &amp; Outreach Target:</span>
+              <span className="font-mono text-emerald-800 bg-emerald-100/80 px-2 py-0.5 rounded-full border border-emerald-300 text-[11px]">
+                {stats.contactedCount} / {callerProfile.dailyQuota || 50} Calls (
+                {Math.min(100, Math.round((stats.contactedCount / (callerProfile.dailyQuota || 50)) * 100))}%)
+              </span>
+            </div>
+            <span className="text-[11px] text-teal-950/70 font-medium">
+              {Math.max(0, (callerProfile.dailyQuota || 50) - stats.contactedCount)} more contacts to reach quota
+            </span>
+          </div>
+          <div className="w-full bg-teal-950/10 rounded-full h-3 overflow-hidden border border-teal-900/10">
+            <div
+              className="bg-gradient-to-r from-emerald-500 via-teal-700 to-teal-950 h-full rounded-full transition-all duration-500 ease-out shadow-xs"
+              style={{
+                width: `${Math.min(100, Math.max(4, Math.round((stats.contactedCount / (callerProfile.dailyQuota || 50)) * 100)))}%`,
+              }}
+            />
+          </div>
+        </div>
       </div>
 
       {/* ── ASSIGNED LEADS QUEUE TABLE ── */}
@@ -621,18 +657,26 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
             />
 
             <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
-              {["ALL", "Pending", "Interested", "Reschedule", "Donated", "Rejected"].map((st) => (
+              {[
+                { id: "ALL", label: "All Queue" },
+                { id: "Today_Birthday", label: "🎂 Today's Birthdays" },
+                { id: "Pending", label: "⏳ Pending" },
+                { id: "Interested", label: "👍 Interested" },
+                { id: "Reschedule", label: "📅 Callback" },
+                { id: "Donated", label: "🎉 Donated" },
+                { id: "Rejected", label: "Rejected" },
+              ].map((st) => (
                 <button
-                  key={st}
+                  key={st.id}
                   type="button"
-                  onClick={() => setFilter(st)}
+                  onClick={() => setFilter(st.id)}
                   className={`rounded-xl px-2.5 py-1.5 text-xs font-bold transition whitespace-nowrap cursor-pointer ${
-                    filter === st
+                    filter === st.id
                       ? "bg-teal-950 text-gold shadow-sm"
                       : "bg-cream text-teal-950/70 hover:bg-sand"
                   }`}
                 >
-                  {st}
+                  {st.label}
                 </button>
               ))}
             </div>
@@ -709,10 +753,10 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                     </td>
                     <td className="p-3">
                       <div className="flex flex-wrap items-center gap-1.5">
-                        {/* 1-Tap WhatsApp Tracking Sender */}
+                        {/* 1-Tap Anti-Ban WhatsApp Outreach Sender */}
                         <button
                           type="button"
-                          onClick={() => handleOpenWhatsApp(lead.leadId)}
+                          onClick={() => handleOpenWhatsAppModal(lead)}
                           className="focus-ring tap-scale inline-flex items-center gap-1 rounded-xl bg-[#25D366] hover:brightness-105 text-white px-2.5 py-1.5 text-xs font-bold shadow-xs cursor-pointer"
                         >
                           <span>💬</span> WhatsApp
@@ -905,6 +949,24 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
             </form>
           </div>
         </div>
+      )}
+
+      {/* ── ANTI-BAN WHATSAPP OUTREACH MODAL ── */}
+      {selectedLeadForWhatsApp && callerProfile && (
+        <AntiBanWhatsAppModal
+          isOpen={isAntiBanModalOpen}
+          onClose={() => {
+            setIsAntiBanModalOpen(false);
+            setSelectedLeadForWhatsApp(null);
+          }}
+          lead={selectedLeadForWhatsApp}
+          callerId={callerProfile.callerId}
+          callerName={callerProfile.name}
+          callerWhatsAppNumber={callerProfile.whatsappNumber}
+          onDispositionLogged={(leadId, disp) => {
+            handleDispositionLoggedFromModal(leadId, disp);
+          }}
+        />
       )}
     </div>
   );

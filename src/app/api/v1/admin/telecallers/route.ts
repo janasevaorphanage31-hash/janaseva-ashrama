@@ -15,6 +15,8 @@ import {
   distributeAllPendingLeads,
   generateAgencyCSVExport,
   resetTelecallerPassword,
+  saveCrmWhatsAppSettings,
+  updateTelecallerDetails,
 } from "@/lib/antigravity-crm";
 
 export async function GET(req: Request) {
@@ -256,6 +258,62 @@ export async function POST(req: Request) {
       return NextResponse.json({
         success: true,
         message: `Reassigned ${leadIds.length} leads to ${targetCallerId}.`,
+        ...updatedLeaderboard,
+      });
+    }
+
+    if (action === "save_whatsapp_settings") {
+      const { settings } = body;
+      if (!settings || typeof settings !== "object") {
+        return NextResponse.json({ error: "Invalid WhatsApp settings payload." }, { status: 400 });
+      }
+
+      const updatedSettings = await saveCrmWhatsAppSettings(settings);
+
+      await writeAudit({
+        actorAdminUserId: session.user.id ?? null,
+        action: "crm.save_whatsapp_settings",
+        entity: "crm_settings",
+        afterState: updatedSettings,
+        ipAddress: ip,
+      });
+
+      const updatedLeaderboard = await getAdminLeaderboard();
+      return NextResponse.json({
+        success: true,
+        message: "Outreach WhatsApp settings saved successfully.",
+        settings: updatedSettings,
+        ...updatedLeaderboard,
+      });
+    }
+
+    if (action === "update_caller") {
+      const { callerId, name, whatsappNumber, email, dailyQuota, isActive } = body;
+      if (!callerId) {
+        return NextResponse.json({ error: "Caller ID is required." }, { status: 400 });
+      }
+
+      const res = await updateTelecallerDetails(callerId, {
+        name,
+        whatsappNumber,
+        email,
+        dailyQuota: dailyQuota ? parseInt(String(dailyQuota), 10) : undefined,
+        isActive: typeof isActive === "boolean" ? isActive : undefined,
+      });
+
+      await writeAudit({
+        actorAdminUserId: session.user.id ?? null,
+        action: "crm.update_telecaller",
+        entity: "ag_telecallers",
+        entityId: callerId,
+        afterState: { name, whatsappNumber, email, dailyQuota, isActive },
+        ipAddress: ip,
+      });
+
+      const updatedLeaderboard = await getAdminLeaderboard();
+      return NextResponse.json({
+        success: true,
+        message: `Telecaller ${callerId} details updated successfully.`,
         ...updatedLeaderboard,
       });
     }

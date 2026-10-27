@@ -1,7 +1,93 @@
 import { db, ensureDbSchema } from "@/db";
-import { agTelecallers, agLeads, agCallLogs, agDonations } from "@/db/schema";
+import { agTelecallers, agLeads, agCallLogs, agDonations, contentEntries } from "@/db/schema";
 import { eq, and, or, sql, desc, inArray, isNull } from "drizzle-orm";
 import { hashPassword } from "@/lib/admin-auth";
+import {
+  generateAntiBanMessage,
+  CURATED_OUTREACH_MEDIA,
+  type AntiBanLanguage,
+  type OutreachAngle,
+  type AntiBanMediaAsset,
+} from "@/lib/whatsapp-antiban";
+
+export interface CrmWhatsAppSettings {
+  masterWhatsAppNumber: string;
+  senderMode: "central" | "individual";
+  defaultLanguage: AntiBanLanguage;
+  defaultAngle: OutreachAngle;
+  enableAntiBan: boolean;
+  updatedAt?: string;
+}
+
+export const DEFAULT_CRM_WHATSAPP_SETTINGS: CrmWhatsAppSettings = {
+  masterWhatsAppNumber: process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "+919980359595",
+  senderMode: "central",
+  defaultLanguage: "en",
+  defaultAngle: "annadana",
+  enableAntiBan: true,
+};
+
+export async function getCrmWhatsAppSettings(): Promise<CrmWhatsAppSettings> {
+  await ensureDbSchema();
+  try {
+    const [entry] = await db
+      .select({ body: contentEntries.body })
+      .from(contentEntries)
+      .where(and(eq(contentEntries.type, "crm_settings"), eq(contentEntries.slug, "whatsapp_config")))
+      .limit(1);
+
+    if (entry?.body) {
+      const parsed = JSON.parse(entry.body);
+      return {
+        ...DEFAULT_CRM_WHATSAPP_SETTINGS,
+        ...parsed,
+      };
+    }
+  } catch (err) {
+    console.error("Error reading crm_whatsapp_settings from DB:", err);
+  }
+  return DEFAULT_CRM_WHATSAPP_SETTINGS;
+}
+
+export async function saveCrmWhatsAppSettings(
+  updates: Partial<CrmWhatsAppSettings>
+): Promise<CrmWhatsAppSettings> {
+  await ensureDbSchema();
+  const current = await getCrmWhatsAppSettings();
+  const updated: CrmWhatsAppSettings = {
+    ...current,
+    ...updates,
+    updatedAt: new Date().toISOString(),
+  };
+
+  const serialized = JSON.stringify(updated);
+
+  const [existing] = await db
+    .select({ id: contentEntries.id })
+    .from(contentEntries)
+    .where(and(eq(contentEntries.type, "crm_settings"), eq(contentEntries.slug, "whatsapp_config")))
+    .limit(1);
+
+  if (existing) {
+    await db
+      .update(contentEntries)
+      .set({
+        body: serialized,
+        updatedAt: new Date(),
+      })
+      .where(eq(contentEntries.id, existing.id));
+  } else {
+    await db.insert(contentEntries).values({
+      type: "crm_settings",
+      slug: "whatsapp_config",
+      title: "CRM WhatsApp Outreach Configuration",
+      body: serialized,
+      status: "PUBLISHED",
+    });
+  }
+
+  return updated;
+}
 
 export interface TelecallerStats {
   callerId: string;
@@ -212,23 +298,71 @@ export async function logCallDisposition(
 }
 
 /**
- * 5. Generate WhatsApp Click-To-Chat URL with Tracking Token
+ * 5. Generate WhatsApp Click-To-Chat URL with Anti-Ban Protection, Media, & Unique Tracking
  */
-export async function generateWhatsAppLink(leadId: number, callerId: string, baseUrl?: string) {
-  const lead = await db.select().from(agLeads).where(eq(agLeads.leadId, leadId)).limit(1);
-  if (lead.length === 0) throw new Error("Lead not found");
+export async function generateWhatsAppLink(
+  leadId: number,
+  callerId: string,
+  baseUrl?: string,
+  options?: {
+    language?: AntiBanLanguage;
+    angle?: OutreachAngle;
+    mediaId?: string;
+    senderMode?: "central" | "individual";
+    amount?: number;
+  }
+) {
+  const [lead] = await db.select().from(agLeads).where(eq(agLeads.leadId, leadId)).limit(1);
+  if (!lead) throw new Error("Lead not found");
 
-  const cleanPhone = lead[0].phone.replace(/\D/g, "");
-  const formattedPhone = cleanPhone.startsWith("91") ? cleanPhone : `91${cleanPhone}`;
+  const [caller] = await db
+    .select()
+    .from(agTelecallers)
+    .where(eq(agTelecallers.callerId, callerId.toUpperCase()))
+    .limit(1);
+
+  const callerName = caller?.name || "Janaseva Ashrama Volunteer";
+  const callerWhatsApp = caller?.whatsappNumber ? caller.whatsappNumber.replace(/\D/g, "").slice(-10) : "";
+
+  const cleanPhone = lead.phone.replace(/\D/g, "");
+  const formattedPhone = cleanPhone.startsWith("91") ? cleanPhone : `91${cleanPhone.slice(-10)}`;
   const siteUrl = baseUrl || process.env.NEXT_PUBLIC_SITE_URL || "https://www.janasevaorphanage.org";
 
-  const message = `Namaskara ${lead[0].name} Ji! 🙏 Warmest greetings & blessings from all 25 young resident boys at Janaseva Ashrama, Bangalore! 👦✨\n\nOur team is reaching out regarding our 90% Primary NGO Sponsorship Program — 'Sponsor 25 Boys' (Govt Form 28 JJ Act registered: KA18CH0242).\n\nYou can sponsor based on your convenient contribution:\n🍲 Tier 1: One Day Food for 25 Boys (₹4,500 Full Day / ₹3,000 / ₹2,500)\n🌾 Tier 2: One Month Food / Ration (₹6,000 / ₹4,000 / ₹2,000)\n👕 Tier 3: One Set Clothes (₹4,800 / ₹3,600 / ₹1,800)\n📚 Tier 4: Education Support (₹9,600 / ₹6,400 / ₹3,200)\n\nKindly view the official tiers & choose your sponsorship amount here:\n${siteUrl}/#official-tiers?ref=${callerId.toUpperCase()}\n\n100% Tax Exempt under Section 80G (Form 10AC). Instant 80G certificate & photos on WhatsApp.\nThank you for standing with our 25 boys! 🌸`;
+  const settings = await getCrmWhatsAppSettings();
+  const effectiveSenderMode = options?.senderMode || settings.senderMode || "central";
+
+  const generated = generateAntiBanMessage({
+    donorName: lead.name,
+    callerId: callerId.toUpperCase(),
+    callerName,
+    language: options?.language || settings.defaultLanguage || "en",
+    angle: options?.angle || settings.defaultAngle || "annadana",
+    mediaId: options?.mediaId || "food_meal",
+    amount: options?.amount,
+    baseUrl: siteUrl,
+  });
+
+  const masterClean = settings.masterWhatsAppNumber.replace(/\D/g, "");
+  const activeSender =
+    effectiveSenderMode === "central"
+      ? (masterClean.startsWith("91") ? masterClean : `91${masterClean.slice(-10)}`)
+      : (callerWhatsApp ? `91${callerWhatsApp}` : (masterClean.startsWith("91") ? masterClean : `91${masterClean.slice(-10)}`));
 
   return {
-    leadName: lead[0].name,
+    leadName: lead.name,
     phone: formattedPhone,
-    whatsappUrl: `https://wa.me/${formattedPhone}?text=${encodeURIComponent(message)}`,
+    messageText: generated.messageText,
+    whatsappUrl: `https://wa.me/${formattedPhone}?text=${encodeURIComponent(generated.messageText)}`,
     trackingRef: callerId.toUpperCase(),
+    saltToken: generated.saltToken,
+    greeting: generated.greeting,
+    language: generated.language,
+    angle: generated.angle,
+    mediaAsset: generated.mediaAsset,
+    senderMode: effectiveSenderMode,
+    activeSenderNumber: activeSender,
+    masterWhatsAppNumber: settings.masterWhatsAppNumber,
+    availableMedia: CURATED_OUTREACH_MEDIA,
   };
 }
 
@@ -285,6 +419,7 @@ export async function getAdminLeaderboard(): Promise<{
   totalLeads: number;
   totalDonations: number;
   totalRevenue: number;
+  crmWhatsAppSettings: CrmWhatsAppSettings;
 }> {
   // Ensure tables and telecallers exist
   await ensureTelecallersAndSeedData();
@@ -347,11 +482,14 @@ export async function getAdminLeaderboard(): Promise<{
     item.rank = idx + 1;
   });
 
+  const crmWhatsAppSettings = await getCrmWhatsAppSettings();
+
   return {
     callers: statsList,
     totalLeads: leads.length,
     totalDonations: donations.length,
     totalRevenue,
+    crmWhatsAppSettings,
   };
 }
 
@@ -491,6 +629,54 @@ export async function toggleTelecallerStatus(callerId: string, isActive: boolean
   }
 
   return { success: true, callerId: cid, isActive, redistributed };
+}
+
+/**
+ * 12. Update Telecaller Details (Name, WhatsApp Number, Email, Quota, Active Status)
+ */
+export async function updateTelecallerDetails(
+  callerId: string,
+  updates: {
+    name?: string;
+    whatsappNumber?: string;
+    email?: string;
+    dailyQuota?: number;
+    isActive?: boolean;
+  }
+) {
+  await ensureTelecallersAndSeedData();
+  const cid = callerId.trim().toUpperCase();
+
+  const toSet: Record<string, any> = {
+    updatedAt: new Date(),
+  };
+
+  if (updates.name && updates.name.trim()) {
+    toSet.name = updates.name.trim();
+  }
+  if (updates.whatsappNumber) {
+    const clean = updates.whatsappNumber.replace(/\D/g, "");
+    if (clean.length < 10) {
+      throw new Error("WhatsApp number must have at least 10 digits.");
+    }
+    toSet.whatsappNumber = clean.slice(-10);
+  }
+  if (updates.email) {
+    toSet.email = updates.email.trim().toLowerCase();
+  }
+  if (typeof updates.dailyQuota === "number" && updates.dailyQuota > 0) {
+    toSet.dailyQuota = updates.dailyQuota;
+  }
+  if (typeof updates.isActive === "boolean") {
+    toSet.isActive = updates.isActive;
+  }
+
+  await db
+    .update(agTelecallers)
+    .set(toSet)
+    .where(eq(agTelecallers.callerId, cid));
+
+  return { success: true, callerId: cid };
 }
 
 export interface LeadUploadItem {
@@ -739,6 +925,24 @@ export async function generateAgencyCSVExport(
       .from(agLeads)
       .orderBy(agLeads.dobMonth, agLeads.dobDay, desc(agLeads.leadId));
 
+    const callers = await db.select({ callerId: agTelecallers.callerId, name: agTelecallers.name }).from(agTelecallers);
+    const callerNameMap = new Map<string, string>();
+    callers.forEach((c) => callerNameMap.set(c.callerId, c.name));
+
+    const callLogs = await db
+      .select({ leadId: agCallLogs.leadId, notes: agCallLogs.notes, callbackTime: agCallLogs.callbackTime })
+      .from(agCallLogs)
+      .orderBy(desc(agCallLogs.createdAt));
+
+    const callCountMap = new Map<number, number>();
+    const latestNotesMap = new Map<number, string>();
+    for (const log of callLogs) {
+      callCountMap.set(log.leadId, (callCountMap.get(log.leadId) || 0) + 1);
+      if (!latestNotesMap.has(log.leadId) && log.notes) {
+        latestNotesMap.set(log.leadId, log.notes);
+      }
+    }
+
     const rows = [
       [
         "Lead ID",
@@ -749,6 +953,9 @@ export async function generateAgencyCSVExport(
         "Birthday Month",
         "Call Disposition Status",
         "Assigned Caller ID",
+        "Assigned Caller Name",
+        "Total Calls Made",
+        "Latest Call Notes",
         "Last Contacted Date",
         "Reschedule Callback Date",
         "Created Date",
@@ -756,6 +963,10 @@ export async function generateAgencyCSVExport(
     ];
 
     for (const l of leads) {
+      const callerName = l.assignedCallerId ? (callerNameMap.get(l.assignedCallerId) || l.assignedCallerId) : "Unassigned";
+      const totalCalls = callCountMap.get(l.leadId) || 0;
+      const latestNotes = latestNotesMap.get(l.leadId) || "";
+
       rows.push([
         String(l.leadId),
         `"${l.name.replace(/"/g, '""')}"`,
@@ -765,6 +976,9 @@ export async function generateAgencyCSVExport(
         String(l.dobMonth),
         l.status,
         l.assignedCallerId || "Unassigned",
+        `"${callerName.replace(/"/g, '""')}"`,
+        String(totalCalls),
+        latestNotes ? `"${latestNotes.replace(/"/g, '""')}"` : '""',
         l.lastContactedAt ? l.lastContactedAt.toISOString().slice(0, 19).replace("T", " ") : "",
         l.rescheduleDate ? l.rescheduleDate.toISOString().slice(0, 19).replace("T", " ") : "",
         l.createdAt.toISOString().slice(0, 10),
