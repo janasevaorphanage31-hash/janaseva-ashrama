@@ -418,14 +418,18 @@ export function generateAntiBanMessage(options: AntiBanGenerateOptions): AntiBan
   // ──────────────────────────────────────────────────────────────────────────
   // ACTION CALL BUTTONS (DONATE WEBSITE LINK & DIRECT CALL MAIN NUMBER)
   // ──────────────────────────────────────────────────────────────────────────
+  const cleanPhoneDigits = SITE.phoneIntl.replace(/\D/g, "");
   const actionButtonsBlock = [
-    "═════════════════════════",
+    "━━━━━━━━━━━━━━━━━━━━━━━━━",
     `👉 [ 🌐 1-TAP DONATE / SPONSOR ]`,
     portalUrl,
     "",
     `👉 [ 📞 DIRECT CALL ASHRAMA ]`,
-    `tel:${SITE.phoneIntl}`,
-    "═════════════════════════",
+    `${SITE.phoneIntl} (Tap to Call)`,
+    "",
+    `👉 [ 💬 WHATSAPP CARETAKER ]`,
+    `https://wa.me/${cleanPhoneDigits}`,
+    "━━━━━━━━━━━━━━━━━━━━━━━━━",
   ].join("\n");
 
   const actionButtons: AntiBanActionButton[] = [
@@ -437,7 +441,7 @@ export function generateAntiBanMessage(options: AntiBanGenerateOptions): AntiBan
     {
       type: "call",
       label: "📞 Call Ashrama",
-      target: `tel:${SITE.phoneIntl}`,
+      target: `tel:${SITE.phoneIntl.replace(/\s+/g, "")}`,
     },
   ];
 

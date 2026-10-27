@@ -15,15 +15,16 @@ import { BottomNav } from "@/components/BottomNav";
  * PublicSiteChrome renders customer-facing website components (Header, Footer,
  * Live Donation Toasts, Floating WhatsApp, Bottom Nav, Donation Drawer).
  *
- * For all /admin and /admin/* routes, it completely suppresses the customer
- * website chrome, providing a pure, uncluttered operational workspace for staff.
+ * For all /admin and /portal routes, it completely suppresses the customer
+ * website chrome and public donation widgets, providing a pure, uncluttered
+ * operational workspace for staff and telecallers.
  */
 export function PublicSiteChrome({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const isAdmin = pathname?.startsWith("/admin");
+  const isStaffWorkspace = pathname?.startsWith("/admin") || pathname?.startsWith("/portal");
   const isCheckout = pathname === "/checkout" || pathname === "/donate" || pathname === "/give";
 
-  if (isAdmin) {
+  if (isStaffWorkspace) {
     return (
       <div className="w-full max-w-full min-h-screen bg-sand/30 font-sans text-teal-950">
         {children}

@@ -48,4 +48,9 @@ skills-lock.json
 *.ntvs*
 *.njsproj
 *.sln
+
+# WhatsApp Baileys Multi-Device Credentials
+data/baileys_auth/
+.baileys_auth/
+
 *.sw?

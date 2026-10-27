@@ -59,6 +59,14 @@ export function AntiBanWhatsAppModal({
   const [copied, setCopied] = useState<boolean>(false);
   const [photoCopied, setPhotoCopied] = useState<boolean>(false);
 
+  // Baileys WhatsApp Gateway state (Open-Source GitHub Engine)
+  const [baileysStatus, setBaileysStatus] = useState<string>("disconnected");
+  const [baileysQr, setBaileysQr] = useState<string | null>(null);
+  const [baileysPhone, setBaileysPhone] = useState<string | null>(null);
+  const [showQrModal, setShowQrModal] = useState<boolean>(false);
+  const [sendingBaileys, setSendingBaileys] = useState<boolean>(false);
+  const [connectingBaileys, setConnectingBaileys] = useState<boolean>(false);
+
   // Meta Cloud API Card dispatch state
   const [sendingApiCard, setSendingApiCard] = useState<boolean>(false);
   const [apiCardMessage, setApiCardMessage] = useState<string>("");
@@ -141,6 +149,19 @@ export function AntiBanWhatsAppModal({
     }
   };
 
+  // Check Baileys WhatsApp Gateway status
+  const checkBaileysStatus = async () => {
+    try {
+      const res = await fetch("/api/v1/telecaller/baileys");
+      const data = await res.json();
+      if (data.success) {
+        setBaileysStatus(data.status);
+        setBaileysQr(data.qrCodeDataUrl);
+        setBaileysPhone(data.connectedPhone);
+      }
+    } catch {}
+  };
+
   // Trigger regeneration on open or when key parameters change
   useEffect(() => {
     if (isOpen && lead) {
@@ -159,10 +180,33 @@ export function AntiBanWhatsAppModal({
       setCustomUploadedFile(null);
       setApiCardMessage("");
 
+      void checkBaileysStatus();
       generateMessage({ ang: initialAngle, media: initialMedia });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, lead?.leadId]);
+
+  // Polling for Baileys QR code completion when QR modal is active
+  useEffect(() => {
+    if (!showQrModal) return;
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch("/api/v1/telecaller/baileys");
+        const data = await res.json();
+        if (data.success) {
+          setBaileysStatus(data.status);
+          setBaileysQr(data.qrCodeDataUrl);
+          setBaileysPhone(data.connectedPhone);
+          if (data.status === "connected") {
+            setShowQrModal(false);
+            setApiCardMessage(`🎉 Ashrama WhatsApp connected (+${data.connectedPhone || ""})!`);
+            setTimeout(() => setApiCardMessage(""), 5000);
+          }
+        }
+      } catch {}
+    }, 2500);
+    return () => clearInterval(interval);
+  }, [showQrModal]);
 
   if (!isOpen || !lead) return null;
 
@@ -282,6 +326,11 @@ export function AntiBanWhatsAppModal({
     }
     setCooldownSeconds(15);
 
+    // Pre-copy donor phone number for convenient paste if needed
+    try {
+      await navigator.clipboard.writeText(formattedPhone);
+    } catch {}
+
     try {
       const mediaUrl = customUploadedFile?.previewUrl || activeMedia.url;
       const filename = customUploadedFile?.name || activeMedia.filename || "janaseva-photo.jpg";
@@ -296,7 +345,7 @@ export function AntiBanWhatsAppModal({
           text: captionText || messageText,
           title: "Janaseva Ashrama",
         });
-        setApiCardMessage("✓ Real photo & caption shared directly to WhatsApp!");
+        setApiCardMessage("✓ Real photo & caption shared directly to WhatsApp! (Phone copied to clipboard)");
         setTimeout(() => setApiCardMessage(""), 4500);
         return;
       }
@@ -309,6 +358,68 @@ export function AntiBanWhatsAppModal({
     await handleCopyPhotoToClipboard();
     const targetUrl = whatsappUrl || `https://wa.me/${formattedPhone}?text=${encodeURIComponent(messageText)}`;
     window.open(targetUrl, "_blank", "noopener,noreferrer");
+  };
+
+  // BAILEYS WHATSAPP GATEWAY (Open-source direct session sending)
+  const handleConnectBaileys = async () => {
+    setShowQrModal(true);
+    setConnectingBaileys(true);
+    try {
+      const res = await fetch("/api/v1/telecaller/baileys", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "connect" }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setBaileysStatus(data.status);
+        setBaileysQr(data.qrCodeDataUrl);
+        setBaileysPhone(data.connectedPhone);
+      }
+    } catch (err: any) {
+      alert("Error starting WhatsApp connection: " + err.message);
+    } finally {
+      setConnectingBaileys(false);
+    }
+  };
+
+  const handleSendBaileys = async () => {
+    if (!lead) return;
+    if (baileysStatus !== "connected") {
+      void handleConnectBaileys();
+      return;
+    }
+    setSendingBaileys(true);
+    setApiCardMessage("");
+    try {
+      const mediaUrl = customUploadedFile?.previewUrl || activeMedia.url;
+      const res = await fetch("/api/v1/telecaller/baileys", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "send",
+          leadId: lead.leadId,
+          mediaUrl,
+          captionText: captionText || messageText,
+          mediaType: customUploadedFile?.type || activeMedia.type || "image",
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setApiCardMessage("⚡ Real photo and message delivered via connected Ashrama WhatsApp!");
+        setDisposition("Contacted");
+        if (onDispositionLogged) {
+          onDispositionLogged(lead.leadId, "Contacted", "Dispatched via connected WhatsApp (Baileys)");
+        }
+        setTimeout(() => setApiCardMessage(""), 5000);
+      } else {
+        alert("Baileys dispatch failed: " + (data.error || "Unknown error"));
+      }
+    } catch (err: any) {
+      alert("Error sending via Baileys: " + err.message);
+    } finally {
+      setSendingBaileys(false);
+    }
   };
 
   // META CLOUD API CARD DISPATCH (Akshayakalpa-Style Card with Real Header Image & Action Buttons)
@@ -997,56 +1108,98 @@ export function AntiBanWhatsAppModal({
             )}
 
             {/* ── PRIMARY DISPATCH ACTION BUTTONS ── */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              {/* PRIMARY ACTION 1: Native Mobile Share (Sends Real Photo as Header + Caption) */}
-              <button
-                type="button"
-                onClick={handleShareNativeMedia}
-                className="focus-ring tap-scale inline-flex items-center justify-center gap-2 rounded-2xl bg-[#25D366] hover:brightness-105 active:bg-[#1faa53] text-white px-4 py-3 text-xs sm:text-sm font-black shadow-md transition cursor-pointer min-h-[48px]"
-                title="Attaches the actual photo with text as caption - completely eliminates ugly raw URLs!"
-              >
-                <span className="text-lg">📲</span>
-                <div className="text-left">
-                  <div>Send Real Photo + Message</div>
-                  <div className="text-[10px] font-normal opacity-90">Embeds photo directly into chat bubble</div>
-                </div>
-              </button>
+            <div className="space-y-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {/* PRIMARY ACTION 1: Native Mobile Share (Sends Real Photo as Header + Caption) */}
+                <button
+                  type="button"
+                  onClick={handleShareNativeMedia}
+                  className="focus-ring tap-scale inline-flex items-center justify-center gap-2 rounded-2xl bg-[#25D366] hover:brightness-105 active:bg-[#1faa53] text-white px-4 py-3 text-xs sm:text-sm font-black shadow-md transition cursor-pointer min-h-[48px]"
+                  title="Attaches the actual photo with text as caption - completely eliminates ugly raw URLs!"
+                >
+                  <span className="text-lg">📲</span>
+                  <div className="text-left">
+                    <div>Send Real Photo + Message</div>
+                    <div className="text-[10px] font-normal opacity-90">Embeds photo directly into chat bubble</div>
+                  </div>
+                </button>
 
-              {/* PRIMARY ACTION 2: Meta Cloud API Verified Card */}
-              <button
-                type="button"
-                onClick={handleSendMetaApiCard}
-                disabled={sendingApiCard}
-                className="focus-ring tap-scale inline-flex items-center justify-center gap-2 rounded-2xl bg-teal-950 hover:bg-teal-900 text-gold px-4 py-3 text-xs sm:text-sm font-black shadow-md transition cursor-pointer min-h-[48px] disabled:opacity-60"
-                title="Dispatches official verified card with buttons directly via Meta API"
-              >
-                <span className="text-lg">{sendingApiCard ? "⏳" : "🚀"}</span>
-                <div className="text-left">
-                  <div>{sendingApiCard ? "Dispatching..." : "Send Meta Verified Card"}</div>
-                  <div className="text-[10px] font-normal opacity-75">Akshayakalpa-style interactive card</div>
-                </div>
-              </button>
+                {/* PRIMARY ACTION 2: Baileys WhatsApp Gateway (Open-Source GitHub Bridge) */}
+                <button
+                  type="button"
+                  onClick={baileysStatus === "connected" ? handleSendBaileys : handleConnectBaileys}
+                  disabled={sendingBaileys || connectingBaileys}
+                  className={`focus-ring tap-scale inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-3 text-xs sm:text-sm font-black shadow-md transition cursor-pointer min-h-[48px] ${
+                    baileysStatus === "connected"
+                      ? "bg-emerald-700 hover:bg-emerald-800 text-white"
+                      : "bg-teal-950 hover:bg-teal-900 text-gold"
+                  }`}
+                  title="Sends real photo directly via linked Ashrama WhatsApp using Baileys engine"
+                >
+                  <span className="text-lg">{sendingBaileys || connectingBaileys ? "⏳" : "⚡"}</span>
+                  <div className="text-left">
+                    <div>
+                      {sendingBaileys
+                        ? "Sending via Baileys..."
+                        : baileysStatus === "connected"
+                        ? `Send via Ashrama WhatsApp (+${baileysPhone})`
+                        : "Connect Ashrama WhatsApp (Scan QR)"}
+                    </div>
+                    <div className="text-[10px] font-normal opacity-85">
+                      {baileysStatus === "connected"
+                        ? "🟢 Gateway Connected · Real image attached"
+                        : "Open-source Baileys engine · 1-click connect"}
+                    </div>
+                  </div>
+                </button>
+              </div>
 
-              {/* ACTION 3: Copy Photo to Clipboard (for Web / Desktop Ctrl+V) */}
-              <button
-                type="button"
-                onClick={handleCopyPhotoToClipboard}
-                className="focus-ring tap-scale inline-flex items-center justify-center gap-2 rounded-2xl bg-white hover:bg-cream text-teal-950 px-4 py-2.5 text-xs font-bold border border-teal-900/15 shadow-xs transition cursor-pointer min-h-[44px]"
-                title="Copies photo binary so you can Paste (Ctrl+V) directly into WhatsApp Web"
-              >
-                <span>{photoCopied ? "✓" : "🖼️"}</span>
-                <span>{photoCopied ? "Photo Copied (Press Ctrl+V)!" : "Copy Photo to Clipboard"}</span>
-              </button>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {/* ACTION 3: Meta Cloud API Verified Card */}
+                <button
+                  type="button"
+                  onClick={handleSendMetaApiCard}
+                  disabled={sendingApiCard}
+                  className="focus-ring tap-scale inline-flex items-center justify-center gap-1.5 rounded-xl bg-sand hover:bg-amber-100 text-teal-950 px-2.5 py-2 text-xs font-bold border border-teal-900/15 shadow-2xs transition cursor-pointer min-h-[40px] disabled:opacity-60"
+                  title="Dispatches official verified card with buttons directly via Meta API"
+                >
+                  <span>{sendingApiCard ? "⏳" : "💎"}</span>
+                  <span className="truncate">{sendingApiCard ? "Sending..." : "Meta Card"}</span>
+                </button>
 
-              {/* ACTION 4: Copy Message Text */}
-              <button
-                type="button"
-                onClick={handleCopyText}
-                className="focus-ring tap-scale inline-flex items-center justify-center gap-2 rounded-2xl bg-white hover:bg-cream text-teal-950 px-4 py-2.5 text-xs font-bold border border-teal-900/15 shadow-xs transition cursor-pointer min-h-[44px]"
-              >
-                <span>{copied ? "✓" : "📋"}</span>
-                <span>{copied ? "Text Copied!" : "Copy Formatted Text"}</span>
-              </button>
+                {/* ACTION 4: Copy Photo to Clipboard (for Web / Desktop Ctrl+V) */}
+                <button
+                  type="button"
+                  onClick={handleCopyPhotoToClipboard}
+                  className="focus-ring tap-scale inline-flex items-center justify-center gap-1.5 rounded-xl bg-white hover:bg-cream text-teal-950 px-2.5 py-2 text-xs font-bold border border-teal-900/15 shadow-2xs transition cursor-pointer min-h-[40px]"
+                  title="Copies photo binary so you can Paste (Ctrl+V) directly into WhatsApp Web"
+                >
+                  <span>{photoCopied ? "✓" : "🖼️"}</span>
+                  <span className="truncate">{photoCopied ? "Copied!" : "Copy Photo"}</span>
+                </button>
+
+                {/* ACTION 5: Copy Message Text */}
+                <button
+                  type="button"
+                  onClick={handleCopyText}
+                  className="focus-ring tap-scale inline-flex items-center justify-center gap-1.5 rounded-xl bg-white hover:bg-cream text-teal-950 px-2.5 py-2 text-xs font-bold border border-teal-900/15 shadow-2xs transition cursor-pointer min-h-[40px]"
+                  title="Copy formatted text message with action buttons"
+                >
+                  <span>{copied ? "✓" : "📋"}</span>
+                  <span className="truncate">{copied ? "Copied!" : "Copy Text"}</span>
+                </button>
+
+                {/* ACTION 6: Direct wa.me link */}
+                <button
+                  type="button"
+                  onClick={handleLaunchWhatsApp}
+                  className="focus-ring tap-scale inline-flex items-center justify-center gap-1.5 rounded-xl bg-white hover:bg-cream text-teal-950 px-2.5 py-2 text-xs font-bold border border-teal-900/15 shadow-2xs transition cursor-pointer min-h-[40px]"
+                  title="Launch standard click-to-chat"
+                >
+                  <span>💬</span>
+                  <span className="truncate">wa.me Chat</span>
+                </button>
+              </div>
             </div>
 
             {/* Direct Phone Call Button (Auto marks attended) */}
@@ -1200,6 +1353,77 @@ export function AntiBanWhatsAppModal({
           </button>
         </div>
       </div>
+
+      {/* ── BAILEYS QR CODE MODAL ── */}
+      {showQrModal && (
+        <div
+          className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs animate-fadeIn"
+          onClick={() => setShowQrModal(false)}
+        >
+          <div
+            className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl border border-teal-900/15 text-center text-teal-950 animate-fadeIn"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="inline-flex p-3 rounded-2xl bg-teal-950 text-gold mb-3 shadow-md">
+              <span className="text-3xl">📱</span>
+            </div>
+            <h3 className="font-display text-lg font-bold text-teal-950">
+              Link Ashrama WhatsApp
+            </h3>
+            <p className="text-xs text-teal-950/70 mt-1 leading-relaxed">
+              Scan this QR code with WhatsApp to connect the automated Baileys sending gateway.
+            </p>
+
+            <div className="my-4 p-3 bg-sand/30 rounded-2xl border border-teal-900/10 flex flex-col items-center justify-center min-h-[260px]">
+              {connectingBaileys ? (
+                <div className="flex flex-col items-center gap-2">
+                  <span className="animate-spin text-3xl">⏳</span>
+                  <span className="text-xs font-bold text-teal-950">Generating WhatsApp QR...</span>
+                </div>
+              ) : baileysQr ? (
+                <div className="space-y-2">
+                  <img
+                    src={baileysQr}
+                    alt="WhatsApp QR Code"
+                    className="w-56 h-56 mx-auto rounded-xl shadow-xs border border-teal-900/10"
+                  />
+                  <p className="text-[11px] font-semibold text-emerald-800 animate-pulse">
+                    ⚡ Waiting for scan from WhatsApp...
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <p className="text-xs text-teal-950/70">Click below to initialize QR connection</p>
+                  <button
+                    type="button"
+                    onClick={handleConnectBaileys}
+                    className="rounded-xl bg-teal-950 text-gold font-bold px-4 py-2 text-xs shadow-xs"
+                  >
+                    Generate QR Code
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div className="text-[11px] text-teal-950/70 text-left bg-cream p-3 rounded-xl border border-teal-900/10 space-y-1">
+              <p className="font-bold text-teal-950">How to scan:</p>
+              <ol className="list-decimal pl-4 space-y-0.5">
+                <li>Open WhatsApp on the ashrama phone</li>
+                <li>Tap <b>Settings</b> or <b>3 Dots</b> &gt; <b>Linked Devices</b></li>
+                <li>Tap <b>Link a Device</b> and point camera here</li>
+              </ol>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowQrModal(false)}
+              className="w-full mt-4 rounded-xl bg-gray-200 hover:bg-gray-300 text-teal-950 py-2.5 text-xs font-bold transition cursor-pointer"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
