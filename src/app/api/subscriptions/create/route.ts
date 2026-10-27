@@ -94,8 +94,13 @@ export async function POST(req: Request) {
   const mode = razorpayConfigured() ? "razorpay" : "demo";
   const publicId = "sub_" + publicToken();
 
-  const totalCount = frequency === "daily" ? 365 : frequency === "weekly" ? 52 : frequency === "yearly" ? 10 : 60;
+  const isDaily = frequency === "daily";
+  const cycleAmount = isDaily ? amount * 7 : amount;
+  const totalCount = isDaily ? 52 : frequency === "weekly" ? 52 : frequency === "yearly" ? 10 : 60;
   const periodLabel = frequency.charAt(0).toUpperCase() + frequency.slice(1);
+  const planName = isDaily
+    ? `Janaseva Ashrama Daily Seva (₹${amount}/day · Billed ₹${cycleAmount}/wk)`
+    : `Janaseva Ashrama ${periodLabel} Support (₹${amount})`;
 
   if (mode === "demo") {
     const [sub] = await db
@@ -105,7 +110,7 @@ export async function POST(req: Request) {
         mode: "demo",
         status: "active",
         mandateStatus: "active",
-        amount,
+        amount: cycleAmount,
         frequency,
         donorName,
         donorEmail,
@@ -113,7 +118,13 @@ export async function POST(req: Request) {
         donorPan,
         totalCycles: totalCount,
         idempotencyKey: key,
-        meta: { demoSimulated: true, frequency, createdAt: new Date().toISOString() },
+        meta: {
+          demoSimulated: true,
+          frequency,
+          dailyAmount: isDaily ? amount : null,
+          cycleAmount,
+          createdAt: new Date().toISOString(),
+        },
       })
       .returning();
 
@@ -127,8 +138,8 @@ export async function POST(req: Request) {
   }
 
   try {
-    // 1. Create plan on Razorpay for this amount and frequency
-    const plan = await createRazorpayPlan(amount, frequency, `Janaseva Ashrama ${periodLabel} Support (₹${amount})`);
+    // 1. Create plan on Razorpay for this amount and frequency (weekly settlement for daily)
+    const plan = await createRazorpayPlan(cycleAmount, isDaily ? "weekly" : frequency, planName);
 
     // 2. Create subscription mandate with appropriate cycles
     const rzSub = await createRazorpaySubscription({
@@ -140,6 +151,8 @@ export async function POST(req: Request) {
         donor_name: donorName,
         donor_phone: donorPhone || "",
         frequency,
+        daily_amount: isDaily ? String(amount) : "",
+        cycle_amount: String(cycleAmount),
         public_id: publicId,
       },
     });
@@ -152,7 +165,7 @@ export async function POST(req: Request) {
         mode: "razorpay",
         status: "created",
         mandateStatus: "pending",
-        amount,
+        amount: cycleAmount,
         frequency,
         donorName,
         donorEmail,
@@ -166,6 +179,8 @@ export async function POST(req: Request) {
           razorpayPlanId: plan.id,
           razorpaySubscriptionId: rzSub.id,
           frequency,
+          dailyAmount: isDaily ? amount : null,
+          cycleAmount,
           totalCount,
         },
       })

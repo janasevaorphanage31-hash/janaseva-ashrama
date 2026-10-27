@@ -188,8 +188,8 @@ function resolveIntentRuleBased(
     q.includes("ದಾನ")
   ) {
     const text = isKannada
-      ? `🙏 ಜನಸೇವಾ ಆಶ್ರಮಕ್ಕೆ ದೇಣಿಗೆ ನೀಡುವ ಅಧಿಕೃತ ವಿಧಾನಗಳು:\n\n1. ಅಧಿಕೃತ ಜಾಲತಾಣ (UPI, GPay, PhonePe, ಕಾರ್ಡ್, ನೆಟ್‌ಬ್ಯಾಂಕಿಂಗ್):\n${VERIFIED_ASHRAMA_FACTS.donationUrl}\n\n2. ಅಧಿಕೃತ ಟ್ರಸ್ಟ್ UPI ID: 9980359595@okbizaxis (Janaseva Ashrama Trust)\n\nಎಲ್ಲಾ ದೇಣಿಗೆಗಳಿಗೆ ತಕ್ಷಣವೇ 80G ಡಿಜಿಟಲ್ ರಸೀದಿ ಲಭ್ಯವಿದೆ.\nದೂರವಾಣಿ: +91 99803 59595`
-      : `🙏 Ways to Donate to Janaseva Ashrama (Bengaluru):\n\n1. Instant Official Portal (UPI, Google Pay, PhonePe, Cards, NetBanking):\n👉 ${VERIFIED_ASHRAMA_FACTS.donationUrl}\n\n2. Official Trust UPI: 9980359595@okbizaxis (Janaseva Ashrama Trust)\n\n• Instant 80G tax receipt generated with every online contribution.\n• 100% of your support directly reaches the nutrition and education of our 25 boys.`;
+      ? `🙏 ಜನಸೇವಾ ಆಶ್ರಮಕ್ಕೆ ದೇಣಿಗೆ ನೀಡುವ ಅಧಿಕೃತ ವಿಧಾನಗಳು:\n\n1. ಅಧಿಕೃತ ಜಾಲತಾಣ (UPI, GPay, PhonePe, ಕಾರ್ಡ್, ನೆಟ್‌ಬ್ಯಾಂಕಿಂಗ್):\n${VERIFIED_ASHRAMA_FACTS.donationUrl}\n\n2. ಅಧಿಕೃತ ಟ್ರಸ್ಟ್ Axis Bank UPI ID: MAB.037349050110044@axisbank (Janaseva Samruddi Education Trust)\n\nಎಲ್ಲಾ ದೇಣಿಗೆಗಳಿಗೆ ತಕ್ಷಣವೇ 80G ಡಿಜಿಟಲ್ ರಸೀದಿ ಲಭ್ಯವಿದೆ.\nದೂರವಾಣಿ: +91 99803 59595`
+      : `🙏 Ways to Donate to Janaseva Ashrama (Bengaluru):\n\n1. Instant Official Portal (UPI, Google Pay, PhonePe, Cards, NetBanking):\n👉 ${VERIFIED_ASHRAMA_FACTS.donationUrl}\n\n2. Official Trust Axis Bank UPI: MAB.037349050110044@axisbank (Janaseva Samruddi Education Trust)\n\n• Instant 80G tax receipt generated with every online contribution.\n• 100% of your support directly reaches the nutrition and education of our 25 boys.`;
     return { replyText: text, humanTakeoverNeeded: false };
   }
 

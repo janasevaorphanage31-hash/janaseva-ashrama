@@ -71,17 +71,20 @@ export const captureRazorpayPayment = (id: string, amountPaise: number) =>
 
 /**
  * Creates or registers a recurring plan on Razorpay (daily, weekly, monthly, yearly).
+ * Note: Razorpay Subscriptions API strictly enforces interval >= 7 for period "daily".
+ * Hence "daily" is mapped to "weekly" (interval 1) with 7-day cycle amount so it never fails.
  */
 export const createRazorpayPlan = (
   amountInr: number,
   period: "daily" | "weekly" | "monthly" | "yearly" = "monthly",
   name?: string
 ) => {
+  const rzPeriod = period === "daily" ? "weekly" : period;
   const periodLabel = period.charAt(0).toUpperCase() + period.slice(1);
   return rz<{ id: string; period: string; interval: number }>("/plans", {
     method: "POST",
     body: JSON.stringify({
-      period,
+      period: rzPeriod,
       interval: 1,
       item: {
         name: name || `Janaseva Ashrama ${periodLabel} Support (₹${amountInr})`,

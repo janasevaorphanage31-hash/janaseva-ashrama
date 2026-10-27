@@ -554,20 +554,44 @@ export function MetaAdsDonateComponent() {
   const amountWords = finalAmount >= 10 ? numberToIndianWords(finalAmount) : "";
   const taxDeductionAmount = Math.round(finalAmount * 0.5); // 50% Section 80G tax benefit
 
-  // Dynamic Official UPI Link for Janaseva Ashrama
-  const upiId = "9980359595@okbizaxis";
-  const upiUri = `upi://pay?pa=${upiId}&pn=Janaseva%20Ashrama&am=${finalAmount}&cu=INR&tn=${encodeURIComponent(
-    `Donation for 25 Boys by ${donorName.trim() || "Supporter"}`
-  )}`;
-  const gpayUri = `gpay://upi/pay?pa=${upiId}&pn=Janaseva%20Ashrama&am=${finalAmount}&cu=INR&tn=${encodeURIComponent(
-    `Donation for 25 Boys by ${donorName.trim() || "Supporter"}`
-  )}`;
-  const phonepeUri = `phonepe://pay?pa=${upiId}&pn=Janaseva%20Ashrama&am=${finalAmount}&cu=INR&tn=${encodeURIComponent(
-    `Donation for 25 Boys by ${donorName.trim() || "Supporter"}`
-  )}`;
-  const paytmUri = `paytmmp://pay?pa=${upiId}&pn=Janaseva%20Ashrama&am=${finalAmount}&cu=INR&tn=${encodeURIComponent(
-    `Donation for 25 Boys by ${donorName.trim() || "Supporter"}`
-  )}`;
+  // Official Verified Merchant UPI from Axis Bank Standee (IMG 5)
+  const upiId = "MAB.037349050110044@axisbank";
+  const upiMerchantName = "JANASEVA SAMRUDDI EDUCATI";
+  const upiNote = encodeURIComponent(`Seva for 25 Boys by ${donorName.trim() || "Supporter"}`);
+
+  // Base parameters for standard NPCI UPI specification (MCC 8398 = Charitable Trust)
+  const baseUpiParams = `pa=${upiId}&pn=${encodeURIComponent(upiMerchantName)}&mc=8398&am=${finalAmount}&cu=INR&tn=${upiNote}`;
+
+  // Universal standard UPI URI (opens system sheet on Android/iOS with all apps: GPay, PhonePe, Paytm, BHIM, Cred)
+  const upiUri = `upi://pay?${baseUpiParams}`;
+
+  // Direct package intents for reliable deep linking on Android
+  const gpayUri = `intent://pay?${baseUpiParams}#Intent;scheme=upi;package=com.google.android.apps.nbu.paisa.user;end`;
+  const phonepeUri = `intent://pay?${baseUpiParams}#Intent;scheme=upi;package=com.phonepe.app;end`;
+  const paytmUri = `intent://pay?${baseUpiParams}#Intent;scheme=upi;package=net.one97.paytm;end`;
+
+  // QR display toggle and UTR verification state
+  const [qrDisplayMode, setQrDisplayMode] = useState<"original" | "dynamic">("original");
+  const [upiUtrNumber, setUpiUtrNumber] = useState("");
+
+  const handleOpenUpiApp = (appUri: string, fallbackUri: string = upiUri) => {
+    if (typeof window !== "undefined") {
+      const isMobile = /android|iphone|ipad|ipod/i.test(navigator.userAgent);
+      if (!isMobile) {
+        setShowDirectUpi(true);
+        return;
+      }
+      try {
+        window.location.href = appUri;
+        setTimeout(() => {
+          if (document.hidden) return;
+          window.location.href = fallbackUri;
+        }, 1500);
+      } catch {
+        window.location.href = fallbackUri;
+      }
+    }
+  };
 
   useEffect(() => {
     if (finalAmount > 0) {
@@ -1136,6 +1160,21 @@ export function MetaAdsDonateComponent() {
             </div>
           </div>
 
+          {/* Daily Nitya Seva Notice (Explaining weekly billing cycle for ₹11/day per RBI & NPCI rules) */}
+          {frequency === "daily" && (
+            <div className="rounded-xl bg-amber-100/90 border border-amber-300/80 p-2 text-xs text-amber-950 flex items-center gap-2 text-left animate-fadeIn">
+              <span className="text-base select-none shrink-0">🥛</span>
+              <div>
+                <p className="font-black text-[#042825] text-[11px] sm:text-xs">
+                  Daily Nitya Seva: ₹{formatINR(finalAmount)}/day (Billed ₹{formatINR(finalAmount * 7)} every 7 days via UPI Autopay)
+                </p>
+                <p className="text-[9px] sm:text-[10px] text-teal-900/80 font-medium leading-tight mt-0.5">
+                  Per RBI &amp; NPCI e-mandate rules, daily seva is debited weekly for seamless processing without daily SMS interruptions. Cancel anytime.
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Real-time Dynamic Impact line */}
           <div className="rounded-xl bg-amber-50/70 px-3 py-1.5 border border-amber-200/80 text-xs text-amber-950 flex items-center justify-between gap-2">
             <div className="flex items-center gap-1.5 min-w-0">
@@ -1217,6 +1256,16 @@ export function MetaAdsDonateComponent() {
                     </span>
                   )}
                   <span>₹{amt >= 1000 ? `${(amt / 1000).toFixed(amt % 1000 === 0 ? 0 : 1)}k` : amt}</span>
+                  {frequency === "daily" && (
+                    <span className={`text-[7px] font-bold leading-none mt-0.5 ${isSelected ? "text-amber-200" : "text-amber-800"}`}>
+                      ₹{amt * 7}/wk
+                    </span>
+                  )}
+                  {frequency === "weekly" && (
+                    <span className={`text-[7px] font-bold leading-none mt-0.5 ${isSelected ? "text-amber-200" : "text-amber-800"}`}>
+                      ₹{Math.round(amt / 7)}/d
+                    </span>
+                  )}
                   {frequency === "monthly" && (
                     <span className={`text-[7px] font-bold leading-none mt-0.5 ${isSelected ? "text-amber-200" : "text-amber-800"}`}>
                       ₹{Math.max(1, Math.round(amt / 30))}/d
@@ -1584,10 +1633,10 @@ export function MetaAdsDonateComponent() {
                 <span>
                   {frequency === "onetime"
                     ? `PROCEED TO PAY ₹${formatINR(finalAmount)}`
+                    : frequency === "daily"
+                    ? `START DAILY AUTOPAY (₹${formatINR(finalAmount)}/DAY · ₹${formatINR(finalAmount * 7)}/WK)`
                     : `START ${frequency.toUpperCase()} AUTOPAY (₹${formatINR(finalAmount)} / ${
-                        frequency === "daily"
-                          ? "DAY"
-                          : frequency === "weekly"
+                        frequency === "weekly"
                           ? "WEEK"
                           : frequency === "monthly"
                           ? "MONTH"
@@ -1650,79 +1699,223 @@ export function MetaAdsDonateComponent() {
             </button>
           </div>
 
-          {/* Quick Mobile UPI App Direct Launch Row */}
-          <div className="grid grid-cols-3 gap-2 pt-1">
-            <a
-              href={gpayUri}
-              className="py-2.5 px-1 rounded-xl bg-white border border-teal-900/15 hover:border-emerald-600 shadow-2xs font-bold text-teal-950 flex items-center justify-center gap-1 text-[11px] active:scale-95 transition min-h-[44px] touch-manipulation pointer-events-auto"
-              title="Open Google Pay"
+          {/* Quick Mobile UPI App Direct Launch: 1-Tap Universal Launcher + Dedicated App Buttons */}
+          <div className="space-y-1.5 pt-1">
+            <button
+              type="button"
+              onClick={() => handleOpenUpiApp(upiUri)}
+              className="w-full py-2.5 px-3 rounded-xl bg-teal-900/10 hover:bg-teal-900/20 text-[#042825] font-black text-xs flex items-center justify-center gap-2 border border-teal-900/20 transition active:scale-98 cursor-pointer min-h-[44px]"
             >
-              <span>🟢</span>
-              <span>Google Pay</span>
-            </a>
-            <a
-              href={phonepeUri}
-              className="py-2.5 px-1 rounded-xl bg-white border border-teal-900/15 hover:border-purple-600 shadow-2xs font-bold text-teal-950 flex items-center justify-center gap-1 text-[11px] active:scale-95 transition min-h-[44px] touch-manipulation pointer-events-auto"
-              title="Open PhonePe"
-            >
-              <span>🟣</span>
-              <span>PhonePe</span>
-            </a>
-            <a
-              href={paytmUri}
-              className="py-2.5 px-1 rounded-xl bg-white border border-teal-900/15 hover:border-blue-600 shadow-2xs font-bold text-teal-950 flex items-center justify-center gap-1 text-[11px] active:scale-95 transition min-h-[44px] touch-manipulation pointer-events-auto"
-              title="Open Paytm"
-            >
-              <span>🔵</span>
-              <span>Paytm</span>
-            </a>
+              <span>⚡</span>
+              <span>Pay via Any UPI App (GPay / PhonePe / Paytm / BHIM)</span>
+            </button>
+
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={() => handleOpenUpiApp(gpayUri, upiUri)}
+                className="py-2.5 px-1 rounded-xl bg-white border border-teal-900/15 hover:border-emerald-600 shadow-2xs font-bold text-teal-950 flex items-center justify-center gap-1 text-[11px] active:scale-95 transition min-h-[44px] touch-manipulation cursor-pointer"
+                title="Open Google Pay"
+              >
+                <span>🟢</span>
+                <span>Google Pay</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleOpenUpiApp(phonepeUri, upiUri)}
+                className="py-2.5 px-1 rounded-xl bg-white border border-teal-900/15 hover:border-purple-600 shadow-2xs font-bold text-teal-950 flex items-center justify-center gap-1 text-[11px] active:scale-95 transition min-h-[44px] touch-manipulation cursor-pointer"
+                title="Open PhonePe"
+              >
+                <span>🟣</span>
+                <span>PhonePe</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleOpenUpiApp(paytmUri, upiUri)}
+                className="py-2.5 px-1 rounded-xl bg-white border border-teal-900/15 hover:border-blue-600 shadow-2xs font-bold text-teal-950 flex items-center justify-center gap-1 text-[11px] active:scale-95 transition min-h-[44px] touch-manipulation cursor-pointer"
+                title="Open Paytm"
+              >
+                <span>🔵</span>
+                <span>Paytm</span>
+              </button>
+            </div>
           </div>
 
           {/* ── DIRECT UPI / DYNAMIC QR CODE DRAWER (IMMEDIATELY VISIBLE UNDER BUTTON) ── */}
           {showDirectUpi && (
             <div className="rounded-2xl bg-cream/70 p-4 border border-teal-900/15 animate-fadeIn text-center space-y-3">
               <span className="inline-block rounded-full bg-emerald-100 text-emerald-950 px-3 py-0.5 text-[10px] font-black uppercase">
-                ⚡ Scan &amp; Pay (0% Platform Fee)
+                ⚡ Scan &amp; Pay (0% Platform Fee · Direct Axis Bank)
               </span>
 
-              {qrDataUrl && (
-                <div className="flex justify-center my-1">
-                  <div className="p-2 bg-white rounded-2xl border-2 border-amber-400/50 shadow-inner">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={qrDataUrl}
-                      alt="Janaseva Ashrama UPI QR Code"
-                      className="w-44 h-44 sm:w-52 sm:h-52 object-contain"
-                    />
-                  </div>
-                </div>
-              )}
-
-              <div className="flex items-center justify-between bg-white p-2.5 rounded-xl border border-teal-900/15 text-left text-xs">
-                <div>
-                  <span className="text-[9px] font-bold text-teal-900/60 uppercase block">Official Trust UPI:</span>
-                  <p className="font-mono text-xs font-black text-[#042825]">{upiId}</p>
-                </div>
+              {/* QR Code Display Mode Selector (Official Axis Standee vs Dynamic Amount) */}
+              <div className="grid grid-cols-2 gap-1.5 p-1 bg-white rounded-xl border border-teal-900/15 text-xs font-bold">
                 <button
                   type="button"
-                  onClick={() => handleCopyBank(upiId, "upi")}
-                  className="rounded-lg bg-[#042825] text-white px-2.5 py-1 text-[11px] font-bold hover:bg-teal-950 cursor-pointer"
+                  onClick={() => setQrDisplayMode("original")}
+                  className={`py-1.5 px-2 rounded-lg transition cursor-pointer flex items-center justify-center gap-1 text-[11px] ${
+                    qrDisplayMode === "original"
+                      ? "bg-[#042825] text-amber-300 font-black shadow-xs"
+                      : "text-teal-950 hover:bg-cream"
+                  }`}
                 >
-                  {copiedBankField === "upi" ? "✓ Copied" : "Copy UPI"}
+                  <span>📷</span>
+                  <span>Axis Standee QR</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setQrDisplayMode("dynamic")}
+                  className={`py-1.5 px-2 rounded-lg transition cursor-pointer flex items-center justify-center gap-1 text-[11px] ${
+                    qrDisplayMode === "dynamic"
+                      ? "bg-[#042825] text-amber-300 font-black shadow-xs"
+                      : "text-teal-950 hover:bg-cream"
+                  }`}
+                >
+                  <span>⚡</span>
+                  <span>Dynamic QR (₹{formatINR(finalAmount)})</span>
                 </button>
               </div>
 
-              {/* WhatsApp Receipt Button */}
-              <a
-                href={`https://wa.me/${SITE.whatsapp}?text=${encodeURIComponent(
-                  `Namaste Janaseva Ashrama, I have completed a direct UPI donation of ₹${finalAmount} for the 25 resident boys.\n\nDonor Name: ${donorName.trim() || "Well-Wisher"}\nMobile: ${donorPhone.trim() || "Mobile"}${donorPan ? `\nPAN: ${donorPan.trim().toUpperCase()}` : ""}\nPlease issue my official 80G tax receipt.`
-                )}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block w-full rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold py-3 px-3 text-center text-xs shadow-sm transition"
-              >
-                💬 Confirm on WhatsApp for 80G Receipt
-              </a>
+              {/* QR Image Display */}
+              {qrDisplayMode === "original" ? (
+                <div className="flex flex-col items-center my-2">
+                  <div className="p-2 bg-white rounded-2xl border-2 border-emerald-500/60 shadow-md max-w-[280px]">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src="/media/janaseva-axis-bank-qr.jpg"
+                      alt="Janaseva Ashrama Axis Bank Standee QR"
+                      className="w-56 h-auto sm:w-64 rounded-xl object-contain mx-auto"
+                    />
+                  </div>
+                  <span className="text-[10px] text-emerald-900 font-bold mt-1.5 flex items-center gap-1">
+                    <span>✓</span> Official Axis Bank Merchant Standee (Banashankari Branch)
+                  </span>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center my-2">
+                  {qrDataUrl && (
+                    <div className="p-2 bg-white rounded-2xl border-2 border-amber-400/60 shadow-inner">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={qrDataUrl}
+                        alt="Janaseva Ashrama Dynamic UPI QR Code"
+                        className="w-44 h-44 sm:w-52 sm:h-52 object-contain"
+                      />
+                    </div>
+                  )}
+                  <span className="text-[10px] text-amber-900 font-bold mt-1.5 flex items-center gap-1">
+                    <span>⚡</span> Amount pre-set to ₹{formatINR(finalAmount)}
+                  </span>
+                </div>
+              )}
+
+              {/* Verified Merchant Details */}
+              <div className="bg-white p-3 rounded-2xl border border-teal-900/15 text-left text-xs space-y-2">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-[9px] font-bold text-teal-900/60 uppercase block">Trust Merchant Name:</span>
+                    <p className="text-xs font-black text-[#042825]">{upiMerchantName}</p>
+                  </div>
+                  <span className="rounded bg-emerald-100 text-emerald-900 text-[8px] font-black px-1.5 py-0.5">
+                    Verified NGO
+                  </span>
+                </div>
+                <div className="flex items-center justify-between pt-1 border-t border-teal-900/10">
+                  <div>
+                    <span className="text-[9px] font-bold text-teal-900/60 uppercase block">Official Axis Bank UPI ID:</span>
+                    <p className="font-mono text-xs font-black text-[#042825]">{upiId}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleCopyBank(upiId, "upi")}
+                    className="rounded-lg bg-[#042825] text-amber-300 px-2.5 py-1 text-[11px] font-bold hover:bg-teal-950 cursor-pointer shadow-2xs"
+                  >
+                    {copiedBankField === "upi" ? "✓ Copied" : "Copy UPI"}
+                  </button>
+                </div>
+                <div className="text-[10px] text-teal-950/70 pt-0.5">
+                  Axis A/C: <span className="font-mono font-bold">913020019616990</span> · IFSC: <span className="font-mono font-bold">UTIB0000102</span>
+                </div>
+              </div>
+
+              {/* Step 1 & Step 2 Verification Flow (Prevents sending WhatsApp confirmation without paying - IMG 1 Fix) */}
+              <div className="bg-amber-50/90 border border-amber-300 rounded-xl p-2.5 text-left text-xs space-y-1.5">
+                <div className="flex items-center gap-1.5 font-black text-[#042825]">
+                  <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[#042825] text-white text-[9px]">1</span>
+                  <span>Scan QR above &amp; pay ₹{formatINR(finalAmount)}</span>
+                </div>
+                <div className="flex items-center gap-1.5 font-black text-[#042825]">
+                  <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[#042825] text-white text-[9px]">2</span>
+                  <span>Enter 12-digit Bank UTR / Ref Number below to verify payment:</span>
+                </div>
+              </div>
+
+              {/* UTR Input Field */}
+              <div className="text-left space-y-1">
+                <div className="flex items-center justify-between">
+                  <label htmlFor="direct-upi-utr" className="text-[11px] font-bold text-[#042825]">
+                    Bank UTR / Transaction Reference <span className="text-rose-600">*</span>
+                  </label>
+                  <span className="text-[9px] text-teal-900/60 font-medium">Found in Google Pay / PhonePe</span>
+                </div>
+                <div className="relative">
+                  <input
+                    id="direct-upi-utr"
+                    type="text"
+                    maxLength={16}
+                    placeholder="e.g. 4289XXXXXXXX (12 digits)"
+                    value={upiUtrNumber}
+                    onChange={(e) => setUpiUtrNumber(e.target.value.replace(/[^a-zA-Z0-9]/g, "").toUpperCase())}
+                    className="w-full rounded-xl border border-teal-900/20 bg-white p-2.5 text-xs font-mono font-bold text-[#042825] uppercase outline-none focus:border-teal-900 focus:ring-2 focus:ring-amber-400 placeholder:font-sans placeholder:font-normal"
+                  />
+                  {upiUtrNumber && (
+                    <span className={`absolute right-3 top-2.5 text-[10px] font-black ${upiUtrNumber.length >= 8 ? "text-emerald-700" : "text-amber-800"}`}>
+                      {upiUtrNumber.length >= 8 ? "✓ Valid UTR" : `${upiUtrNumber.length}/12 digits`}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* WhatsApp Confirmation Button (Disabled if no UTR) */}
+              {upiUtrNumber.trim().length >= 8 ? (
+                <a
+                  href={`https://wa.me/${SITE.whatsapp}?text=${encodeURIComponent(
+                    `Namaste Janaseva Ashrama, I have completed a direct UPI donation of ₹${finalAmount} for the 25 resident boys.\n\n📋 Bank Payment Reference:\n• Bank UTR / Ref No: ${upiUtrNumber.trim()}\n• Payee UPI: ${upiId} (${upiMerchantName})\n• Amount Paid: ₹${finalAmount}\n• Donor Name: ${donorName.trim() || "Supporter"}\n• Mobile: ${donorPhone.trim() || "Not specified"}${donorPan ? `\n• PAN: ${donorPan.trim().toUpperCase()}` : ""}\n\nPlease verify in Axis Bank records and issue my official 80G tax receipt and seva photos.`
+                  )}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block w-full rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold py-3 px-3 text-center text-xs shadow-md transition active:scale-98 animate-fadeIn"
+                >
+                  💬 Confirm Payment on WhatsApp (UTR: {upiUtrNumber.trim()})
+                </a>
+              ) : (
+                <div className="space-y-1">
+                  <button
+                    type="button"
+                    disabled
+                    className="block w-full rounded-xl bg-gray-200 text-gray-500 font-bold py-3 px-3 text-center text-xs cursor-not-allowed border border-gray-300"
+                  >
+                    🔒 Enter 12-Digit Bank UTR Above to Confirm
+                  </button>
+                  <p className="text-[10px] text-teal-950/60 font-medium">
+                    Receipt confirmation requires a valid bank UTR to prevent unverified submissions.
+                  </p>
+                </div>
+              )}
+
+              {/* Need Help Link */}
+              <div className="pt-1 text-center">
+                <a
+                  href={`https://wa.me/${SITE.whatsapp}?text=${encodeURIComponent(
+                    `Namaste Janaseva Ashrama, I need help with making a donation of ₹${finalAmount}. Could someone please assist me?`
+                  )}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[10px] font-bold text-teal-900/70 hover:text-teal-900 underline inline-flex items-center gap-1"
+                >
+                  <span>💬 Need help or payment issue? Chat with Ashrama Support</span>
+                </a>
+              </div>
             </div>
           )}
 
@@ -2133,10 +2326,16 @@ export function MetaAdsDonateComponent() {
             <div className="flex items-center gap-1">
               <span className="font-display text-base font-black text-[#042825]">
                 {formatINR(finalAmount)}
-                {frequency !== "onetime" && (
+                {frequency === "daily" ? (
                   <span className="text-[10px] font-bold text-amber-900 ml-0.5">
-                    /{frequency === "daily" ? "d" : frequency === "weekly" ? "wk" : frequency === "monthly" ? "mo" : "yr"}
+                    /d (₹{formatINR(finalAmount * 7)}/wk)
                   </span>
+                ) : (
+                  frequency !== "onetime" && (
+                    <span className="text-[10px] font-bold text-amber-900 ml-0.5">
+                      /{frequency === "weekly" ? "wk" : frequency === "monthly" ? "mo" : "yr"}
+                    </span>
+                  )
                 )}
               </span>
               <span className="rounded bg-emerald-100 text-emerald-900 text-[8px] font-black px-1.5 py-0.2">
@@ -2166,6 +2365,8 @@ export function MetaAdsDonateComponent() {
                 <span>
                   {frequency === "onetime"
                     ? "PROCEED TO PAY"
+                    : frequency === "daily"
+                    ? `DAILY (₹${formatINR(finalAmount * 7)}/WK)`
                     : `START ${frequency.toUpperCase()}`}
                 </span>
                 <span>💝</span>

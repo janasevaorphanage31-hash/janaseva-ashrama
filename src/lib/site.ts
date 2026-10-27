@@ -175,6 +175,8 @@ export const BANK_DETAILS = {
   ifscCode: "UTIB0000102",
   accountType: "Current Account",
   purpose: "Public Charitable Contributions & 80G Donations",
+  upiId: "MAB.037349050110044@axisbank",
+  merchantName: "JANASEVA SAMRUDDI EDUCATI",
 };
 
 export const SITE = {

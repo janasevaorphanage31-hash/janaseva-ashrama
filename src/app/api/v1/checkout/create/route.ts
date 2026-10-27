@@ -97,14 +97,21 @@ export async function POST(req: Request) {
         // --- RECURRING AUTOPAY (UPI Autopay / e-mandate) ---
         await ensureDbSchema().catch(() => {});
         const period = frequency as "daily" | "weekly" | "monthly" | "yearly";
-        const totalCount = period === "daily" ? 365 : period === "weekly" ? 52 : period === "yearly" ? 10 : 60;
+        // Under RBI/NPCI e-mandate rules, minimum automated debit interval is 7 days.
+        // For Daily Punya (₹11/day, ₹21/day), cycle amount is amount * 7 debited weekly.
+        const isDaily = period === "daily";
+        const cycleAmount = isDaily ? amount * 7 : amount;
+        const totalCount = isDaily ? 52 : period === "weekly" ? 52 : period === "yearly" ? 10 : 60;
         const periodLabel = period.charAt(0).toUpperCase() + period.slice(1);
+        const planName = isDaily
+          ? `Janaseva Ashrama Daily Seva (₹${amount}/day · Billed ₹${cycleAmount}/wk)`
+          : `Janaseva Ashrama ${periodLabel} Support (₹${amount})`;
 
         // 1. Create or get recurring plan on Razorpay
         const plan = await createRazorpayPlan(
-          amount,
-          period,
-          `Janaseva Ashrama ${periodLabel} Support (₹${amount})`
+          cycleAmount,
+          isDaily ? "weekly" : period,
+          planName
         );
 
         const subPublicId = "sub_" + publicToken();
@@ -116,6 +123,8 @@ export async function POST(req: Request) {
           customerNotify: 1,
           notes: {
             ...safeNotes,
+            daily_amount: isDaily ? String(amount) : "",
+            cycle_amount: String(cycleAmount),
             donor_email: donorEmail || "",
             donor_name: donorName,
             donor_phone: donorPhone || "",
@@ -129,7 +138,7 @@ export async function POST(req: Request) {
           mode: "razorpay",
           status: "created",
           mandateStatus: "pending",
-          amount,
+          amount: cycleAmount,
           frequency: period,
           donorName,
           donorEmail: donorEmail || "donor@janasevaashrama.org",
@@ -141,6 +150,8 @@ export async function POST(req: Request) {
           idempotencyKey: `sub_chk_${Date.now()}_${publicToken()}`,
           meta: {
             ...safeNotes,
+            dailyAmount: isDaily ? amount : null,
+            cycleAmount,
             razorpayPlanId: plan.id,
             razorpaySubscriptionId: rzSub.id,
             frequency: period,
@@ -151,7 +162,7 @@ export async function POST(req: Request) {
         return NextResponse.json({
           success: true,
           subscriptionId: rzSub.id,
-          amount: Math.round(amount * 100),
+          amount: Math.round(cycleAmount * 100),
           currency: "INR",
           frequency: period,
           keyId,
@@ -209,23 +220,27 @@ export async function POST(req: Request) {
     // Demo / Sandbox mode fallback for local staging & development only
     if (isRecurring) {
       const demoSubId = `sub_demo_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+      const isDaily = frequency === "daily";
+      const cycleAmount = isDaily ? amount * 7 : amount;
       await ensureDbSchema().catch(() => {});
       await db.insert(recurringSubscriptions).values({
         publicId: demoSubId,
         mode: "demo",
         status: "active",
         mandateStatus: "active",
-        amount,
+        amount: cycleAmount,
         frequency,
         donorName,
         donorEmail: donorEmail || "donor@janasevaashrama.org",
         donorPhone: donorPhone || null,
         donorPan: donorPan || null,
-        totalCycles: frequency === "daily" ? 365 : frequency === "weekly" ? 52 : frequency === "yearly" ? 10 : 60,
+        totalCycles: isDaily ? 52 : frequency === "weekly" ? 52 : frequency === "yearly" ? 10 : 60,
         idempotencyKey: `sub_chk_${Date.now()}_${publicToken()}`,
         meta: {
           demoSimulated: true,
           frequency,
+          dailyAmount: isDaily ? amount : null,
+          cycleAmount,
           ...safeNotes,
         },
       }).catch(() => {});
@@ -233,7 +248,7 @@ export async function POST(req: Request) {
       return NextResponse.json({
         success: true,
         subscriptionId: demoSubId,
-        amount: Math.round(amount * 100),
+        amount: Math.round(cycleAmount * 100),
         currency: "INR",
         frequency,
         keyId: "rzp_test_demokey12345",
