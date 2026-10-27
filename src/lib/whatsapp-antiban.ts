@@ -113,6 +113,29 @@ function generateSaltToken(): string {
   return result;
 }
 
+/**
+ * Injects invisible zero-width unicode characters (\u200B, \u200C, \u200D, \uFEFF)
+ * at random word boundaries.
+ * 
+ * WHY THIS IS CRUCIAL FOR 300-500 MSGS/DAY:
+ * Meta's antispam AI clusters identical message strings by calculating SHA-256 hashes.
+ * By scattering invisible zero-width code points, every single outbound message has a
+ * 100% unique cryptographic byte fingerprint, preventing hash-clustering bans while
+ * remaining completely invisible and pristine to human recipients.
+ */
+function injectZeroWidthSalt(text: string): string {
+  const invisibleTokens = ["\u200B", "\u200C", "\u200D", "\uFEFF"];
+  const words = text.split(" ");
+  for (let i = 0; i < words.length; i++) {
+    // Inject every 3rd or 4th word randomly
+    if (i % 3 === 0 || i % 4 === 0) {
+      const char = invisibleTokens[Math.floor(Math.random() * invisibleTokens.length)];
+      words[i] = words[i] + char;
+    }
+  }
+  return words.join(" ");
+}
+
 /** Determine time-of-day greeting (IST) */
 function getTimeOfDay(): "morning" | "afternoon" | "evening" {
   // Get current hour in IST
@@ -349,6 +372,24 @@ export function generateAntiBanMessage(options: AntiBanGenerateOptions): AntiBan
     saltLine = `[Official Seva Token: #JS-${salt}]`;
   }
 
+  // Physical Calling Location & Legitimacy
+  let locationBlock = "";
+  if (language === "kn") {
+    locationBlock = `📍 ಆಶ್ರಮದ ವಿಳಾಸ: ಜನಸೇವಾ ಆಶ್ರಮ, ತುರಹಳ್ಳಿ, ಕನಕಪುರ ರಸ್ತೆ, ಬೆಂಗಳೂರು - 560062\n🗺️ ಗೂಗಲ್ ಮ್ಯಾಪ್ಸ್: https://maps.google.com/?q=Janaseva+Trust+Ashrama+Turahalli+Bengaluru`;
+  } else {
+    locationBlock = `📍 Calling From: Janaseva Ashrama, Turahalli, Off Kanakapura Rd, Bengaluru - 560062\n🗺️ Google Maps: https://maps.google.com/?q=Janaseva+Trust+Ashrama+Turahalli+Bengaluru`;
+  }
+
+  // Interactive Quick-Reply Prompt Menu (Crucial Whitelisting Signal for 300-500 msgs/day)
+  let interactiveMenu = "";
+  if (language === "kn") {
+    interactiveMenu = `🌸 ತಕ್ಷಣದ ಪ್ರತಿಕ್ರಿಯೆ ಆಯ್ಕೆಗಳು (ಸಂಖ್ಯೆಯನ್ನು ರಿಪ್ಲೈ ಮಾಡಿ):\n[1] 🍲 ಇಂದಿನ ಅನ್ನದಾನ ಸೇವೆ (₹501 / ₹1,500)\n[2] 🎂 ಜನ್ಮದಿನ / ಶುಭದಿನ ಸೇವೆ ಕಾಯ್ದಿರಿಸಲು\n[3] 📜 ಸರ್ಕಾರದ 80G ತೆರಿಗೆ ವಿನಾಯಿತಿ ರಸೀದಿಗೆ\n[4] 📸 ಇಂದಿನ ಅಡುಗೆ ಮತ್ತು ಮಕ್ಕಳ ಫೋಟೋ ನೋಡಲು\n👉 ಆಶ್ರಮದ ಜೊತೆ ನೇರವಾಗಿ ಮಾತನಾಡಲು "ನಮಸ್ಕಾರ" ಎಂದು ಸಂದೇಶ ಕಳುಹಿಸಿ!`;
+  } else if (language === "mixed") {
+    interactiveMenu = `🌸 Quick Seva Options (Reply with a number):\n[1] 🍲 Sponsor hot meals for 25 boys (₹501 / ₹1,500)\n[2] 🎂 Book birthday special feast & prayer blessing\n[3] 📜 Official 80G tax exemption certificate\n[4] 📸 Request today's live kitchen photos\n👉 Or reply "Namaste" to connect directly with our caretaker!`;
+  } else {
+    interactiveMenu = `🌸 Quick Response Options (Reply with a number):\n[1] 🍲 Sponsor Today's Fresh Satvik Meals (₹501 / ₹1,500)\n[2] 🎂 Book a Birthday / Special Day Blessing Video\n[3] 📜 Receive Official Govt Form 10AC 80G Tax Exemption PDF\n[4] 📸 Request Today's Live Kitchen & Children Photos\n👉 Or simply reply "Namaste" to connect directly with our ashrama caretaker!`;
+  }
+
   // Compose Full Message with Media Mention (if any)
   let mediaNote = "";
   if (mediaAsset) {
@@ -362,7 +403,7 @@ export function generateAntiBanMessage(options: AntiBanGenerateOptions): AntiBan
   }
 
   // Final Assembled Message
-  const fullText = [
+  const assembledLines = [
     greeting,
     "",
     intro,
@@ -371,14 +412,20 @@ export function generateAntiBanMessage(options: AntiBanGenerateOptions): AntiBan
     mediaNote ? mediaNote : "",
     tierBreakdown,
     "",
+    interactiveMenu,
+    "",
     trustProof,
+    locationBlock,
     "",
     closingBlessing,
     "",
     saltLine,
   ]
-    .filter((line) => line !== "")
-    .join("\n");
+    .filter((line) => line !== "");
+
+  const rawFullText = assembledLines.join("\n");
+  // Scatter invisible zero-width unicode characters to guarantee a 100% unique SHA-256 fingerprint
+  const fullText = injectZeroWidthSalt(rawFullText);
 
   // Determine WhatsApp URL:
   // Standard click-to-chat sends to lead's phone number

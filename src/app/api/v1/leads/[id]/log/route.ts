@@ -51,7 +51,17 @@ export async function POST(
     const notes = clean(body.notes, 1000);
     const callbackTime = body.callbackTime ? String(body.callbackTime).slice(0, 50) : undefined;
 
-    const VALID_DISPOSITIONS = ["Interested", "Reschedule", "Rejected", "Pending", "Donated"];
+    const VALID_DISPOSITIONS = [
+      "Interested",
+      "Reschedule",
+      "Rejected",
+      "Pending",
+      "Donated",
+      "No_Answer",
+      "Contacted",
+      "Busy",
+      "Invalid_Number",
+    ];
     if (!VALID_DISPOSITIONS.includes(rawDisposition)) {
       return NextResponse.json(
         { error: `Invalid disposition. Allowed: ${VALID_DISPOSITIONS.join(", ")}` },

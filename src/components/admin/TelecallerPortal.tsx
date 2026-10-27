@@ -129,7 +129,6 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
     }
   };
 
-  // 1. Initial Session Check on Mount
   useEffect(() => {
     queueMicrotask(() => {
       void checkCurrentSession();
@@ -137,7 +136,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // 3. Handle Telecaller Sign In
+  // Handle Telecaller Sign In
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError("");
@@ -166,7 +165,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
     }
   };
 
-  // 4. Handle Telecaller Sign Out
+  // Handle Telecaller Sign Out
   const handleLogout = async () => {
     try {
       await fetch("/api/v1/auth/login", {
@@ -181,7 +180,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
     showToast("Signed out successfully.");
   };
 
-  // 5. Handle Change Password
+  // Handle Change Password
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setPwdError("");
@@ -224,7 +223,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
     }
   };
 
-  // 6. Anti-Ban WhatsApp Modal Trigger
+  // Anti-Ban WhatsApp Modal Trigger
   const handleOpenWhatsAppModal = (lead: any) => {
     setSelectedLeadForWhatsApp(lead);
     setIsAntiBanModalOpen(true);
@@ -236,10 +235,10 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
     if (callerProfile) {
       computeStats(updatedList, callerProfile.callerId);
     }
-    showToast(`✓ Updated lead #${leadId} status to ${disp}`);
+    showToast(`✓ Marked lead #${leadId} as ${disp}`);
   };
 
-  // 7. Update Call Disposition
+  // Update Call Disposition
   const handleUpdateDisposition = async (leadId: number, disposition: string, notes?: string, callbackTime?: string) => {
     if (!callerProfile) return;
     try {
@@ -265,13 +264,35 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
     }
   };
 
-  // 8. Save Notes / Callback Modal
+  // 1-Tap Inline Disposition Handlers
+  const handleInlineDisposition = async (leadId: number, disposition: string) => {
+    await handleUpdateDisposition(leadId, disposition);
+  };
+
+  // Auto-Mark Attended on Phone Call Launch
+  const handleCallLead = (lead: any) => {
+    if (!lead.status || lead.status === "Pending") {
+      void handleUpdateDisposition(lead.leadId, "Contacted", "Auto-marked attended on call click");
+    }
+    const cleanPhone = lead.phone.replace(/\D/g, "");
+    window.location.href = `tel:${cleanPhone}`;
+  };
+
+  // Auto-Mark Attended on WhatsApp Dispatch Launch
+  const handleWhatsAppLead = (lead: any) => {
+    if (!lead.status || lead.status === "Pending") {
+      void handleUpdateDisposition(lead.leadId, "Contacted", "Auto-marked attended on WhatsApp dispatch");
+    }
+    handleOpenWhatsAppModal(lead);
+  };
+
+  // Save Notes / Callback Modal
   const handleSaveNotes = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!activeNotesLead || !callerProfile) return;
     setSavingNotes(true);
     try {
-      const newStatus = callbackDateTime ? "Reschedule" : activeNotesLead.status;
+      const newStatus = callbackDateTime ? "Reschedule" : activeNotesLead.status || "Contacted";
       await handleUpdateDisposition(activeNotesLead.leadId, newStatus, notesText, callbackDateTime);
       setActiveNotesLead(null);
       setNotesText("");
@@ -281,7 +302,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
     }
   };
 
-  // 9. Simulate Payment Conversion Test
+  // Simulate Payment Conversion Test
   const handleSimulatePayment = async (leadId: number) => {
     if (!callerProfile) return;
     try {
@@ -305,14 +326,49 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
     }
   };
 
-  // 10. Copy Referral Link
+  // Copy Referral Link
   const handleCopyReferralLink = () => {
     if (!callerProfile) return;
     const origin = typeof window !== "undefined" ? window.location.origin : "https://www.janasevaorphanage.org";
     const refLink = `${origin}/#official-tiers?ref=${callerProfile.callerId}`;
     navigator.clipboard.writeText(refLink);
-    showToast("✓ Referral link copied to clipboard: " + refLink);
+    showToast("✓ Referral link copied: " + refLink);
   };
+
+  // Dynamic filter counter computation
+  const counts = useMemo(() => {
+    const now = new Date();
+    const curDay = now.getDate();
+    const curMonth = now.getMonth() + 1;
+
+    let pending = 0;
+    let attended = 0;
+    let birthdays = 0;
+    let interested = 0;
+    let reschedule = 0;
+    let donated = 0;
+
+    leads.forEach((l) => {
+      const isAttended = l.status && l.status !== "Pending";
+      if (!isAttended) pending++;
+      else attended++;
+
+      if (l.dobDay === curDay && l.dobMonth === curMonth) birthdays++;
+      if (l.status === "Interested") interested++;
+      if (l.status === "Reschedule") reschedule++;
+      if (l.status === "Donated") donated++;
+    });
+
+    return {
+      all: leads.length,
+      pending,
+      attended,
+      birthdays,
+      interested,
+      reschedule,
+      donated,
+    };
+  }, [leads]);
 
   // Filter & Search Leads
   const filteredLeads = useMemo(() => {
@@ -324,6 +380,10 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
       let matchesFilter = true;
       if (filter === "Today_Birthday") {
         matchesFilter = l.dobDay === curDay && l.dobMonth === curMonth;
+      } else if (filter === "Pending") {
+        matchesFilter = !l.status || l.status === "Pending";
+      } else if (filter === "Attended") {
+        matchesFilter = l.status && l.status !== "Pending";
       } else if (filter !== "ALL") {
         matchesFilter = l.status === filter;
       }
@@ -351,14 +411,14 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
     );
   }
 
-  // ── UNATHENTICATED STATE: DEDICATED TELECALLER LOGIN SCREEN ──
+  // ── UNAUTHENTICATED STATE: DEDICATED TELECALLER LOGIN SCREEN ──
   if (!isLoggedIn || !callerProfile) {
     return (
       <div className="max-w-md mx-auto my-10 px-4 animate-fadeIn">
         {toastMsg && (
           <div className="mb-4 rounded-2xl bg-teal-950 text-gold px-4 py-3 shadow-lg border border-amber-400/40 text-xs font-bold flex items-center justify-between">
             <span>{toastMsg}</span>
-            <button onClick={() => setToastMsg("")} className="text-white hover:text-gold ml-2">✕</button>
+            <button onClick={() => setToastMsg("")} className="text-white hover:text-gold ml-2 cursor-pointer">✕</button>
           </div>
         )}
 
@@ -372,7 +432,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
               Telecaller Portal Login
             </h1>
             <p className="text-xs text-teal-950/70 mt-1 max-w-xs mx-auto">
-              Sign in with your assigned Caller ID or Email to access your daily birthday lead queue and tracking link.
+              Sign in with your assigned Caller ID or Email to access your daily birthday lead queue and anti-ban dispatch tools.
             </p>
           </div>
 
@@ -474,31 +534,35 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
     );
   }
 
+  // Daily target for high-volume telecaller (user indicated 300 to 500 dispatches)
+  const dailyTarget = callerProfile.dailyQuota && callerProfile.dailyQuota >= 100 ? callerProfile.dailyQuota : 400;
+  const progressPercent = Math.min(100, Math.round((stats.contactedCount / dailyTarget) * 100));
+
   // ── AUTHENTICATED STATE: DEDICATED TELECALLER WORKSPACE ──
   return (
-    <div className="space-y-6 animate-fadeIn">
-      {/* Toast */}
+    <div className="space-y-5 animate-fadeIn max-w-7xl mx-auto px-3 sm:px-6 py-4">
+      {/* Toast Notification */}
       {toastMsg && (
-        <div className="rounded-2xl bg-teal-950 text-gold px-4 py-3 shadow-lg border border-amber-400/40 text-xs font-bold flex items-center justify-between">
+        <div className="rounded-2xl bg-teal-950 text-gold px-4 py-3 shadow-lg border border-amber-400/40 text-xs font-bold flex items-center justify-between sticky top-3 z-30 animate-fadeIn">
           <span>{toastMsg}</span>
           <button onClick={() => setToastMsg("")} className="text-white hover:text-gold ml-2 cursor-pointer">✕</button>
         </div>
       )}
 
       {/* ── TOP TELECALLER HEADER & STATS BAR ── */}
-      <div className="rounded-3xl bg-white p-5 sm:p-6 shadow-sm border border-teal-900/10">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-teal-900/10 pb-5">
+      <div className="rounded-3xl bg-white p-4 sm:p-6 shadow-sm border border-teal-900/10">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-teal-900/10 pb-4">
           <div className="flex items-center gap-3">
-            <LogoMark size={48} className="ring-2 ring-amber-400/30" />
-            <div className="grid h-12 w-12 place-items-center rounded-2xl bg-teal-950 text-gold font-display font-black text-lg shadow-sm">
+            <LogoMark size={44} className="ring-2 ring-amber-400/30 shrink-0" />
+            <div className="grid h-11 w-11 place-items-center rounded-2xl bg-teal-950 text-gold font-display font-black text-base shadow-sm shrink-0">
               {callerProfile.callerId}
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="font-display text-xl font-bold text-teal-950">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h1 className="font-display text-lg sm:text-xl font-bold text-teal-950 truncate">
                   {callerProfile.name}
                 </h1>
-                <span className="rounded-full bg-emerald-500/15 text-emerald-800 px-2.5 py-0.5 text-[10px] font-black uppercase">
+                <span className="rounded-full bg-emerald-500/15 text-emerald-800 px-2 py-0.5 text-[10px] font-black uppercase">
                   Active Advisor
                 </span>
               </div>
@@ -527,7 +591,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
               onClick={() => setIsChangePasswordOpen(true)}
               className="focus-ring tap-scale inline-flex items-center gap-1.5 rounded-xl bg-white hover:bg-sand border border-teal-900/20 text-teal-950 px-3 py-2 text-xs font-bold transition cursor-pointer"
             >
-              <span>🔑 Change Password</span>
+              <span>🔑 Password</span>
             </button>
 
             <button
@@ -541,284 +605,217 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
         </div>
 
         {/* Real-Time Telecaller Metrics */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mt-5">
-          <div className="rounded-2xl bg-cream/70 p-4 border border-teal-900/10">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4 mt-4">
+          <div className="rounded-2xl bg-cream/70 p-3 sm:p-4 border border-teal-900/10">
             <p className="text-[10px] font-black uppercase text-teal-950/60 tracking-wider">
-              Assigned Leads
+              Assigned Queue
             </p>
-            <p className="font-display text-2xl font-black text-teal-950 mt-1">
+            <p className="font-display text-xl sm:text-2xl font-black text-teal-950 mt-1">
               {stats.totalAssigned}
             </p>
             <p className="text-[10px] text-teal-950/60 mt-0.5">
-              Daily quota: {callerProfile.dailyQuota || 50}
+              Pending: {counts.pending}
             </p>
           </div>
 
-          <div className="rounded-2xl bg-cream/70 p-4 border border-teal-900/10">
-            <p className="text-[10px] font-black uppercase text-teal-950/60 tracking-wider">
-              Calls Completed
+          <div className="rounded-2xl bg-emerald-50/70 p-3 sm:p-4 border border-emerald-200">
+            <p className="text-[10px] font-black uppercase text-emerald-900 tracking-wider">
+              Attended Today
             </p>
-            <p className="font-display text-2xl font-black text-teal-950 mt-1">
+            <p className="font-display text-xl sm:text-2xl font-black text-emerald-800 mt-1">
               {stats.contactedCount}
             </p>
-            <p className="text-[10px] text-teal-950/60 mt-0.5">Logged dispositions</p>
+            <p className="text-[10px] text-emerald-700 font-semibold mt-0.5">
+              {progressPercent}% of {dailyTarget} goal
+            </p>
           </div>
 
-          <div className="rounded-2xl bg-cream/70 p-4 border border-teal-900/10">
-            <p className="text-[10px] font-black uppercase text-teal-950/60 tracking-wider">
+          <div className="rounded-2xl bg-amber-50/70 p-3 sm:p-4 border border-amber-200">
+            <p className="text-[10px] font-black uppercase text-amber-900 tracking-wider">
               Conversions
             </p>
-            <p className="font-display text-2xl font-black text-emerald-700 mt-1">
+            <p className="font-display text-xl sm:text-2xl font-black text-amber-800 mt-1">
               {stats.convertedCount}
             </p>
-            <p className="text-[10px] text-emerald-700 font-bold mt-0.5">
+            <p className="text-[10px] text-amber-800 font-bold mt-0.5">
               {stats.totalAssigned > 0 ? ((stats.convertedCount / stats.totalAssigned) * 100).toFixed(1) : 0}% success rate
             </p>
           </div>
 
-          <div className="rounded-2xl bg-teal-950 p-4 text-white shadow-sm border border-teal-900">
+          <div className="rounded-2xl bg-teal-950 p-3 sm:p-4 text-white shadow-sm border border-teal-900">
             <p className="text-[10px] font-black uppercase text-amber-300 tracking-wider">
-              Total Revenue Attributed
+              Attributed Revenue
             </p>
-            <p className="font-display text-2xl font-black text-gold mt-1">
+            <p className="font-display text-xl sm:text-2xl font-black text-gold mt-1">
               {formatINR(stats.totalRevenue)}
             </p>
             <p className="text-[10px] text-white/70 mt-0.5">via ref={callerProfile.callerId}</p>
           </div>
         </div>
 
-        {/* ── DAILY OUTREACH QUOTA PROGRESS TRACKER ── */}
-        <div className="mt-5 rounded-2xl bg-cream/70 p-4 border border-teal-900/10">
-          <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-bold text-teal-950 mb-2">
+        {/* ── HIGH-VOLUME DAILY OUTREACH PACING & PROGRESS TRACKER (300-500 TARGET) ── */}
+        <div className="mt-4 rounded-2xl bg-gradient-to-r from-cream/90 via-sand/50 to-cream/90 p-3.5 sm:p-4 border border-teal-900/15 space-y-2">
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-bold text-teal-950">
             <div className="flex items-center gap-2">
-              <span className="text-sm">🎯</span>
-              <span>Daily Call &amp; Outreach Target:</span>
-              <span className="font-mono text-emerald-800 bg-emerald-100/80 px-2 py-0.5 rounded-full border border-emerald-300 text-[11px]">
-                {stats.contactedCount} / {callerProfile.dailyQuota || 50} Calls (
-                {Math.min(100, Math.round((stats.contactedCount / (callerProfile.dailyQuota || 50)) * 100))}%)
+              <span className="text-base">🎯</span>
+              <span>Daily High-Volume Goal:</span>
+              <span className="font-mono text-emerald-900 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300 text-xs font-bold">
+                {stats.contactedCount} / {dailyTarget} Dispatched ({progressPercent}%)
               </span>
             </div>
-            <span className="text-[11px] text-teal-950/70 font-medium">
-              {Math.max(0, (callerProfile.dailyQuota || 50) - stats.contactedCount)} more contacts to reach quota
+            <span className="text-[11px] text-teal-950/70 font-semibold">
+              Target: 300 to 500 contacts/day per advisor
             </span>
           </div>
+
+          {/* Progress Bar */}
           <div className="w-full bg-teal-950/10 rounded-full h-3 overflow-hidden border border-teal-900/10">
             <div
               className="bg-gradient-to-r from-emerald-500 via-teal-700 to-teal-950 h-full rounded-full transition-all duration-500 ease-out shadow-xs"
               style={{
-                width: `${Math.min(100, Math.max(4, Math.round((stats.contactedCount / (callerProfile.dailyQuota || 50)) * 100)))}%`,
+                width: `${Math.min(100, Math.max(3, progressPercent))}%`,
               }}
             />
+          </div>
+
+          {/* High-Volume Anti-Ban Shield Info */}
+          <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-[11px] text-teal-950/70 border-t border-teal-900/10">
+            <span className="flex items-center gap-1.5 text-emerald-800 font-bold">
+              <span>🛡️</span>
+              <span>7-Layer Anti-Ban Protected (50,000+ Permutations · Zero-Width Cryptographic Salt · Bangalore Proof)</span>
+            </span>
+            <span className="text-teal-950/60 font-medium">
+              💡 Tip: Maintain a natural 15-20s interval between dispatches
+            </span>
           </div>
         </div>
       </div>
 
-      {/* ── ASSIGNED LEADS QUEUE TABLE ── */}
-      <div className="rounded-3xl bg-white p-5 sm:p-6 shadow-sm border border-teal-900/10">
-        {/* 90% Main Campaign Guidance Banner for Telecallers */}
-        <div className="mb-5 rounded-2xl bg-amber-500/10 border border-amber-500/30 p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      {/* ── ASSIGNED LEADS WORKSPACE & QUEUE ── */}
+      <div className="rounded-3xl bg-white p-4 sm:p-6 shadow-sm border border-teal-900/10 space-y-4">
+        {/* Campaign Guidance Banner */}
+        <div className="rounded-2xl bg-amber-500/10 border border-amber-500/30 p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="space-y-1">
             <div className="flex items-center gap-1.5 text-xs font-black text-amber-950 uppercase tracking-wider">
               <span>🏛️</span>
-              <span>90% NGO Telecaller Focus: &apos;Sponsor 25 Boys&apos; Official Tiers</span>
+              <span>Janaseva Calling Pitch: &apos;Sponsor 25 Boys&apos; Official Tiers</span>
             </div>
             <p className="text-xs text-teal-950/80 font-medium leading-relaxed">
-              When speaking with well-wishers, prioritize offering the Form 28 registered sponsorship tiers:
-              <strong> ₹4,500 Full Day Food (All 25 Boys)</strong> · <strong>₹6,000 Monthly Ration</strong> · <strong>₹4,800 Clothes</strong> · <strong>₹9,600 Education</strong> (or starter ₹1,800 - ₹2,500).
+              When speaking with well-wishers, highlight:
+              <strong> ₹4,500 Full Day Food (All 25 Boys)</strong> · <strong>₹6,000 Monthly Ration</strong> · <strong>₹2,500 Special Feast</strong> · <strong>₹501 Starter</strong>.
+              All gifts receive Form 10AC 80G tax exemption.
             </p>
           </div>
           <button
             type="button"
             onClick={handleCopyReferralLink}
-            className="shrink-0 rounded-xl bg-amber-500 hover:bg-amber-600 text-teal-950 font-black px-3.5 py-2 text-xs shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
+            className="shrink-0 rounded-xl bg-amber-500 hover:bg-amber-600 active:scale-95 text-teal-950 font-black px-3.5 py-2 text-xs shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
           >
-            <span>📋 Copy Official Tiers Link</span>
+            <span>📋 Copy Link (?ref={callerProfile.callerId})</span>
           </button>
         </div>
 
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
-          <div>
-            <h2 className="font-display text-lg font-bold text-teal-950">
-              Birthday Call Queue ({filteredLeads.length})
-            </h2>
-            <p className="text-xs text-teal-950/60">
-              Call lead, wish them happy birthday on behalf of Janaseva Ashrama, and deliver tracking link via WhatsApp.
-            </p>
+        {/* Filter Tabs & Search Header */}
+        <div className="space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h2 className="font-display text-base sm:text-lg font-bold text-teal-950 flex items-center gap-2">
+                <span>📋 Lead Calling Queue</span>
+                <span className="text-xs font-mono bg-cream px-2.5 py-0.5 rounded-full border border-teal-900/15 font-bold">
+                  {filteredLeads.length} visible
+                </span>
+              </h2>
+              <p className="text-xs text-teal-950/60 mt-0.5">
+                Tap 📞 Call or 💬 WhatsApp to automatically mark as Attended, or tap any quick disposition pill below.
+              </p>
+            </div>
+
+            {/* Search Input */}
+            <div className="relative">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search donor name or phone..."
+                className="w-full sm:w-64 rounded-xl border border-teal-900/20 px-3 py-2 text-xs bg-white text-teal-950 focus:ring-2 focus:ring-amber-400 outline-none"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-2.5 top-2 text-teal-950/40 hover:text-teal-950 text-xs"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
           </div>
 
-          {/* Search & Filter Bar */}
-          <div className="flex flex-wrap items-center gap-2">
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search donor name or phone..."
-              className="rounded-xl border border-teal-900/20 px-3 py-1.5 text-xs bg-white text-teal-950 focus:ring-2 focus:ring-amber-400 outline-none w-48 sm:w-56"
-            />
-
-            <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
-              {[
-                { id: "ALL", label: "All Queue" },
-                { id: "Today_Birthday", label: "🎂 Today's Birthdays" },
-                { id: "Pending", label: "⏳ Pending" },
-                { id: "Interested", label: "👍 Interested" },
-                { id: "Reschedule", label: "📅 Callback" },
-                { id: "Donated", label: "🎉 Donated" },
-                { id: "Rejected", label: "Rejected" },
-              ].map((st) => (
+          {/* Filter Pills with Live Counter Badges */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+            {[
+              { id: "Pending", label: "⏳ Unattended", count: counts.pending, color: "text-amber-900 bg-amber-100" },
+              { id: "Attended", label: "✓ Attended", count: counts.attended, color: "text-emerald-900 bg-emerald-100" },
+              { id: "Today_Birthday", label: "🎂 Today's Birthdays", count: counts.birthdays, color: "text-purple-900 bg-purple-100" },
+              { id: "Interested", label: "👍 Interested", count: counts.interested, color: "text-emerald-900 bg-emerald-100" },
+              { id: "Reschedule", label: "📅 Callbacks", count: counts.reschedule, color: "text-blue-900 bg-blue-100" },
+              { id: "Donated", label: "🎉 Donated", count: counts.donated, color: "text-amber-900 bg-amber-100" },
+              { id: "ALL", label: "All Queue", count: counts.all, color: "text-teal-950/60 bg-white" },
+            ].map((st) => {
+              const isActive = filter === st.id;
+              return (
                 <button
                   key={st.id}
                   type="button"
                   onClick={() => setFilter(st.id)}
-                  className={`rounded-xl px-2.5 py-1.5 text-xs font-bold transition whitespace-nowrap cursor-pointer ${
-                    filter === st.id
-                      ? "bg-teal-950 text-gold shadow-sm"
-                      : "bg-cream text-teal-950/70 hover:bg-sand"
+                  className={`rounded-xl px-3 py-1.5 text-xs font-bold transition whitespace-nowrap cursor-pointer flex items-center gap-1.5 shrink-0 ${
+                    isActive
+                      ? "bg-teal-950 text-white shadow-sm"
+                      : "bg-cream text-teal-950/80 hover:bg-sand border border-teal-900/10"
                   }`}
                 >
-                  {st.label}
+                  <span>{st.label}</span>
+                  <span
+                    className={`rounded-full px-1.5 py-0.2 text-[10px] font-mono font-bold ${
+                      isActive ? "bg-white/20 text-white" : st.color
+                    }`}
+                  >
+                    {st.count}
+                  </span>
                 </button>
-              ))}
-            </div>
+              );
+            })}
           </div>
         </div>
 
-        {/* Desktop View Table */}
-        <div className="hidden md:block overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-cream text-teal-950 font-bold border-b border-teal-900/10">
-              <tr>
-                <th className="p-3">Lead Donor</th>
-                <th className="p-3">Phone</th>
-                <th className="p-3">Birthday</th>
-                <th className="p-3">Status / Disposition</th>
-                <th className="p-3">Quick Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-teal-900/5">
-              {loadingLeads ? (
-                <tr>
-                  <td colSpan={5} className="p-8 text-center text-teal-950/60">
-                    Loading your assigned queue...
-                  </td>
-                </tr>
-              ) : filteredLeads.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="p-8 text-center text-teal-950/60">
-                    No leads found matching current filter or search.
-                  </td>
-                </tr>
-              ) : (
-                filteredLeads.map((lead) => (
-                  <tr key={lead.leadId} className="hover:bg-sand/30 transition">
-                    <td className="p-3">
-                      <p className="font-bold text-teal-950 text-sm">{lead.name}</p>
-                      <p className="text-[10px] text-teal-950/60">Lead #{lead.leadId}</p>
-                    </td>
-                    <td className="p-3">
-                      <a
-                        href={`tel:${lead.phone}`}
-                        className="font-mono font-bold text-teal-900 hover:underline flex items-center gap-1"
-                      >
-                        <span>📞</span> {lead.phone}
-                      </a>
-                    </td>
-                    <td className="p-3">
-                      <span className="inline-flex items-center gap-1 rounded-md bg-amber-100 text-amber-900 font-bold px-2 py-0.5 text-[11px]">
-                        🎂 Day {lead.dobDay} / Month {lead.dobMonth}
-                      </span>
-                    </td>
-                    <td className="p-3">
-                      <select
-                        value={lead.status || "Pending"}
-                        onChange={(e) => handleUpdateDisposition(lead.leadId, e.target.value)}
-                        className={`rounded-xl border px-2.5 py-1 text-xs font-bold shadow-2xs outline-none cursor-pointer ${
-                          lead.status === "Donated"
-                            ? "bg-emerald-100 text-emerald-900 border-emerald-300"
-                            : lead.status === "Interested"
-                            ? "bg-amber-100 text-amber-900 border-amber-300"
-                            : lead.status === "Reschedule"
-                            ? "bg-blue-100 text-blue-900 border-blue-300"
-                            : lead.status === "Rejected"
-                            ? "bg-rose-100 text-rose-900 border-rose-300"
-                            : "bg-white text-teal-950 border-teal-900/20"
-                        }`}
-                      >
-                        <option value="Pending">Pending (Not Called)</option>
-                        <option value="Interested">Interested (Warm)</option>
-                        <option value="Reschedule">Reschedule (Callback)</option>
-                        <option value="No_Answer">No Answer / Busy</option>
-                        <option value="Rejected">Not Interested</option>
-                        <option value="Donated">Donated (Paid)</option>
-                      </select>
-                    </td>
-                    <td className="p-3">
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        {/* 1-Tap Anti-Ban WhatsApp Outreach Sender */}
-                        <button
-                          type="button"
-                          onClick={() => handleOpenWhatsAppModal(lead)}
-                          className="focus-ring tap-scale inline-flex items-center gap-1 rounded-xl bg-[#25D366] hover:brightness-105 text-white px-2.5 py-1.5 text-xs font-bold shadow-xs cursor-pointer"
-                        >
-                          <span>💬</span> WhatsApp
-                        </button>
-
-                        {/* Notes / Callback Modal Trigger */}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setActiveNotesLead(lead);
-                            setNotesText("");
-                            setCallbackDateTime("");
-                          }}
-                          className="rounded-xl bg-white border border-teal-900/20 text-teal-950 hover:bg-sand px-2 py-1.5 text-[11px] font-bold transition cursor-pointer"
-                        >
-                          📝 Notes
-                        </button>
-
-                        {/* Test Payment Attribution */}
-                        <button
-                          type="button"
-                          onClick={() => handleSimulatePayment(lead.leadId)}
-                          title="Simulate ₹1,000 payment attribution to you via webhook"
-                          className="rounded-xl bg-teal-900/10 hover:bg-teal-900/20 text-teal-900 px-2 py-1.5 text-[11px] font-bold transition cursor-pointer"
-                        >
-                          +₹1k Test
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Mobile View Lead Cards Feed */}
+        {/* ── MOBILE VIEW: TOUCH CARDS FEED (Optimized for Telecallers on Phones) ── */}
         <div className="md:hidden space-y-3">
           {loadingLeads ? (
             <div className="p-8 text-center text-teal-950/60 text-xs">
               Loading your assigned queue...
             </div>
           ) : filteredLeads.length === 0 ? (
-            <div className="p-8 text-center text-teal-950/60 text-xs">
-              No leads found matching current filter or search.
+            <div className="p-8 text-center text-teal-950/60 text-xs bg-cream/30 rounded-2xl border border-teal-900/10">
+              No leads found matching current filter or search query.
             </div>
           ) : (
             filteredLeads.map((lead) => {
               const now = new Date();
               const isTodayBirthday = lead.dobDay === now.getDate() && lead.dobMonth === now.getMonth() + 1;
+              const isAttended = lead.status && lead.status !== "Pending";
 
               return (
                 <div
                   key={lead.leadId}
                   className={`rounded-2xl p-4 bg-white border transition shadow-xs space-y-3 ${
                     isTodayBirthday
-                      ? "border-amber-400 ring-2 ring-amber-400/30 bg-amber-50/30"
-                      : "border-teal-900/10 hover:border-teal-900/20"
+                      ? "border-amber-400 ring-2 ring-amber-400/30 bg-amber-50/20"
+                      : isAttended
+                      ? "border-emerald-500/30 bg-white"
+                      : "border-teal-900/10"
                   }`}
                 >
-                  {/* Top Row: Name, ID, Status Dropdown */}
+                  {/* Top Header: Donor Name, Attended Status Badge */}
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
                       <div className="flex items-center gap-1.5 flex-wrap">
@@ -829,66 +826,149 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                           #{lead.leadId}
                         </span>
                       </div>
-                      <div className="flex items-center gap-2 mt-1">
-                        <a
-                          href={`tel:${lead.phone}`}
-                          className="font-mono text-xs font-bold text-teal-900 flex items-center gap-1"
-                        >
-                          <span>📞</span> {lead.phone}
-                        </a>
-                        {isTodayBirthday ? (
+                      <div className="flex items-center gap-2 mt-1 flex-wrap">
+                        <span className="font-mono text-xs font-bold text-teal-900">
+                          +91 {lead.phone.replace(/\D/g, "").slice(-10)}
+                        </span>
+                        {isTodayBirthday && (
                           <span className="rounded-full bg-amber-500 text-teal-950 px-2 py-0.5 text-[10px] font-black uppercase shadow-xs animate-pulse">
                             🎂 Today&apos;s Birthday!
                           </span>
-                        ) : lead.dobDay && lead.dobMonth ? (
+                        )}
+                        {!isTodayBirthday && lead.dobDay && lead.dobMonth && (
                           <span className="rounded-md bg-amber-100 text-amber-900 px-1.5 py-0.5 text-[10px] font-bold">
                             🎂 {lead.dobDay}/{lead.dobMonth}
                           </span>
-                        ) : null}
+                        )}
                       </div>
                     </div>
 
-                    {/* Status Pill / Dropdown */}
-                    <select
-                      value={lead.status || "Pending"}
-                      onChange={(e) => handleUpdateDisposition(lead.leadId, e.target.value)}
-                      className={`rounded-xl border px-2 py-1 text-xs font-bold shadow-2xs outline-none cursor-pointer shrink-0 ${
-                        lead.status === "Donated"
-                          ? "bg-emerald-100 text-emerald-900 border-emerald-300"
-                          : lead.status === "Interested"
-                          ? "bg-amber-100 text-amber-900 border-amber-300"
-                          : lead.status === "Reschedule"
-                          ? "bg-blue-100 text-blue-900 border-blue-300"
-                          : lead.status === "Rejected"
-                          ? "bg-rose-100 text-rose-900 border-rose-300"
-                          : "bg-white text-teal-950 border-teal-900/20"
-                      }`}
-                    >
-                      <option value="Pending">Pending</option>
-                      <option value="Interested">Interested</option>
-                      <option value="Reschedule">Reschedule</option>
-                      <option value="No_Answer">No Answer</option>
-                      <option value="Rejected">Rejected</option>
-                      <option value="Donated">Donated</option>
-                    </select>
+                    {/* Attended / Status Badge */}
+                    <div className="shrink-0 text-right">
+                      {lead.status === "Donated" ? (
+                        <span className="inline-block rounded-full bg-emerald-600 text-white px-2.5 py-1 text-[11px] font-black shadow-xs">
+                          🎉 Donated
+                        </span>
+                      ) : lead.status === "Interested" ? (
+                        <span className="inline-block rounded-full bg-amber-500 text-teal-950 px-2.5 py-1 text-[11px] font-black shadow-xs">
+                          ✓ Interested 👍
+                        </span>
+                      ) : lead.status === "Reschedule" ? (
+                        <span className="inline-block rounded-full bg-blue-600 text-white px-2.5 py-1 text-[11px] font-black shadow-xs">
+                          ✓ Callback 📅
+                        </span>
+                      ) : lead.status === "Contacted" ? (
+                        <span className="inline-block rounded-full bg-emerald-100 text-emerald-900 border border-emerald-300 px-2.5 py-1 text-[11px] font-bold shadow-2xs">
+                          ✓ Attended Today
+                        </span>
+                      ) : lead.status === "No_Answer" ? (
+                        <span className="inline-block rounded-full bg-gray-500 text-white px-2.5 py-1 text-[11px] font-bold shadow-2xs">
+                          ⏳ No Answer
+                        </span>
+                      ) : lead.status === "Rejected" ? (
+                        <span className="inline-block rounded-full bg-rose-600 text-white px-2.5 py-1 text-[11px] font-bold shadow-2xs">
+                          ✕ Not Interested
+                        </span>
+                      ) : (
+                        <span className="inline-block rounded-full bg-amber-100 text-amber-900 border border-amber-300 px-2.5 py-1 text-[11px] font-bold shadow-2xs">
+                          ⏳ Unattended
+                        </span>
+                      )}
+                    </div>
                   </div>
 
-                  {/* Bottom Touch Actions Row: 1-Tap Big Buttons */}
+                  {/* 1-Tap Inline Disposition Pills */}
+                  <div className="pt-2 border-t border-teal-900/10">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-[10px] font-black uppercase text-teal-950/60 tracking-wider">
+                        1-Tap Mark Disposition:
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-5 gap-1">
+                      <button
+                        type="button"
+                        onClick={() => handleInlineDisposition(lead.leadId, "Interested")}
+                        className={`min-h-[34px] rounded-xl text-[10px] font-black transition flex items-center justify-center active:scale-95 cursor-pointer ${
+                          lead.status === "Interested"
+                            ? "bg-amber-500 text-teal-950 shadow-xs"
+                            : "bg-emerald-50 text-emerald-950 border border-emerald-200 hover:bg-emerald-100"
+                        }`}
+                        title="Mark Interested"
+                      >
+                        👍 Warm
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveNotesLead(lead);
+                          setNotesText(lead.notes || "");
+                          setCallbackDateTime("");
+                        }}
+                        className={`min-h-[34px] rounded-xl text-[10px] font-black transition flex items-center justify-center active:scale-95 cursor-pointer ${
+                          lead.status === "Reschedule"
+                            ? "bg-blue-600 text-white shadow-xs"
+                            : "bg-blue-50 text-blue-950 border border-blue-200 hover:bg-blue-100"
+                        }`}
+                        title="Callback Later"
+                      >
+                        📅 Later
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleInlineDisposition(lead.leadId, "No_Answer")}
+                        className={`min-h-[34px] rounded-xl text-[10px] font-black transition flex items-center justify-center active:scale-95 cursor-pointer ${
+                          lead.status === "No_Answer"
+                            ? "bg-gray-700 text-white shadow-xs"
+                            : "bg-gray-100 text-gray-800 border border-gray-300 hover:bg-gray-200"
+                        }`}
+                        title="No Answer / Busy"
+                      >
+                        ⏳ Busy
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleInlineDisposition(lead.leadId, "Donated")}
+                        className={`min-h-[34px] rounded-xl text-[10px] font-black transition flex items-center justify-center active:scale-95 cursor-pointer ${
+                          lead.status === "Donated"
+                            ? "bg-emerald-600 text-white shadow-xs"
+                            : "bg-emerald-50 text-emerald-950 border border-emerald-300 hover:bg-emerald-100"
+                        }`}
+                        title="Donated"
+                      >
+                        🎉 Paid
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleInlineDisposition(lead.leadId, "Rejected")}
+                        className={`min-h-[34px] rounded-xl text-[10px] font-black transition flex items-center justify-center active:scale-95 cursor-pointer ${
+                          lead.status === "Rejected"
+                            ? "bg-rose-600 text-white shadow-xs"
+                            : "bg-rose-50 text-rose-950 border border-rose-200 hover:bg-rose-100"
+                        }`}
+                        title="Not Interested"
+                      >
+                        ✕ No
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Primary Touch Actions Row: Call, WhatsApp, Notes */}
                   <div className="grid grid-cols-12 gap-2 pt-1 border-t border-teal-900/10">
-                    <a
-                      href={`tel:${lead.phone}`}
-                      className="col-span-4 min-h-[42px] flex items-center justify-center gap-1.5 rounded-xl bg-teal-950 text-white text-xs font-bold shadow-xs active:scale-95 transition"
+                    <button
+                      type="button"
+                      onClick={() => handleCallLead(lead)}
+                      className="col-span-5 min-h-[44px] flex items-center justify-center gap-1.5 rounded-2xl bg-teal-950 hover:bg-teal-900 active:scale-95 text-white text-xs font-bold shadow-xs transition cursor-pointer"
                     >
-                      <span>📞</span>
-                      <span>Call</span>
-                    </a>
+                      <span className="text-base">📞</span>
+                      <span>Call Now</span>
+                    </button>
 
                     <button
                       type="button"
-                      onClick={() => handleOpenWhatsAppModal(lead)}
-                      className="col-span-5 min-h-[42px] flex items-center justify-center gap-1.5 rounded-xl bg-[#25D366] text-white text-xs font-black shadow-xs active:scale-95 transition cursor-pointer"
+                      onClick={() => handleWhatsAppLead(lead)}
+                      className="col-span-5 min-h-[44px] flex items-center justify-center gap-1.5 rounded-2xl bg-[#25D366] hover:brightness-105 active:scale-95 text-white text-xs font-black shadow-xs transition cursor-pointer"
                     >
-                      <span>💬</span>
+                      <span className="text-base">💬</span>
                       <span>WhatsApp</span>
                     </button>
 
@@ -896,20 +976,163 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                       type="button"
                       onClick={() => {
                         setActiveNotesLead(lead);
-                        setNotesText("");
+                        setNotesText(lead.notes || "");
                         setCallbackDateTime("");
                       }}
-                      className="col-span-3 min-h-[42px] flex items-center justify-center gap-1 rounded-xl bg-cream border border-teal-900/20 text-teal-950 text-xs font-bold hover:bg-sand active:scale-95 transition cursor-pointer"
+                      className="col-span-2 min-h-[44px] flex items-center justify-center rounded-2xl bg-cream border border-teal-900/20 text-teal-950 text-xs font-bold hover:bg-sand active:scale-95 transition cursor-pointer"
                       title="Add call notes"
                     >
-                      <span>📝</span>
-                      <span>Notes</span>
+                      <span className="text-base">📝</span>
                     </button>
                   </div>
                 </div>
               );
             })
           )}
+        </div>
+
+        {/* ── DESKTOP VIEW TABLE ── */}
+        <div className="hidden md:block overflow-x-auto">
+          <table className="w-full text-left text-xs">
+            <thead className="bg-cream text-teal-950 font-bold border-b border-teal-900/10">
+              <tr>
+                <th className="p-3">Lead Donor</th>
+                <th className="p-3">Phone</th>
+                <th className="p-3">Birthday</th>
+                <th className="p-3">Attended State</th>
+                <th className="p-3">1-Tap Disposition</th>
+                <th className="p-3">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-teal-900/5">
+              {loadingLeads ? (
+                <tr>
+                  <td colSpan={6} className="p-8 text-center text-teal-950/60">
+                    Loading your assigned queue...
+                  </td>
+                </tr>
+              ) : filteredLeads.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="p-8 text-center text-teal-950/60">
+                    No leads found matching current filter or search.
+                  </td>
+                </tr>
+              ) : (
+                filteredLeads.map((lead) => {
+                  const now = new Date();
+                  const isTodayBirthday = lead.dobDay === now.getDate() && lead.dobMonth === now.getMonth() + 1;
+                  const isAttended = lead.status && lead.status !== "Pending";
+
+                  return (
+                    <tr key={lead.leadId} className={`hover:bg-sand/30 transition ${isTodayBirthday ? "bg-amber-50/40" : ""}`}>
+                      <td className="p-3">
+                        <p className="font-bold text-teal-950 text-sm">{lead.name}</p>
+                        <p className="text-[10px] text-teal-950/60">Lead #{lead.leadId}</p>
+                      </td>
+                      <td className="p-3">
+                        <button
+                          type="button"
+                          onClick={() => handleCallLead(lead)}
+                          className="font-mono font-bold text-teal-900 hover:underline flex items-center gap-1 cursor-pointer"
+                        >
+                          <span>📞</span> {lead.phone}
+                        </button>
+                      </td>
+                      <td className="p-3">
+                        {isTodayBirthday ? (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-amber-500 text-teal-950 font-black px-2.5 py-0.5 text-[11px] animate-pulse">
+                            🎂 Today!
+                          </span>
+                        ) : lead.dobDay && lead.dobMonth ? (
+                          <span className="inline-flex items-center gap-1 rounded-md bg-amber-100 text-amber-900 font-bold px-2 py-0.5 text-[11px]">
+                            🎂 {lead.dobDay}/{lead.dobMonth}
+                          </span>
+                        ) : (
+                          <span className="text-teal-950/40">-</span>
+                        )}
+                      </td>
+                      <td className="p-3">
+                        {isAttended ? (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 text-emerald-900 font-bold px-2.5 py-0.5 text-[11px] border border-emerald-300">
+                            ✓ {lead.status}
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 text-gray-700 font-bold px-2.5 py-0.5 text-[11px]">
+                            ⏳ Pending
+                          </span>
+                        )}
+                      </td>
+                      <td className="p-3">
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleInlineDisposition(lead.leadId, "Interested")}
+                            className={`px-2 py-1 rounded-lg text-[10px] font-bold transition cursor-pointer ${
+                              lead.status === "Interested" ? "bg-amber-500 text-teal-950 font-black" : "bg-cream hover:bg-sand text-teal-950"
+                            }`}
+                          >
+                            👍 Interested
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setActiveNotesLead(lead);
+                              setNotesText(lead.notes || "");
+                              setCallbackDateTime("");
+                            }}
+                            className={`px-2 py-1 rounded-lg text-[10px] font-bold transition cursor-pointer ${
+                              lead.status === "Reschedule" ? "bg-blue-600 text-white" : "bg-cream hover:bg-sand text-teal-950"
+                            }`}
+                          >
+                            📅 Callback
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleInlineDisposition(lead.leadId, "Donated")}
+                            className={`px-2 py-1 rounded-lg text-[10px] font-bold transition cursor-pointer ${
+                              lead.status === "Donated" ? "bg-emerald-600 text-white font-black" : "bg-cream hover:bg-sand text-teal-950"
+                            }`}
+                          >
+                            🎉 Donated
+                          </button>
+                        </div>
+                      </td>
+                      <td className="p-3">
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => handleWhatsAppLead(lead)}
+                            className="focus-ring tap-scale inline-flex items-center gap-1 rounded-xl bg-[#25D366] hover:brightness-105 text-white px-2.5 py-1.5 text-xs font-bold shadow-xs cursor-pointer"
+                          >
+                            <span>💬</span> WhatsApp
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleCallLead(lead)}
+                            className="inline-flex items-center gap-1 rounded-xl bg-teal-950 hover:bg-teal-900 text-white px-2.5 py-1.5 text-xs font-bold transition cursor-pointer"
+                          >
+                            <span>📞</span> Call
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setActiveNotesLead(lead);
+                              setNotesText(lead.notes || "");
+                              setCallbackDateTime("");
+                            }}
+                            className="rounded-xl bg-white border border-teal-900/20 text-teal-950 hover:bg-sand px-2 py-1.5 text-[11px] font-bold transition cursor-pointer"
+                            title="Notes"
+                          >
+                            📝
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
 
@@ -1029,7 +1252,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                   rows={3}
                   value={notesText}
                   onChange={(e) => setNotesText(e.target.value)}
-                  placeholder="e.g. Wished happy birthday, donor agreed to donate ₹2,000 after 6 PM..."
+                  placeholder="e.g. Wished happy birthday, donor agreed to donate ₹2,500 after 6 PM..."
                   className="w-full rounded-xl border border-teal-900/20 p-2.5 text-xs text-teal-950 focus:border-amber-500 outline-none"
                 />
               </div>

@@ -337,7 +337,7 @@ export async function generateWhatsAppLink(
     callerName,
     language: options?.language || settings.defaultLanguage || "en",
     angle: options?.angle || settings.defaultAngle || "annadana",
-    mediaId: options?.mediaId || "food_meal",
+    mediaId: options?.mediaId || "annadana_feast",
     amount: options?.amount,
     baseUrl: siteUrl,
   });

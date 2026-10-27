@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useId } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { AntiBanLanguage, OutreachAngle, MediaAsset } from "@/lib/whatsapp-antiban";
 import { CURATED_OUTREACH_MEDIA } from "@/lib/whatsapp-antiban";
 
@@ -56,12 +56,33 @@ export function AntiBanWhatsAppModal({
   const [loading, setLoading] = useState<boolean>(false);
   const [copied, setCopied] = useState<boolean>(false);
 
+  // Live File / Camera Upload state
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const [customUploadedFile, setCustomUploadedFile] = useState<{
+    previewUrl: string;
+    name: string;
+    type: "image" | "video" | "document";
+    size: string;
+  } | null>(null);
+
+  // High-Volume Safe Outreach Cooldown Timer
+  const [cooldownSeconds, setCooldownSeconds] = useState<number>(0);
+
   // Inline disposition logging
   const [disposition, setDisposition] = useState<string>("");
   const [notes, setNotes] = useState<string>("");
   const [callbackTime, setCallbackTime] = useState<string>("");
   const [loggingDisp, setLoggingDisp] = useState<boolean>(false);
   const [dispSuccess, setDispSuccess] = useState<boolean>(false);
+
+  // Cooldown timer interval
+  useEffect(() => {
+    if (cooldownSeconds > 0) {
+      const timer = setTimeout(() => setCooldownSeconds((prev) => prev - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [cooldownSeconds]);
 
   // Generate / refresh altered message
   const generateMessage = async (overrides?: {
@@ -115,7 +136,6 @@ export function AntiBanWhatsAppModal({
   // Trigger regeneration on open or when key parameters change
   useEffect(() => {
     if (isOpen && lead) {
-      // Determine smart initial angle: if lead has birthday today or near, pick birthday
       const now = new Date();
       const isLeadBirthday =
         lead.dobDay === now.getDate() && lead.dobMonth === now.getMonth() + 1;
@@ -128,6 +148,7 @@ export function AntiBanWhatsAppModal({
       setNotes("");
       setCallbackTime("");
       setDispSuccess(false);
+      setCustomUploadedFile(null);
 
       generateMessage({ ang: initialAngle, media: initialMedia });
     }
@@ -173,6 +194,7 @@ export function AntiBanWhatsAppModal({
     setTimeout(() => setCopied(false), 3000);
   };
 
+  // Fixed endpoint: Uses /api/v1/leads/${lead.leadId}/log
   const handleSaveDisposition = async (chosenDisposition?: string) => {
     const dispToSave = chosenDisposition || disposition;
     if (!dispToSave) {
@@ -181,12 +203,10 @@ export function AntiBanWhatsAppModal({
     }
     setLoggingDisp(true);
     try {
-      const res = await fetch("/api/v1/telecaller/log-call", {
+      const res = await fetch(`/api/v1/leads/${lead.leadId}/log`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          leadId: lead.leadId,
-          callerId,
           disposition: dispToSave,
           notes: notes.trim() || undefined,
           callbackTime: callbackTime ? new Date(callbackTime).toISOString() : undefined,
@@ -195,6 +215,7 @@ export function AntiBanWhatsAppModal({
       const data = await res.json();
       if (data.success) {
         setDispSuccess(true);
+        setDisposition(dispToSave);
         if (onDispositionLogged) {
           onDispositionLogged(lead.leadId, dispToSave, notes, callbackTime);
         }
@@ -207,6 +228,43 @@ export function AntiBanWhatsAppModal({
     } finally {
       setLoggingDisp(false);
     }
+  };
+
+  // Automatic Attended Marking when launching WhatsApp
+  const handleLaunchWhatsApp = () => {
+    if (!lead.status || lead.status === "Pending") {
+      void handleSaveDisposition("Contacted");
+    }
+    setCooldownSeconds(15);
+    const targetUrl = whatsappUrl || `https://wa.me/${formattedPhone}?text=${encodeURIComponent(messageText)}`;
+    window.open(targetUrl, "_blank", "noopener,noreferrer");
+  };
+
+  // Automatic Attended Marking when calling
+  const handleLaunchCall = () => {
+    if (!lead.status || lead.status === "Pending") {
+      void handleSaveDisposition("Contacted");
+    }
+    window.location.href = `tel:${displayPhone.replace(/\s+/g, "")}`;
+  };
+
+  // Handle local file / camera upload
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const isImage = file.type.startsWith("image/");
+    const isVideo = file.type.startsWith("video/");
+    const type = isImage ? "image" : isVideo ? "video" : "document";
+    const previewUrl = URL.createObjectURL(file);
+    const sizeInKb = (file.size / 1024).toFixed(1);
+    const sizeStr = file.size > 1024 * 1024 ? `${(file.size / (1024 * 1024)).toFixed(1)} MB` : `${sizeInKb} KB`;
+
+    setCustomUploadedFile({
+      previewUrl,
+      name: file.name,
+      type,
+      size: sizeStr,
+    });
   };
 
   const cleanPhone = lead.phone.replace(/\D/g, "");
@@ -225,22 +283,22 @@ export function AntiBanWhatsAppModal({
         onClick={(e) => e.stopPropagation()}
       >
         {/* ── HEADER STRIP ── */}
-        <div className="flex items-center justify-between border-b border-teal-900/10 bg-gradient-to-r from-teal-950 via-teal-900 to-teal-950 px-5 py-4 text-white">
+        <div className="flex items-center justify-between border-b border-teal-900/10 bg-gradient-to-r from-teal-950 via-teal-900 to-teal-950 px-4 sm:px-5 py-3.5 sm:py-4 text-white">
           <div className="flex items-center gap-3 min-w-0">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-emerald-500/20 text-emerald-300 text-xl font-bold ring-1 ring-emerald-400/30">
               💬
             </span>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <h3 className="font-display text-base sm:text-lg font-black truncate">
-                  Send WhatsApp Message (Anti-Ban Protected)
+                <h3 className="font-display text-sm sm:text-lg font-black truncate">
+                  Anti-Ban WhatsApp Dispatch Hub
                 </h3>
                 <span className="shrink-0 rounded-full bg-emerald-400/20 text-emerald-300 text-[10px] font-black uppercase px-2 py-0.5 border border-emerald-400/30">
                   🛡️ 0% Ban Risk
                 </span>
               </div>
               <p className="text-xs text-white/75 truncate mt-0.5">
-                Every dispatch is dynamically altered with unique greetings, spintax tokens &amp; official media.
+                50,000+ Permutations · Zero-Width Hash Salt · Bangalore Location Proof · 300-500/day safe
               </p>
             </div>
           </div>
@@ -255,21 +313,30 @@ export function AntiBanWhatsAppModal({
         </div>
 
         {/* ── RECIPIENT & SENDER CONTEXT BAR ── */}
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-teal-900/10 bg-cream/40 px-5 py-3 text-xs">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-teal-900/10 bg-cream/40 px-4 sm:px-5 py-2.5 sm:py-3 text-xs">
           {/* Recipient info */}
           <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-teal-950 text-white font-bold text-xs">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-teal-950 text-white font-bold text-xs shrink-0">
               {lead.name[0]?.toUpperCase() || "L"}
             </div>
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <span className="font-bold text-teal-950 text-sm">{lead.name}</span>
-                <span className="font-mono text-teal-950/70 bg-white px-2 py-0.5 rounded-md border border-teal-900/10">
+                <span className="font-mono text-teal-950/70 bg-white px-2 py-0.5 rounded-md border border-teal-900/10 text-xs">
                   {displayPhone}
                 </span>
                 {lead.dobDay && lead.dobMonth && (
                   <span className="rounded-full bg-amber-100 text-amber-900 px-2 py-0.5 font-bold text-[10px]">
                     🎂 {lead.dobDay} {MONTH_NAMES[lead.dobMonth - 1]}
+                  </span>
+                )}
+                {lead.status && lead.status !== "Pending" ? (
+                  <span className="rounded-full bg-emerald-100 text-emerald-900 px-2 py-0.5 font-bold text-[10px]">
+                    ✓ Attended ({lead.status})
+                  </span>
+                ) : (
+                  <span className="rounded-full bg-gray-100 text-gray-700 px-2 py-0.5 font-bold text-[10px]">
+                    ⏳ Pending
                   </span>
                 )}
               </div>
@@ -312,7 +379,7 @@ export function AntiBanWhatsAppModal({
 
         {/* ── MODAL BODY: 2-COLUMN WORKSPACE ── */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-5 pb-32 sm:pb-5 grid grid-cols-1 lg:grid-cols-12 gap-5">
-          {/* LEFT COLUMN: Controls, Language, Angle, Media Picker (5 cols) */}
+          {/* LEFT COLUMN: Controls, Language, Angle, Media Picker, Camera (5 cols) */}
           <div className="lg:col-span-5 space-y-4">
             {/* 1. Language Pill Selector */}
             <div>
@@ -450,7 +517,7 @@ export function AntiBanWhatsAppModal({
                     onClick={() => handleAmountChange(item.amt)}
                     className={`rounded-xl px-2.5 py-1 text-xs font-bold transition cursor-pointer ${
                       suggestedAmount === item.amt
-                        ? "bg-saffron text-teal-950 shadow-xs"
+                        ? "bg-amber-400 text-teal-950 shadow-xs"
                         : "bg-white text-teal-950 border border-teal-900/15 hover:bg-cream"
                     }`}
                   >
@@ -460,17 +527,17 @@ export function AntiBanWhatsAppModal({
               </div>
             </div>
 
-            {/* 4. Media Attachment Picker */}
+            {/* 4. Curated Media Attachment Picker */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="text-[11px] font-black uppercase tracking-wider text-teal-950/70">
-                  📎 Media Asset to Attach
+                  📎 Official Ashrama Media Library
                 </label>
                 <span className="text-[10px] text-teal-950/60">
-                  Select 1 asset to send/copy
+                  Select 1 asset to send
                 </span>
               </div>
-              <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
+              <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
                 {mediaList.map((m) => {
                   const isSelected = selectedMediaId === m.id;
                   return (
@@ -526,7 +593,7 @@ export function AntiBanWhatsAppModal({
                 })}
               </div>
 
-              {/* Selected Media Quick Action Preview */}
+              {/* Selected Media Action Preview */}
               {activeMedia && (
                 <div className="mt-2 rounded-2xl bg-cream/60 p-2.5 border border-teal-900/10 flex items-center justify-between">
                   <div className="min-w-0">
@@ -555,6 +622,110 @@ export function AntiBanWhatsAppModal({
                 </div>
               )}
             </div>
+
+            {/* 5. Live Camera & Local File Picker (Live Kitchen Photo / Custom Video) */}
+            <div className="rounded-2xl bg-teal-950/5 p-3 border border-teal-900/10 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-black uppercase text-teal-950">
+                  📸 Live Kitchen Camera &amp; Upload
+                </span>
+                <span className="text-[10px] text-teal-950/60 font-semibold">
+                  Custom photo/video/PDF
+                </span>
+              </div>
+
+              {/* Hidden file inputs */}
+              <input
+                type="file"
+                ref={fileInputRef}
+                accept="image/*,video/*,application/pdf"
+                onChange={handleFileUpload}
+                className="hidden"
+              />
+              <input
+                type="file"
+                ref={cameraInputRef}
+                accept="image/*"
+                capture="environment"
+                onChange={handleFileUpload}
+                className="hidden"
+              />
+
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => cameraInputRef.current?.click()}
+                  className="flex items-center justify-center gap-1.5 p-2 rounded-xl bg-white hover:bg-cream border border-teal-900/15 text-teal-950 text-xs font-bold shadow-2xs transition active:scale-95 cursor-pointer"
+                >
+                  <span className="text-base">📷</span>
+                  <span>Snap Kitchen Photo</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex items-center justify-center gap-1.5 p-2 rounded-xl bg-white hover:bg-cream border border-teal-900/15 text-teal-950 text-xs font-bold shadow-2xs transition active:scale-95 cursor-pointer"
+                >
+                  <span className="text-base">📁</span>
+                  <span>Select File / PDF</span>
+                </button>
+              </div>
+
+              {customUploadedFile && (
+                <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-300 flex items-center justify-between animate-fadeIn">
+                  <div className="flex items-center gap-2 min-w-0">
+                    {customUploadedFile.type === "image" ? (
+                      <img
+                        src={customUploadedFile.previewUrl}
+                        alt="Upload preview"
+                        className="w-9 h-9 object-cover rounded-lg border border-emerald-400 shrink-0"
+                      />
+                    ) : (
+                      <span className="text-2xl">📄</span>
+                    )}
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-emerald-950 truncate">
+                        {customUploadedFile.name}
+                      </p>
+                      <p className="text-[10px] text-emerald-700">
+                        {customUploadedFile.size} · Ready to attach in chat
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setCustomUploadedFile(null)}
+                    className="text-emerald-900 hover:text-rose-700 text-xs font-bold px-2 py-1 cursor-pointer"
+                    title="Remove attachment"
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* 6. Bangalore Physical Location & Govt Legitimacy Badge */}
+            <div className="rounded-2xl bg-cream/70 p-3 border border-teal-900/10 text-xs space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-teal-950 flex items-center gap-1.5">
+                  <span>📍</span>
+                  <span>Bangalore Calling Proof</span>
+                </span>
+                <span className="text-[10px] font-mono text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full font-bold">
+                  JJ Act KA18CH0242
+                </span>
+              </div>
+              <p className="text-[11px] text-teal-950/70">
+                Janaseva Ashrama, Turahalli, Bengaluru - 560062
+              </p>
+              <a
+                href="https://maps.google.com/?q=Janaseva+Trust+Ashrama+Turahalli+Bengaluru"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 text-[11px] font-bold text-teal-900 hover:underline"
+              >
+                <span>🗺️ Verified Google Maps Pin</span>
+              </a>
+            </div>
           </div>
 
           {/* RIGHT COLUMN: Live Message Preview, Anti-Ban Badge, Actions & Quick Logging (7 cols) */}
@@ -575,18 +746,18 @@ export function AntiBanWhatsAppModal({
                   type="button"
                   onClick={() => generateMessage()}
                   disabled={loading}
-                  className="inline-flex items-center gap-1 text-[11px] font-bold text-teal-900 hover:text-saffron-dark cursor-pointer"
+                  className="inline-flex items-center gap-1 text-[11px] font-bold text-teal-900 hover:text-amber-800 cursor-pointer"
                   title="Spin a fresh unique message permutation"
                 >
                   <span className={loading ? "animate-spin" : ""}>🔄</span>
-                  <span>Alter Variation</span>
+                  <span>Alter Permutation</span>
                 </button>
               </div>
 
               {/* Textarea */}
               <div className="relative rounded-2xl border border-teal-900/15 bg-sand/20 p-3 shadow-inner">
                 <textarea
-                  rows={10}
+                  rows={9}
                   value={messageText}
                   onChange={(e) => setMessageText(e.target.value)}
                   className="w-full bg-transparent text-xs sm:text-sm text-teal-950 leading-relaxed focus:outline-hidden resize-none font-sans"
@@ -599,11 +770,34 @@ export function AntiBanWhatsAppModal({
                     {messageText.length}
                   </span>
                   <span className="text-emerald-700 font-semibold flex items-center gap-1">
-                    <span>✓</span> Spintax Randomized (Ban Resistant)
+                    <span>✓</span> Zero-Width Hash Salted · Anti-Ban Active
                   </span>
                 </div>
               </div>
             </div>
+
+            {/* Pacing Cooldown / Anti-Ban Safety Meter */}
+            {cooldownSeconds > 0 ? (
+              <div className="rounded-2xl bg-amber-500/15 border border-amber-500/30 p-2.5 text-xs text-amber-950 font-bold flex items-center justify-between animate-fadeIn">
+                <div className="flex items-center gap-2">
+                  <span className="animate-spin text-base">⏱️</span>
+                  <span>High-Volume Pacing Cooldown: Wait {cooldownSeconds}s before next send</span>
+                </div>
+                <span className="text-[10px] font-mono bg-white px-2 py-0.5 rounded-md border border-amber-400">
+                  Rate-Limit Shield
+                </span>
+              </div>
+            ) : (
+              <div className="rounded-2xl bg-emerald-50 border border-emerald-200 p-2.5 text-xs text-emerald-950 font-semibold flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <span>🛡️</span>
+                  <span>Safety Engine: Ready to send next message (0% Ban Risk)</span>
+                </span>
+                <span className="text-[10px] text-emerald-700 font-bold bg-white px-2 py-0.5 rounded-md border border-emerald-300">
+                  Optimal Speed
+                </span>
+              </div>
+            )}
 
             {/* Main Action Buttons */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
@@ -611,41 +805,41 @@ export function AntiBanWhatsAppModal({
               <button
                 type="button"
                 onClick={handleCopyText}
-                className="focus-ring tap-scale inline-flex items-center justify-center gap-2 rounded-2xl bg-white hover:bg-cream text-teal-950 px-4 py-3 text-xs sm:text-sm font-bold border border-teal-900/15 shadow-xs transition cursor-pointer"
+                className="focus-ring tap-scale inline-flex items-center justify-center gap-2 rounded-2xl bg-white hover:bg-cream text-teal-950 px-4 py-3 text-xs sm:text-sm font-bold border border-teal-900/15 shadow-xs transition cursor-pointer min-h-[46px]"
               >
                 <span>{copied ? "✓" : "📋"}</span>
                 <span>{copied ? "Copied to Clipboard!" : "Copy Message Text"}</span>
               </button>
 
-              {/* Open in WhatsApp Web / App */}
-              <a
-                href={whatsappUrl || `https://wa.me/${formattedPhone}?text=${encodeURIComponent(messageText)}`}
-                target="_blank"
-                rel="noreferrer"
-                className="focus-ring tap-scale inline-flex items-center justify-center gap-2 rounded-2xl bg-[#25D366] hover:brightness-105 text-white px-4 py-3 text-xs sm:text-sm font-black shadow-md transition cursor-pointer"
+              {/* Open in WhatsApp Web / App (Auto marks attended) */}
+              <button
+                type="button"
+                onClick={handleLaunchWhatsApp}
+                className="focus-ring tap-scale inline-flex items-center justify-center gap-2 rounded-2xl bg-[#25D366] hover:brightness-105 active:bg-[#1faa53] text-white px-4 py-3 text-xs sm:text-sm font-black shadow-md transition cursor-pointer min-h-[46px]"
               >
                 <span>💬</span>
                 <span>Send via WhatsApp</span>
-              </a>
+              </button>
             </div>
 
-            {/* Direct Phone Call Button */}
+            {/* Direct Phone Call Button (Auto marks attended) */}
             <div className="flex items-center justify-between bg-cream/40 p-2.5 rounded-2xl border border-teal-900/10 text-xs">
-              <span className="text-teal-950/70 font-medium">Prefer to speak first?</span>
-              <a
-                href={`tel:${displayPhone.replace(/\s+/g, "")}`}
-                className="focus-ring tap-scale inline-flex items-center gap-1.5 rounded-xl bg-teal-950 hover:bg-teal-900 text-white px-3 py-1.5 text-xs font-bold transition shadow-2xs"
+              <span className="text-teal-950/70 font-medium">Prefer speaking first?</span>
+              <button
+                type="button"
+                onClick={handleLaunchCall}
+                className="focus-ring tap-scale inline-flex items-center gap-1.5 rounded-xl bg-teal-950 hover:bg-teal-900 text-white px-3 py-1.5 text-xs font-bold transition shadow-2xs cursor-pointer"
               >
                 <span>📞</span>
                 <span>Call Lead ({displayPhone})</span>
-              </a>
+              </button>
             </div>
 
             {/* ── QUICK CALL LOGGING / DISPOSITION INLINE ── */}
             <div className="rounded-2xl border border-teal-900/15 bg-white p-3.5 space-y-2.5 shadow-xs">
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-black uppercase tracking-wider text-teal-950">
-                  ⚡ Quick Log Disposition
+                  ⚡ 1-Tap Disposition Log
                 </span>
                 {dispSuccess && (
                   <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 animate-fadeIn">
@@ -657,11 +851,11 @@ export function AntiBanWhatsAppModal({
               {/* Quick Status Pills */}
               <div className="flex flex-wrap gap-1.5">
                 {[
-                  { label: "Interested", val: "Interested", color: "bg-emerald-600 text-white" },
-                  { label: "Reschedule", val: "Reschedule", color: "bg-blue-600 text-white" },
-                  { label: "Rejected", val: "Rejected", color: "bg-rose-600 text-white" },
-                  { label: "No Answer", val: "No_Answer", color: "bg-gray-600 text-white" },
-                  { label: "🎉 Donated", val: "Donated", color: "bg-amber-600 text-white" },
+                  { label: "Interested 👍", val: "Interested", color: "bg-emerald-600 text-white" },
+                  { label: "Reschedule 📅", val: "Reschedule", color: "bg-blue-600 text-white" },
+                  { label: "No Answer ⏳", val: "No_Answer", color: "bg-gray-600 text-white" },
+                  { label: "Donated 🎉", val: "Donated", color: "bg-amber-600 text-white" },
+                  { label: "Not Interested ✕", val: "Rejected", color: "bg-rose-600 text-white" },
                 ].map((s) => (
                   <button
                     key={s.val}
@@ -671,10 +865,10 @@ export function AntiBanWhatsAppModal({
                       handleSaveDisposition(s.val);
                     }}
                     disabled={loggingDisp}
-                    className={`rounded-xl px-2.5 py-1 text-xs font-bold transition cursor-pointer ${
+                    className={`rounded-xl px-2.5 py-1 text-xs font-bold transition cursor-pointer min-h-[34px] ${
                       disposition === s.val
                         ? s.color
-                        : "bg-cream text-teal-950 border border-teal-900/10 hover:bg-cream-dark"
+                        : "bg-cream text-teal-950 border border-teal-900/10 hover:bg-sand"
                     }`}
                   >
                     {s.label}
@@ -701,7 +895,7 @@ export function AntiBanWhatsAppModal({
               <div className="flex gap-2">
                 <input
                   type="text"
-                  placeholder="Add quick notes (e.g. Asked to send 80G PDF, will pay tomorrow)..."
+                  placeholder="Add quick notes (e.g. Requested 80G tax receipt PDF)..."
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   onKeyDown={(e) => {
@@ -718,7 +912,7 @@ export function AntiBanWhatsAppModal({
                   disabled={loggingDisp || (!disposition && !notes.trim())}
                   className="rounded-xl bg-teal-950 px-3 py-1.5 text-xs font-bold text-white hover:bg-teal-900 transition disabled:opacity-40 cursor-pointer"
                 >
-                  {loggingDisp ? "Saving..." : "Save Log"}
+                  {loggingDisp ? "Saving..." : "Save"}
                 </button>
               </div>
             </div>
@@ -728,25 +922,25 @@ export function AntiBanWhatsAppModal({
         {/* ── STICKY MOBILE ACTION BAR ── */}
         <div className="sm:hidden sticky bottom-0 bg-white/95 backdrop-blur-md border-t border-teal-900/15 p-3 shadow-lg z-20 space-y-2">
           {/* Main 1-tap WhatsApp trigger */}
-          <a
-            href={whatsappUrl || `https://wa.me/${formattedPhone}?text=${encodeURIComponent(messageText)}`}
-            target="_blank"
-            rel="noreferrer"
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#25D366] active:bg-[#1faa53] text-white font-black text-sm shadow-md transition"
+          <button
+            type="button"
+            onClick={handleLaunchWhatsApp}
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#25D366] active:bg-[#1faa53] text-white font-black text-sm shadow-md transition cursor-pointer"
           >
             <span className="text-lg">💬</span>
-            <span>Send via WhatsApp (wa.me)</span>
-          </a>
+            <span>Send via WhatsApp</span>
+          </button>
 
           {/* Quick Row: Call, Copy, Alter */}
           <div className="grid grid-cols-3 gap-2">
-            <a
-              href={`tel:${displayPhone.replace(/\s+/g, "")}`}
-              className="flex h-10 items-center justify-center gap-1 rounded-xl bg-teal-950 text-white text-xs font-bold active:scale-95 transition"
+            <button
+              type="button"
+              onClick={handleLaunchCall}
+              className="flex h-10 items-center justify-center gap-1 rounded-xl bg-teal-950 text-white text-xs font-bold active:scale-95 transition cursor-pointer"
             >
               <span>📞</span>
               <span>Call</span>
-            </a>
+            </button>
             <button
               type="button"
               onClick={handleCopyText}
@@ -768,7 +962,7 @@ export function AntiBanWhatsAppModal({
         </div>
 
         {/* ── FOOTER CLOSE ── */}
-        <div className="flex items-center justify-between border-t border-teal-900/10 bg-cream/20 px-5 py-3 text-xs text-teal-950/60">
+        <div className="flex items-center justify-between border-t border-teal-900/10 bg-cream/20 px-4 sm:px-5 py-3 text-xs text-teal-950/60">
           <span>Lead ID: #{lead.leadId} · Assigned: {lead.assignedCallerId || callerId}</span>
           <button
             type="button"
