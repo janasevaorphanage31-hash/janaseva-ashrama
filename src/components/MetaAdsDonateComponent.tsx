@@ -2321,7 +2321,7 @@ export function MetaAdsDonateComponent() {
 
       {/* ── 7. 📱 MOBILE STICKY BOTTOM DONATION BAR ── */}
       {showStickyBar && (
-        <div className="fixed inset-x-0 bottom-0 z-40 bg-white/95 backdrop-blur-md border-t border-teal-900/15 p-2.5 px-4 shadow-2xl sm:hidden flex items-center justify-between gap-3 animate-in slide-in-from-bottom">
+        <div className="fixed inset-x-0 bottom-0 z-40 bg-white/95 backdrop-blur-md border-t border-teal-900/15 p-2.5 px-4 pb-[max(0.625rem,env(safe-area-inset-bottom,0px))] shadow-2xl sm:hidden flex items-center justify-between gap-3 animate-in slide-in-from-bottom">
           <div className="min-w-0">
             <div className="flex items-center gap-1">
               <span className="font-display text-base font-black text-[#042825]">

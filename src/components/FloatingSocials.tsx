@@ -11,6 +11,17 @@ export function FloatingSocials() {
   const { total } = useCart();
   const [open, setOpen] = useState(false);
   const [activeIconIndex, setActiveIconIndex] = useState(0);
+  const [scrolledPastHero, setScrolledPastHero] = useState(false);
+
+  // Monitor scroll depth on customer pages so floating speed dial never occludes the urgent donation bar
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolledPastHero(window.scrollY > 480);
+    };
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   // Cycle idle icon preview every 2.8 seconds between WhatsApp, Phone, Instagram, Facebook, X
   useEffect(() => {
@@ -31,11 +42,11 @@ export function FloatingSocials() {
     return null;
   }
 
-  // Dynamic clearance: If Giving Basket is active, lift cleanly above it so CHECKOUT NOW is never covered
-  const positionClass =
-    total > 0
-      ? "bottom-[calc(11.5rem+env(safe-area-inset-bottom))] md:bottom-24 right-3.5 md:right-6"
-      : "bottom-[calc(5.75rem+env(safe-area-inset-bottom))] md:bottom-6 right-3.5 md:right-6";
+  // Dynamic clearance: If Urgent Donation Bar or Giving Basket is active on mobile, lift cleanly above it
+  const isUrgentBarActive = total > 0 || scrolledPastHero;
+  const positionClass = isUrgentBarActive
+    ? "bottom-[calc(11.5rem+env(safe-area-inset-bottom,0px))] md:bottom-24 right-3.5 md:right-6"
+    : "bottom-[calc(5.75rem+env(safe-area-inset-bottom,0px))] md:bottom-6 right-3.5 md:right-6";
 
   return (
     <>

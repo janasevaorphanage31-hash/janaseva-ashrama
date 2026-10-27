@@ -4,7 +4,7 @@ import { SITE } from "@/lib/site";
 
 export function SiteFooter() {
   return (
-    <footer className="bg-teal-950 px-4 sm:px-6 lg:px-8 py-10 md:py-14 text-sm text-white/80 no-print w-full max-w-full overflow-hidden border-t border-teal-900/40">
+    <footer className="bg-teal-950 px-4 sm:px-6 lg:px-8 pt-10 pb-28 md:py-14 text-sm text-white/80 no-print w-full max-w-full overflow-hidden border-t border-teal-900/40">
       <div className="mx-auto grid grid-cols-1 max-w-7xl gap-8 sm:grid-cols-2 lg:grid-cols-4 lg:gap-10 w-full min-w-0">
         {/* Col 1: Ashrama Mission & Trust */}
         <div className="space-y-3">

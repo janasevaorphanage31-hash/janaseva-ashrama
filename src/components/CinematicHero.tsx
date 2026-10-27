@@ -372,8 +372,9 @@ export function CinematicHero({ content }: { content?: Partial<SiteContentMap> }
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-2.5">
-              {heroTiers.map((tier) => {
+              {heroTiers.map((tier, idx) => {
                 const isSelected = effectiveAmount === tier.amt && !customAmt;
+                const isLastOnMobile = idx === heroTiers.length - 1;
                 return (
                   <button
                     key={tier.amt}
@@ -384,6 +385,8 @@ export function CinematicHero({ content }: { content?: Partial<SiteContentMap> }
                       setDedicatedAmount(tier.amt);
                     }}
                     className={`group relative overflow-hidden p-2.5 sm:p-3 rounded-2xl text-left transition-all border cursor-pointer tap-scale flex flex-col justify-between min-h-[92px] sm:min-h-[108px] ${
+                      isLastOnMobile ? "col-span-2 sm:col-span-1" : "col-span-1"
+                    } ${
                       isSelected
                         ? "border-amber-300 ring-2 ring-amber-300 shadow-xl shadow-orange-500/30 scale-[1.02]"
                         : "border-white/20 hover:border-amber-300/60"

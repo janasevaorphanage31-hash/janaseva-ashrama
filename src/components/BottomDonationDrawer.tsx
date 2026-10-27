@@ -642,6 +642,26 @@ export function BottomDonationDrawer() {
                     <p className="font-bold text-sm text-white">{BANK_DETAILS.accountName}</p>
                   </div>
 
+                  {/* Verified Official Axis Bank UPI ID */}
+                  <div className="rounded-xl bg-white/10 p-3 flex items-center justify-between gap-2 border border-white/10">
+                    <div className="min-w-0">
+                      <span className="text-[10px] text-white/60 uppercase block">Official Trust Axis Bank UPI ID</span>
+                      <p className="font-mono text-xs sm:text-sm font-black text-amber-300 truncate">
+                        {BANK_DETAILS.upiId}
+                      </p>
+                      <span className="text-[9px] text-emerald-300 font-bold block mt-0.5">
+                        {BANK_DETAILS.merchantName} · Verified NGO (MCC 8398)
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleCopy(BANK_DETAILS.upiId, "upi")}
+                      className="shrink-0 px-3 py-1.5 rounded-lg bg-amber-400 text-teal-950 text-xs font-black hover:bg-amber-300 cursor-pointer transition shadow-xs"
+                    >
+                      {copiedField === "upi" ? "✓ Copied!" : "Copy UPI"}
+                    </button>
+                  </div>
+
                   <div className="grid grid-cols-2 gap-3">
                     <div className="rounded-xl bg-white/10 p-3">
                       <span className="text-[10px] text-white/60 uppercase block">Account Number</span>
