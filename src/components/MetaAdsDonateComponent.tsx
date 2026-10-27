@@ -459,8 +459,8 @@ export function MetaAdsDonateComponent() {
   const [showOccasionSelect, setShowOccasionSelect] = useState(() => Boolean(searchParams.get("occasion")));
   const [prayerNote, setPrayerNote] = useState("");
 
-  // Payment drawer toggles
-  const [showDirectUpi, setShowDirectUpi] = useState(false);
+  // Payment drawer toggles (Default open Axis Bank Payment QR for immediate donor trust & scanning)
+  const [showDirectUpi, setShowDirectUpi] = useState(true);
   const [showBankTransfer, setShowBankTransfer] = useState(false);
 
   // UI States
@@ -1677,29 +1677,36 @@ export function MetaAdsDonateComponent() {
           </div>
 
           {/* Direct QR & Bank Wire Toggles */}
-          <div className="pt-0.5 flex items-center justify-center gap-3 text-xs">
+          <div className="pt-1 flex items-center justify-center gap-2 text-xs flex-wrap">
             <button
               type="button"
               onClick={() => {
                 setShowDirectUpi(!showDirectUpi);
                 setShowBankTransfer(false);
               }}
-              className="font-bold text-emerald-800 hover:text-emerald-950 underline cursor-pointer inline-flex items-center gap-1 text-[11px]"
+              className={`font-black px-3 py-1.5 rounded-xl border transition cursor-pointer inline-flex items-center gap-1.5 text-xs shadow-2xs ${
+                showDirectUpi
+                  ? "bg-emerald-800 text-white border-emerald-900"
+                  : "bg-white text-emerald-900 border-teal-900/20 hover:bg-cream"
+              }`}
             >
-              <span>📱</span>
-              <span>{showDirectUpi ? "Hide QR Code" : "Pay via Direct UPI / Dynamic QR"}</span>
+              <span>📷</span>
+              <span>{showDirectUpi ? "Hide Axis Bank Payment QR" : "Scan Axis Bank Payment QR"}</span>
             </button>
-            <span className="text-teal-950/30">|</span>
             <button
               type="button"
               onClick={() => {
                 setShowBankTransfer(!showBankTransfer);
                 setShowDirectUpi(false);
               }}
-              className="font-bold text-teal-800 hover:text-teal-950 underline cursor-pointer inline-flex items-center gap-1 text-[11px]"
+              className={`font-black px-3 py-1.5 rounded-xl border transition cursor-pointer inline-flex items-center gap-1.5 text-xs shadow-2xs ${
+                showBankTransfer
+                  ? "bg-teal-950 text-white border-teal-950"
+                  : "bg-white text-teal-950 border-teal-900/20 hover:bg-cream"
+              }`}
             >
               <span>🏦</span>
-              <span>{showBankTransfer ? "Hide Bank Wire" : "Axis Bank Wire Transfer"}</span>
+              <span>{showBankTransfer ? "Hide Bank Wire" : "Axis Bank Wire Details"}</span>
             </button>
           </div>
 

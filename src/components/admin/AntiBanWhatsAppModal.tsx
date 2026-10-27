@@ -92,6 +92,10 @@ export function AntiBanWhatsAppModal({
   const [loggingDisp, setLoggingDisp] = useState<boolean>(false);
   const [dispSuccess, setDispSuccess] = useState<boolean>(false);
 
+  // Telecaller call pitch script
+  const [showCallScript, setShowCallScript] = useState<boolean>(true);
+  const [scriptLang, setScriptLang] = useState<"kanglish" | "kn" | "en">("kanglish");
+
   // Cooldown timer interval
   useEffect(() => {
     if (cooldownSeconds > 0) {
@@ -381,6 +385,84 @@ export function AntiBanWhatsAppModal({
     const targetUrl = `https://wa.me/${formattedPhone}?text=${encodeURIComponent(messageText)}`;
     window.open(targetUrl, "_blank", "noopener,noreferrer");
     setApiCardMessage(`✓ Opened WhatsApp directly to ${displayPhone}! Photo is copied to clipboard.`);
+    setTimeout(() => setApiCardMessage(""), 5000);
+  };
+
+  // SHARE PAYMENT QR SCANNER: Attaches the Official Axis Bank UPI Payment Standee QR image directly
+  const handleShareQrScanner = async () => {
+    if (!lead) return;
+    if (!lead.status || lead.status === "Pending") {
+      void handleSaveDisposition("Contacted");
+    }
+    setCooldownSeconds(10);
+
+    const qrAsset = CURATED_OUTREACH_MEDIA.payment_qr_scanner || {
+      id: "payment_qr_scanner",
+      url: `${SITE.url}/media/janaseva-axis-bank-qr.jpg`,
+      filename: "janaseva-axis-bank-qr.jpg",
+      title: "Axis Bank UPI Payment QR Scanner",
+      type: "image" as const,
+      description: "Official Axis Bank Standee QR",
+    };
+
+    setActiveMedia(qrAsset);
+    setSelectedMediaId("payment_qr_scanner");
+
+    // Pre-copy customer phone number to clipboard
+    try {
+      await navigator.clipboard.writeText(formattedPhone);
+    } catch {}
+
+    const qrCaption = `🙏 Namaskara ${lead.name} Sir/Madam!\n\nAttached is our Official Axis Bank UPI Payment QR Scanner for Janaseva Ashrama (Turahalli, Bengaluru). Scan directly via GPay / PhonePe / Paytm / BHIM:\n\n💳 UPI ID: MAB.037349050110044@axisbank\n🏛️ Registered Trust: JANASEVA SAMRUDDI EDUCATI\n📜 Karnataka Govt JJ Act Reg: KA18CH0242\n🧾 100% Tax Deductible (Section 80G Form 10AC)\n📍 Turahalli, Bengaluru · Google Maps: ${SITE.mapsUrl}`;
+
+    try {
+      const res = await fetch(qrAsset.url);
+      const blob = await res.blob();
+      const file = new File([blob], qrAsset.filename || "janaseva-axis-bank-qr.jpg", { type: blob.type || "image/jpeg" });
+
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          text: qrCaption,
+          title: "Official Axis Bank Payment QR Scanner - Janaseva Ashrama",
+        });
+        setApiCardMessage(`✓ Axis Bank Payment QR Scanner shared! Customer phone (${displayPhone}) copied to clipboard.`);
+        setTimeout(() => setApiCardMessage(""), 5000);
+        return;
+      }
+    } catch (err: any) {
+      if (err.name === "AbortError") return;
+      console.warn("Native share unsupported for QR scanner, using clipboard fallback:", err);
+    }
+
+    // Fallback: Copy QR to clipboard and open wa.me
+    try {
+      const res = await fetch(qrAsset.url);
+      const blob = await res.blob();
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.src = qrAsset.url;
+      await new Promise((resolve) => {
+        img.onload = resolve;
+      });
+
+      const canvas = document.createElement("canvas");
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext("2d");
+      ctx?.drawImage(img, 0, 0);
+
+      canvas.toBlob(async (pngBlob) => {
+        if (!pngBlob) return;
+        await navigator.clipboard.write([new ClipboardItem({ "image/png": pngBlob })]);
+        setPhotoCopied(true);
+        setTimeout(() => setPhotoCopied(false), 3500);
+      }, "image/png");
+    } catch {}
+
+    const targetUrl = `https://wa.me/${formattedPhone}?text=${encodeURIComponent(qrCaption)}`;
+    window.open(targetUrl, "_blank", "noopener,noreferrer");
+    setApiCardMessage(`✓ Opened WhatsApp directly to ${displayPhone}! Axis Bank QR Scanner is copied to clipboard.`);
     setTimeout(() => setApiCardMessage(""), 5000);
   };
 
@@ -1209,37 +1291,54 @@ export function AntiBanWhatsAppModal({
                     </button>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                     {/* Step 1: Open Customer Chat */}
                     <button
                       type="button"
                       onClick={handleSendDirectToCustomer}
-                      className="p-3 rounded-2xl bg-teal-950 hover:bg-teal-900 active:scale-95 text-white text-left font-bold text-xs shadow-md transition flex items-center gap-3 cursor-pointer min-h-[56px]"
+                      className="p-2.5 rounded-2xl bg-teal-950 hover:bg-teal-900 active:scale-95 text-white text-left font-bold text-xs shadow-md transition flex items-center gap-2 cursor-pointer min-h-[54px]"
                     >
-                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-amber-400 text-teal-950 text-sm font-black shadow-xs">
+                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-amber-400 text-teal-950 text-xs font-black shadow-xs">
                         1
                       </span>
                       <div className="min-w-0">
-                        <div className="font-black text-amber-300 truncate">Step 1: Open Customer Chat</div>
+                        <div className="font-black text-amber-300 truncate text-[11px]">Step 1: Open Chat</div>
                         <div className="text-[10px] font-normal opacity-85 truncate">
-                          Opens {displayPhone} with pre-filled Kanglish text
+                          Pre-filled Kanglish text
                         </div>
                       </div>
                     </button>
 
-                    {/* Step 2: Share Real Seva Photo */}
+                    {/* Step 2A: Share Payment QR Scanner */}
+                    <button
+                      type="button"
+                      onClick={handleShareQrScanner}
+                      className="p-2.5 rounded-2xl bg-gradient-to-r from-amber-600 to-amber-700 hover:brightness-105 active:scale-95 text-white text-left font-bold text-xs shadow-md transition flex items-center gap-2 cursor-pointer min-h-[54px]"
+                    >
+                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-white text-amber-900 text-xs font-black shadow-xs">
+                        💳
+                      </span>
+                      <div className="min-w-0">
+                        <div className="font-black text-white truncate text-[11px]">Step 2: Payment QR</div>
+                        <div className="text-[10px] font-normal opacity-90 truncate">
+                          Axis Bank Standee
+                        </div>
+                      </div>
+                    </button>
+
+                    {/* Step 2B: Share Real Seva Photo */}
                     <button
                       type="button"
                       onClick={handleShareRealMedia}
-                      className="p-3 rounded-2xl bg-[#25D366] hover:brightness-105 active:scale-95 text-white text-left font-bold text-xs shadow-md transition flex items-center gap-3 cursor-pointer min-h-[56px]"
+                      className="p-2.5 rounded-2xl bg-[#25D366] hover:brightness-105 active:scale-95 text-white text-left font-bold text-xs shadow-md transition flex items-center gap-2 cursor-pointer min-h-[54px]"
                     >
-                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white text-emerald-900 text-sm font-black shadow-xs">
-                        2
+                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-white text-emerald-900 text-xs font-black shadow-xs">
+                        📸
                       </span>
                       <div className="min-w-0">
-                        <div className="font-black text-white truncate">Step 2: Share Real Seva Photo</div>
+                        <div className="font-black text-white truncate text-[11px]">Share Seva Photo</div>
                         <div className="text-[10px] font-normal opacity-90 truncate">
-                          Attaches actual meal photo into WhatsApp
+                          Meal Feast photo
                         </div>
                       </div>
                     </button>
@@ -1295,6 +1394,76 @@ export function AntiBanWhatsAppModal({
                 >
                   <span>💬</span>
                   <span className="truncate">wa.me Chat</span>
+                </button>
+              </div>
+            </div>
+
+            {/* ── TELECALLER 30-SECOND HIGH-TRUST CALL PITCH SCRIPT ── */}
+            <div className="rounded-2xl border border-teal-900/15 bg-sand/30 p-3 space-y-2 text-xs">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 font-black text-teal-950 uppercase text-[11px]">
+                  <span>🗣️</span>
+                  <span>Telecaller Trust Pitch (Call Script)</span>
+                </div>
+                <div className="flex items-center gap-1 bg-white p-0.5 rounded-lg border border-teal-900/15 text-[10px]">
+                  <button
+                    type="button"
+                    onClick={() => setScriptLang("kanglish")}
+                    className={`px-2 py-0.5 rounded font-bold transition cursor-pointer ${
+                      scriptLang === "kanglish" ? "bg-teal-950 text-white" : "text-teal-950/70 hover:text-teal-950"
+                    }`}
+                  >
+                    Kanglish
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setScriptLang("kn")}
+                    className={`px-2 py-0.5 rounded font-bold transition cursor-pointer ${
+                      scriptLang === "kn" ? "bg-teal-950 text-white" : "text-teal-950/70 hover:text-teal-950"
+                    }`}
+                  >
+                    ಕನ್ನಡ
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setScriptLang("en")}
+                    className={`px-2 py-0.5 rounded font-bold transition cursor-pointer ${
+                      scriptLang === "en" ? "bg-teal-950 text-white" : "text-teal-950/70 hover:text-teal-950"
+                    }`}
+                  >
+                    English
+                  </button>
+                </div>
+              </div>
+
+              {/* Script Box */}
+              <div className="p-2.5 rounded-xl bg-white border border-teal-900/10 text-teal-950 leading-relaxed text-[11px] font-medium shadow-2xs">
+                {scriptLang === "kanglish" && (
+                  <p>
+                    <strong className="text-teal-900 font-bold">&quot;Namaskara {lead.name} Sir/Madam!</strong> Naanu Janaseva Ashrama (Turahalli, Bengaluru) inda maathadthiddeve. Namma Ashrama dalli 25 anatha baalakarige nithya satvik oota needthiddivi. Namma samsthe Karnataka Sarkarada JJ Act (KA18CH0242) nalli registered aagide, mattu Income Tax 80G prakara 50% tax exemption receipt siguththe. <strong>Naanu iga nimma WhatsApp ge makkala photo mattu namma official Axis Bank payment scanner kalisthini Sir/Madam.</strong> Dayavittu nodi nimma anukoola prakara chikka sahaya maadi.&quot;
+                  </p>
+                )}
+                {scriptLang === "kn" && (
+                  <p>
+                    <strong className="text-teal-900 font-bold">&quot;ನಮಸ್ಕಾರ {lead.name} ಅವರೇ!</strong> ನಾನು ತುರಹಳ್ಳಿಯ ಜನಸೇವಾ ಆಶ್ರಮದಿಂದ (ಬೆಂಗಳೂರು) ಕರೆ ಮಾಡುತ್ತಿದ್ದೇನೆ. ನಮ್ಮಲ್ಲಿರುವ 25 ಬಾಲಕರ ನಿತ್ಯ ಅನ್ನದಾನ ಸೇವೆಗೆ ತಮ್ಮ ಸಹಕಾರ ಕೋರುತ್ತಿದ್ದೇವೆ. ನಮ್ಮದು ಸರ್ಕಾರದ ಅಧಿಕೃತ ಬಾಲನ್ಯಾಯ ಕಾಯ್ದೆಯಡಿ (JJ Act KA18CH0242) ನೋಂದಾಯಿತ ಆಶ್ರಮವಾಗಿದ್ದು, 80G ತೆರಿಗೆ ವಿನಾಯಿತಿ ಲಭ್ಯವಿದೆ. <strong>ನಾನು ಈಗ ತಮ್ಮ WhatsApp ಗೆ ಮಕ್ಕಳ ಊಟದ ಫೋಟೋ ಹಾಗೂ ಅಧಿಕೃತ ಆಕ್ಸಿಸ್ ಬ್ಯಾಂಕ್ ಪೇಮೆಂಟ್ ಸ್ಕ್ಯಾನರ್ ಕಳುಹಿಸುತ್ತೇನೆ.</strong> ದಯವಿಟ್ಟು ಪರಿಶೀಲಿಸಿ ಸಹಾಯ ಮಾಡಿ.&quot;
+                  </p>
+                )}
+                {scriptLang === "en" && (
+                  <p>
+                    <strong className="text-teal-900 font-bold">&quot;Hello {lead.name} Ji!</strong> Warm greetings from Janaseva Ashrama, Bengaluru. We care for 25 orphaned boys at our Turahalli home, providing nutritious meals, shelter, and schooling. We are Govt-licensed under JJ Act KA18CH0242 with 80G tax exemption. <strong>I am sharing our children&apos;s meal photo and official Axis Bank UPI Payment QR Scanner directly to your WhatsApp right now.</strong> Kindly review and support our resident children with whatever amount is comfortable for you.&quot;
+                  </p>
+                )}
+              </div>
+
+              {/* Call to Action for Telecaller */}
+              <div className="flex items-center justify-between text-[10px] text-teal-950/75 pt-0.5">
+                <span>⚡ <strong>Tip:</strong> Call the donor first, speak 30 seconds, then tap Step 1 &amp; Step 2!</span>
+                <button
+                  type="button"
+                  onClick={handleLaunchCall}
+                  className="font-bold text-teal-900 hover:underline cursor-pointer flex items-center gap-1"
+                >
+                  <span>📞 Call {displayPhone}</span>
                 </button>
               </div>
             </div>

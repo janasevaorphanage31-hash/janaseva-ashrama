@@ -36,6 +36,14 @@ export interface MediaAsset {
 }
 
 export const CURATED_OUTREACH_MEDIA: Record<string, MediaAsset> = {
+  payment_qr_scanner: {
+    id: "payment_qr_scanner",
+    type: "image",
+    title: "💳 Official Axis Bank UPI Payment QR Scanner",
+    description: "Scan with GPay / PhonePe / Paytm / BHIM to donate directly to Janaseva Samruddi Foundation (0% fees).",
+    url: `${SITE.url}/media/janaseva-axis-bank-qr.jpg`,
+    filename: "janaseva-axis-bank-qr.jpg",
+  },
   annadana_feast: {
     id: "annadana_feast",
     type: "image",
@@ -422,7 +430,11 @@ export function generateAntiBanMessage(options: AntiBanGenerateOptions): AntiBan
   const cleanPhoneDigits = SITE.phoneIntl.replace(/\D/g, "");
   const actionButtonsBlock = [
     "━━━━━━━━━━━━━━━━━━━━━━━━━",
-    `👉 [ 🌐 1-TAP DONATE / SPONSOR ]`,
+    `👉 [ 📲 1-TAP PAY VIA GPAY / PHONEPE / BHIM UPI ]`,
+    `upi://pay?pa=MAB.037349050110044@axisbank&pn=JANASEVA%20SAMRUDDI%20EDUCATI&cu=INR&tn=Janaseva%20Ashrama%20Seva`,
+    `Official UPI ID: MAB.037349050110044@axisbank`,
+    "",
+    `👉 [ 🌐 1-TAP DONATE (ONLINE / 80G RECEIPT) ]`,
     portalUrl,
     "",
     `👉 [ 📞 DIRECT CALL ASHRAMA ]`,
