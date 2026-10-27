@@ -262,10 +262,14 @@ function getDynamicImpactText(amt: number): string {
   if (amt === 2000) return "Provides 1 month full grocery ration basket (rice, dal & staples) for a boy.";
   if (amt === 2400) return "Covers monthly tuition, exam materials, and academic supplies for 8 boys.";
   if (amt === 2500) return "Hosts a special festive hot lunch feast with sweet payasam for all 25 boys.";
+  if (amt === 3000) return "Sponsors 2 wholesome hot meals (lunch & dinner) with sweet for all 25 boys.";
   if (amt === 3200) return "Adopts an orphaned child for 1 full academic school year (admissions, books, shoes).";
   if (amt === 3500) return "Sponsors celebration cake, evening sweet payasam & special feast with 25 boys.";
   if (amt === 4500) return "Sponsors complete 24-hour 4-meal Annadana (breakfast, lunch, snacks & dinner) for all 25 boys.";
+  if (amt === 5000) return "Sponsors a grand birthday/anniversary celebration feast & evening cake cutting with all 25 boys.";
+  if (amt === 6000) return "Covers full monthly pantry groceries & ration staples for 4 resident boys.";
   if (amt === 8000) return "Covers full monthly pantry groceries & ration staples for 4 resident boys.";
+  if (amt === 9600) return "Full Vidya school uniforms, textbooks, shoes & tutoring for resident boys.";
   if (amt < 100) return `Your gift of ${formatINR(amt)} provides warm cow milk and morning study fruit for resident boys.`;
   if (amt < 500) return `Your gift of ${formatINR(amt)} serves wholesome hot meals to the children at Janaseva Ashrama today.`;
   if (amt < 2000) return `Your noble gift of ${formatINR(amt)} covers fresh kitchen staples, vegetables & doctor care.`;
@@ -313,7 +317,7 @@ export function MetaAdsDonateComponent() {
     const urlAmt = searchParams.get("amount");
     if (urlAmt) {
       const parsed = parseFloat(urlAmt);
-      const standardPills = [51, 101, 251, 501, 1000, 2500, 4500];
+      const standardPills = [51, 101, 251, 501, 1000, 1800, 2500, 3000, 4500, 5000, 6000, 9600];
       if (parsed >= 10 && parsed <= 1000000 && !standardPills.includes(parsed)) {
         return true;
       }
@@ -436,7 +440,7 @@ export function MetaAdsDonateComponent() {
       if (parsed >= 10 && parsed <= 1000000) {
         initializedFromCartRef.current = true;
         setAmount(parsed);
-        const standardPills = [51, 101, 251, 501, 1000, 2500, 4500];
+        const standardPills = [51, 101, 251, 501, 1000, 1800, 2500, 3000, 4500, 5000, 6000, 9600];
         if (!standardPills.includes(parsed)) {
           setCustomAmount(String(parsed));
           setShowCustomInputInline(true);
@@ -455,7 +459,7 @@ export function MetaAdsDonateComponent() {
       initializedFromCartRef.current = true;
       if (cart.total >= 10) {
         setAmount(cart.total);
-        const standardPills = [51, 101, 251, 501, 1000, 2500, 4500];
+        const standardPills = [51, 101, 251, 501, 1000, 1800, 2500, 3000, 4500, 5000, 6000, 9600];
         if (!standardPills.includes(cart.total)) {
           setCustomAmount(String(cart.total));
           setShowCustomInputInline(true);
@@ -594,20 +598,16 @@ export function MetaAdsDonateComponent() {
       return false;
     }
 
-    // 2. Name validation (Mandatory for 80G receipt and morning prayer blessing)
-    const nameVal = validateName(donorName, "Full name");
-    if (!nameVal.valid) {
-      errors.name = nameVal.error || "Please enter your full name for the official 80G tax receipt.";
-      setFormErrors(errors);
-      detailsCardRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-      setTimeout(() => nameInputRef.current?.focus(), 250);
-      return false;
+    // 2. Name validation: Auto-fallback to "Janaseva Supporter" if left blank
+    if (!donorName.trim()) {
+      setDonorName("Janaseva Supporter");
     }
 
-    // 3. WhatsApp Mobile validation (Mandatory 10-digit Indian phone)
-    const phoneVal = validatePhone(donorPhone, true, "WhatsApp mobile number");
-    if (!phoneVal.valid) {
-      errors.phone = phoneVal.error || "Please enter your 10-digit WhatsApp number to receive your instant receipt.";
+    // 3. WhatsApp Mobile validation (10-digit Indian phone)
+    const cleanPhone = donorPhone.replace(/\D/g, "");
+    if (!cleanPhone || cleanPhone.length < 10) {
+      errors.phone = "Please enter your 10-digit WhatsApp number to receive your instant receipt.";
+      errors.general = "Please enter your 10-digit WhatsApp number above to receive your official 80G tax receipt.";
       setFormErrors(errors);
       detailsCardRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
       setTimeout(() => phoneInputRef.current?.focus(), 250);
@@ -656,6 +656,8 @@ export function MetaAdsDonateComponent() {
     }, 15000);
 
     try {
+      const effectiveName = donorName.trim() || "Janaseva Supporter";
+      const cleanPhone = donorPhone.replace(/\D/g, "").slice(-10);
       const selectedOccasionLabel =
         OCCASIONS.find((o) => o.id === occasion)?.label || "General Seva";
       const cleanOccasion = selectedOccasionLabel.replace(/[^\w\s-]/g, "").trim() || "General Seva";
@@ -668,8 +670,8 @@ export function MetaAdsDonateComponent() {
           amount: finalAmount,
           callerRefId: callerRef,
           leadId: leadId || undefined,
-          donorName: donorName.trim(),
-          donorPhone: donorPhone.replace(/\D/g, "").slice(-10),
+          donorName: effectiveName,
+          donorPhone: cleanPhone,
           donorEmail: donorEmail.trim() || undefined,
           donorPan: donorPan.trim().toUpperCase() || undefined,
           occasion: cleanOccasion,
@@ -844,9 +846,23 @@ export function MetaAdsDonateComponent() {
         style={{ display: "none" }}
       />
 
+      {/* ── MOBILE TRUST HEADER BAR (< lg only) ── */}
+      <div className="lg:hidden mb-3 rounded-2xl bg-[#042825] p-3 text-white flex items-center justify-between border border-amber-400/30 shadow-md">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <LogoMark size={34} className="shrink-0 ring-1 ring-amber-400/50 rounded-xl" />
+          <div className="min-w-0">
+            <h1 className="text-xs font-black font-display text-white truncate">Janaseva Ashrama Bangalore</h1>
+            <p className="text-[10px] text-amber-300 font-semibold truncate">25 Resident Orphaned Boys · 80G Tax Free</p>
+          </div>
+        </div>
+        <span className="shrink-0 rounded-full bg-emerald-500/25 text-emerald-300 border border-emerald-400/40 px-2 py-0.5 text-[9px] font-black uppercase">
+          🛡️ 80G Certified
+        </span>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-8 items-start">
-        {/* ── 1. PANTONE-GRADED EMOTIONAL HERO BANNER WITH AUTHENTIC PRAYER PHOTO ── */}
-        <div className="col-span-1 lg:col-span-5 lg:col-start-1 lg:row-start-1 relative overflow-hidden rounded-3xl bg-[#042825] text-white shadow-2xl mb-2 lg:mb-0 border border-amber-400/40">
+        {/* ── 1. PANTONE-GRADED EMOTIONAL HERO BANNER WITH AUTHENTIC PRAYER PHOTO (ORDER-2 ON MOBILE, LEFT COLUMN ON DESKTOP) ── */}
+        <div className="order-2 lg:order-1 col-span-1 lg:col-span-5 lg:col-start-1 lg:row-start-1 relative overflow-hidden rounded-3xl bg-[#042825] text-white shadow-2xl mb-2 lg:mb-0 border border-amber-400/40">
         {/* Authentic Background Photo with Warm Vignette */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
@@ -904,8 +920,8 @@ export function MetaAdsDonateComponent() {
         </div>
       </div>
 
-      {/* ── RIGHT COLUMN: STICKY MAIN CHECKOUT CARD (PANTONE SANDALWOOD & TEMPLE EMERALD) ── */}
-      <div className="col-span-1 lg:col-span-7 lg:col-start-6 lg:row-start-1 lg:row-span-6 lg:sticky lg:top-20 space-y-4">
+      {/* ── MAIN CHECKOUT CARD (ORDER-1 ON MOBILE FOR ZERO-SCROLL, RIGHT COLUMN ON DESKTOP) ── */}
+      <div className="order-1 lg:order-2 col-span-1 lg:col-span-7 lg:col-start-6 lg:row-start-1 lg:row-span-6 lg:sticky lg:top-20 space-y-4">
         {/* ── GLOBAL ERROR ALERT ── */}
         {formErrors.general && (
           <div className="rounded-2xl bg-rose-50 border border-rose-300 p-3.5 text-xs text-rose-800 font-semibold flex items-start gap-2 shadow-sm">
@@ -999,7 +1015,7 @@ export function MetaAdsDonateComponent() {
           </div>
 
           <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
-            {[51, 101, 251, 501, 1000, 2500, 4500].map((amt) => {
+            {[101, 251, 501, 1000, 1800, 2500, 3000, 4500, 6000].map((amt) => {
               const isSelected = !customAmount && amount === amt;
               return (
                 <button
@@ -1422,6 +1438,138 @@ export function MetaAdsDonateComponent() {
               <span>{showBankTransfer ? "Hide Bank Wire" : "Axis Bank Wire Transfer"}</span>
             </button>
           </div>
+
+          {/* Quick Mobile UPI App Direct Launch Row */}
+          <div className="grid grid-cols-3 gap-1.5 pt-1">
+            <a
+              href={gpayUri}
+              className="py-2.5 px-1 rounded-xl bg-white border border-teal-900/15 hover:border-emerald-600 shadow-2xs font-bold text-teal-950 flex items-center justify-center gap-1 text-[11px] active:scale-95 transition"
+              title="Open Google Pay"
+            >
+              <span>🟢</span>
+              <span>Google Pay</span>
+            </a>
+            <a
+              href={phonepeUri}
+              className="py-2.5 px-1 rounded-xl bg-white border border-teal-900/15 hover:border-purple-600 shadow-2xs font-bold text-teal-950 flex items-center justify-center gap-1 text-[11px] active:scale-95 transition"
+              title="Open PhonePe"
+            >
+              <span>🟣</span>
+              <span>PhonePe</span>
+            </a>
+            <a
+              href={paytmUri}
+              className="py-2.5 px-1 rounded-xl bg-white border border-teal-900/15 hover:border-blue-600 shadow-2xs font-bold text-teal-950 flex items-center justify-center gap-1 text-[11px] active:scale-95 transition"
+              title="Open Paytm"
+            >
+              <span>🔵</span>
+              <span>Paytm</span>
+            </a>
+          </div>
+
+          {/* ── DIRECT UPI / DYNAMIC QR CODE DRAWER (IMMEDIATELY VISIBLE UNDER BUTTON) ── */}
+          {showDirectUpi && (
+            <div className="rounded-2xl bg-cream/70 p-4 border border-teal-900/15 animate-fadeIn text-center space-y-3">
+              <span className="inline-block rounded-full bg-emerald-100 text-emerald-950 px-3 py-0.5 text-[10px] font-black uppercase">
+                ⚡ Scan &amp; Pay (0% Platform Fee)
+              </span>
+
+              {qrDataUrl && (
+                <div className="flex justify-center my-1">
+                  <div className="p-2 bg-white rounded-2xl border-2 border-amber-400/50 shadow-inner">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={qrDataUrl}
+                      alt="Janaseva Ashrama UPI QR Code"
+                      className="w-44 h-44 sm:w-52 sm:h-52 object-contain"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-center justify-between bg-white p-2.5 rounded-xl border border-teal-900/15 text-left text-xs">
+                <div>
+                  <span className="text-[9px] font-bold text-teal-900/60 uppercase block">Official Trust UPI:</span>
+                  <p className="font-mono text-xs font-black text-[#042825]">{upiId}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleCopyBank(upiId, "upi")}
+                  className="rounded-lg bg-[#042825] text-white px-2.5 py-1 text-[11px] font-bold hover:bg-teal-950 cursor-pointer"
+                >
+                  {copiedBankField === "upi" ? "✓ Copied" : "Copy UPI"}
+                </button>
+              </div>
+
+              {/* WhatsApp Receipt Button */}
+              <a
+                href={`https://wa.me/${SITE.whatsapp}?text=${encodeURIComponent(
+                  `Namaste Janaseva Ashrama, I have completed a direct UPI donation of ₹${finalAmount} for the 25 resident boys.\n\nDonor Name: ${donorName.trim() || "Well-Wisher"}\nMobile: ${donorPhone.trim() || "Mobile"}${donorPan ? `\nPAN: ${donorPan.trim().toUpperCase()}` : ""}\nPlease issue my official 80G tax receipt.`
+                )}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block w-full rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold py-3 px-3 text-center text-xs shadow-sm transition"
+              >
+                💬 Confirm on WhatsApp for 80G Receipt
+              </a>
+            </div>
+          )}
+
+          {/* ── AXIS BANK WIRE TRANSFER DRAWER (IMMEDIATELY VISIBLE UNDER BUTTON) ── */}
+          {showBankTransfer && (
+            <div className="rounded-2xl bg-[#042825] text-white p-4 border border-amber-400/30 animate-fadeIn text-xs space-y-2.5 text-left">
+              <div className="flex items-center justify-between pb-2 border-b border-white/15">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-amber-300">
+                  Official Axis Bank Account
+                </span>
+                <span className="rounded bg-emerald-500/20 px-2 py-0.5 text-[9px] font-bold text-emerald-300">
+                  0% Fee
+                </span>
+              </div>
+
+              <div>
+                <span className="text-[9px] text-white/60 uppercase block">Beneficiary Name</span>
+                <p className="font-bold text-white text-xs">{BANK_DETAILS.accountName}</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="rounded-xl bg-white/10 p-2.5">
+                  <span className="text-[9px] text-white/60 uppercase block">Account Number</span>
+                  <p className="font-mono text-xs font-black text-amber-300">{BANK_DETAILS.accountNumber}</p>
+                  <button
+                    type="button"
+                    onClick={() => handleCopyBank(BANK_DETAILS.accountNumber, "acc")}
+                    className="mt-1 text-[10px] font-bold text-amber-300 underline cursor-pointer"
+                  >
+                    {copiedBankField === "acc" ? "✓ Copied" : "Copy A/C"}
+                  </button>
+                </div>
+
+                <div className="rounded-xl bg-white/10 p-2.5">
+                  <span className="text-[9px] text-white/60 uppercase block">IFSC Code</span>
+                  <p className="font-mono text-xs font-black text-amber-300">{BANK_DETAILS.ifscCode}</p>
+                  <button
+                    type="button"
+                    onClick={() => handleCopyBank(BANK_DETAILS.ifscCode, "ifsc")}
+                    className="mt-1 text-[10px] font-bold text-amber-300 underline cursor-pointer"
+                  >
+                    {copiedBankField === "ifsc" ? "✓ Copied" : "Copy IFSC"}
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 text-white/80 pt-1 text-[11px]">
+                <div>
+                  <span className="text-[9px] text-white/60 uppercase block">Bank &amp; Branch</span>
+                  <p className="font-medium">{BANK_DETAILS.bankName}, {BANK_DETAILS.branch}</p>
+                </div>
+                <div>
+                  <span className="text-[9px] text-white/60 uppercase block">Account Type</span>
+                  <p className="font-medium">{BANK_DETAILS.accountType}</p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* ══════════════════════════════════════════════════════════════════
@@ -1554,130 +1702,6 @@ export function MetaAdsDonateComponent() {
                   </button>
                 );
               })}
-            </div>
-          </div>
-        )}
-
-        {/* ══════════════════════════════════════════════════════════════════
-            SECTION 6: DIRECT UPI / DYNAMIC QR CODE DRAWER
-        ══════════════════════════════════════════════════════════════════ */}
-        {showDirectUpi && (
-          <div className="rounded-2xl bg-cream/70 p-4 border border-teal-900/15 animate-fadeIn text-center space-y-3">
-            <span className="inline-block rounded-full bg-emerald-100 text-emerald-950 px-3 py-0.5 text-[10px] font-black uppercase">
-              ⚡ Scan &amp; Pay (0% Platform Fee)
-            </span>
-
-            {qrDataUrl && (
-              <div className="flex justify-center my-1">
-                <div className="p-2 bg-white rounded-2xl border-2 border-amber-400/50 shadow-inner">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={qrDataUrl}
-                    alt="Janaseva Ashrama UPI QR Code"
-                    className="w-44 h-44 sm:w-52 sm:h-52 object-contain"
-                  />
-                </div>
-              </div>
-            )}
-
-            <div className="flex items-center justify-between bg-white p-2.5 rounded-xl border border-teal-900/15 text-left text-xs">
-              <div>
-                <span className="text-[9px] font-bold text-teal-900/60 uppercase block">Official Trust UPI:</span>
-                <p className="font-mono text-xs font-black text-[#042825]">{upiId}</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => handleCopyBank(upiId, "upi")}
-                className="rounded-lg bg-[#042825] text-white px-2.5 py-1 text-[11px] font-bold hover:bg-teal-950 cursor-pointer"
-              >
-                {copiedBankField === "upi" ? "✓ Copied" : "Copy UPI"}
-              </button>
-            </div>
-
-            {/* 1-Tap Mobile App Links */}
-            <div className="grid grid-cols-2 gap-2 pt-1">
-              <a
-                href={gpayUri}
-                className="p-2.5 rounded-xl bg-white border border-teal-900/15 hover:border-emerald-600 shadow-2xs font-bold text-teal-950 flex items-center justify-center gap-1.5 text-xs"
-              >
-                <span>🟢 Google Pay</span>
-              </a>
-              <a
-                href={phonepeUri}
-                className="p-2.5 rounded-xl bg-white border border-teal-900/15 hover:border-purple-600 shadow-2xs font-bold text-teal-950 flex items-center justify-center gap-1.5 text-xs"
-              >
-                <span>🟣 PhonePe</span>
-              </a>
-            </div>
-
-            {/* WhatsApp Receipt Button */}
-            <a
-              href={`https://wa.me/${SITE.whatsapp}?text=${encodeURIComponent(
-                `Namaste Janaseva Ashrama, I have completed a direct UPI donation of ₹${finalAmount} for the 25 resident boys.\n\nDonor Name: ${donorName.trim() || "Well-Wisher"}\nMobile: ${donorPhone.trim() || "Mobile"}${donorPan ? `\nPAN: ${donorPan.trim().toUpperCase()}` : ""}\nPlease issue my official 80G tax receipt.`
-              )}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block w-full rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold py-3 px-3 text-center text-xs shadow-sm transition"
-            >
-              💬 Confirm on WhatsApp for 80G Receipt
-            </a>
-          </div>
-        )}
-
-        {/* ══════════════════════════════════════════════════════════════════
-            SECTION 7: AXIS BANK WIRE TRANSFER DRAWER
-        ══════════════════════════════════════════════════════════════════ */}
-        {showBankTransfer && (
-          <div className="rounded-2xl bg-[#042825] text-white p-4 border border-amber-400/30 animate-fadeIn text-xs space-y-2.5">
-            <div className="flex items-center justify-between pb-2 border-b border-white/15">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-amber-300">
-                Official Axis Bank Account
-              </span>
-              <span className="rounded bg-emerald-500/20 px-2 py-0.5 text-[9px] font-bold text-emerald-300">
-                0% Fee
-              </span>
-            </div>
-
-            <div>
-              <span className="text-[9px] text-white/60 uppercase block">Beneficiary Name</span>
-              <p className="font-bold text-white text-xs">{BANK_DETAILS.accountName}</p>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2">
-              <div className="rounded-xl bg-white/10 p-2.5">
-                <span className="text-[9px] text-white/60 uppercase block">Account Number</span>
-                <p className="font-mono text-xs font-black text-amber-300">{BANK_DETAILS.accountNumber}</p>
-                <button
-                  type="button"
-                  onClick={() => handleCopyBank(BANK_DETAILS.accountNumber, "acc")}
-                  className="mt-1 text-[10px] font-bold text-amber-300 underline cursor-pointer"
-                >
-                  {copiedBankField === "acc" ? "✓ Copied" : "Copy A/C"}
-                </button>
-              </div>
-
-              <div className="rounded-xl bg-white/10 p-2.5">
-                <span className="text-[9px] text-white/60 uppercase block">IFSC Code</span>
-                <p className="font-mono text-xs font-black text-amber-300">{BANK_DETAILS.ifscCode}</p>
-                <button
-                  type="button"
-                  onClick={() => handleCopyBank(BANK_DETAILS.ifscCode, "ifsc")}
-                  className="mt-1 text-[10px] font-bold text-amber-300 underline cursor-pointer"
-                >
-                  {copiedBankField === "ifsc" ? "✓ Copied" : "Copy IFSC"}
-                </button>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2 text-white/80 pt-1 text-[11px]">
-              <div>
-                <span className="text-[9px] text-white/60 uppercase block">Bank &amp; Branch</span>
-                <p className="font-medium">{BANK_DETAILS.bankName}, {BANK_DETAILS.branch}</p>
-              </div>
-              <div>
-                <span className="text-[9px] text-white/60 uppercase block">Account Type</span>
-                <p className="font-medium">{BANK_DETAILS.accountType}</p>
-              </div>
             </div>
           </div>
         )}

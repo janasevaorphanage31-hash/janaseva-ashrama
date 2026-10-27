@@ -320,7 +320,7 @@ export function SiteHeader() {
               </div>
             ) : (
               <Link
-                href={total > 0 ? `/give?amount=${total}` : "/give"}
+                href={total > 0 ? `/checkout?amount=${total}` : "/checkout"}
                 onClick={() => track("cta_make_impact", { where: "header", amount: total })}
                 className="focus-ring tap-scale relative flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-600 hover:to-orange-600 px-3 sm:px-4 py-2 sm:py-2.5 text-xs font-black tracking-wide text-white shadow-md shadow-orange-500/25 transition active:scale-95 whitespace-nowrap cursor-pointer shrink-0"
               >
@@ -410,7 +410,7 @@ export function SiteHeader() {
             {/* Bottom: Fast Impact CTA */}
             <div className="border-t border-teal-900/60 p-4 space-y-2">
               <Link
-                href={total > 0 ? `/give?amount=${total}` : "/give"}
+                href={total > 0 ? `/checkout?amount=${total}` : "/checkout"}
                 onClick={() => setMobileMenuOpen(false)}
                 className="btn-primary block text-center"
               >
