@@ -10,6 +10,7 @@ import path from "node:path";
 import fs from "node:fs";
 import QRCode from "qrcode";
 import pino from "pino";
+import { parseCustomerPhone } from "./whatsapp-phone";
 
 export type BaileysStatus = "disconnected" | "connecting" | "qr_ready" | "connected" | "error";
 
@@ -43,12 +44,11 @@ const gatewayState = globalThis.__baileysGateway;
 const AUTH_DIR = path.join(process.cwd(), "data", "baileys_auth");
 
 /**
- * Normalizes phone number into WhatsApp JID (e.g. 919980359595@s.whatsapp.net)
+ * Normalizes customer phone number into WhatsApp JID (e.g. 919980359595@s.whatsapp.net)
  */
 export function formatToJid(rawPhone: string): string {
-  const digits = rawPhone.replace(/\D/g, "");
-  const last10 = digits.length >= 10 ? digits.slice(-10) : digits;
-  return `91${last10}@s.whatsapp.net`;
+  const parsed = parseCustomerPhone(rawPhone);
+  return parsed.jid || `91${rawPhone.replace(/\D/g, "").slice(-10)}@s.whatsapp.net`;
 }
 
 /**

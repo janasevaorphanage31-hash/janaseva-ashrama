@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo } from "react";
 import { formatINR } from "@/lib/site";
 import { LogoMark } from "@/components/Logo";
 import { AntiBanWhatsAppModal } from "@/components/admin/AntiBanWhatsAppModal";
+import { parseCustomerPhone } from "@/lib/whatsapp-phone";
 
 interface CallerProfile {
   callerId: string;
@@ -269,13 +270,13 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
     await handleUpdateDisposition(leadId, disposition);
   };
 
-  // Auto-Mark Attended on Phone Call Launch
+  // Auto-Mark Attended on Phone Call Launch (Direct Customer Call)
   const handleCallLead = (lead: any) => {
     if (!lead.status || lead.status === "Pending") {
       void handleUpdateDisposition(lead.leadId, "Contacted", "Auto-marked attended on call click");
     }
-    const cleanPhone = lead.phone.replace(/\D/g, "");
-    window.location.href = `tel:${cleanPhone}`;
+    const phoneInfo = parseCustomerPhone(lead.phone);
+    window.location.href = `tel:${phoneInfo.e164}`;
   };
 
   // Auto-Mark Attended on WhatsApp Dispatch Launch
@@ -828,7 +829,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                       </div>
                       <div className="flex items-center gap-2 mt-1 flex-wrap">
                         <span className="font-mono text-xs font-bold text-teal-900">
-                          +91 {lead.phone.replace(/\D/g, "").slice(-10)}
+                          {parseCustomerPhone(lead.phone).display}
                         </span>
                         {isTodayBirthday && (
                           <span className="rounded-full bg-amber-500 text-teal-950 px-2 py-0.5 text-[10px] font-black uppercase shadow-xs animate-pulse">
@@ -1035,7 +1036,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                           onClick={() => handleCallLead(lead)}
                           className="font-mono font-bold text-teal-900 hover:underline flex items-center gap-1 cursor-pointer"
                         >
-                          <span>📞</span> {lead.phone}
+                          <span>📞</span> {parseCustomerPhone(lead.phone).display}
                         </button>
                       </td>
                       <td className="p-3">
@@ -1232,7 +1233,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                 <h3 className="font-display text-base font-bold text-teal-950">
                   Call Notes: {activeNotesLead.name}
                 </h3>
-                <p className="text-[11px] text-teal-950/60">Phone: {activeNotesLead.phone}</p>
+                <p className="text-[11px] text-teal-950/60">Phone: {parseCustomerPhone(activeNotesLead.phone).display}</p>
               </div>
               <button
                 type="button"

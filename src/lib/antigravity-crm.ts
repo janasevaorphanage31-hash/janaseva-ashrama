@@ -2,6 +2,7 @@ import { db, ensureDbSchema } from "@/db";
 import { agTelecallers, agLeads, agCallLogs, agDonations, contentEntries } from "@/db/schema";
 import { eq, and, or, sql, desc, inArray, isNull } from "drizzle-orm";
 import { hashPassword } from "@/lib/admin-auth";
+import { parseCustomerPhone } from "@/lib/whatsapp-phone";
 import {
   generateAntiBanMessage,
   CURATED_OUTREACH_MEDIA,
@@ -324,9 +325,8 @@ export async function generateWhatsAppLink(
   const callerName = caller?.name || "Janaseva Ashrama Volunteer";
   const callerWhatsApp = caller?.whatsappNumber ? caller.whatsappNumber.replace(/\D/g, "").slice(-10) : "";
 
-  const rawDigits = lead.phone.replace(/\D/g, "");
-  const subscriber10 = rawDigits.length >= 10 ? rawDigits.slice(-10) : rawDigits;
-  const formattedPhone = `91${subscriber10}`;
+  const customerPhoneInfo = parseCustomerPhone(lead.phone);
+  const formattedPhone = customerPhoneInfo.waNumber;
   const siteUrl = baseUrl || process.env.NEXT_PUBLIC_SITE_URL || "https://www.janasevaorphanage.org";
 
   const settings = await getCrmWhatsAppSettings();

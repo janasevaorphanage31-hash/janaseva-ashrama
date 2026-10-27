@@ -14,6 +14,7 @@
  */
 
 import { SITE, FORM_10AC, JJ_ACT_REGISTRATION } from "./site";
+import { parseCustomerPhone } from "./whatsapp-phone";
 
 export type OutreachLanguage = "en" | "kn" | "kanglish" | "mixed";
 export type NarrativeAngle = "annadana" | "birthday" | "vidya" | "trust_80g";
@@ -204,7 +205,7 @@ export function generateAntiBanMessage(options: AntiBanGenerateOptions): AntiBan
   const {
     callerId,
     callerName = "Janaseva Ashrama Volunteer",
-    language = "en",
+    language = "kanglish",
     angle = "annadana",
     baseUrl = SITE.url,
     masterWhatsAppNumber = SITE.phoneIntl,
@@ -219,9 +220,9 @@ export function generateAntiBanMessage(options: AntiBanGenerateOptions): AntiBan
   const salt = generateSaltToken();
   const trackingRef = callerId ? callerId.toUpperCase() : "DIRECT";
 
-  // Clean phone number
-  const digits = rawPhone.replace(/\D/g, "");
-  const formattedPhone = digits.length === 10 ? `91${digits}` : digits;
+  // Clean and parse customer phone number reliably
+  const customerPhoneInfo = parseCustomerPhone(rawPhone);
+  const formattedPhone = customerPhoneInfo.waNumber;
 
   // Selected media asset (if any)
   const mediaAsset = selectedMediaId && CURATED_OUTREACH_MEDIA[selectedMediaId]
@@ -429,6 +430,9 @@ export function generateAntiBanMessage(options: AntiBanGenerateOptions): AntiBan
     "",
     `👉 [ 💬 WHATSAPP CARETAKER ]`,
     `https://wa.me/${cleanPhoneDigits}`,
+    "",
+    `👉 [ 📍 GOOGLE MAPS ASHRAMA PIN ]`,
+    SITE.mapsUrl,
     "━━━━━━━━━━━━━━━━━━━━━━━━━",
   ].join("\n");
 

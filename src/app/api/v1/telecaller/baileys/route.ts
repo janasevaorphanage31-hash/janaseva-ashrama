@@ -58,44 +58,68 @@ export async function POST(req: Request) {
 
     // Action: Send real media message to lead
     if (action === "send") {
-      const { leadId, mediaUrl, captionText, mediaType = "image" } = body;
+      const {
+        leadId,
+        recipientPhone,
+        mediaUrl,
+        captionText,
+        caption,
+        messageText,
+        mediaType = "image",
+      } = body;
 
-      if (!leadId) {
-        return NextResponse.json({ error: "leadId is required" }, { status: 400 });
+      const finalCaption = captionText || caption || messageText || "";
+      let targetPhone = recipientPhone;
+      let targetLeadId = leadId ? parseInt(String(leadId), 10) : null;
+
+      if (targetLeadId) {
+        const [lead] = await db
+          .select({
+            leadId: agLeads.leadId,
+            phone: agLeads.phone,
+            assignedCallerId: agLeads.assignedCallerId,
+          })
+          .from(agLeads)
+          .where(eq(agLeads.leadId, targetLeadId))
+          .limit(1);
+
+        if (!lead && !targetPhone) {
+          return NextResponse.json({ error: "Lead not found" }, { status: 404 });
+        }
+
+        if (lead) {
+          if (!auth.isAdmin && lead.assignedCallerId !== auth.callerId) {
+            return NextResponse.json({ error: "Access denied" }, { status: 403 });
+          }
+          if (!targetPhone) {
+            targetPhone = lead.phone;
+          }
+        }
       }
 
-      const [lead] = await db
-        .select({
-          leadId: agLeads.leadId,
-          phone: agLeads.phone,
-          assignedCallerId: agLeads.assignedCallerId,
-        })
-        .from(agLeads)
-        .where(eq(agLeads.leadId, leadId))
-        .limit(1);
-
-      if (!lead) {
-        return NextResponse.json({ error: "Lead not found" }, { status: 404 });
-      }
-
-      if (!auth.isAdmin && lead.assignedCallerId !== auth.callerId) {
-        return NextResponse.json({ error: "Access denied" }, { status: 403 });
+      if (!targetPhone) {
+        return NextResponse.json(
+          { error: "recipientPhone or valid leadId is required" },
+          { status: 400 }
+        );
       }
 
       const res = await sendBaileysMediaMessage({
-        to: lead.phone,
-        caption: captionText,
+        to: targetPhone,
+        caption: finalCaption,
         mediaUrl,
         mediaType,
       });
 
-      // Automatically log Contacted disposition in CRM
-      await logCallDisposition(
-        leadId,
-        auth.callerId,
-        "Contacted",
-        "Dispatched real media via connected Ashrama WhatsApp (Baileys Gateway)"
-      );
+      // Automatically log Contacted disposition in CRM if leadId is available
+      if (targetLeadId) {
+        await logCallDisposition(
+          targetLeadId,
+          auth.callerId,
+          "Contacted",
+          `Dispatched Kanglish media via connected Ashrama WhatsApp to customer ${res.phone}`
+        );
+      }
 
       return NextResponse.json({
         success: true,

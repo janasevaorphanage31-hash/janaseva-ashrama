@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useRef } from "react";
 import type { AntiBanLanguage, OutreachAngle, MediaAsset } from "@/lib/whatsapp-antiban";
-import { CURATED_OUTREACH_MEDIA } from "@/lib/whatsapp-antiban";
+import { generateAntiBanMessage, CURATED_OUTREACH_MEDIA } from "@/lib/whatsapp-antiban";
 import { SITE } from "@/lib/site";
+import { parseCustomerPhone } from "@/lib/whatsapp-phone";
 
 export interface AntiBanLeadData {
   leadId: number;
@@ -99,7 +100,7 @@ export function AntiBanWhatsAppModal({
     }
   }, [cooldownSeconds]);
 
-  // Generate / refresh altered message
+  // Generate / refresh altered message (Instant client-side calculation + background sync)
   const generateMessage = async (overrides?: {
     lang?: AntiBanLanguage;
     ang?: OutreachAngle;
@@ -108,15 +109,38 @@ export function AntiBanWhatsAppModal({
     amt?: number;
   }) => {
     if (!lead) return;
-    setLoading(true);
     setCopied(false);
-    try {
-      const activeLang = overrides?.lang ?? language;
-      const activeAngle = overrides?.ang ?? angle;
-      const activeMediaId = overrides?.media ?? selectedMediaId;
-      const activeMode = overrides?.mode ?? senderMode;
-      const activeAmt = overrides?.amt !== undefined ? overrides.amt : suggestedAmount;
 
+    const activeLang = overrides?.lang ?? language;
+    const activeAngle = overrides?.ang ?? angle;
+    const activeMediaId = overrides?.media ?? selectedMediaId;
+    const activeMode = overrides?.mode ?? senderMode;
+    const activeAmt = overrides?.amt !== undefined ? overrides.amt : suggestedAmount;
+
+    // 1. INSTANT LOCAL GENERATION (0ms guarantee, zero blank messages)
+    const local = generateAntiBanMessage({
+      donorName: lead.name,
+      callerId,
+      callerName: callerName || "Janaseva Ashrama Volunteer",
+      language: activeLang,
+      angle: activeAngle,
+      mediaId: activeMediaId,
+      amount: activeAmt,
+      baseUrl: typeof window !== "undefined" ? window.location.origin : SITE.url,
+      masterWhatsAppNumber: masterWhatsAppNumber || SITE.phoneIntl,
+      senderMode: activeMode,
+    });
+
+    setMessageText(local.messageText);
+    setCaptionText(local.captionText);
+    setSaltToken(local.saltToken);
+    if (local.mediaAsset) {
+      setActiveMedia(local.mediaAsset);
+    }
+    setWhatsappUrl(`https://wa.me/${formattedPhone}?text=${encodeURIComponent(local.messageText)}`);
+
+    // 2. SERVER SYNC (Non-blocking background enrichment)
+    try {
       const q = new URLSearchParams({
         callerId,
         language: activeLang,
@@ -129,23 +153,20 @@ export function AntiBanWhatsAppModal({
       const res = await fetch(`/api/v1/telecaller/whatsapp-link/${lead.leadId}?${q.toString()}`, {
         cache: "no-store",
       });
-      const data = await res.json();
-
-      if (data.success) {
-        setMessageText(data.messageText);
-        setCaptionText(data.captionText || data.messageText);
-        setSaltToken(data.saltToken);
-        setWhatsappUrl(data.whatsappUrl);
-        if (data.mediaAsset) {
-          setActiveMedia(data.mediaAsset);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.messageText) {
+          setMessageText(data.messageText);
+          setCaptionText(data.captionText || data.messageText);
+          setSaltToken(data.saltToken);
+          setWhatsappUrl(`https://wa.me/${formattedPhone}?text=${encodeURIComponent(data.messageText)}`);
+          if (data.mediaAsset) {
+            setActiveMedia(data.mediaAsset);
+          }
         }
-      } else {
-        alert("Failed to generate altered message: " + (data.error || "Unknown error"));
       }
-    } catch (err: any) {
-      alert("Error generating WhatsApp message: " + err.message);
-    } finally {
-      setLoading(false);
+    } catch {
+      // Local message remains fully functional
     }
   };
 
@@ -319,49 +340,28 @@ export function AntiBanWhatsAppModal({
     }
   };
 
-  // NATIVE MOBILE SHARE: Attaches REAL IMAGE with clean caption (Solves Image 2 raw URL issue!)
-  const handleShareNativeMedia = async () => {
+  // DIRECT CUSTOMER WHATSAPP: 1-Tap launch strictly targeting the CUSTOMER's phone number in Kanglish
+  const handleSendDirectToCustomer = async () => {
     if (!lead) return;
     if (!lead.status || lead.status === "Pending") {
       void handleSaveDisposition("Contacted");
     }
-    setCooldownSeconds(15);
+    setCooldownSeconds(10);
 
-    // Pre-copy donor phone number for convenient paste if needed
+    // 1. Copy real photo to clipboard so telecaller can effortlessly Ctrl+V / Paste in WhatsApp
     try {
-      await navigator.clipboard.writeText(formattedPhone);
+      await handleCopyPhotoToClipboard();
     } catch {}
 
-    try {
-      const mediaUrl = customUploadedFile?.previewUrl || activeMedia.url;
-      const filename = customUploadedFile?.name || activeMedia.filename || "janaseva-photo.jpg";
-
-      const res = await fetch(mediaUrl);
-      const blob = await res.blob();
-      const file = new File([blob], filename, { type: blob.type || "image/jpeg" });
-
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({
-          files: [file],
-          text: captionText || messageText,
-          title: "Janaseva Ashrama",
-        });
-        setApiCardMessage("✓ Real photo & caption shared directly to WhatsApp! (Phone copied to clipboard)");
-        setTimeout(() => setApiCardMessage(""), 4500);
-        return;
-      }
-    } catch (err: any) {
-      if (err.name === "AbortError") return;
-      console.warn("Native share unsupported, falling back to standard web launch:", err);
-    }
-
-    // Fallback: Copy photo to clipboard and open wa.me
-    await handleCopyPhotoToClipboard();
-    const targetUrl = whatsappUrl || `https://wa.me/${formattedPhone}?text=${encodeURIComponent(messageText)}`;
+    // 2. Open WhatsApp strictly targeting the CUSTOMER'S exact phone number
+    const targetUrl = `https://wa.me/${formattedPhone}?text=${encodeURIComponent(messageText)}`;
     window.open(targetUrl, "_blank", "noopener,noreferrer");
+
+    setApiCardMessage(`✓ Opened WhatsApp directly to Customer ${lead.name} (${displayPhone})! Photo is on clipboard.`);
+    setTimeout(() => setApiCardMessage(""), 5000);
   };
 
-  // BAILEYS WHATSAPP GATEWAY (Open-source direct session sending)
+  // BAILEYS WHATSAPP GATEWAY (Open-source direct server dispatch to customer number)
   const handleConnectBaileys = async () => {
     setShowQrModal(true);
     setConnectingBaileys(true);
@@ -400,6 +400,8 @@ export function AntiBanWhatsAppModal({
         body: JSON.stringify({
           action: "send",
           leadId: lead.leadId,
+          recipientPhone: formattedPhone,
+          messageText,
           mediaUrl,
           captionText: captionText || messageText,
           mediaType: customUploadedFile?.type || activeMedia.type || "image",
@@ -407,10 +409,10 @@ export function AntiBanWhatsAppModal({
       });
       const data = await res.json();
       if (data.success) {
-        setApiCardMessage("⚡ Real photo and message delivered via connected Ashrama WhatsApp!");
+        setApiCardMessage(`⚡ Real photo & Kanglish message sent directly to Customer ${displayPhone} via Ashrama WhatsApp!`);
         setDisposition("Contacted");
         if (onDispositionLogged) {
-          onDispositionLogged(lead.leadId, "Contacted", "Dispatched via connected WhatsApp (Baileys)");
+          onDispositionLogged(lead.leadId, "Contacted", `Dispatched directly to customer ${displayPhone} via Baileys`);
         }
         setTimeout(() => setApiCardMessage(""), 5000);
       } else {
@@ -423,7 +425,7 @@ export function AntiBanWhatsAppModal({
     }
   };
 
-  // META CLOUD API CARD DISPATCH (Akshayakalpa-Style Card with Real Header Image & Action Buttons)
+  // META CLOUD API CARD DISPATCH (Dispatches to Customer's exact number)
   const handleSendMetaApiCard = async () => {
     if (!lead) return;
     setSendingApiCard(true);
@@ -441,17 +443,17 @@ export function AntiBanWhatsAppModal({
       });
       const data = await res.json();
       if (data.success && data.isApiConfigured) {
-        setApiCardMessage("🎉 Verified Meta Card delivered directly to donor's WhatsApp!");
+        setApiCardMessage(`🎉 Verified Meta Card delivered directly to Customer ${displayPhone}!`);
         setDisposition("Contacted");
         if (onDispositionLogged) {
-          onDispositionLogged(lead.leadId, "Contacted", "Meta WhatsApp API Card dispatched");
+          onDispositionLogged(lead.leadId, "Contacted", `Meta WhatsApp API Card dispatched to customer ${displayPhone}`);
         }
         setTimeout(() => setApiCardMessage(""), 5000);
       } else {
-        // Fallback to native mobile share
-        setApiCardMessage("ℹ️ Meta Cloud API token not set; opening via Native WhatsApp with real image attached!");
+        // Fallback: Open WhatsApp directly to customer's number
+        setApiCardMessage(`ℹ️ Meta Cloud API token not set; opening directly to Customer (${displayPhone}) via WhatsApp!`);
         setTimeout(() => setApiCardMessage(""), 4500);
-        await handleShareNativeMedia();
+        await handleSendDirectToCustomer();
       }
     } catch (err: any) {
       alert("Error dispatching Meta Card: " + err.message);
@@ -460,13 +462,13 @@ export function AntiBanWhatsAppModal({
     }
   };
 
-  // Standard Click-to-Chat (wa.me)
+  // Standard Click-to-Chat (wa.me) directly targeting Customer
   const handleLaunchWhatsApp = () => {
     if (!lead.status || lead.status === "Pending") {
       void handleSaveDisposition("Contacted");
     }
-    setCooldownSeconds(15);
-    const targetUrl = whatsappUrl || `https://wa.me/${formattedPhone}?text=${encodeURIComponent(messageText)}`;
+    setCooldownSeconds(10);
+    const targetUrl = `https://wa.me/${formattedPhone}?text=${encodeURIComponent(messageText)}`;
     window.open(targetUrl, "_blank", "noopener,noreferrer");
   };
 
@@ -497,10 +499,9 @@ export function AntiBanWhatsAppModal({
     });
   };
 
-  const rawDigits = lead.phone.replace(/\D/g, "");
-  const subscriber10 = rawDigits.length >= 10 ? rawDigits.slice(-10) : rawDigits;
-  const formattedPhone = `91${subscriber10}`;
-  const displayPhone = `+91 ${subscriber10}`;
+  const phoneInfo = parseCustomerPhone(lead.phone);
+  const formattedPhone = phoneInfo.waNumber;
+  const displayPhone = phoneInfo.display;
 
   const mediaList = Object.values(CURATED_OUTREACH_MEDIA);
 
@@ -1112,17 +1113,17 @@ export function AntiBanWhatsAppModal({
             {/* ── PRIMARY DISPATCH ACTION BUTTONS ── */}
             <div className="space-y-2">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                {/* PRIMARY ACTION 1: Native Mobile Share (Sends Real Photo as Header + Caption) */}
+                {/* PRIMARY ACTION 1: Direct 1-Tap WhatsApp strictly targeting the CUSTOMER's number */}
                 <button
                   type="button"
-                  onClick={handleShareNativeMedia}
+                  onClick={handleSendDirectToCustomer}
                   className="focus-ring tap-scale inline-flex items-center justify-center gap-2 rounded-2xl bg-[#25D366] hover:brightness-105 active:bg-[#1faa53] text-white px-4 py-3 text-xs sm:text-sm font-black shadow-md transition cursor-pointer min-h-[48px]"
-                  title="Attaches the actual photo with text as caption - completely eliminates ugly raw URLs!"
+                  title={`Directly opens WhatsApp with Customer ${lead.name} (${displayPhone}) with pre-filled Kanglish text`}
                 >
-                  <span className="text-lg">📲</span>
+                  <span className="text-xl">💬</span>
                   <div className="text-left">
-                    <div>Send Real Photo + Message</div>
-                    <div className="text-[10px] font-normal opacity-90">Embeds photo directly into chat bubble</div>
+                    <div>Open Customer WhatsApp ({displayPhone})</div>
+                    <div className="text-[10px] font-normal opacity-90">1-Tap direct chat to customer · Photo on clipboard</div>
                   </div>
                 </button>
 
@@ -1142,14 +1143,14 @@ export function AntiBanWhatsAppModal({
                   <div className="text-left">
                     <div>
                       {sendingBaileys
-                        ? "Sending via Baileys..."
+                        ? `Sending to Customer ${displayPhone}...`
                         : baileysStatus === "connected"
-                        ? `Send via Ashrama WhatsApp (+${baileysPhone})`
+                        ? `Send Real Photo to Customer (${displayPhone})`
                         : "Connect Ashrama WhatsApp (Scan QR)"}
                     </div>
                     <div className="text-[10px] font-normal opacity-85">
                       {baileysStatus === "connected"
-                        ? "🟢 Gateway Connected · Real image attached"
+                        ? `🟢 Ashrama Gateway Active · Sends direct to ${displayPhone}`
                         : "Open-source Baileys engine · 1-click connect"}
                     </div>
                   </div>
@@ -1303,22 +1304,26 @@ export function AntiBanWhatsAppModal({
 
         {/* ── STICKY MOBILE ACTION BAR ── */}
         <div className="sm:hidden sticky bottom-0 bg-white/95 backdrop-blur-md border-t border-teal-900/15 p-3 shadow-lg z-20 space-y-2">
-          {/* Main 1-tap Native Real Photo + Caption trigger */}
+          {/* Main 1-tap Direct WhatsApp to Customer */}
           <button
             type="button"
-            onClick={handleShareNativeMedia}
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#25D366] active:bg-[#1faa53] text-white font-black text-sm shadow-md transition cursor-pointer"
+            onClick={handleSendDirectToCustomer}
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#25D366] active:bg-[#1faa53] text-white font-black text-xs sm:text-sm shadow-md transition cursor-pointer"
           >
-            <span className="text-lg">📲</span>
-            <span>Send Real Photo + Message to WhatsApp</span>
+            <span className="text-xl">💬</span>
+            <div className="text-left">
+              <div className="font-black leading-tight">Send to Customer ({displayPhone})</div>
+              <div className="text-[10px] font-normal opacity-90 leading-tight">1-Tap WhatsApp · Photo on clipboard</div>
+            </div>
           </button>
 
-          {/* Quick Row: Call, Copy Photo, Web wa.me */}
+          {/* Quick Row: Call Customer, Copy Photo, Baileys/wa.me */}
           <div className="grid grid-cols-3 gap-2">
             <button
               type="button"
               onClick={handleLaunchCall}
               className="flex h-10 items-center justify-center gap-1 rounded-xl bg-teal-950 text-white text-xs font-bold active:scale-95 transition cursor-pointer"
+              title={`Call ${lead.name} (${displayPhone})`}
             >
               <span>📞</span>
               <span>Call</span>
@@ -1327,18 +1332,19 @@ export function AntiBanWhatsAppModal({
               type="button"
               onClick={handleCopyPhotoToClipboard}
               className="flex h-10 items-center justify-center gap-1 rounded-xl bg-cream border border-teal-900/15 text-teal-950 text-xs font-bold active:scale-95 transition cursor-pointer"
+              title="Copy photo to clipboard for Ctrl+V paste"
             >
               <span>{photoCopied ? "✓" : "🖼️"}</span>
               <span>{photoCopied ? "Copied" : "Photo"}</span>
             </button>
             <button
               type="button"
-              onClick={handleLaunchWhatsApp}
+              onClick={baileysStatus === "connected" ? handleSendBaileys : handleLaunchWhatsApp}
               className="flex h-10 items-center justify-center gap-1 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-bold active:scale-95 transition cursor-pointer"
-              title="Open standard wa.me click-to-chat"
+              title={baileysStatus === "connected" ? "Send real media via Ashrama Gateway" : "Open wa.me click-to-chat"}
             >
-              <span>💬</span>
-              <span>wa.me</span>
+              <span>{baileysStatus === "connected" ? "⚡" : "💬"}</span>
+              <span>{baileysStatus === "connected" ? "Gateway" : "Chat"}</span>
             </button>
           </div>
         </div>
