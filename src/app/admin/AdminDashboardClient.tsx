@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState, useMemo, type FormEvent } from "react";
 import Link from "next/link";
 import { formatINR } from "@/lib/site";
 import {
@@ -128,6 +128,79 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
       url.searchParams.set("tab", tab);
       window.history.replaceState({}, "", url.toString());
     }
+  }
+
+  // Unified 6-Module Workspace Mapping (Mobile-First Architecture)
+  const primaryModule = useMemo(() => {
+    if (activeTab === "telecallers") return "calling";
+    if (activeTab === "crm" || activeTab === "subscriptions" || activeTab === "documents") return "donations";
+    if (activeTab === "whatsapp") return "whatsapp";
+    if (activeTab === "team") return "team";
+    if (
+      activeTab === "content" ||
+      activeTab === "celebrations" ||
+      activeTab === "media" ||
+      activeTab === "catalogs" ||
+      activeTab === "community" ||
+      activeTab === "marketing"
+    ) {
+      return "ashrama";
+    }
+    return "overview";
+  }, [activeTab]);
+
+  function handleModuleSwitch(module: "overview" | "calling" | "donations" | "whatsapp" | "team" | "ashrama") {
+    if (module === "overview") handleTabChange("analytics");
+    else if (module === "calling") handleTabChange("telecallers");
+    else if (module === "donations") {
+      if (activeTab !== "crm" && activeTab !== "subscriptions" && activeTab !== "documents") {
+        handleTabChange("crm");
+      }
+    } else if (module === "whatsapp") handleTabChange("whatsapp");
+    else if (module === "team") handleTabChange("team");
+    else if (module === "ashrama") {
+      if (
+        activeTab !== "content" &&
+        activeTab !== "celebrations" &&
+        activeTab !== "media" &&
+        activeTab !== "catalogs" &&
+        activeTab !== "community" &&
+        activeTab !== "marketing"
+      ) {
+        handleTabChange("content");
+        setContentSubtab("meals");
+      }
+    }
+  }
+
+  function getDonationWhatsAppReceiptUrl(d: any): string | null {
+    const cleanPhone = (d.donorPhone || "").replace(/\D/g, "").slice(-10);
+    if (!cleanPhone) return null;
+    const donorName = d.donorName || "Devotee";
+    const formattedAmount = formatINR(d.amount);
+    const receiptNo = d.receiptNo || d.publicId || d.id;
+    const dateStr = d.createdAt ? new Date(d.createdAt).toLocaleDateString("en-IN") : "Today";
+    const modeStr = (d.mode || "Online").toUpperCase();
+    const panStr = d.meta?.pan ? `\n• PAN Registered: *${d.meta.pan}*` : "";
+
+    const text = `🙏 *Namaste ${donorName} ji!*
+
+We convey our deepest gratitude from *Janaseva Trust (R.) Ashrama* for your sacred donation of *${formattedAmount}*.
+
+📜 *Official 80G Tax Receipt Details:*
+• Receipt No: *${receiptNo}*
+• Date: *${dateStr}*
+• Payment Mode: *${modeStr}*
+• 80G Tax Exemption: *Eligible under Sec 80G of Indian IT Act*${panStr}
+
+Your contribution directly provides nutritious meals, clothing, and schooling for our 25 destitute children and elderly residents.
+
+📥 *Download Official 80G Receipt PDF:*
+https://janaseva.org/receipt/${d.publicId || d.id}
+
+May Lord Shiva and the children's prayers bring lasting happiness and peace to you and your family! 🌸🙏`;
+
+    return `https://wa.me/91${cleanPhone}?text=${encodeURIComponent(text)}`;
   }
 
   function copyToClipboard(key: string, text: string) {
@@ -1898,7 +1971,7 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
   }, [activeTab, liveAutoRefresh]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-28 md:pb-12">
       {/* Top Banner Navigation */}
       <div className="rounded-2xl bg-teal-950 p-4 text-white shadow-sm ring-1 ring-white/10">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -1932,14 +2005,6 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
               <span>📸</span>
               <span>+ Post Today&apos;s Photo</span>
             </button>
-            <button
-              type="button"
-              onClick={() => setBusinessPlanOpen(true)}
-              className="rounded-xl bg-gold/90 text-teal-950 px-3.5 py-2 text-xs font-bold hover:bg-gold transition flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95 hidden sm:inline-flex"
-            >
-              <span>📊</span>
-              <span>Strategy</span>
-            </button>
             <Link
               href="/"
               target="_blank"
@@ -1968,240 +2033,191 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
         </div>
       </div>
 
-      {/* MOBILE QUICK ACTION DOCK (4 Fast-Taps for Phone On-Ground Caretakers) */}
-      <div className="sm:hidden grid grid-cols-2 gap-2.5">
-        <button
-          type="button"
-          onClick={() => setDailyPhotoModalOpen(true)}
-          className="group relative flex flex-col items-start gap-1 rounded-2xl bg-gradient-to-br from-amber-500 to-amber-600 p-3.5 text-left text-white shadow-md active:scale-95 transition cursor-pointer overflow-hidden"
-        >
-          <div className="flex w-full items-center justify-between">
-            <span className="text-2xl drop-shadow-xs">📸</span>
-            <span className="rounded-full bg-white/25 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider">Fast</span>
-          </div>
-          <span className="font-display text-sm font-bold mt-1 text-white">Post Photo</span>
-          <span className="text-[11px] text-white/85 leading-tight">Camera to site in 1-tap</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => {
-            handleTabChange("content");
-            setContentSubtab("meals");
-          }}
-          className="group relative flex flex-col items-start gap-1 rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-700 p-3.5 text-left text-white shadow-md active:scale-95 transition cursor-pointer overflow-hidden"
-        >
-          <div className="flex w-full items-center justify-between">
-            <span className="text-2xl drop-shadow-xs">🍲</span>
-            <span className="rounded-full bg-white/25 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider">Live</span>
-          </div>
-          <span className="font-display text-sm font-bold mt-1 text-white">Today Meals</span>
-          <span className="text-[11px] text-white/85 leading-tight">Toggle Served / Open</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => {
-            handleTabChange("content");
-            setContentSubtab("hero");
-          }}
-          className="group relative flex flex-col items-start gap-1 rounded-2xl bg-gradient-to-br from-sky-600 to-indigo-700 p-3.5 text-left text-white shadow-md active:scale-95 transition cursor-pointer overflow-hidden"
-        >
-          <div className="flex w-full items-center justify-between">
-            <span className="text-2xl drop-shadow-xs">✍️</span>
-            <span className="rounded-full bg-white/25 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider">Text</span>
-          </div>
-          <span className="font-display text-sm font-bold mt-1 text-white">Edit Headlines</span>
-          <span className="text-[11px] text-white/85 leading-tight">Hero text &amp; notices</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => {
-            handleTabChange("documents");
-            setNewDocOpen(true);
-          }}
-          className="group relative flex flex-col items-start gap-1 rounded-2xl bg-gradient-to-br from-purple-600 to-slate-800 p-3.5 text-left text-white shadow-md active:scale-95 transition cursor-pointer overflow-hidden"
-        >
-          <div className="flex w-full items-center justify-between">
-            <span className="text-2xl drop-shadow-xs">📜</span>
-            <span className="rounded-full bg-white/25 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider">80G</span>
-          </div>
-          <span className="font-display text-sm font-bold mt-1 text-white">Upload 80G Doc</span>
-          <span className="text-[11px] text-white/85 leading-tight">Audit PDFs &amp; orders</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => {
-            handleTabChange("marketing");
-          }}
-          className="group relative flex flex-col items-start gap-1 rounded-2xl bg-gradient-to-br from-teal-700 to-emerald-900 p-3.5 text-left text-white shadow-md active:scale-95 transition cursor-pointer overflow-hidden"
-        >
-          <div className="flex w-full items-center justify-between">
-            <span className="text-2xl drop-shadow-xs">🤖</span>
-            <span className="rounded-full bg-white/25 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider">Growth</span>
-          </div>
-          <span className="font-display text-sm font-bold mt-1 text-white">AI Ad Agent</span>
-          <span className="text-[11px] text-white/85 leading-tight">Meta &amp; Google Ads</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => {
-            handleTabChange("whatsapp");
-          }}
-          className="group relative flex flex-col items-start gap-1 rounded-2xl bg-gradient-to-br from-emerald-600 to-green-700 p-3.5 text-left text-white shadow-md active:scale-95 transition cursor-pointer overflow-hidden"
-        >
-          <div className="flex w-full items-center justify-between">
-            <span className="text-2xl drop-shadow-xs">💬</span>
-            <span className="rounded-full bg-white/25 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider">Live CRM</span>
-          </div>
-          <span className="font-display text-sm font-bold mt-1 text-white">WhatsApp CRM</span>
-          <span className="text-[11px] text-white/85 leading-tight">AI Bot &amp; Broadcasts</span>
-        </button>
-      </div>
-
-      {/* Mobile Tab Quick Jump Select (< sm viewports) */}
-      <div className="sm:hidden mb-2">
-        <label htmlFor="admin-mobile-tab-select" className="sr-only">
-          Select Admin Section
-        </label>
-        <div className="relative">
-          <select
-            id="admin-mobile-tab-select"
-            value={activeTab}
-            onChange={(e) => handleTabChange(e.target.value as Tab)}
-            className="w-full appearance-none rounded-2xl border-2 border-teal-950 bg-white px-4 py-3 text-sm font-black text-teal-950 shadow-xs focus:outline-hidden focus:ring-2 focus:ring-saffron"
-          >
-            <optgroup label="── Operations ──">
-              <option value="analytics">📊 Analytics</option>
-              <option value="crm">💳 Donor CRM</option>
-              <option value="whatsapp">🟢 WhatsApp CRM</option>
-              <option value="telecallers">📞 Telecaller CRM (15)</option>
-            </optgroup>
-            <optgroup label="── Impact ──">
-              <option value="celebrations">🎂 Celebrations</option>
-              <option value="subscriptions">🔁 Subscriptions</option>
-              <option value="catalogs">🛍️ Giving Basket</option>
-            </optgroup>
-            <optgroup label="── Site & Growth ──">
-              <option value="content">📝 Website Content</option>
-              <option value="media">🎥 Media & Today</option>
-              <option value="marketing">🤖 AI Marketing & Ads</option>
-            </optgroup>
-            <optgroup label="── Trust & Team ──">
-              <option value="documents">📜 80G Documents</option>
-              <option value="community">🤝 Volunteers</option>
-              {initialSession.user.role === "SUPER_ADMIN" && (
-                <option value="team">👥 Team Roles</option>
-              )}
-            </optgroup>
-          </select>
-          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-teal-950 font-black">
-            ▼
-          </div>
+      {/* ── NEXT-GEN WORKSPACE CONTROLLER (Unified 6-Module Employee Suite) ── */}
+      <div className="rounded-2xl bg-white p-2 shadow-xs border border-teal-900/10 space-y-2">
+        {/* Primary Workspace Switcher (Thumb-Friendly, High-Contrast) */}
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar scrollbar-none py-0.5">
+          {[
+            { id: "overview", label: "📊 Overview" },
+            { id: "calling", label: "📞 Calling CRM" },
+            { id: "donations", label: "💳 Donations & 80G" },
+            { id: "whatsapp", label: "💬 WhatsApp Hub" },
+            { id: "ashrama", label: "⚙️ Ashrama Ops" },
+            ...(initialSession.user.role === "SUPER_ADMIN"
+              ? [{ id: "team", label: "👥 Team & Staff" }]
+              : []),
+          ].map((m) => {
+            const isActive = primaryModule === m.id;
+            return (
+              <button
+                key={m.id}
+                type="button"
+                onClick={() => handleModuleSwitch(m.id as any)}
+                className={`shrink-0 whitespace-nowrap rounded-xl px-3.5 py-2 text-xs font-bold transition active:scale-95 cursor-pointer flex items-center gap-1.5 min-h-[38px] ${
+                  isActive
+                    ? "bg-teal-950 text-white shadow-xs ring-2 ring-saffron"
+                    : "bg-cream/40 text-teal-950/80 hover:bg-cream hover:text-teal-950 border border-teal-900/10"
+                }`}
+              >
+                <span>{m.label}</span>
+              </button>
+            );
+          })}
         </div>
-      </div>
 
-      {/* Modern Grouped Tab Controller - Horizontal Scroll on All Viewports */}
-      <div className="rounded-2xl bg-white p-2 sm:p-2.5 shadow-xs border border-teal-900/10">
-        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar scrollbar-none pb-1">
-          {/* Operations Group */}
-          <div className="flex items-center gap-1.5 shrink-0 bg-teal-50/80 p-1 rounded-xl border border-teal-900/10">
-            <span className="text-[10px] font-black uppercase text-teal-900/60 px-1.5 tracking-wider hidden md:inline">Operations</span>
-            {[
-              { id: "analytics", label: "📊 Analytics" },
-              { id: "crm", label: "💳 Donor CRM" },
-              { id: "whatsapp", label: "🟢 WhatsApp CRM" },
-              { id: "telecallers", label: "📞 Telecaller CRM (15)" },
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => handleTabChange(tab.id as Tab)}
-                className={`shrink-0 whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-bold transition active:scale-95 cursor-pointer ${
-                  activeTab === tab.id
-                    ? "bg-teal-950 text-white shadow-xs ring-2 ring-saffron"
-                    : "bg-white text-teal-950/80 ring-1 ring-teal-900/10 hover:bg-cream hover:text-teal-950"
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
+        {/* Contextual Sub-Nav Bar: When in Donations Hub */}
+        {primaryModule === "donations" && (
+          <div className="pt-2 border-t border-teal-900/10 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+            <span className="text-[10px] font-black uppercase text-teal-900/60 px-1 hidden sm:inline tracking-wider">
+              Donations Hub:
+            </span>
+            <button
+              type="button"
+              onClick={() => handleTabChange("crm")}
+              className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-bold transition flex items-center gap-1.5 min-h-[34px] cursor-pointer ${
+                activeTab === "crm"
+                  ? "bg-teal-900 text-white shadow-xs ring-1 ring-saffron"
+                  : "bg-teal-50/80 text-teal-900 hover:bg-teal-100 border border-teal-900/10"
+              }`}
+            >
+              <span>💰 All Donations</span>
+              <span className="rounded-full bg-teal-950/20 text-[10px] px-1.5 py-0.2 font-mono">{crmTotals.paidCount}</span>
+            </button>
 
-          {/* Impact Group */}
-          <div className="flex items-center gap-1.5 shrink-0 bg-amber-50/80 p-1 rounded-xl border border-amber-900/10">
-            <span className="text-[10px] font-black uppercase text-amber-900/60 px-1.5 tracking-wider hidden md:inline">Impact</span>
-            {[
-              { id: "celebrations", label: "🎂 Celebrations" },
-              { id: "subscriptions", label: "🔁 Subscriptions" },
-              { id: "catalogs", label: "🛍️ Giving Basket" },
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => handleTabChange(tab.id as Tab)}
-                className={`shrink-0 whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-bold transition active:scale-95 cursor-pointer ${
-                  activeTab === tab.id
-                    ? "bg-teal-950 text-white shadow-xs ring-2 ring-saffron"
-                    : "bg-white text-teal-950/80 ring-1 ring-teal-900/10 hover:bg-cream hover:text-teal-950"
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
+            <button
+              type="button"
+              onClick={() => handleTabChange("subscriptions")}
+              className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-bold transition flex items-center gap-1.5 min-h-[34px] cursor-pointer ${
+                activeTab === "subscriptions"
+                  ? "bg-teal-900 text-white shadow-xs ring-1 ring-saffron"
+                  : "bg-teal-50/80 text-teal-900 hover:bg-teal-100 border border-teal-900/10"
+              }`}
+            >
+              <span>🔁 Autopay Donors</span>
+              <span className="rounded-full bg-emerald-100 text-emerald-800 text-[10px] px-1.5 py-0.2 font-mono font-bold">Live</span>
+            </button>
 
-          {/* Site & Growth Group */}
-          <div className="flex items-center gap-1.5 shrink-0 bg-sky-50/80 p-1 rounded-xl border border-sky-900/10">
-            <span className="text-[10px] font-black uppercase text-sky-900/60 px-1.5 tracking-wider hidden md:inline">Site</span>
-            {[
-              { id: "content", label: "📝 Website Content" },
-              { id: "media", label: "🎥 Media & Today" },
-              { id: "marketing", label: "🤖 AI Marketing & Ads" },
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => handleTabChange(tab.id as Tab)}
-                className={`shrink-0 whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-bold transition active:scale-95 cursor-pointer ${
-                  activeTab === tab.id
-                    ? "bg-teal-950 text-white shadow-xs ring-2 ring-saffron"
-                    : "bg-white text-teal-950/80 ring-1 ring-teal-900/10 hover:bg-cream hover:text-teal-950"
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
+            <button
+              type="button"
+              onClick={() => handleTabChange("documents")}
+              className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-bold transition flex items-center gap-1.5 min-h-[34px] cursor-pointer ${
+                activeTab === "documents"
+                  ? "bg-teal-900 text-white shadow-xs ring-1 ring-saffron"
+                  : "bg-teal-50/80 text-teal-900 hover:bg-teal-100 border border-teal-900/10"
+              }`}
+            >
+              <span>📜 80G Legal Docs</span>
+              <span className="rounded-full bg-amber-100 text-amber-900 text-[10px] px-1.5 py-0.2 font-mono font-bold">Tax</span>
+            </button>
 
-          {/* Trust & Team Group */}
-          <div className="flex items-center gap-1.5 shrink-0 bg-purple-50/80 p-1 rounded-xl border border-purple-900/10">
-            <span className="text-[10px] font-black uppercase text-purple-900/60 px-1.5 tracking-wider hidden md:inline">Trust</span>
-            {[
-              { id: "documents", label: "📜 80G Documents" },
-              { id: "community", label: "🤝 Volunteers" },
-              ...(initialSession.user.role === "SUPER_ADMIN"
-                ? [{ id: "team", label: "👥 Team Roles" }]
-                : []),
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => handleTabChange(tab.id as Tab)}
-                className={`shrink-0 whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-bold transition active:scale-95 cursor-pointer ${
-                  activeTab === tab.id
-                    ? "bg-teal-950 text-white shadow-xs ring-2 ring-saffron"
-                    : "bg-white text-teal-950/80 ring-1 ring-teal-900/10 hover:bg-cream hover:text-teal-950"
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
+            <button
+              type="button"
+              onClick={() => setOfflineDonationModalOpen(true)}
+              className="ml-auto shrink-0 rounded-lg bg-saffron text-white px-3 py-1.5 text-xs font-bold hover:bg-saffron-dark transition shadow-2xs cursor-pointer active:scale-95"
+            >
+              + Record Cash/UPI
+            </button>
           </div>
-        </div>
+        )}
+
+        {/* Contextual Sub-Nav Bar: When in Ashrama Ops */}
+        {primaryModule === "ashrama" && (
+          <div className="pt-2 border-t border-teal-900/10 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+            <span className="text-[10px] font-black uppercase text-teal-900/60 px-1 hidden sm:inline tracking-wider">
+              Operations:
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                handleTabChange("content");
+                setContentSubtab("meals");
+              }}
+              className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-bold transition flex items-center gap-1.5 min-h-[34px] cursor-pointer ${
+                activeTab === "content" && contentSubtab === "meals"
+                  ? "bg-teal-900 text-white shadow-xs ring-1 ring-saffron"
+                  : "bg-teal-50/80 text-teal-900 hover:bg-teal-100 border border-teal-900/10"
+              }`}
+            >
+              <span>🍲 Today Meals</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleTabChange("celebrations")}
+              className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-bold transition flex items-center gap-1.5 min-h-[34px] cursor-pointer ${
+                activeTab === "celebrations"
+                  ? "bg-teal-900 text-white shadow-xs ring-1 ring-saffron"
+                  : "bg-teal-50/80 text-teal-900 hover:bg-teal-100 border border-teal-900/10"
+              }`}
+            >
+              <span>🎂 Birthday Seva</span>
+              <span className="rounded-full bg-amber-100 text-amber-900 text-[10px] px-1.5 py-0.2 font-mono font-bold">{celebrations.length}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleTabChange("media")}
+              className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-bold transition flex items-center gap-1.5 min-h-[34px] cursor-pointer ${
+                activeTab === "media"
+                  ? "bg-teal-900 text-white shadow-xs ring-1 ring-saffron"
+                  : "bg-teal-50/80 text-teal-900 hover:bg-teal-100 border border-teal-900/10"
+              }`}
+            >
+              <span>📸 Photos &amp; Media</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleTabChange("catalogs")}
+              className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-bold transition flex items-center gap-1.5 min-h-[34px] cursor-pointer ${
+                activeTab === "catalogs"
+                  ? "bg-teal-900 text-white shadow-xs ring-1 ring-saffron"
+                  : "bg-teal-50/80 text-teal-900 hover:bg-teal-100 border border-teal-900/10"
+              }`}
+            >
+              <span>🛍️ Seva Basket</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleTabChange("community")}
+              className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-bold transition flex items-center gap-1.5 min-h-[34px] cursor-pointer ${
+                activeTab === "community"
+                  ? "bg-teal-900 text-white shadow-xs ring-1 ring-saffron"
+                  : "bg-teal-50/80 text-teal-900 hover:bg-teal-100 border border-teal-900/10"
+              }`}
+            >
+              <span>🤝 Volunteers</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleTabChange("marketing")}
+              className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-bold transition flex items-center gap-1.5 min-h-[34px] cursor-pointer ${
+                activeTab === "marketing"
+                  ? "bg-teal-900 text-white shadow-xs ring-1 ring-saffron"
+                  : "bg-teal-50/80 text-teal-900 hover:bg-teal-100 border border-teal-900/10"
+              }`}
+            >
+              <span>🤖 Growth &amp; Ads</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                handleTabChange("content");
+                if (contentSubtab === "meals") setContentSubtab("hero");
+              }}
+              className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-bold transition flex items-center gap-1.5 min-h-[34px] cursor-pointer ${
+                activeTab === "content" && contentSubtab !== "meals"
+                  ? "bg-teal-900 text-white shadow-xs ring-1 ring-saffron"
+                  : "bg-teal-50/80 text-teal-900 hover:bg-teal-100 border border-teal-900/10"
+              }`}
+            >
+              <span>📝 Website Text</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Notification Banner */}
@@ -2225,6 +2241,68 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
             <p className="text-sm font-semibold text-teal-900/70">Loading executive analytics...</p>
           ) : analyticsData ? (
             <>
+              {/* ── EMPLOYEE QUICK ACTIONS DOCK (1-Tap Mobile Actions) ── */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setDailyPhotoModalOpen(true)}
+                  className="group flex items-center gap-3 rounded-2xl bg-white p-3 text-left border border-teal-900/10 shadow-xs hover:border-saffron hover:bg-cream/40 transition active:scale-95 cursor-pointer"
+                >
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-xl text-amber-700">
+                    📸
+                  </span>
+                  <div className="min-w-0">
+                    <span className="font-bold text-xs sm:text-sm text-teal-950 block truncate">Post Photo</span>
+                    <span className="text-[10px] text-teal-900/60 block truncate">Camera to Website</span>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleTabChange("content");
+                    setContentSubtab("meals");
+                  }}
+                  className="group flex items-center gap-3 rounded-2xl bg-white p-3 text-left border border-teal-900/10 shadow-xs hover:border-emerald-600 hover:bg-cream/40 transition active:scale-95 cursor-pointer"
+                >
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-xl text-emerald-700">
+                    🍲
+                  </span>
+                  <div className="min-w-0">
+                    <span className="font-bold text-xs sm:text-sm text-teal-950 block truncate">Today Meals</span>
+                    <span className="text-[10px] text-teal-900/60 block truncate">Toggle Served / Open</span>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleTabChange("telecallers")}
+                  className="group flex items-center gap-3 rounded-2xl bg-white p-3 text-left border border-teal-900/10 shadow-xs hover:border-teal-700 hover:bg-cream/40 transition active:scale-95 cursor-pointer"
+                >
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-100 text-xl text-sky-700">
+                    📞
+                  </span>
+                  <div className="min-w-0">
+                    <span className="font-bold text-xs sm:text-sm text-teal-950 block truncate">Calling CRM</span>
+                    <span className="text-[10px] text-teal-900/60 block truncate">15 Callers · Leads</span>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setOfflineDonationModalOpen(true)}
+                  className="group flex items-center gap-3 rounded-2xl bg-white p-3 text-left border border-teal-900/10 shadow-xs hover:border-saffron hover:bg-cream/40 transition active:scale-95 cursor-pointer"
+                >
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-purple-100 text-xl text-purple-700">
+                    ➕
+                  </span>
+                  <div className="min-w-0">
+                    <span className="font-bold text-xs sm:text-sm text-teal-950 block truncate">Cash / UPI</span>
+                    <span className="text-[10px] text-teal-900/60 block truncate">Record Walk-in</span>
+                  </div>
+                </button>
+              </div>
+
               {/* ── LIVE VISITOR RADAR HEADER & COMMAND BAR ── */}
               <div className="rounded-3xl bg-gradient-to-r from-teal-950 via-teal-900 to-emerald-950 p-6 text-white shadow-lg ring-1 ring-white/15">
                 <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
@@ -3042,15 +3120,27 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
                                   >
                                     {copiedKey === `ph_${d.id}` ? "✓" : "📋"}
                                   </button>
-                                  <a
-                                    href={`https://wa.me/${d.donorPhone.replace(/[^0-9]/g, "")}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-[11px] hover:scale-110 transition cursor-pointer"
-                                    title="Message on WhatsApp"
-                                  >
-                                    💬
-                                  </a>
+                                  {getDonationWhatsAppReceiptUrl(d) ? (
+                                    <a
+                                      href={getDonationWhatsAppReceiptUrl(d)!}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="rounded bg-[#25D366] text-white px-1.5 py-0.5 text-[10px] font-bold hover:brightness-105 transition cursor-pointer flex items-center gap-0.5"
+                                      title="Send 80G Receipt on WhatsApp"
+                                    >
+                                      <span>💬</span> 80G
+                                    </a>
+                                  ) : (
+                                    <a
+                                      href={`https://wa.me/${d.donorPhone.replace(/[^0-9]/g, "")}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-[11px] hover:scale-110 transition cursor-pointer"
+                                      title="Message on WhatsApp"
+                                    >
+                                      💬
+                                    </a>
+                                  )}
                                 </div>
                               )}
                             </td>
@@ -3077,6 +3167,15 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
                               </span>
                             </td>
                             <td className="py-3 text-right space-x-1 whitespace-nowrap">
+                              <a
+                                href={`/receipt/${d.publicId || d.id}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="rounded-lg bg-teal-50 border border-teal-900/15 px-2 py-1 text-[11px] font-bold text-teal-900 hover:bg-teal-100 transition inline-block"
+                                title="View 80G Receipt PDF"
+                              >
+                                📄 PDF
+                              </a>
                               <button
                                 type="button"
                                 onClick={() => setSelectedDonation(d)}
@@ -3114,6 +3213,7 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
                   {donations.map((d) => {
                     const meta = d.meta || {};
                     const dedication = meta.dedication || {};
+                    const waReceiptUrl = getDonationWhatsAppReceiptUrl(d);
                     return (
                       <div
                         key={d.id}
@@ -3145,8 +3245,8 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
                         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-teal-950/70 border-t border-teal-900/5 pt-2">
                           {d.donorPhone && (
                             <div className="flex items-center gap-1.5">
-                              <a href={`tel:${d.donorPhone}`} className="text-teal-800 font-medium">
-                                📞 {d.donorPhone}
+                              <a href={`tel:${d.donorPhone}`} className="text-teal-950 font-bold flex items-center gap-1">
+                                <span>📞</span> {d.donorPhone}
                               </a>
                               <button
                                 type="button"
@@ -3156,15 +3256,6 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
                               >
                                 {copiedKey === `ph_m_${d.id}` ? "✓" : "📋"}
                               </button>
-                              <a
-                                href={`https://wa.me/${d.donorPhone.replace(/[^0-9]/g, "")}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-[11px] hover:scale-110 transition cursor-pointer"
-                                title="Chat on WhatsApp"
-                              >
-                                💬
-                              </a>
                             </div>
                           )}
                           {d.donorEmail && (
@@ -3183,35 +3274,65 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
                             </div>
                           )}
                           {meta.pan && (
-                            <span className="font-mono text-[10px] text-teal-900/70">PAN: {meta.pan}</span>
+                            <span className="font-mono text-[10px] font-bold text-teal-900 bg-teal-50 px-1.5 py-0.5 rounded border border-teal-900/10">
+                              PAN: {meta.pan}
+                            </span>
                           )}
                         </div>
 
-                        <div className="flex items-center justify-between gap-2 border-t border-teal-900/5 pt-2">
-                          <span className="text-[11px] text-teal-900/70 truncate">
-                            {dedication.occasion ? `🎯 ${dedication.occasion}` : `Mode: ${d.mode || "razorpay"}`}
-                          </span>
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            <button
-                              type="button"
-                              onClick={() => setSelectedDonation(d)}
-                              className="rounded-lg bg-teal-900 px-2.5 py-1 text-xs font-bold text-white hover:bg-teal-800 cursor-pointer"
+                        <div className="flex items-center justify-between text-xs text-teal-900/70 border-t border-teal-900/5 pt-1.5">
+                          <span>{dedication.occasion ? `🎯 ${dedication.occasion}` : `Mode: ${(d.mode || "razorpay").toUpperCase()}`}</span>
+                          {meta.utr && <span className="font-mono text-[10px] text-teal-950/60">UTR: {meta.utr}</span>}
+                        </div>
+
+                        {/* 1-Tap Interconnected Actions */}
+                        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-teal-900/5 pt-2">
+                          <div className="flex items-center gap-1.5">
+                            {waReceiptUrl && (
+                              <a
+                                href={waReceiptUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 rounded-xl bg-[#25D366] text-white px-2.5 py-1.5 text-xs font-black shadow-2xs hover:brightness-105 active:scale-95 transition"
+                                title="Send official 80G Receipt directly on WhatsApp"
+                              >
+                                <span>💬</span>
+                                <span>Send 80G</span>
+                              </a>
+                            )}
+                            <a
+                              href={`/receipt/${d.publicId || d.id}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 rounded-xl bg-teal-50 border border-teal-900/15 text-teal-950 px-2 py-1.5 text-xs font-bold hover:bg-teal-100 active:scale-95 transition"
+                              title="Download or View 80G PDF Receipt"
                             >
-                              Details
-                            </button>
+                              <span>📄</span>
+                              <span>PDF</span>
+                            </a>
+                          </div>
+
+                          <div className="flex items-center gap-1.5 shrink-0">
                             {d.status !== "paid" && (
                               <button
                                 type="button"
                                 onClick={() => updateDonationStatus(d.id, "paid")}
-                                className="rounded-lg bg-emerald-700 px-2 py-1 text-xs font-bold text-white cursor-pointer"
+                                className="rounded-xl bg-emerald-700 px-2.5 py-1.5 text-xs font-bold text-white hover:bg-emerald-800 active:scale-95 transition cursor-pointer"
                               >
-                                Mark Paid
+                                ✓ Paid
                               </button>
                             )}
                             <button
                               type="button"
+                              onClick={() => setSelectedDonation(d)}
+                              className="rounded-xl bg-teal-950 px-2.5 py-1.5 text-xs font-bold text-white hover:bg-teal-900 cursor-pointer"
+                            >
+                              Details
+                            </button>
+                            <button
+                              type="button"
                               onClick={() => handleDeleteDonation(d.id)}
-                              className="rounded-lg bg-red-100 px-2 py-1 text-xs font-bold text-red-700 hover:bg-red-200 cursor-pointer"
+                              className="rounded-xl bg-red-100 text-red-700 px-2 py-1.5 text-xs font-bold hover:bg-red-200 cursor-pointer"
                               title="Delete record"
                             >
                               ✕
@@ -4534,9 +4655,9 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
               type="button"
               disabled={contentSaving || !contentForm}
               onClick={() => void handleSaveContent()}
-              className="hidden sm:inline-flex shrink-0 rounded-xl bg-saffron px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-saffron-dark transition disabled:opacity-50 cursor-pointer"
+              className="inline-flex shrink-0 rounded-xl bg-saffron px-3.5 py-2 text-xs font-bold text-white shadow-xs hover:bg-saffron-dark transition disabled:opacity-50 cursor-pointer active:scale-95"
             >
-              {contentSaving ? "Saving Live..." : "💾 Quick Save Changes"}
+              {contentSaving ? "Saving..." : "💾 Save Changes"}
             </button>
           </div>
 
@@ -8494,8 +8615,9 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
               </p>
             </div>
           ) : (
-            <div className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-teal-900/10">
-              <div className="overflow-x-auto">
+            <div className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 border border-teal-900/10">
+              {/* Desktop Table View */}
+              <div className="hidden md:block overflow-x-auto">
                 <table className="w-full text-left text-xs">
                   <thead className="bg-sand/40 border-b border-teal-900/10 text-[11px] font-bold text-teal-950">
                     <tr>
@@ -8591,6 +8713,87 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
                     })}
                   </tbody>
                 </table>
+              </div>
+
+              {/* Mobile View: High-Legibility Employee Cards */}
+              <div className="md:hidden space-y-3 p-3">
+                {teamMembers.map((member) => {
+                  const isSelf = member.id === currentAdminId;
+                  return (
+                    <div
+                      key={member.id}
+                      className="rounded-2xl border border-teal-900/10 bg-white p-3.5 shadow-2xs space-y-2.5"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="h-8 w-8 rounded-full bg-teal-900 text-white flex items-center justify-center font-bold text-xs uppercase shrink-0">
+                            {member.displayName.slice(0, 2)}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <h4 className="font-bold text-teal-950 text-sm truncate">{member.displayName}</h4>
+                              {isSelf && (
+                                <span className="rounded-md bg-saffron/20 px-1 py-0.2 text-[9px] font-bold text-saffron-dark border border-saffron/40">
+                                  You
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[11px] text-teal-900/60 truncate">{member.email}</p>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => handleToggleActive(member.id, !member.active)}
+                          className={`rounded-full px-2 py-0.5 text-[10px] font-bold transition shrink-0 ${
+                            member.active
+                              ? "bg-emerald-100 text-emerald-800"
+                              : "bg-rose-100 text-rose-800"
+                          }`}
+                        >
+                          {member.active ? "● Active" : "○ Paused"}
+                        </button>
+                      </div>
+
+                      <div className="flex items-center justify-between gap-2 border-t border-teal-900/5 pt-2">
+                        <select
+                          value={member.role}
+                          onChange={(e) => handleUpdateRole(member.id, e.target.value)}
+                          className="rounded-xl border border-teal-900/15 bg-cream/40 px-2 py-1 text-xs font-bold text-teal-950 focus:outline-none"
+                        >
+                          {ROLES_INFO.map((r) => (
+                            <option key={r.role} value={r.role}>
+                              {r.label}
+                            </option>
+                          ))}
+                        </select>
+
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setResetPassModalUser(member);
+                              setResetPasswordInput("");
+                            }}
+                            className="rounded-lg bg-cream px-2 py-1 text-[11px] font-bold text-teal-900 hover:bg-sand"
+                          >
+                            🔑 Pass
+                          </button>
+                          {!isSelf && (
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteMember(member.id, member.displayName)}
+                              className="rounded-lg bg-rose-50 px-2 py-1 text-[11px] font-bold text-rose-700 hover:bg-rose-100"
+                              title="Delete Employee Account"
+                            >
+                              🗑
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -9759,6 +9962,76 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
         message={valModalMsg}
         onClose={() => setValModalOpen(false)}
       />
+
+      {/* ── ERGONOMIC MOBILE BOTTOM DOCK (For Staff on Phones) ── */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-teal-900/10 px-2 py-1.5 shadow-2xl safe-area-pb">
+        <div className="flex items-center justify-around">
+          <button
+            type="button"
+            onClick={() => handleModuleSwitch("overview")}
+            className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition min-w-[54px] min-h-[44px] cursor-pointer ${
+              primaryModule === "overview"
+                ? "text-teal-950 font-black bg-teal-900/10 ring-1 ring-teal-900/15"
+                : "text-teal-950/60 hover:text-teal-950 font-medium"
+            }`}
+          >
+            <span className="text-lg">📊</span>
+            <span className="text-[10px] tracking-tight">Pulse</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleModuleSwitch("calling")}
+            className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition min-w-[54px] min-h-[44px] cursor-pointer ${
+              primaryModule === "calling"
+                ? "text-teal-950 font-black bg-teal-900/10 ring-1 ring-teal-900/15"
+                : "text-teal-950/60 hover:text-teal-950 font-medium"
+            }`}
+          >
+            <span className="text-lg">📞</span>
+            <span className="text-[10px] tracking-tight">Calls</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleModuleSwitch("donations")}
+            className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition min-w-[54px] min-h-[44px] cursor-pointer ${
+              primaryModule === "donations"
+                ? "text-teal-950 font-black bg-teal-900/10 ring-1 ring-teal-900/15"
+                : "text-teal-950/60 hover:text-teal-950 font-medium"
+            }`}
+          >
+            <span className="text-lg">💳</span>
+            <span className="text-[10px] tracking-tight">Donations</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleModuleSwitch("whatsapp")}
+            className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition min-w-[54px] min-h-[44px] cursor-pointer ${
+              primaryModule === "whatsapp"
+                ? "text-teal-950 font-black bg-teal-900/10 ring-1 ring-teal-900/15"
+                : "text-teal-950/60 hover:text-teal-950 font-medium"
+            }`}
+          >
+            <span className="text-lg">💬</span>
+            <span className="text-[10px] tracking-tight">WhatsApp</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleModuleSwitch("ashrama")}
+            className={`flex flex-col items-center justify-center py-1 px-2 rounded-xl transition min-w-[54px] min-h-[44px] cursor-pointer ${
+              primaryModule === "ashrama"
+                ? "text-teal-950 font-black bg-teal-900/10 ring-1 ring-teal-900/15"
+                : "text-teal-950/60 hover:text-teal-950 font-medium"
+            }`}
+          >
+            <span className="text-lg">⚙️</span>
+            <span className="text-[10px] tracking-tight">Ashrama</span>
+          </button>
+        </div>
+      </nav>
     </div>
   );
 }
