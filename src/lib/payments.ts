@@ -70,22 +70,28 @@ export const captureRazorpayPayment = (id: string, amountPaise: number) =>
   });
 
 /**
- * Creates or registers a recurring monthly plan on Razorpay.
+ * Creates or registers a recurring plan on Razorpay (daily, weekly, monthly, yearly).
  */
-export const createRazorpayPlan = (amountInr: number, name?: string) =>
-  rz<{ id: string; period: string; interval: number }>("/plans", {
+export const createRazorpayPlan = (
+  amountInr: number,
+  period: "daily" | "weekly" | "monthly" | "yearly" = "monthly",
+  name?: string
+) => {
+  const periodLabel = period.charAt(0).toUpperCase() + period.slice(1);
+  return rz<{ id: string; period: string; interval: number }>("/plans", {
     method: "POST",
     body: JSON.stringify({
-      period: "monthly",
+      period,
       interval: 1,
       item: {
-        name: name || `Janaseva Ashrama Monthly Support (₹${amountInr})`,
-        amount: amountInr * 100,
+        name: name || `Janaseva Ashrama ${periodLabel} Support (₹${amountInr})`,
+        amount: Math.round(amountInr * 100),
         currency: "INR",
-        description: "Monthly sponsorship for 25 boys residing at Janaseva Ashrama",
+        description: `${periodLabel} recurring sponsorship for 25 boys residing at Janaseva Ashrama`,
       },
     }),
   });
+};
 
 export type RzSubscription = {
   id: string;
@@ -332,7 +338,7 @@ export async function recordSubscriptionCharge(params: {
         amount: result.amount,
         receiptNumber: result.receiptNo,
         pan: (result.meta as any)?.donorPan || undefined,
-        sevaType: "Monthly Annadana Subscription",
+        sevaType: `${(sub.frequency || "Monthly").charAt(0).toUpperCase() + (sub.frequency || "Monthly").slice(1)} Annadana Mandate`,
       });
     }
   } catch (err) {

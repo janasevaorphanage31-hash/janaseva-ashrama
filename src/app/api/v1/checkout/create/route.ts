@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
-import { clean, cleanRazorpayNote, normalizePhone, isEmail, isPhone } from "@/lib/server-utils";
+import { db, ensureDbSchema } from "@/db";
+import { recurringSubscriptions } from "@/db/schema";
+import { createRazorpayPlan, createRazorpaySubscription } from "@/lib/payments";
+import { clean, cleanRazorpayNote, normalizePhone, isEmail, isPhone, publicToken } from "@/lib/server-utils";
 
 const MAX_DONATION_AMOUNT = 1000000; // ₹10,00,000 maximum per single transaction
 
@@ -11,7 +14,6 @@ export async function POST(req: Request) {
     }
 
     // 1. CAPTCHA / Bot Protection via Invisible Honeypot
-    // Automated spambots automatically fill all form inputs including hidden ones
     if (body.website_hp || body.hp_token) {
       return NextResponse.json(
         { error: "Automated submission blocked by spam protection." },
@@ -19,11 +21,17 @@ export async function POST(req: Request) {
       );
     }
 
-    // 2. Never Trust the Frontend: Server-side Amount Validation
+    // 2. Frequency handling (One-time vs Recurring: daily, weekly, monthly, yearly)
+    const rawFreq = clean(body.frequency, 16).toLowerCase();
+    const isRecurring = ["daily", "weekly", "monthly", "yearly"].includes(rawFreq);
+    const frequency = isRecurring ? (rawFreq as "daily" | "weekly" | "monthly" | "yearly") : "onetime";
+
+    // 3. Amount Validation
     const amount = Number(body.amount);
-    if (!amount || isNaN(amount) || amount < 10) {
+    const minAmount = frequency === "daily" ? 10 : frequency === "yearly" ? 500 : 10;
+    if (!amount || isNaN(amount) || amount < minAmount) {
       return NextResponse.json(
-        { error: "Invalid donation amount (minimum contribution is ₹10)." },
+        { error: `Invalid donation amount (minimum contribution is ₹${minAmount}).` },
         { status: 400 },
       );
     }
@@ -35,7 +43,7 @@ export async function POST(req: Request) {
       );
     }
 
-    // 3. Sanitize User Input with generous fallbacks for quick donations
+    // 4. Sanitize User Input with generous fallbacks for quick donations
     const rawDonorName = clean(body.donorName, 80).replace(/[<>{}[\]\\]/g, "");
     const donorName = rawDonorName && rawDonorName.length >= 2 ? rawDonorName : "Janaseva Supporter";
     const rawDonorPhone = normalizePhone(clean(body.donorPhone, 20));
@@ -65,59 +73,129 @@ export async function POST(req: Request) {
     const keyId = process.env.RAZORPAY_KEY_ID;
     const keySecret = process.env.RAZORPAY_KEY_SECRET;
 
-    // 4. Live Gateway Execution
+    // Build safe notes: strip emojis / 4-byte UTF-8 which Razorpay API strictly rejects
+    const safeNotes: Record<string, string> = {};
+    if (callerRefId) safeNotes.caller_ref_id = cleanRazorpayNote(callerRefId, 30);
+    if (leadId) safeNotes.lead_id = String(leadId);
+    if (donorName) safeNotes.donor_name = cleanRazorpayNote(donorName, 50);
+    if (donorPhone) safeNotes.donor_phone = cleanRazorpayNote(donorPhone, 15);
+    if (donorEmail) safeNotes.donor_email = cleanRazorpayNote(donorEmail, 60);
+    if (donorPan) safeNotes.donor_pan = cleanRazorpayNote(donorPan, 10);
+    if (occasion) safeNotes.occasion = cleanRazorpayNote(occasion, 50);
+    if (prayerNote) safeNotes.prayer_note = cleanRazorpayNote(prayerNote, 120);
+    if (utmSource) safeNotes.utm_source = cleanRazorpayNote(utmSource, 40);
+    if (utmMedium) safeNotes.utm_medium = cleanRazorpayNote(utmMedium, 40);
+    if (utmCampaign) safeNotes.utm_campaign = cleanRazorpayNote(utmCampaign, 50);
+    if (gclid) safeNotes.gclid = cleanRazorpayNote(gclid, 60);
+    if (fbclid) safeNotes.fbclid = cleanRazorpayNote(fbclid, 60);
+    safeNotes.frequency = frequency;
+    safeNotes.platform = "antigravity_crm";
+
+    // 5. Live Gateway Execution
     if (keyId && keySecret) {
-      // Build safe notes: strip emojis / 4-byte UTF-8 which Razorpay API strictly rejects
-      const safeNotes: Record<string, string> = {};
-      if (callerRefId) safeNotes.caller_ref_id = cleanRazorpayNote(callerRefId, 30);
-      if (leadId) safeNotes.lead_id = String(leadId);
-      if (donorName) safeNotes.donor_name = cleanRazorpayNote(donorName, 50);
-      if (donorPhone) safeNotes.donor_phone = cleanRazorpayNote(donorPhone, 15);
-      if (donorEmail) safeNotes.donor_email = cleanRazorpayNote(donorEmail, 60);
-      if (donorPan) safeNotes.donor_pan = cleanRazorpayNote(donorPan, 10);
-      if (occasion) safeNotes.occasion = cleanRazorpayNote(occasion, 50);
-      if (prayerNote) safeNotes.prayer_note = cleanRazorpayNote(prayerNote, 120);
-      if (utmSource) safeNotes.utm_source = cleanRazorpayNote(utmSource, 40);
-      if (utmMedium) safeNotes.utm_medium = cleanRazorpayNote(utmMedium, 40);
-      if (utmCampaign) safeNotes.utm_campaign = cleanRazorpayNote(utmCampaign, 50);
-      if (gclid) safeNotes.gclid = cleanRazorpayNote(gclid, 60);
-      if (fbclid) safeNotes.fbclid = cleanRazorpayNote(fbclid, 60);
-      safeNotes.platform = "antigravity_crm";
+      if (isRecurring) {
+        // --- RECURRING AUTOPAY (UPI Autopay / e-mandate) ---
+        await ensureDbSchema().catch(() => {});
+        const period = frequency as "daily" | "weekly" | "monthly" | "yearly";
+        const totalCount = period === "daily" ? 365 : period === "weekly" ? 52 : period === "yearly" ? 10 : 60;
+        const periodLabel = period.charAt(0).toUpperCase() + period.slice(1);
 
-      const basicAuth = Buffer.from(`${keyId}:${keySecret}`).toString("base64");
-      const orderRes = await fetch("https://api.razorpay.com/v1/orders", {
-        method: "POST",
-        headers: {
-          Authorization: `Basic ${basicAuth}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          amount: Math.round(amount * 100), // in paise
+        // 1. Create or get recurring plan on Razorpay
+        const plan = await createRazorpayPlan(
+          amount,
+          period,
+          `Janaseva Ashrama ${periodLabel} Support (₹${amount})`
+        );
+
+        const subPublicId = "sub_" + publicToken();
+
+        // 2. Create subscription mandate
+        const rzSub = await createRazorpaySubscription({
+          planId: plan.id,
+          totalCount,
+          customerNotify: 1,
+          notes: {
+            ...safeNotes,
+            donor_email: donorEmail || "",
+            donor_name: donorName,
+            donor_phone: donorPhone || "",
+            public_id: subPublicId,
+          },
+        });
+
+        // 3. Store in Postgres DB
+        await db.insert(recurringSubscriptions).values({
+          publicId: subPublicId,
+          mode: "razorpay",
+          status: "created",
+          mandateStatus: "pending",
+          amount,
+          frequency: period,
+          donorName,
+          donorEmail: donorEmail || "donor@janasevaashrama.org",
+          donorPhone: donorPhone || null,
+          donorPan: donorPan || null,
+          razorpayPlanId: plan.id,
+          razorpaySubscriptionId: rzSub.id,
+          totalCycles: totalCount,
+          idempotencyKey: `sub_chk_${Date.now()}_${publicToken()}`,
+          meta: {
+            ...safeNotes,
+            razorpayPlanId: plan.id,
+            razorpaySubscriptionId: rzSub.id,
+            frequency: period,
+            totalCount,
+          },
+        });
+
+        return NextResponse.json({
+          success: true,
+          subscriptionId: rzSub.id,
+          amount: Math.round(amount * 100),
           currency: "INR",
-          receipt: `ag_rcpt_${Date.now()}`,
-          notes: safeNotes,
-        }),
-      });
+          frequency: period,
+          keyId,
+          callerRefId,
+          mode: "live",
+        });
+      } else {
+        // --- ONE-TIME ORDER ---
+        const basicAuth = Buffer.from(`${keyId}:${keySecret}`).toString("base64");
+        const orderRes = await fetch("https://api.razorpay.com/v1/orders", {
+          method: "POST",
+          headers: {
+            Authorization: `Basic ${basicAuth}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            amount: Math.round(amount * 100), // in paise
+            currency: "INR",
+            receipt: `ag_rcpt_${Date.now()}`,
+            notes: safeNotes,
+          }),
+        });
 
-      if (!orderRes.ok) {
-        const errText = await orderRes.text();
-        throw new Error(`Payment gateway order initiation failed: ${orderRes.status} ${errText}`);
+        if (!orderRes.ok) {
+          const errText = await orderRes.text();
+          throw new Error(`Payment gateway order initiation failed: ${orderRes.status} ${errText}`);
+        }
+
+        const order = await orderRes.json();
+
+        return NextResponse.json({
+          success: true,
+          orderId: order.id,
+          amount: order.amount,
+          currency: order.currency,
+          frequency: "onetime",
+          keyId,
+          callerRefId,
+          mode: "live",
+        });
       }
-
-      const order = await orderRes.json();
-
-      return NextResponse.json({
-        success: true,
-        orderId: order.id,
-        amount: order.amount,
-        currency: order.currency,
-        keyId,
-        callerRefId,
-        mode: "live",
-      });
     }
 
-    // 5. Debug Mode Off in Production Check
+    // 6. Debug Mode Off in Production Check
     const isProduction = process.env.NODE_ENV === "production";
     const allowDemo = process.env.ALLOW_DEMO_SEED === "true";
 
@@ -129,12 +207,48 @@ export async function POST(req: Request) {
     }
 
     // Demo / Sandbox mode fallback for local staging & development only
+    if (isRecurring) {
+      const demoSubId = `sub_demo_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+      await ensureDbSchema().catch(() => {});
+      await db.insert(recurringSubscriptions).values({
+        publicId: demoSubId,
+        mode: "demo",
+        status: "active",
+        mandateStatus: "active",
+        amount,
+        frequency,
+        donorName,
+        donorEmail: donorEmail || "donor@janasevaashrama.org",
+        donorPhone: donorPhone || null,
+        donorPan: donorPan || null,
+        totalCycles: frequency === "daily" ? 365 : frequency === "weekly" ? 52 : frequency === "yearly" ? 10 : 60,
+        idempotencyKey: `sub_chk_${Date.now()}_${publicToken()}`,
+        meta: {
+          demoSimulated: true,
+          frequency,
+          ...safeNotes,
+        },
+      }).catch(() => {});
+
+      return NextResponse.json({
+        success: true,
+        subscriptionId: demoSubId,
+        amount: Math.round(amount * 100),
+        currency: "INR",
+        frequency,
+        keyId: "rzp_test_demokey12345",
+        callerRefId,
+        mode: "demo",
+      });
+    }
+
     const demoOrderId = `order_demo_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
     return NextResponse.json({
       success: true,
       orderId: demoOrderId,
       amount: Math.round(amount * 100),
       currency: "INR",
+      frequency: "onetime",
       keyId: "rzp_test_demokey12345",
       callerRefId,
       mode: "demo",

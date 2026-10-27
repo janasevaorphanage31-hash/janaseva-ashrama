@@ -60,7 +60,7 @@ export function BottomDonationDrawer() {
 
   const [selectedAmount, setSelectedAmount] = useState<number>(() => (total > 0 ? total : 2500));
   const [customInput, setCustomInput] = useState<string>("");
-  const [frequency, setFrequency] = useState<"onetime" | "monthly">("onetime");
+  const [frequency, setFrequency] = useState<"onetime" | "daily" | "weekly" | "monthly" | "yearly">("onetime");
   const [activeTab, setActiveTab] = useState<"quick" | "tiers" | "bank">("quick");
   const [selectedTierOption, setSelectedTierOption] = useState<{ categoryId: string; optionId: string }>({
     categoryId: "food_one_day",
@@ -173,7 +173,7 @@ export function BottomDonationDrawer() {
         }
       } catch {}
     }
-    router.push(`/checkout?amount=${currentAmount}${frequency === "monthly" ? "&freq=monthly" : ""}${occasionQuery}${purposeQuery}${refParam}`);
+    router.push(`/checkout?amount=${currentAmount}${frequency !== "onetime" ? `&freq=${frequency}` : ""}${occasionQuery}${purposeQuery}${refParam}`);
   };
 
   const handleCopy = (text: string, field: string) => {
@@ -273,49 +273,119 @@ export function BottomDonationDrawer() {
         {/* Scrollable Content Body */}
         <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-5 bg-sand/20">
 
-          {/* Donation Frequency Selector: One-Time vs Monthly Auto-Pay */}
-          <div className="rounded-2xl bg-white p-1.5 border border-teal-900/15 flex gap-1.5 shadow-xs">
+          {/* Donation Frequency Selector: 5 Cadences */}
+          <div className="rounded-2xl bg-white p-1 border border-teal-900/15 grid grid-cols-5 gap-1 shadow-xs">
             <button
               type="button"
               onClick={() => setFrequency("onetime")}
-              className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer ${
+              className={`py-2 px-1 rounded-xl text-center font-bold transition cursor-pointer ${
                 frequency === "onetime"
-                  ? "bg-teal-900 text-white shadow-xs"
-                  : "text-teal-950/70 hover:bg-cream"
+                  ? "bg-teal-900 text-white shadow-xs font-black"
+                  : "text-teal-950/70 hover:bg-cream text-xs"
               }`}
             >
-              <span>⚡ One-Time</span>
+              <span className="block text-[11px] leading-tight">Once</span>
+              <span className="block text-[8px] opacity-75">Single</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setFrequency("daily");
+                if (![11, 21, 51, 101].includes(currentAmount)) {
+                  setSelectedAmount(21);
+                  setCustomInput("21");
+                }
+              }}
+              className={`py-2 px-1 rounded-xl text-center font-bold transition cursor-pointer ${
+                frequency === "daily"
+                  ? "bg-teal-900 text-white shadow-xs font-black"
+                  : "text-teal-950/70 hover:bg-cream text-xs"
+              }`}
+            >
+              <span className="block text-[11px] leading-tight">Daily</span>
+              <span className="block text-[8px] text-amber-600 font-bold">₹11/d</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setFrequency("weekly");
+                if (![101, 251, 501, 1000].includes(currentAmount)) {
+                  setSelectedAmount(251);
+                  setCustomInput("251");
+                }
+              }}
+              className={`py-2 px-1 rounded-xl text-center font-bold transition cursor-pointer ${
+                frequency === "weekly"
+                  ? "bg-teal-900 text-white shadow-xs font-black"
+                  : "text-teal-950/70 hover:bg-cream text-xs"
+              }`}
+            >
+              <span className="block text-[11px] leading-tight">Weekly</span>
+              <span className="block text-[8px] text-amber-600 font-bold">Saptahik</span>
             </button>
             <button
               type="button"
               onClick={() => {
                 setFrequency("monthly");
-                if (![100, 300, 500, 1000].includes(currentAmount)) {
-                  setSelectedAmount(500);
-                  setCustomInput("500");
+                if (![500, 1000, 1500, 2500].includes(currentAmount)) {
+                  setSelectedAmount(1000);
+                  setCustomInput("1000");
                 }
               }}
-              className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer relative ${
+              className={`py-2 px-1 rounded-xl text-center font-bold transition cursor-pointer relative ${
                 frequency === "monthly"
-                  ? "bg-gradient-to-r from-saffron to-amber-500 text-white shadow-xs"
-                  : "text-teal-950/70 hover:bg-cream"
+                  ? "bg-gradient-to-r from-saffron to-amber-500 text-white shadow-xs font-black"
+                  : "bg-amber-50 text-teal-950 hover:bg-amber-100 text-xs font-black border border-amber-300/60"
               }`}
             >
-              <span>🔁 Monthly Auto-Pay</span>
-              <span className="rounded bg-white/25 px-1 py-0.2 text-[8px] font-black uppercase tracking-wider ml-1">
-                Continuous
-              </span>
+              <span className="block text-[11px] leading-tight">Monthly</span>
+              <span className="block text-[8px] uppercase">★ Popular</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setFrequency("yearly");
+                if (![9600, 15000, 30000].includes(currentAmount)) {
+                  setSelectedAmount(15000);
+                  setCustomInput("15000");
+                }
+              }}
+              className={`py-2 px-1 rounded-xl text-center font-bold transition cursor-pointer ${
+                frequency === "yearly"
+                  ? "bg-teal-900 text-white shadow-xs font-black"
+                  : "text-teal-950/70 hover:bg-cream text-xs"
+              }`}
+            >
+              <span className="block text-[11px] leading-tight">Yearly</span>
+              <span className="block text-[8px] text-emerald-700 font-bold">80G Max</span>
             </button>
           </div>
 
-          {frequency === "monthly" && (
+          {frequency !== "onetime" && (
             <div className="rounded-2xl bg-amber-50 border border-amber-200 p-3.5 space-y-2.5 animate-in fade-in text-xs">
               <div className="flex items-center justify-between text-amber-950">
-                <span className="font-bold">Monthly Recurring Presets:</span>
-                <span className="font-display font-black text-sm">{formatINR(currentAmount)} / month</span>
+                <span className="font-bold">
+                  {frequency === "daily"
+                    ? "Daily Punya Presets:"
+                    : frequency === "weekly"
+                    ? "Weekly Saptahik Presets:"
+                    : frequency === "monthly"
+                    ? "Monthly Masa Presets:"
+                    : "Annual 80G Presets:"}
+                </span>
+                <span className="font-display font-black text-sm">
+                  {formatINR(currentAmount)} / {frequency === "daily" ? "day" : frequency === "weekly" ? "week" : frequency === "monthly" ? "month" : "year"}
+                </span>
               </div>
               <div className="grid grid-cols-4 gap-2">
-                {[100, 300, 500, 1000].map((amt) => (
+                {(frequency === "daily"
+                  ? [11, 21, 51, 101]
+                  : frequency === "weekly"
+                  ? [101, 251, 501, 1000]
+                  : frequency === "monthly"
+                  ? [501, 1000, 2500, 5000]
+                  : [9600, 15000, 30000, 60000]
+                ).map((amt) => (
                   <button
                     key={amt}
                     type="button"
@@ -325,16 +395,16 @@ export function BottomDonationDrawer() {
                     }}
                     className={`py-2 px-1 rounded-xl text-center font-bold transition border cursor-pointer ${
                       currentAmount === amt
-                        ? "bg-saffron text-white border-saffron shadow-xs"
+                        ? "bg-saffron text-white border-saffron shadow-xs font-black"
                         : "bg-white text-teal-950 border-amber-200 hover:bg-amber-100/50"
                     }`}
                   >
-                    ₹{amt}/mo
+                    ₹{amt >= 1000 ? `${(amt / 1000).toFixed(amt % 1000 === 0 ? 0 : 1)}k` : amt}
                   </button>
                 ))}
               </div>
               <p className="text-[11px] text-amber-900/80 leading-tight">
-                Mandate debited monthly via UPI AutoPay or Cards. 80G tax receipt on every debit. Cancel anytime.
+                Mandate debited {frequency} via UPI AutoPay (GPay/PhonePe/Paytm) or Cards. 80G tax receipt on every debit. Cancel anytime in 1 click.
               </p>
             </div>
           )}
@@ -671,7 +741,9 @@ export function BottomDonationDrawer() {
               onClick={handleProceedOnline}
               className="flex-2 sm:flex-none btn-primary px-6 py-3 text-xs sm:text-sm font-extrabold uppercase tracking-wider cursor-pointer shadow-lg animate-heartbeat"
             >
-              {frequency === "monthly" ? "SET UP MONTHLY AUTO-PAY →" : "DONATE ONLINE (UPI / CARDS) →"}
+              {frequency === "onetime"
+                ? "DONATE ONLINE (UPI / CARDS) →"
+                : `SET UP ${frequency.toUpperCase()} AUTO-PAY →`}
             </button>
           </div>
         </div>

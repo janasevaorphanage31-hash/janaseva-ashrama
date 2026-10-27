@@ -235,6 +235,14 @@ const FAQS = [
     a: "Yes! Every single contribution, starting from ₹11 upwards, is legally tax-deductible under Section 80G Form 10AC (URN: AABTJ7431MF20231). Your official digital receipt is sent immediately to your WhatsApp and email.",
   },
   {
+    q: "How does UPI Autopay / recurring donation work?",
+    a: "UPI Autopay lets you authorize recurring debits via Google Pay, PhonePe, or Paytm once using your UPI PIN. The chosen amount is automatically contributed on your schedule (daily, weekly, monthly, or yearly) without having to remember or enter OTPs manually.",
+  },
+  {
+    q: "Can I pause or cancel my recurring donation anytime?",
+    a: "Yes, 100%! There is absolutely zero lock-in or penalty. You can pause or cancel your autopayment anytime in 1 click from your digital receipt, or simply send a WhatsApp message to +91 99803 59595. Furthermore, RBI guidelines mandate that you receive an SMS reminder 24 hours before every scheduled deduction.",
+  },
+  {
     q: "Can I visit Janaseva Ashrama in Bengaluru to meet the boys?",
     a: "Yes, visitors are warmly welcome 7 days a week between 9:00 AM and 7:00 PM. We are located in Turahalli, Bengaluru South 560061. You can celebrate your birthday or family anniversary directly with the 25 boys.",
   },
@@ -248,8 +256,42 @@ const FAQS = [
   },
 ];
 
-function getDynamicImpactText(amt: number): string {
+export type DonationFrequency = "onetime" | "daily" | "weekly" | "monthly" | "yearly";
+
+function getDynamicImpactText(amt: number, freq: DonationFrequency = "onetime"): string {
   if (amt <= 0) return "Choose or enter any sacred amount to support 25 resident boys.";
+
+  if (freq === "daily") {
+    if (amt <= 11) return "Provides 1 warm glass of pure cow milk for 1 young boy every single morning.";
+    if (amt <= 21) return "Serves a steaming hot breakfast (idlis, sambar) & fresh fruit for 1 boy daily.";
+    if (amt <= 51) return "Serves a wholesome satvik lunch with fresh vegetables & morning milk for 1 boy every day.";
+    return `Provides comprehensive full-day nutrition and care for resident boys every day (₹${amt}/day).`;
+  }
+
+  if (freq === "weekly") {
+    if (amt <= 101) return "Serves a hot satvik lunch feast with fresh vegetables for 1 boy every weekend.";
+    if (amt <= 251) return "Provides a full weekly vidya stationery kit (notebooks, geometry box) & meals.";
+    if (amt <= 501) return "Hosts a special weekend festive feast with sweet payasam for the resident boys.";
+    return `Sponsors comprehensive weekly nutrition, tutoring & fruits for resident boys (₹${amt}/week).`;
+  }
+
+  if (freq === "monthly") {
+    const perDay = Math.max(1, Math.round(amt / 30));
+    if (amt <= 501) return `Provides 30 days of morning cow milk, breakfast & care for 1 boy (Just ₹${perDay}/day).`;
+    if (amt <= 1000) return `Feeds 1 boy all nutritious meals + evening school tutoring for the full month (Just ₹${perDay}/day).`;
+    if (amt <= 2500) return `Complete monthly adoption: food, education, clothing & pediatric care for 1 boy (Just ₹${perDay}/day).`;
+    return `Sponsors multiple resident boys with complete nutrition, shelter & schooling every month (Just ₹${perDay}/day).`;
+  }
+
+  if (freq === "yearly") {
+    const perMonth = Math.max(1, Math.round(amt / 12));
+    if (amt <= 9600) return `1 Full Academic Year Vidya Dana: school tuition, textbooks & uniforms for 1 boy (₹${perMonth.toLocaleString("en-IN")}/mo).`;
+    if (amt <= 15000) return `1 Full Year complete nutrition, daily cow milk & pediatric doctor care for 1 boy (₹${perMonth.toLocaleString("en-IN")}/mo).`;
+    if (amt <= 30000) return `Complete 1-Year Child Adoption: food, schooling, clothing & holistic ashrama living (₹${perMonth.toLocaleString("en-IN")}/mo).`;
+    return `Comprehensive 1-year patron support sponsoring resident boys fully for the entire year.`;
+  }
+
+  // One-time fallback
   if (amt === 11) return "Provides 1 glass of warm, pure cow milk for a young boy before morning prayers.";
   if (amt === 21) return "Provides fresh bananas & seasonal study fruits for a child.";
   if (amt === 51) return "Serves a steaming hot breakfast (idlis, sambar & chutney) fresh from the kitchen.";
@@ -297,8 +339,14 @@ export function MetaAdsDonateComponent() {
   });
   const [leadId] = useState<string>(() => searchParams.get("lead_id") || "");
 
-  // Giving frequency (One-Time Seva vs Monthly Punya)
-  const [frequency, setFrequency] = useState<"onetime" | "monthly">("onetime");
+  // Giving frequency (One-Time Seva vs Daily / Weekly / Monthly / Yearly Autopay)
+  const [frequency, setFrequency] = useState<DonationFrequency>(() => {
+    const urlFreq = (searchParams.get("freq") || searchParams.get("frequency") || "").toLowerCase();
+    if (["daily", "weekly", "monthly", "yearly"].includes(urlFreq)) {
+      return urlFreq as DonationFrequency;
+    }
+    return "onetime";
+  });
 
   // Active Seva Category Tab ("quick" | "official" | "birthday")
   const [sevaTab, setSevaTab] = useState<"quick" | "official" | "birthday">(() => {
@@ -534,7 +582,39 @@ export function MetaAdsDonateComponent() {
   }, [finalAmount, upiUri]);
 
   // Dynamic Impact Description
-  const impactSummary = getDynamicImpactText(finalAmount);
+  const impactSummary = getDynamicImpactText(finalAmount, frequency);
+
+  const handleFrequencyChange = (newFreq: DonationFrequency) => {
+    setFrequency(newFreq);
+    setShowCustomInputInline(false);
+    setCustomAmount("");
+    clearFieldError("amount");
+
+    let defaultAmt = 2500;
+    if (newFreq === "daily") defaultAmt = 21;
+    else if (newFreq === "weekly") defaultAmt = 251;
+    else if (newFreq === "monthly") defaultAmt = 1000;
+    else if (newFreq === "yearly") defaultAmt = 15000;
+    else defaultAmt = 2500;
+
+    setAmount(defaultAmt);
+    if (cart.setDedicatedAmount) cart.setDedicatedAmount(defaultAmt);
+
+    trackViewContent({
+      content_name: `Change Cadence to ${newFreq}`,
+      content_category: "Child Welfare",
+      value: defaultAmt,
+      currency: "INR",
+    });
+  };
+
+  const cadencePills = useMemo(() => {
+    if (frequency === "daily") return [11, 21, 51, 101, 251];
+    if (frequency === "weekly") return [101, 251, 501, 1000, 2500];
+    if (frequency === "monthly") return [501, 1000, 1500, 2500, 5000];
+    if (frequency === "yearly") return [9600, 15000, 25000, 30000, 50000];
+    return [101, 251, 501, 1000, 1800, 2500, 3000, 4500, 6000];
+  }, [frequency]);
 
   // Current active tier list based on selected Seva Tab
   const activeTiers = useMemo(() => {
@@ -718,14 +798,17 @@ export function MetaAdsDonateComponent() {
         num_items: 1,
       });
 
-      if (data.orderId && data.keyId) {
+      if ((data.orderId || data.subscriptionId) && data.keyId) {
         await openRazorpayCheckout({
           keyId: data.keyId,
           orderId: data.orderId,
+          subscriptionId: data.subscriptionId,
           amountPaise: data.amount,
           currency: data.currency || "INR",
           name: "Janaseva Ashrama Bangalore",
-          description: `Sponsor 25 Resident Boys · ${cleanOccasion}`,
+          description: data.subscriptionId
+            ? `${frequency.toUpperCase()} Autopay for 25 Resident Boys`
+            : `Sponsor 25 Resident Boys · ${cleanOccasion}`,
           donorName: effectiveName,
           donorPhone: cleanPhone.length >= 10 ? cleanPhone : "",
           donorEmail: donorEmail.trim() || undefined,
@@ -771,6 +854,7 @@ export function MetaAdsDonateComponent() {
               amount: finalAmount,
               paymentId: response.razorpay_payment_id,
               orderId: response.razorpay_order_id,
+              subscriptionId: response.razorpay_subscription_id,
               donorName: donorName.trim(),
               donorPhone: donorPhone.trim(),
               donorEmail: donorEmail.trim(),
@@ -789,6 +873,7 @@ export function MetaAdsDonateComponent() {
                       entity: {
                         id: response.razorpay_payment_id,
                         order_id: response.razorpay_order_id,
+                        subscription_id: response.razorpay_subscription_id,
                         amount: data.amount,
                         currency: "INR",
                         status: "captured",
@@ -815,11 +900,14 @@ export function MetaAdsDonateComponent() {
               response.razorpay_payment_id || ""
             )}&order_id=${encodeURIComponent(
               response.razorpay_order_id || ""
-            )}&ref=${encodeURIComponent(callerRef)}`;
+            )}&subscription_id=${encodeURIComponent(
+              response.razorpay_subscription_id || ""
+            )}&freq=${encodeURIComponent(frequency)}&ref=${encodeURIComponent(callerRef)}`;
           },
         });
       } else if (data.mode === "demo") {
         const demoPaymentId = `pay_sim_${Date.now()}`;
+        const demoSubId = data.subscriptionId || undefined;
         await fetch("/api/v1/webhooks/payment", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -830,13 +918,16 @@ export function MetaAdsDonateComponent() {
             donorName: donorName.trim(),
             donorPhone: donorPhone.trim(),
             paymentId: demoPaymentId,
+            subscriptionId: demoSubId,
             leadId: leadId ? Number(leadId) : undefined,
+            frequency,
           }),
         }).catch(() => {});
 
         trackDonationSuccess({
           amount: finalAmount,
           paymentId: demoPaymentId,
+          subscriptionId: demoSubId,
           donorName: donorName.trim(),
           donorPhone: donorPhone.trim(),
           donorEmail: donorEmail.trim(),
@@ -844,7 +935,9 @@ export function MetaAdsDonateComponent() {
           mode: "demo",
         });
 
-        window.location.href = `/thank-you?amount=${finalAmount}&payment_id=${demoPaymentId}&ref=${encodeURIComponent(
+        window.location.href = `/thank-you?amount=${finalAmount}&payment_id=${demoPaymentId}${
+          demoSubId ? `&subscription_id=${encodeURIComponent(demoSubId)}` : ""
+        }&freq=${encodeURIComponent(frequency)}&ref=${encodeURIComponent(
           callerRef
         )}&demo=true`;
       } else {
@@ -916,7 +1009,7 @@ export function MetaAdsDonateComponent() {
         {/* ══════════════════════════════════════════════════════════════════
             SECTION 1: ACTIVE SEVA CONFIRMATION & GIVING FREQUENCY (ABOVE THE FOLD)
         ══════════════════════════════════════════════════════════════════ */}
-        <div ref={topCardRef} className="pb-3 border-b border-teal-900/10 space-y-2">
+        <div ref={topCardRef} className="pb-3 border-b border-teal-900/10 space-y-2.5">
           <div className="flex items-center justify-between gap-2">
             <div>
               <span className="text-[10px] font-black uppercase tracking-wider text-amber-800 flex items-center gap-1">
@@ -926,6 +1019,11 @@ export function MetaAdsDonateComponent() {
               <div className="flex items-baseline gap-2 mt-0.5">
                 <span className="font-display text-2xl sm:text-3xl font-black text-[#042825] tracking-tight">
                   ₹{formatINR(finalAmount)}
+                  {frequency !== "onetime" && (
+                    <span className="text-xs sm:text-sm font-bold text-amber-900/80 ml-1">
+                      /{frequency === "daily" ? "day" : frequency === "weekly" ? "week" : frequency === "monthly" ? "month" : "year"}
+                    </span>
+                  )}
                 </span>
                 <span className="rounded-full bg-emerald-100 border border-emerald-300 px-2 py-0.5 text-[10px] font-black text-emerald-900">
                   50% Tax Saved: ₹{taxDeductionAmount.toLocaleString("en-IN")}
@@ -933,30 +1031,107 @@ export function MetaAdsDonateComponent() {
               </div>
             </div>
 
-            {/* Giving Frequency Toggle (One-Time vs Monthly) */}
-            <div className="inline-flex rounded-xl bg-amber-50 p-0.5 border border-amber-300/60 text-[10px] font-bold shrink-0">
+            {frequency !== "onetime" && (
+              <span className="text-[9px] font-black text-emerald-950 bg-emerald-100 border border-emerald-300 px-2 py-0.5 rounded-full flex items-center gap-1 shadow-xs shrink-0">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-600 animate-pulse" />
+                UPI Autopay
+              </span>
+            )}
+          </div>
+
+          {/* Giving Frequency Selector (5 Cadences: One-Time | Daily | Weekly | Monthly | Yearly) */}
+          <div className="space-y-1">
+            <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-wider text-[#042825]/80">
+              <span className="flex items-center gap-1">
+                <span>✨</span> Select Giving Cadence:
+              </span>
+              <span className="text-[9px] font-bold text-amber-900 lowercase">
+                {frequency === "onetime" ? "single gift" : "recurring punya · cancel anytime"}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-5 gap-1 p-1 bg-amber-50/90 rounded-2xl border border-amber-300/80 shadow-xs">
+              {/* 1. One-Time */}
               <button
                 type="button"
-                onClick={() => setFrequency("onetime")}
-                className={`px-2.5 py-1 rounded-lg transition cursor-pointer ${
+                onClick={() => handleFrequencyChange("onetime")}
+                className={`flex flex-col items-center justify-center py-1.5 px-0.5 rounded-xl transition text-center cursor-pointer min-h-[44px] ${
                   frequency === "onetime"
-                    ? "bg-[#042825] text-white shadow-xs font-black"
-                    : "text-teal-950/70 hover:text-teal-950"
+                    ? "bg-[#042825] text-amber-300 shadow-md ring-1 ring-amber-400 font-black"
+                    : "text-teal-950/80 hover:bg-white hover:text-teal-950 font-bold"
                 }`}
               >
-                One-Time
+                <span className="text-[10px] sm:text-[11px] leading-tight font-black">One-Time</span>
+                <span className={`text-[8px] leading-none mt-0.5 ${frequency === "onetime" ? "text-amber-200" : "text-teal-900/60"}`}>
+                  Single
+                </span>
               </button>
+
+              {/* 2. Daily */}
               <button
                 type="button"
-                onClick={() => setFrequency("monthly")}
-                className={`px-2.5 py-1 rounded-lg transition cursor-pointer flex items-center gap-1 ${
-                  frequency === "monthly"
-                    ? "bg-[#042825] text-white shadow-xs font-black"
-                    : "text-teal-950/70 hover:text-teal-950"
+                onClick={() => handleFrequencyChange("daily")}
+                className={`flex flex-col items-center justify-center py-1.5 px-0.5 rounded-xl transition text-center cursor-pointer min-h-[44px] ${
+                  frequency === "daily"
+                    ? "bg-[#042825] text-amber-300 shadow-md ring-1 ring-amber-400 font-black"
+                    : "text-teal-950/80 hover:bg-white hover:text-teal-950 font-bold"
                 }`}
               >
-                <span>🔄 Monthly</span>
-                <span className="text-[8px] rounded bg-amber-400 text-teal-950 px-1 font-black">Punya</span>
+                <span className="text-[10px] sm:text-[11px] leading-tight font-black">Daily</span>
+                <span className={`text-[8px] leading-none mt-0.5 ${frequency === "daily" ? "text-amber-200" : "text-amber-800"}`}>
+                  ₹11/day
+                </span>
+              </button>
+
+              {/* 3. Weekly */}
+              <button
+                type="button"
+                onClick={() => handleFrequencyChange("weekly")}
+                className={`flex flex-col items-center justify-center py-1.5 px-0.5 rounded-xl transition text-center cursor-pointer min-h-[44px] ${
+                  frequency === "weekly"
+                    ? "bg-[#042825] text-amber-300 shadow-md ring-1 ring-amber-400 font-black"
+                    : "text-teal-950/80 hover:bg-white hover:text-teal-950 font-bold"
+                }`}
+              >
+                <span className="text-[10px] sm:text-[11px] leading-tight font-black">Weekly</span>
+                <span className={`text-[8px] leading-none mt-0.5 ${frequency === "weekly" ? "text-amber-200" : "text-amber-800"}`}>
+                  Saptahik
+                </span>
+              </button>
+
+              {/* 4. Monthly (Flagship) */}
+              <button
+                type="button"
+                onClick={() => handleFrequencyChange("monthly")}
+                className={`flex flex-col items-center justify-center py-1.5 px-0.5 rounded-xl transition text-center cursor-pointer min-h-[44px] relative ${
+                  frequency === "monthly"
+                    ? "bg-[#042825] text-amber-300 shadow-md ring-2 ring-amber-400 font-black"
+                    : "bg-amber-100/70 text-teal-950 hover:bg-white hover:text-teal-950 font-black border border-amber-300/80"
+                }`}
+              >
+                <span className="absolute -top-2 left-1/2 -translate-x-1/2 bg-amber-500 text-white text-[7px] font-black px-1.5 py-0.2 rounded-full uppercase tracking-tighter shadow-xs">
+                  ★ Popular
+                </span>
+                <span className="text-[10px] sm:text-[11px] leading-tight font-black">Monthly</span>
+                <span className={`text-[8px] leading-none mt-0.5 ${frequency === "monthly" ? "text-amber-200" : "text-amber-900"}`}>
+                  Punya
+                </span>
+              </button>
+
+              {/* 5. Yearly */}
+              <button
+                type="button"
+                onClick={() => handleFrequencyChange("yearly")}
+                className={`flex flex-col items-center justify-center py-1.5 px-0.5 rounded-xl transition text-center cursor-pointer min-h-[44px] ${
+                  frequency === "yearly"
+                    ? "bg-[#042825] text-amber-300 shadow-md ring-1 ring-amber-400 font-black"
+                    : "text-teal-950/80 hover:bg-white hover:text-teal-950 font-bold"
+                }`}
+              >
+                <span className="text-[10px] sm:text-[11px] leading-tight font-black">Yearly</span>
+                <span className={`text-[8px] leading-none mt-0.5 ${frequency === "yearly" ? "text-amber-200" : "text-emerald-800 font-black"}`}>
+                  80G Max
+                </span>
               </button>
             </div>
           </div>
@@ -983,7 +1158,15 @@ export function MetaAdsDonateComponent() {
         <div className="space-y-2">
           <div className="flex items-center justify-between gap-2">
             <span className="text-[10px] font-black uppercase tracking-wider text-[#042825]/70">
-              Change Seva Amount:
+              {frequency === "daily"
+                ? "Daily Punya Tiers:"
+                : frequency === "weekly"
+                ? "Weekly Saptahik Tiers:"
+                : frequency === "monthly"
+                ? "Monthly Masa Tiers:"
+                : frequency === "yearly"
+                ? "Annual 80G Tiers:"
+                : "Change Seva Amount:"}
             </span>
             <button
               type="button"
@@ -996,8 +1179,15 @@ export function MetaAdsDonateComponent() {
           </div>
 
           <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
-            {[101, 251, 501, 1000, 1800, 2500, 3000, 4500, 6000].map((amt) => {
+            {cadencePills.map((amt) => {
               const isSelected = !customAmount && amount === amt;
+              const isFeatured =
+                (frequency === "daily" && amt === 21) ||
+                (frequency === "weekly" && amt === 251) ||
+                (frequency === "monthly" && amt === 1000) ||
+                (frequency === "yearly" && amt === 15000) ||
+                (frequency === "onetime" && amt === 2500);
+
               return (
                 <button
                   key={amt}
@@ -1009,19 +1199,34 @@ export function MetaAdsDonateComponent() {
                     clearFieldError("amount");
                     if (cart.setDedicatedAmount) cart.setDedicatedAmount(amt);
                     trackViewContent({
-                      content_name: `Select Quick Chip ₹${amt}`,
+                      content_name: `Select ${frequency} Chip ₹${amt}`,
                       content_category: "Child Welfare",
                       value: amt,
                       currency: "INR",
                     });
                   }}
-                  className={`shrink-0 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-black transition cursor-pointer border ${
+                  className={`shrink-0 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-black transition cursor-pointer border flex flex-col items-center justify-center relative min-h-[40px] ${
                     isSelected
                       ? "bg-[#042825] text-amber-300 border-[#042825] shadow-sm scale-105 ring-1 ring-amber-400"
                       : "bg-white text-teal-950 border-teal-900/15 hover:border-amber-400 hover:bg-amber-50/50"
                   }`}
                 >
-                  ₹{amt >= 1000 ? `${(amt / 1000).toFixed(amt % 1000 === 0 ? 0 : 1)}k` : amt}
+                  {isFeatured && !isSelected && (
+                    <span className="absolute -top-2 left-1/2 -translate-x-1/2 bg-amber-500 text-white text-[7px] font-black px-1 rounded-full uppercase">
+                      ★
+                    </span>
+                  )}
+                  <span>₹{amt >= 1000 ? `${(amt / 1000).toFixed(amt % 1000 === 0 ? 0 : 1)}k` : amt}</span>
+                  {frequency === "monthly" && (
+                    <span className={`text-[7px] font-bold leading-none mt-0.5 ${isSelected ? "text-amber-200" : "text-amber-800"}`}>
+                      ₹{Math.max(1, Math.round(amt / 30))}/d
+                    </span>
+                  )}
+                  {frequency === "yearly" && (
+                    <span className={`text-[7px] font-bold leading-none mt-0.5 ${isSelected ? "text-amber-200" : "text-emerald-800"}`}>
+                      ₹{Math.round(amt / 12).toLocaleString("en-IN")}/mo
+                    </span>
+                  )}
                 </button>
               );
             })}
@@ -1376,11 +1581,36 @@ export function MetaAdsDonateComponent() {
               </>
             ) : (
               <>
-                <span>PROCEED TO PAY {formatINR(finalAmount)} {frequency === "monthly" ? "/ MONTH" : ""}</span>
+                <span>
+                  {frequency === "onetime"
+                    ? `PROCEED TO PAY ₹${formatINR(finalAmount)}`
+                    : `START ${frequency.toUpperCase()} AUTOPAY (₹${formatINR(finalAmount)} / ${
+                        frequency === "daily"
+                          ? "DAY"
+                          : frequency === "weekly"
+                          ? "WEEK"
+                          : frequency === "monthly"
+                          ? "MONTH"
+                          : "YEAR"
+                      })`}
+                </span>
                 <span>💝 →</span>
               </>
             )}
           </button>
+
+          {/* Autopay Control & Flexibility Guarantee */}
+          {frequency !== "onetime" && (
+            <div className="rounded-2xl bg-amber-50/90 border border-amber-300/80 p-2.5 text-center text-[10px] text-amber-950 font-bold space-y-1">
+              <div className="flex items-center justify-center gap-1.5 text-emerald-900 font-black">
+                <span>🛡️</span>
+                <span>100% Control: Pause or Cancel anytime via WhatsApp or in 1 click</span>
+              </div>
+              <p className="text-[#042825]/75 font-semibold">
+                ⚡ NPCI UPI Autopay (GPay, PhonePe, Paytm, BHIM) · 24-hr pre-debit alert · Instant 80G receipt on WhatsApp
+              </p>
+            </div>
+          )}
 
           {/* Trust Strip */}
           <div className="flex flex-wrap items-center justify-center gap-1.5 text-[10px] sm:text-[11px] font-bold text-teal-950/70 text-center">
@@ -1903,10 +2133,20 @@ export function MetaAdsDonateComponent() {
             <div className="flex items-center gap-1">
               <span className="font-display text-base font-black text-[#042825]">
                 {formatINR(finalAmount)}
+                {frequency !== "onetime" && (
+                  <span className="text-[10px] font-bold text-amber-900 ml-0.5">
+                    /{frequency === "daily" ? "d" : frequency === "weekly" ? "wk" : frequency === "monthly" ? "mo" : "yr"}
+                  </span>
+                )}
               </span>
               <span className="rounded bg-emerald-100 text-emerald-900 text-[8px] font-black px-1.5 py-0.2">
                 80G
               </span>
+              {frequency !== "onetime" && (
+                <span className="rounded bg-amber-100 text-amber-900 text-[8px] font-black px-1 py-0.2">
+                  Autopay
+                </span>
+              )}
             </div>
             <p className="text-[10px] text-teal-950/70 truncate font-semibold">
               {impactSummary}
@@ -1923,7 +2163,11 @@ export function MetaAdsDonateComponent() {
               <span>Connecting...</span>
             ) : (
               <>
-                <span>PROCEED TO PAY</span>
+                <span>
+                  {frequency === "onetime"
+                    ? "PROCEED TO PAY"
+                    : `START ${frequency.toUpperCase()}`}
+                </span>
                 <span>💝</span>
               </>
             )}

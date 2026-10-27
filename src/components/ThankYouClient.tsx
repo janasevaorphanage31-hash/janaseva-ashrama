@@ -13,6 +13,8 @@ export function ThankYouClient() {
   const rawAmount = searchParams.get("amount");
   const paymentId = searchParams.get("payment_id") || "";
   const orderId = searchParams.get("order_id") || "";
+  const subscriptionId = searchParams.get("subscription_id") || "";
+  const freq = searchParams.get("freq") || "";
   const callerRef = searchParams.get("ref") || "";
   const receiptId = searchParams.get("receipt_id") || "";
   const isDemo = searchParams.get("demo") === "true";
@@ -81,6 +83,16 @@ export function ThankYouClient() {
             Janaseva Ashrama Bangalore.
           </p>
 
+          {/* Recurring Mandate Badge */}
+          {(subscriptionId || (freq && freq !== "onetime")) && (
+            <div className="mt-3 inline-flex items-center gap-2 rounded-2xl bg-amber-400/20 px-4 py-1.5 text-xs text-amber-200 backdrop-blur-sm border border-amber-300/40 font-bold">
+              <span className="h-2 w-2 rounded-full bg-amber-400 animate-pulse" />
+              <span>
+                {freq.toUpperCase()} Autopay Mandate Active · Instant 80G on every debit
+              </span>
+            </div>
+          )}
+
           {/* Telecaller Attribution Badge */}
           {callerRef && callerRef !== "DIRECT" && (
             <div className="mt-4 inline-flex items-center gap-2 rounded-2xl bg-white/10 px-4 py-1.5 text-xs text-white backdrop-blur-sm border border-white/20">
@@ -147,6 +159,24 @@ export function ThankYouClient() {
               <p className="text-teal-950/60 font-medium">Gateway Order ID</p>
               <p className="text-xs font-mono text-teal-950/80 mt-0.5 break-all">
                 {orderId}
+              </p>
+            </div>
+          )}
+
+          {(subscriptionId || (freq && freq !== "onetime")) && (
+            <div className="rounded-2xl bg-amber-50 p-3.5 border border-amber-200 sm:col-span-2">
+              <div className="flex items-center justify-between">
+                <p className="text-amber-950 font-bold text-xs">Giving Cadence &amp; Mandate Status</p>
+                <span className="rounded bg-emerald-100 text-emerald-900 text-[10px] font-black px-2 py-0.5">
+                  Mandate Active
+                </span>
+              </div>
+              <p className="text-xs text-amber-900 mt-1">
+                Cadence: <strong>{freq.charAt(0).toUpperCase() + freq.slice(1)} Recurring Punya</strong>
+                {subscriptionId && <> · Mandate ID: <code className="font-mono text-[11px]">{subscriptionId}</code></>}
+              </p>
+              <p className="text-[11px] text-amber-900/75 mt-1 font-medium">
+                🛡️ You are in complete control. You can pause or cancel your autopayment anytime in 1 click or by messaging WhatsApp (+91 99803 59595).
               </p>
             </div>
           )}

@@ -56,9 +56,19 @@ export async function POST(req: Request) {
   if (donorPan && !PAN_REGEX.test(donorPan)) {
     return NextResponse.json({ error: "Invalid PAN card format (e.g. ABCDE1234F)." }, { status: 400 });
   }
-  if (amount < MIN_MONTHLY || amount > MAX_MONTHLY) {
+  const rawFreq = clean(b.frequency, 16).toLowerCase();
+  const frequency = (["daily", "weekly", "monthly", "yearly"].includes(rawFreq) ? rawFreq : "monthly") as
+    | "daily"
+    | "weekly"
+    | "monthly"
+    | "yearly";
+
+  const minAmount = frequency === "daily" ? 10 : frequency === "yearly" ? 500 : 50;
+  const maxAmount = frequency === "yearly" ? 500_000 : 100_000;
+
+  if (amount < minAmount || amount > maxAmount) {
     return NextResponse.json(
-      { error: `Monthly pledge must be between ₹${MIN_MONTHLY} and ₹${MAX_MONTHLY.toLocaleString("en-IN")}.` },
+      { error: `${frequency.charAt(0).toUpperCase() + frequency.slice(1)} pledge must be between ₹${minAmount} and ₹${maxAmount.toLocaleString("en-IN")}.` },
       { status: 400 },
     );
   }
@@ -84,6 +94,9 @@ export async function POST(req: Request) {
   const mode = razorpayConfigured() ? "razorpay" : "demo";
   const publicId = "sub_" + publicToken();
 
+  const totalCount = frequency === "daily" ? 365 : frequency === "weekly" ? 52 : frequency === "yearly" ? 10 : 60;
+  const periodLabel = frequency.charAt(0).toUpperCase() + frequency.slice(1);
+
   if (mode === "demo") {
     const [sub] = await db
       .insert(recurringSubscriptions)
@@ -93,12 +106,14 @@ export async function POST(req: Request) {
         status: "active",
         mandateStatus: "active",
         amount,
+        frequency,
         donorName,
         donorEmail,
         donorPhone: donorPhone || null,
         donorPan,
+        totalCycles: totalCount,
         idempotencyKey: key,
-        meta: { demoSimulated: true, createdAt: new Date().toISOString() },
+        meta: { demoSimulated: true, frequency, createdAt: new Date().toISOString() },
       })
       .returning();
 
@@ -106,23 +121,25 @@ export async function POST(req: Request) {
       mode: "demo",
       publicId: sub.publicId,
       amount: sub.amount,
+      frequency: sub.frequency,
       status: "active",
     });
   }
 
   try {
-    // 1. Create monthly plan on Razorpay for this amount
-    const plan = await createRazorpayPlan(amount, `Janaseva Ashrama Monthly Support (₹${amount})`);
+    // 1. Create plan on Razorpay for this amount and frequency
+    const plan = await createRazorpayPlan(amount, frequency, `Janaseva Ashrama ${periodLabel} Support (₹${amount})`);
 
-    // 2. Create subscription mandate with 60 cycles (5 years) default
+    // 2. Create subscription mandate with appropriate cycles
     const rzSub = await createRazorpaySubscription({
       planId: plan.id,
-      totalCount: 60,
+      totalCount,
       customerNotify: 1,
       notes: {
         donor_email: donorEmail,
         donor_name: donorName,
         donor_phone: donorPhone || "",
+        frequency,
         public_id: publicId,
       },
     });
@@ -136,17 +153,20 @@ export async function POST(req: Request) {
         status: "created",
         mandateStatus: "pending",
         amount,
+        frequency,
         donorName,
         donorEmail,
         donorPhone: donorPhone || null,
         donorPan,
         razorpayPlanId: plan.id,
         razorpaySubscriptionId: rzSub.id,
+        totalCycles: totalCount,
         idempotencyKey: key,
         meta: {
           razorpayPlanId: plan.id,
           razorpaySubscriptionId: rzSub.id,
-          totalCount: 60,
+          frequency,
+          totalCount,
         },
       })
       .returning();

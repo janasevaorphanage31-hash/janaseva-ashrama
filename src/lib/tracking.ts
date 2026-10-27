@@ -25,6 +25,8 @@ export interface DonationTrackingPayload {
   amount: number;
   paymentId?: string;
   orderId?: string;
+  subscriptionId?: string;
+  frequency?: string;
   donorName?: string;
   donorPhone?: string;
   donorEmail?: string;
@@ -244,6 +246,7 @@ export function trackDonationSuccess(data: DonationTrackingPayload): {
 
   const dedupKey =
     data.paymentId ||
+    data.subscriptionId ||
     data.orderId ||
     data.receiptId ||
     `amt_${donationAmount}_${Date.now()}`;
