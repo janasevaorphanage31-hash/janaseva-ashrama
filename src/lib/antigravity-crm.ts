@@ -22,7 +22,7 @@ export interface CrmWhatsAppSettings {
 export const DEFAULT_CRM_WHATSAPP_SETTINGS: CrmWhatsAppSettings = {
   masterWhatsAppNumber: process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "+919980359595",
   senderMode: "central",
-  defaultLanguage: "en",
+  defaultLanguage: "kanglish",
   defaultAngle: "annadana",
   enableAntiBan: true,
 };
@@ -324,8 +324,9 @@ export async function generateWhatsAppLink(
   const callerName = caller?.name || "Janaseva Ashrama Volunteer";
   const callerWhatsApp = caller?.whatsappNumber ? caller.whatsappNumber.replace(/\D/g, "").slice(-10) : "";
 
-  const cleanPhone = lead.phone.replace(/\D/g, "");
-  const formattedPhone = cleanPhone.startsWith("91") ? cleanPhone : `91${cleanPhone.slice(-10)}`;
+  const rawDigits = lead.phone.replace(/\D/g, "");
+  const subscriber10 = rawDigits.length >= 10 ? rawDigits.slice(-10) : rawDigits;
+  const formattedPhone = `91${subscriber10}`;
   const siteUrl = baseUrl || process.env.NEXT_PUBLIC_SITE_URL || "https://www.janasevaorphanage.org";
 
   const settings = await getCrmWhatsAppSettings();
@@ -335,7 +336,7 @@ export async function generateWhatsAppLink(
     donorName: lead.name,
     callerId: callerId.toUpperCase(),
     callerName,
-    language: options?.language || settings.defaultLanguage || "en",
+    language: options?.language || settings.defaultLanguage || "kanglish",
     angle: options?.angle || settings.defaultAngle || "annadana",
     mediaId: options?.mediaId || "annadana_feast",
     amount: options?.amount,

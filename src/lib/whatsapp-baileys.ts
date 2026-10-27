@@ -46,10 +46,9 @@ const AUTH_DIR = path.join(process.cwd(), "data", "baileys_auth");
  * Normalizes phone number into WhatsApp JID (e.g. 919980359595@s.whatsapp.net)
  */
 export function formatToJid(rawPhone: string): string {
-  let digits = rawPhone.replace(/\D/g, "");
-  if (digits.startsWith("0")) digits = digits.slice(1);
-  if (digits.length === 10) digits = `91${digits}`;
-  return `${digits}@s.whatsapp.net`;
+  const digits = rawPhone.replace(/\D/g, "");
+  const last10 = digits.length >= 10 ? digits.slice(-10) : digits;
+  return `91${last10}@s.whatsapp.net`;
 }
 
 /**

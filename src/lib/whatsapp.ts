@@ -38,21 +38,12 @@ export function normalizePhoneNumber(rawPhone: string): {
     return { e164: "", metaTo: "", isValid: false };
   }
 
-  // Strip non-digits
-  let digits = rawPhone.replace(/\D/g, "");
-
-  // If starts with 0 (e.g. 09980359595), strip leading zero
-  if (digits.startsWith("0")) {
-    digits = digits.substring(1);
-  }
-
-  // Standard Indian 10-digit number (e.g. 9980359595)
-  if (digits.length === 10) {
-    digits = "91" + digits;
-  }
-
-  // Standard Indian 12-digit number (e.g. 919980359595)
-  const isValid = digits.length >= 10 && digits.length <= 15;
+  // Strip all non-digits
+  const rawDigits = rawPhone.replace(/\D/g, "");
+  // Strictly isolate the 10-digit Indian subscriber number
+  const last10 = rawDigits.length >= 10 ? rawDigits.slice(-10) : rawDigits;
+  const digits = `91${last10}`;
+  const isValid = last10.length === 10;
 
   return {
     e164: "+" + digits,

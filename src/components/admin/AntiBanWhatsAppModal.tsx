@@ -179,9 +179,10 @@ export function AntiBanWhatsAppModal({
       setDispSuccess(false);
       setCustomUploadedFile(null);
       setApiCardMessage("");
+      setLanguage("kanglish");
 
       void checkBaileysStatus();
-      generateMessage({ ang: initialAngle, media: initialMedia });
+      generateMessage({ lang: "kanglish", ang: initialAngle, media: initialMedia });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, lead?.leadId]);
@@ -496,9 +497,10 @@ export function AntiBanWhatsAppModal({
     });
   };
 
-  const cleanPhone = lead.phone.replace(/\D/g, "");
-  const formattedPhone = cleanPhone.startsWith("91") ? cleanPhone : `91${cleanPhone.slice(-10)}`;
-  const displayPhone = `+91 ${cleanPhone.slice(-10)}`;
+  const rawDigits = lead.phone.replace(/\D/g, "");
+  const subscriber10 = rawDigits.length >= 10 ? rawDigits.slice(-10) : rawDigits;
+  const formattedPhone = `91${subscriber10}`;
+  const displayPhone = `+91 ${subscriber10}`;
 
   const mediaList = Object.values(CURATED_OUTREACH_MEDIA);
 
