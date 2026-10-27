@@ -683,7 +683,8 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        {/* Desktop View Table */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead className="bg-cream text-teal-950 font-bold border-b border-teal-900/10">
               <tr>
@@ -791,6 +792,124 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile View Lead Cards Feed */}
+        <div className="md:hidden space-y-3">
+          {loadingLeads ? (
+            <div className="p-8 text-center text-teal-950/60 text-xs">
+              Loading your assigned queue...
+            </div>
+          ) : filteredLeads.length === 0 ? (
+            <div className="p-8 text-center text-teal-950/60 text-xs">
+              No leads found matching current filter or search.
+            </div>
+          ) : (
+            filteredLeads.map((lead) => {
+              const now = new Date();
+              const isTodayBirthday = lead.dobDay === now.getDate() && lead.dobMonth === now.getMonth() + 1;
+
+              return (
+                <div
+                  key={lead.leadId}
+                  className={`rounded-2xl p-4 bg-white border transition shadow-xs space-y-3 ${
+                    isTodayBirthday
+                      ? "border-amber-400 ring-2 ring-amber-400/30 bg-amber-50/30"
+                      : "border-teal-900/10 hover:border-teal-900/20"
+                  }`}
+                >
+                  {/* Top Row: Name, ID, Status Dropdown */}
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <h3 className="font-display font-black text-sm text-teal-950 truncate">
+                          {lead.name}
+                        </h3>
+                        <span className="text-[10px] font-mono text-teal-950/50">
+                          #{lead.leadId}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 mt-1">
+                        <a
+                          href={`tel:${lead.phone}`}
+                          className="font-mono text-xs font-bold text-teal-900 flex items-center gap-1"
+                        >
+                          <span>📞</span> {lead.phone}
+                        </a>
+                        {isTodayBirthday ? (
+                          <span className="rounded-full bg-amber-500 text-teal-950 px-2 py-0.5 text-[10px] font-black uppercase shadow-xs animate-pulse">
+                            🎂 Today&apos;s Birthday!
+                          </span>
+                        ) : lead.dobDay && lead.dobMonth ? (
+                          <span className="rounded-md bg-amber-100 text-amber-900 px-1.5 py-0.5 text-[10px] font-bold">
+                            🎂 {lead.dobDay}/{lead.dobMonth}
+                          </span>
+                        ) : null}
+                      </div>
+                    </div>
+
+                    {/* Status Pill / Dropdown */}
+                    <select
+                      value={lead.status || "Pending"}
+                      onChange={(e) => handleUpdateDisposition(lead.leadId, e.target.value)}
+                      className={`rounded-xl border px-2 py-1 text-xs font-bold shadow-2xs outline-none cursor-pointer shrink-0 ${
+                        lead.status === "Donated"
+                          ? "bg-emerald-100 text-emerald-900 border-emerald-300"
+                          : lead.status === "Interested"
+                          ? "bg-amber-100 text-amber-900 border-amber-300"
+                          : lead.status === "Reschedule"
+                          ? "bg-blue-100 text-blue-900 border-blue-300"
+                          : lead.status === "Rejected"
+                          ? "bg-rose-100 text-rose-900 border-rose-300"
+                          : "bg-white text-teal-950 border-teal-900/20"
+                      }`}
+                    >
+                      <option value="Pending">Pending</option>
+                      <option value="Interested">Interested</option>
+                      <option value="Reschedule">Reschedule</option>
+                      <option value="No_Answer">No Answer</option>
+                      <option value="Rejected">Rejected</option>
+                      <option value="Donated">Donated</option>
+                    </select>
+                  </div>
+
+                  {/* Bottom Touch Actions Row: 1-Tap Big Buttons */}
+                  <div className="grid grid-cols-12 gap-2 pt-1 border-t border-teal-900/10">
+                    <a
+                      href={`tel:${lead.phone}`}
+                      className="col-span-4 min-h-[42px] flex items-center justify-center gap-1.5 rounded-xl bg-teal-950 text-white text-xs font-bold shadow-xs active:scale-95 transition"
+                    >
+                      <span>📞</span>
+                      <span>Call</span>
+                    </a>
+
+                    <button
+                      type="button"
+                      onClick={() => handleOpenWhatsAppModal(lead)}
+                      className="col-span-5 min-h-[42px] flex items-center justify-center gap-1.5 rounded-xl bg-[#25D366] text-white text-xs font-black shadow-xs active:scale-95 transition cursor-pointer"
+                    >
+                      <span>💬</span>
+                      <span>WhatsApp</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveNotesLead(lead);
+                        setNotesText("");
+                        setCallbackDateTime("");
+                      }}
+                      className="col-span-3 min-h-[42px] flex items-center justify-center gap-1 rounded-xl bg-cream border border-teal-900/20 text-teal-950 text-xs font-bold hover:bg-sand active:scale-95 transition cursor-pointer"
+                      title="Add call notes"
+                    >
+                      <span>📝</span>
+                      <span>Notes</span>
+                    </button>
+                  </div>
+                </div>
+              );
+            })
+          )}
         </div>
       </div>
 

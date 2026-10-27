@@ -100,8 +100,13 @@ export function TeamInbox({ currentUserId }: { currentUserId?: number }) {
       const data = await res.json();
       if (res.ok) {
         setConversations(data.conversations || []);
-        // Auto-select first if none selected
-        if (!selectedConvId && data.conversations?.length > 0) {
+        // Auto-select first if none selected on desktop, keep list view on mobile
+        if (
+          !selectedConvId &&
+          data.conversations?.length > 0 &&
+          typeof window !== "undefined" &&
+          window.innerWidth >= 768
+        ) {
           setSelectedConvId(data.conversations[0].id);
         }
       }
@@ -281,7 +286,11 @@ export function TeamInbox({ currentUserId }: { currentUserId?: number }) {
       {/* ========================================================================= */}
       {/* 1. LEFT PANEL: Conversations List & Filters */}
       {/* ========================================================================= */}
-      <div className="flex w-full flex-col border-b border-teal-900/10 bg-slate-50 md:w-80 md:border-b-0 md:border-r">
+      <div
+        className={`w-full flex-col border-b border-teal-900/10 bg-slate-50 md:w-80 md:border-b-0 md:border-r ${
+          selectedConvId ? "hidden md:flex" : "flex"
+        }`}
+      >
         {/* Header & New Chat Button */}
         <div className="flex items-center justify-between border-b border-teal-900/10 p-3.5 bg-white">
           <div className="flex items-center gap-2">
@@ -413,12 +422,25 @@ export function TeamInbox({ currentUserId }: { currentUserId?: number }) {
       {/* ========================================================================= */}
       {/* 2. MIDDLE PANEL: Active Chat Timeline & Composer */}
       {/* ========================================================================= */}
-      <div className="flex flex-1 flex-col bg-cream/30 min-w-0">
+      <div
+        className={`flex-1 flex-col bg-cream/30 min-w-0 ${
+          !selectedConvId ? "hidden md:flex" : "flex"
+        }`}
+      >
         {selectedConvData ? (
           <>
             {/* Conversation Header */}
             <div className="flex items-center justify-between border-b border-teal-900/10 bg-white p-3 shadow-xs">
-              <div className="flex items-center gap-2.5 min-w-0">
+              <div className="flex items-center gap-2 min-w-0">
+                {/* Mobile Back Button to Return to Chats List */}
+                <button
+                  type="button"
+                  onClick={() => setSelectedConvId(null)}
+                  className="md:hidden flex h-8 w-8 items-center justify-center rounded-xl bg-teal-950 text-white font-bold text-xs shrink-0 active:scale-95 transition cursor-pointer"
+                  title="Back to Chats"
+                >
+                  ←
+                </button>
                 <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-saffron/20 font-bold text-saffron-dark text-sm">
                   {(selectedConvData.contact?.displayName || "D")[0].toUpperCase()}
                 </div>

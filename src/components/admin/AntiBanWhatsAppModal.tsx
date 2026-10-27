@@ -217,11 +217,11 @@ export function AntiBanWhatsAppModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/75 backdrop-blur-xs overflow-y-auto"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-5 bg-black/75 backdrop-blur-xs overflow-y-auto"
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-4xl max-h-[92vh] flex flex-col rounded-3xl bg-white shadow-2xl border border-teal-900/15 overflow-hidden text-teal-950 animate-fadeIn"
+        className="relative w-full max-w-4xl h-[94vh] sm:h-auto sm:max-h-[92vh] flex flex-col rounded-t-3xl sm:rounded-3xl bg-white shadow-2xl border border-teal-900/15 overflow-hidden text-teal-950 animate-fadeIn"
         onClick={(e) => e.stopPropagation()}
       >
         {/* ── HEADER STRIP ── */}
@@ -311,7 +311,7 @@ export function AntiBanWhatsAppModal({
         </div>
 
         {/* ── MODAL BODY: 2-COLUMN WORKSPACE ── */}
-        <div className="flex-1 overflow-y-auto p-5 grid grid-cols-1 lg:grid-cols-12 gap-5">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-5 pb-32 sm:pb-5 grid grid-cols-1 lg:grid-cols-12 gap-5">
           {/* LEFT COLUMN: Controls, Language, Angle, Media Picker (5 cols) */}
           <div className="lg:col-span-5 space-y-4">
             {/* 1. Language Pill Selector */}
@@ -722,6 +722,48 @@ export function AntiBanWhatsAppModal({
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* ── STICKY MOBILE ACTION BAR ── */}
+        <div className="sm:hidden sticky bottom-0 bg-white/95 backdrop-blur-md border-t border-teal-900/15 p-3 shadow-lg z-20 space-y-2">
+          {/* Main 1-tap WhatsApp trigger */}
+          <a
+            href={whatsappUrl || `https://wa.me/${formattedPhone}?text=${encodeURIComponent(messageText)}`}
+            target="_blank"
+            rel="noreferrer"
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#25D366] active:bg-[#1faa53] text-white font-black text-sm shadow-md transition"
+          >
+            <span className="text-lg">💬</span>
+            <span>Send via WhatsApp (wa.me)</span>
+          </a>
+
+          {/* Quick Row: Call, Copy, Alter */}
+          <div className="grid grid-cols-3 gap-2">
+            <a
+              href={`tel:${displayPhone.replace(/\s+/g, "")}`}
+              className="flex h-10 items-center justify-center gap-1 rounded-xl bg-teal-950 text-white text-xs font-bold active:scale-95 transition"
+            >
+              <span>📞</span>
+              <span>Call</span>
+            </a>
+            <button
+              type="button"
+              onClick={handleCopyText}
+              className="flex h-10 items-center justify-center gap-1 rounded-xl bg-cream border border-teal-900/15 text-teal-950 text-xs font-bold active:scale-95 transition cursor-pointer"
+            >
+              <span>{copied ? "✓" : "📋"}</span>
+              <span>{copied ? "Copied" : "Copy"}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => generateMessage()}
+              disabled={loading}
+              className="flex h-10 items-center justify-center gap-1 rounded-xl bg-purple-50 border border-purple-200 text-purple-900 text-xs font-bold active:scale-95 transition cursor-pointer disabled:opacity-50"
+            >
+              <span className={loading ? "animate-spin" : ""}>🔄</span>
+              <span>Alter</span>
+            </button>
           </div>
         </div>
 

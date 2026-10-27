@@ -2062,6 +2062,48 @@ export default function AdminDashboardClient({ initialSession }: AdminDashboardP
         </button>
       </div>
 
+      {/* Mobile Tab Quick Jump Select (< sm viewports) */}
+      <div className="sm:hidden mb-2">
+        <label htmlFor="admin-mobile-tab-select" className="sr-only">
+          Select Admin Section
+        </label>
+        <div className="relative">
+          <select
+            id="admin-mobile-tab-select"
+            value={activeTab}
+            onChange={(e) => handleTabChange(e.target.value as Tab)}
+            className="w-full appearance-none rounded-2xl border-2 border-teal-950 bg-white px-4 py-3 text-sm font-black text-teal-950 shadow-xs focus:outline-hidden focus:ring-2 focus:ring-saffron"
+          >
+            <optgroup label="── Operations ──">
+              <option value="analytics">📊 Analytics</option>
+              <option value="crm">💳 Donor CRM</option>
+              <option value="whatsapp">🟢 WhatsApp CRM</option>
+              <option value="telecallers">📞 Telecaller CRM (15)</option>
+            </optgroup>
+            <optgroup label="── Impact ──">
+              <option value="celebrations">🎂 Celebrations</option>
+              <option value="subscriptions">🔁 Subscriptions</option>
+              <option value="catalogs">🛍️ Giving Basket</option>
+            </optgroup>
+            <optgroup label="── Site & Growth ──">
+              <option value="content">📝 Website Content</option>
+              <option value="media">🎥 Media & Today</option>
+              <option value="marketing">🤖 AI Marketing & Ads</option>
+            </optgroup>
+            <optgroup label="── Trust & Team ──">
+              <option value="documents">📜 80G Documents</option>
+              <option value="community">🤝 Volunteers</option>
+              {initialSession.user.role === "SUPER_ADMIN" && (
+                <option value="team">👥 Team Roles</option>
+              )}
+            </optgroup>
+          </select>
+          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-teal-950 font-black">
+            ▼
+          </div>
+        </div>
+      </div>
+
       {/* Modern Grouped Tab Controller - Horizontal Scroll on All Viewports */}
       <div className="rounded-2xl bg-white p-2 sm:p-2.5 shadow-xs border border-teal-900/10">
         <div className="flex items-center gap-2 overflow-x-auto no-scrollbar scrollbar-none pb-1">

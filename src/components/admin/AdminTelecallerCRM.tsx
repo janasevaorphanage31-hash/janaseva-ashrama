@@ -1194,7 +1194,8 @@ export function AdminTelecallerCRM() {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        {/* Desktop Table View */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead className="bg-cream text-teal-950 font-bold border-b border-teal-900/10">
               <tr>
@@ -1320,6 +1321,128 @@ export function AdminTelecallerCRM() {
             </tbody>
           </table>
         </div>
+
+        {/* Mobile View: Telecaller Roster Cards */}
+        <div className="md:hidden space-y-3 p-3">
+          {callers.map((c) => (
+            <div
+              key={c.callerId}
+              className={`rounded-2xl p-4 bg-white border transition shadow-xs space-y-3 ${
+                !c.isActive
+                  ? "opacity-60 bg-slate-50/50 border-slate-200"
+                  : c.rank === 1
+                  ? "border-amber-400 bg-amber-50/40 ring-1 ring-amber-400/40"
+                  : "border-teal-900/10"
+              }`}
+            >
+              {/* Header: Rank, Name, Caller ID, Active Toggle */}
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <span
+                    className={`inline-flex items-center justify-center h-7 w-7 shrink-0 rounded-full text-xs font-black ${
+                      c.rank === 1
+                        ? "bg-gold text-teal-950 shadow-sm"
+                        : c.rank === 2
+                        ? "bg-slate-300 text-slate-900"
+                        : c.rank === 3
+                        ? "bg-amber-600 text-white"
+                        : "bg-teal-950/10 text-teal-950 font-bold"
+                    }`}
+                  >
+                    #{c.rank}
+                  </span>
+                  <div className="min-w-0">
+                    <h4 className="font-bold text-teal-950 text-sm truncate">{c.name}</h4>
+                    <p className="text-[10px] font-mono text-teal-900/70">
+                      {c.callerId} · Quota: {c.dailyQuota || 50}/day
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => handleToggleActive(c.callerId, c.isActive)}
+                  className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase cursor-pointer shrink-0 transition ${
+                    c.isActive
+                      ? "bg-emerald-100 text-emerald-800"
+                      : "bg-slate-200 text-slate-700"
+                  }`}
+                >
+                  {c.isActive ? "● Active" : "○ Paused"}
+                </button>
+              </div>
+
+              {/* Phone info & Quota */}
+              <div className="flex items-center justify-between text-xs bg-cream/40 p-2 rounded-xl border border-teal-900/10">
+                <span className="font-mono text-teal-950 font-medium">
+                  📱 +91 {c.whatsappNumber || "Not Set"}
+                </span>
+                <span className="font-display font-black text-emerald-800 text-xs">
+                  {formatINR(c.totalDonationAmount)}
+                </span>
+              </div>
+
+              {/* Performance Metrics Grid */}
+              <div className="grid grid-cols-4 gap-2 text-center text-xs">
+                <div className="rounded-xl bg-slate-50 p-2 border border-slate-200/60">
+                  <span className="block text-[10px] text-teal-950/60 uppercase">Assigned</span>
+                  <span className="font-bold text-teal-950 text-xs">{c.assignedCount}</span>
+                </div>
+                <div className="rounded-xl bg-slate-50 p-2 border border-slate-200/60">
+                  <span className="block text-[10px] text-teal-950/60 uppercase">Contacted</span>
+                  <span className="font-bold text-teal-950 text-xs">{c.contactedCount}</span>
+                </div>
+                <div className="rounded-xl bg-emerald-50 p-2 border border-emerald-200/60">
+                  <span className="block text-[10px] text-emerald-800 uppercase">Converted</span>
+                  <span className="font-bold text-emerald-800 text-xs">{c.convertedCount}</span>
+                </div>
+                <div className="rounded-xl bg-amber-50 p-2 border border-amber-200/60">
+                  <span className="block text-[10px] text-amber-900 uppercase">Conv %</span>
+                  <span className="font-bold text-amber-900 text-xs">{c.conversionRate}%</span>
+                </div>
+              </div>
+
+              {/* Actions Toolbar */}
+              <div className="grid grid-cols-4 gap-1.5 pt-1 border-t border-teal-900/10">
+                <button
+                  type="button"
+                  onClick={() => handleOpenEditModal(c)}
+                  className="rounded-xl bg-teal-50 border border-teal-200 text-teal-950 py-2 text-xs font-bold hover:bg-teal-100 transition cursor-pointer flex items-center justify-center gap-1"
+                >
+                  <span>✏️</span>
+                  <span>Edit</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleOpenAccessModal(c)}
+                  className="rounded-xl bg-amber-100 border border-amber-300 text-amber-900 py-2 text-xs font-bold hover:bg-amber-200 transition cursor-pointer flex items-center justify-center gap-1"
+                >
+                  <span>🔑</span>
+                  <span>Access</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedCallerForLeads(c.callerId);
+                    loadLeadsForReassignment(c.callerId);
+                  }}
+                  className="rounded-xl bg-cream border border-teal-900/20 text-teal-950 py-2 text-xs font-bold hover:bg-sand transition cursor-pointer flex items-center justify-center gap-1"
+                >
+                  <span>📋</span>
+                  <span>Leads</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handlePromptDelete(c)}
+                  className="rounded-xl bg-rose-50 border border-rose-200 text-rose-700 py-2 text-xs font-bold hover:bg-rose-100 transition cursor-pointer flex items-center justify-center gap-1"
+                >
+                  <span>🗑️</span>
+                  <span>Del</span>
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* ── 4. BULK LEAD RE-ASSIGNMENT ENGINE ── */}
@@ -1372,8 +1495,8 @@ export function AdminTelecallerCRM() {
           </div>
         </div>
 
-        {/* Leads Table */}
-        <div className="overflow-x-auto max-h-96">
+        {/* Leads Table (Desktop) */}
+        <div className="hidden md:block overflow-x-auto max-h-96">
           <table className="w-full text-left text-xs">
             <thead className="bg-cream text-teal-950 font-bold border-b border-teal-900/10 sticky top-0 z-10">
               <tr>
@@ -1472,6 +1595,99 @@ export function AdminTelecallerCRM() {
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile View: Leads Card Deck */}
+        <div className="md:hidden space-y-2.5 max-h-[500px] overflow-y-auto p-1">
+          {filteredLeads.length === 0 ? (
+            <div className="p-6 text-center text-xs text-teal-950/50">
+              No leads found matching filter.
+            </div>
+          ) : (
+            filteredLeads.map((lead) => {
+              const isSelected = selectedLeadIds.includes(lead.leadId);
+              return (
+                <div
+                  key={lead.leadId}
+                  onClick={() => toggleLeadSelection(lead.leadId)}
+                  className={`rounded-2xl p-3.5 border transition cursor-pointer space-y-2.5 shadow-2xs ${
+                    isSelected
+                      ? "bg-amber-50/90 border-amber-400 ring-2 ring-amber-400/40"
+                      : "bg-white border-teal-900/10 hover:border-teal-900/20"
+                  }`}
+                >
+                  {/* Row 1: Checkbox + Name + Birthday */}
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => {}}
+                        className="rounded text-teal-950 h-4 w-4 shrink-0"
+                      />
+                      <div className="min-w-0">
+                        <h4 className="font-bold text-teal-950 text-sm truncate">{lead.name}</h4>
+                        <div className="flex items-center gap-2 text-xs">
+                          <span className="font-mono text-teal-950/70">{lead.phone}</span>
+                          {lead.dobDay && lead.dobMonth && (
+                            <span className="rounded-full bg-amber-100 text-amber-900 px-2 py-0.5 text-[10px] font-bold">
+                              🎂 {lead.dobDay}/{lead.dobMonth}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <span
+                      className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-black uppercase ${
+                        lead.status === "Donated"
+                          ? "bg-emerald-100 text-emerald-800"
+                          : lead.status === "Interested"
+                          ? "bg-amber-100 text-amber-800"
+                          : lead.status === "Reschedule"
+                          ? "bg-blue-100 text-blue-800"
+                          : lead.status === "Rejected"
+                          ? "bg-rose-100 text-rose-800"
+                          : "bg-slate-100 text-slate-700"
+                      }`}
+                    >
+                      {lead.status}
+                    </span>
+                  </div>
+
+                  {/* Row 2: Assigned caller & Quick 1-tap Outreach Toolbar */}
+                  <div
+                    className="flex items-center justify-between pt-1 border-t border-teal-900/10 text-xs"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <span className="text-[11px] font-mono text-teal-900/70 font-semibold">
+                      Assigned: {lead.assignedCallerId || "Unassigned"}
+                    </span>
+
+                    <div className="flex items-center gap-1.5">
+                      <a
+                        href={`tel:${lead.phone}`}
+                        className="flex h-9 items-center justify-center gap-1 rounded-xl bg-teal-950 text-white px-3 text-xs font-bold shadow-2xs active:scale-95 transition"
+                        title="Call donor directly"
+                      >
+                        <span>📞</span>
+                        <span>Call</span>
+                      </a>
+                      <button
+                        type="button"
+                        onClick={() => handleOpenAdminWhatsApp(lead)}
+                        className="flex h-9 items-center justify-center gap-1 rounded-xl bg-[#25D366] text-white px-3 text-xs font-black shadow-2xs active:scale-95 transition cursor-pointer"
+                        title="Send Anti-Ban WhatsApp Message"
+                      >
+                        <span>💬</span>
+                        <span>WhatsApp</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
         </div>
       </div>
 
