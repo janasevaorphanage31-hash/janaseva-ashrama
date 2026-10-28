@@ -64,6 +64,31 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
   const [viewMode, setViewMode] = useState<"focus" | "queue">("focus");
   const [focusIndex, setFocusIndex] = useState<number>(0);
   const [quickPitchLang, setQuickPitchLang] = useState<"kanglish" | "kn" | "en">("kanglish");
+  const [selectedSevaAmount, setSelectedSevaAmount] = useState<number>(1500);
+
+  // Audio chime using Web Audio API (0 dependencies)
+  const playCelebrationChime = () => {
+    try {
+      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      // 4-note victory arpeggio: C5 (523Hz), E5 (659Hz), G5 (784Hz), C6 (1046Hz)
+      osc.frequency.setValueAtTime(523.25, now);
+      osc.frequency.setValueAtTime(659.25, now + 0.08);
+      osc.frequency.setValueAtTime(783.99, now + 0.16);
+      osc.frequency.setValueAtTime(1046.50, now + 0.24);
+      gain.gain.setValueAtTime(0.25, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.85);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.85);
+    } catch {}
+  };
 
   // Quick Direct Donation Log Modal state
   const [activeDonationLead, setActiveDonationLead] = useState<any | null>(null);
@@ -147,6 +172,49 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Real-Time Background Heartbeat Polling (every 15s)
+  useEffect(() => {
+    if (!isLoggedIn || !callerProfile) return;
+
+    let isMounted = true;
+    const heartbeat = async () => {
+      try {
+        const res = await fetch(`/api/v1/leads/assigned?callerId=${encodeURIComponent(callerProfile.callerId)}`, {
+          cache: "no-store",
+        });
+        const data = await res.json();
+        if (!isMounted || !data.success || !Array.isArray(data.leads)) return;
+
+        const newLeads = data.leads;
+
+        setLeads((prevLeads) => {
+          // Detect newly converted lead
+          const newlyConverted = newLeads.find((nl: any) => {
+            const old = prevLeads.find((ol: any) => ol.leadId === nl.leadId);
+            return nl.status === "Donated" && old && old.status !== "Donated";
+          });
+
+          if (newlyConverted) {
+            playCelebrationChime();
+            showToast(`🎉 LIVE CONVERSION! ${newlyConverted.name} completed donation! Attributed to ${callerProfile.callerId}`);
+          }
+
+          return newLeads;
+        });
+
+        void computeStats(newLeads, callerProfile.callerId);
+      } catch {
+        // Silent catch for background polling
+      }
+    };
+
+    const interval = setInterval(heartbeat, 15000);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, [isLoggedIn, callerProfile]);
 
   // Handle Telecaller Sign In
   const handleLogin = async (e: React.FormEvent) => {
@@ -339,7 +407,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
   };
 
   // 1-Tap Direct Axis Bank Payment QR Share from Portal
-  const handleDirectSharePaymentQr = async (lead: any) => {
+  const handleDirectSharePaymentQr = async (lead: any, customAmount?: number) => {
     if (!lead || !callerProfile) return;
     if (!lead.status || lead.status === "Pending") {
       void handleUpdateDisposition(lead.leadId, "Contacted", "Auto-marked attended on QR share");
@@ -350,9 +418,11 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
       await navigator.clipboard.writeText(phoneInfo.waNumber);
     } catch {}
 
+    const amount = customAmount || selectedSevaAmount || 1500;
     const siteOrigin = typeof window !== "undefined" ? window.location.origin : "https://janasevaashrama.org";
     const qrUrl = `${siteOrigin}/media/janaseva-axis-bank-qr.jpg`;
-    const qrCaption = `🙏 Namaskara ${lead.name} Sir/Madam!\n\nAttached is our Official Axis Bank UPI Payment QR Scanner for Janaseva Ashrama (Turahalli, Bengaluru). Scan directly via GPay / PhonePe / Paytm / BHIM:\n\n💳 UPI ID: MAB.037349050110044@axisbank\n🏛️ Registered Trust: JANASEVA SAMRUDDI EDUCATI\n📜 Karnataka Govt JJ Act Reg: KA18CH0242\n🧾 100% Tax Deductible (Section 80G Form 10AC)\n📍 Turahalli, Bengaluru · Google Maps: https://maps.app.goo.gl/uPjN24rP1i1YkX6t7\n🌐 Official Portal: ${siteOrigin}/give?ref=${callerProfile.callerId}`;
+    const upiLink = `upi://pay?pa=MAB.037349050110044@axisbank&pn=JANASEVA%20SAMRUDDI%20EDUCATI&cu=INR&tn=Janaseva%20Ashrama%20Seva&am=${amount}`;
+    const qrCaption = `🙏 Namaskara ${lead.name} Sir/Madam!\n\nAttached is our Official Axis Bank UPI Payment QR Scanner for Janaseva Ashrama (Turahalli, Bengaluru). Scan directly via GPay / PhonePe / Paytm / BHIM:\n\n💳 UPI ID: MAB.037349050110044@axisbank\n🏛️ Registered Trust: JANASEVA SAMRUDDI EDUCATI\n📜 Karnataka Govt JJ Act Reg: KA18CH0242\n🧾 100% Tax Deductible (Section 80G Form 10AC)\n\n👉 [ 📲 1-TAP PAY ₹${formatINR(amount)} VIA GPAY / PHONEPE ]\n${upiLink}\n\n📍 Turahalli, Bengaluru · Google Maps: https://maps.app.goo.gl/uPjN24rP1i1YkX6t7\n🌐 Official Portal: ${siteOrigin}/give?ref=${callerProfile.callerId}&lead_id=${lead.leadId}&amount=${amount}`;
 
     try {
       const res = await fetch(qrUrl);
@@ -400,18 +470,130 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
   };
 
   // 1-Tap Direct WhatsApp Chat Launch
-  const handleDirectWhatsAppChat = (lead: any) => {
+  const handleDirectWhatsAppChat = (lead: any, customAmount?: number) => {
     if (!lead || !callerProfile) return;
     if (!lead.status || lead.status === "Pending") {
       void handleUpdateDisposition(lead.leadId, "Contacted", "Auto-marked attended on WhatsApp dispatch");
     }
     const phoneInfo = parseCustomerPhone(lead.phone);
+    const amount = customAmount || selectedSevaAmount || 1500;
     const siteOrigin = typeof window !== "undefined" ? window.location.origin : "https://janasevaashrama.org";
-    const text = `🙏 Namaskara ${lead.name} Sir/Madam!\n\nJanaseva Ashrama (Turahalli, Bengaluru) nalli ashrataraagiruva 25 anatha makkala kadeyinda ee vishēsha prarthane mattu namaskara! 👦✨\n\nNamma 25 makkala nitya baale ele ootakke mattu vidyabhyasakke sahaya bedi nimage ee sandēsha kalsuthiddivi.\n\n🍲 Pavitra Annadana Seva Tiers:\n• ₹501 — 3 Dinada Cow Milk & Pediatric Care\n• ₹1,500 — 25 Makkalige Bisi Breakfast Feast\n• ₹2,500 — Wholesome Festive Lunch Feast (Payasa + Sweets)\n• ₹4,500 — Full Day 4-Meal Annadana (All 25 Boys)\n\n━━━━━━━━━━━━━━━━━━━━━━━━━\n👉 [ 📲 1-TAP PAY VIA GPAY / PHONEPE / BHIM UPI ]\nupi://pay?pa=MAB.037349050110044@axisbank&pn=JANASEVA%20SAMRUDDI%20EDUCATI&cu=INR&tn=Janaseva%20Ashrama%20Seva\nOfficial UPI ID: MAB.037349050110044@axisbank\n\n👉 [ 🌐 1-TAP DONATE (ONLINE / 80G RECEIPT) ]\n${siteOrigin}/give?ref=${callerProfile.callerId}\n\n👉 [ 📞 DIRECT CALL ASHRAMA ]\n+91 99803 59595\n\n👉 [ 📍 GOOGLE MAPS ASHRAMA PIN ]\nhttps://maps.app.goo.gl/uPjN24rP1i1YkX6t7\n━━━━━━━━━━━━━━━━━━━━━━━━━\n🏛️ Govt Form 28 JJ Act: KA18CH0242 · 100% 80G Tax Exemption (Form 10AC: AABTJ7431MF20231). Instant WhatsApp receipt.\n\nShree Devaru nimage mattu nimma kutumbakke aayu, aarogya, aishwarya thumbalendu namma 25 makkalu prathidina 6:30 AM satsang nalli prarthane maduthare! 🙏✨`;
+    const upiLink = `upi://pay?pa=MAB.037349050110044@axisbank&pn=JANASEVA%20SAMRUDDI%20EDUCATI&cu=INR&tn=Janaseva%20Ashrama%20Seva&am=${amount}`;
+    const text = `🙏 Namaskara ${lead.name} Sir/Madam!\n\nJanaseva Ashrama (Turahalli, Bengaluru) nalli ashrataraagiruva 25 anatha makkala kadeyinda ee vishēsha prarthane mattu namaskara! 👦✨\n\nNamma 25 makkala nitya baale ele ootakke mattu vidyabhyasakke sahaya bedi nimage ee sandēsha kalsuthiddivi.\n\n🍲 Pavitra Annadana Seva Tiers:\n• ₹501 — 3 Dinada Cow Milk & Pediatric Care\n• ₹1,500 — 25 Makkalige Bisi Breakfast Feast\n• ₹2,500 — Wholesome Festive Lunch Feast (Payasa + Sweets)\n• ₹4,500 — Full Day 4-Meal Annadana (All 25 Boys)\n\n━━━━━━━━━━━━━━━━━━━━━━━━━\n👉 [ 📲 1-TAP PAY ₹${formatINR(amount)} VIA GPAY / PHONEPE / BHIM UPI ]\n${upiLink}\nOfficial UPI ID: MAB.037349050110044@axisbank\n\n👉 [ 🌐 1-TAP DONATE (ONLINE / 80G RECEIPT) ]\n${siteOrigin}/give?ref=${callerProfile.callerId}&lead_id=${lead.leadId}&amount=${amount}\n\n👉 [ 📞 DIRECT CALL ASHRAMA ]\n+91 99803 59595\n\n👉 [ 📍 GOOGLE MAPS ASHRAMA PIN ]\nhttps://maps.app.goo.gl/uPjN24rP1i1YkX6t7\n━━━━━━━━━━━━━━━━━━━━━━━━━\n🏛️ Govt Form 28 JJ Act: KA18CH0242 · 100% 80G Tax Exemption (Form 10AC: AABTJ7431MF20231). Instant WhatsApp receipt.\n\nShree Devaru nimage mattu nimma kutumbakke aayu, aarogya, aishwarya thumbalendu namma 25 makkalu prathidina 6:30 AM satsang nalli prarthane maduthare! 🙏✨`;
 
     const targetUrl = `https://wa.me/${phoneInfo.waNumber}?text=${encodeURIComponent(text)}`;
     window.open(targetUrl, "_blank", "noopener,noreferrer");
     showToast(`✓ Opened WhatsApp directly to ${phoneInfo.display}!`);
+  };
+
+  // 1-Click CSV Export for Staff & Supervisor
+  const handleExportCsv = () => {
+    if (!callerProfile || leads.length === 0) {
+      showToast("No leads in queue to export.");
+      return;
+    }
+
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const headers = [
+      "Lead ID",
+      "Donor Name",
+      "Phone",
+      "Birthday Day",
+      "Birthday Month",
+      "Status",
+      "Notes",
+      "Scheduled Callback",
+      "Assigned Caller",
+    ];
+
+    const escapeCsv = (val: any) => {
+      if (val === null || val === undefined) return '""';
+      const s = String(val).replace(/"/g, '""');
+      return `"${s}"`;
+    };
+
+    const rows = leads.map((l) => [
+      escapeCsv(l.leadId),
+      escapeCsv(l.name),
+      escapeCsv(parseCustomerPhone(l.phone).display),
+      escapeCsv(l.dobDay || ""),
+      escapeCsv(l.dobMonth || ""),
+      escapeCsv(l.status || "Pending"),
+      escapeCsv(l.notes || ""),
+      escapeCsv(l.rescheduleDate ? new Date(l.rescheduleDate).toLocaleString("en-IN") : ""),
+      escapeCsv(callerProfile.callerId),
+    ]);
+
+    const csvContent = [headers.join(","), ...rows.map((r) => r.join(","))].join("\r\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `janaseva-telecaller-${callerProfile.callerId}-${todayStr}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    showToast(`✓ Exported ${leads.length} leads to CSV file!`);
+  };
+
+  // 1-Click WhatsApp EOD Summary to Supervisor
+  const handleSendDailySupervisorReport = () => {
+    if (!callerProfile) return;
+    const todayStr = new Date().toLocaleDateString("en-IN", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+
+    const reportText = `📊 *JANASEVA ASHRAMA - TELECALLER DAILY REPORT*\n\n` +
+      `👤 *Telecaller:* ${callerProfile.name} (${callerProfile.callerId})\n` +
+      `📅 *Date:* ${todayStr}\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+      `🎯 *Daily Target:* ${dailyTarget} Contacts\n` +
+      `📞 *Attended Today:* ${stats.contactedCount} (${progressPercent}% achieved)\n` +
+      `🎉 *Conversions (Donations):* ${stats.convertedCount}\n` +
+      `💰 *Total Attributed Revenue:* ₹${stats.totalRevenue.toLocaleString("en-IN")}\n` +
+      `👍 *Warm / Interested:* ${counts.interested}\n` +
+      `📅 *Scheduled Callbacks:* ${counts.reschedule}\n` +
+      `⏳ *Pending in Queue:* ${counts.pending}\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+      `🏛️ *Trust:* Karnataka JJ Act KA18CH0242 · 80G Form 10AC\n` +
+      `📍 Turahalli, Bengaluru · Janaseva Ashrama`;
+
+    const supervisorWaNumber = "919980359595";
+    const targetUrl = `https://wa.me/${supervisorWaNumber}?text=${encodeURIComponent(reportText)}`;
+    window.open(targetUrl, "_blank", "noopener,noreferrer");
+    showToast("✓ Opened WhatsApp with Daily EOD Summary for Supervisor!");
+  };
+
+  // Quick Note Chips Appender
+  const handleApplyQuickNote = (phrase: string) => {
+    setNotesText((prev) => {
+      const cleanPrev = prev.trim();
+      if (!cleanPrev) return phrase;
+      return `${cleanPrev} · ${phrase}`;
+    });
+  };
+
+  // Quick Preset Callback Date-Time Setter
+  const handleApplyPresetCallback = (type: "+2h" | "today6pm" | "tom10am" | "tom4pm") => {
+    const d = new Date();
+    if (type === "+2h") {
+      d.setHours(d.getHours() + 2);
+    } else if (type === "today6pm") {
+      d.setHours(18, 0, 0, 0);
+    } else if (type === "tom10am") {
+      d.setDate(d.getDate() + 1);
+      d.setHours(10, 0, 0, 0);
+    } else if (type === "tom4pm") {
+      d.setDate(d.getDate() + 1);
+      d.setHours(16, 0, 0, 0);
+    }
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const formatted = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    setCallbackDateTime(formatted);
   };
 
   // Focus Mode Disposition with Auto-Advance
@@ -773,6 +955,24 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
           <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
+              onClick={handleExportCsv}
+              title="Download entire queue and today's work to CSV"
+              className="focus-ring tap-scale inline-flex items-center gap-1.5 rounded-xl bg-white hover:bg-sand border border-teal-900/20 text-teal-950 px-3 py-2 text-xs font-bold transition cursor-pointer shadow-2xs"
+            >
+              <span>📥 CSV Export</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleSendDailySupervisorReport}
+              title="Send End-of-Day calling report to supervisor on WhatsApp"
+              className="focus-ring tap-scale inline-flex items-center gap-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-950 px-3 py-2 text-xs font-bold transition cursor-pointer shadow-2xs"
+            >
+              <span>📊 Supervisor Report</span>
+            </button>
+
+            <button
+              type="button"
               onClick={handleCopyReferralLink}
               title="Copy your personal donation tracking link"
               className="focus-ring tap-scale inline-flex items-center gap-1.5 rounded-xl bg-sand hover:bg-amber-100/80 border border-teal-900/15 text-teal-950 px-3 py-2 text-xs font-bold transition cursor-pointer"
@@ -925,24 +1125,35 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
               </p>
             </div>
 
-            {/* Search Input */}
-            <div className="relative">
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search donor name or phone..."
-                className="w-full sm:w-64 rounded-xl border border-teal-900/20 px-3 py-2 text-xs bg-white text-teal-950 focus:ring-2 focus:ring-amber-400 outline-none"
-              />
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={() => setSearchQuery("")}
-                  className="absolute right-2.5 top-2 text-teal-950/40 hover:text-teal-950 text-xs"
-                >
-                  ✕
-                </button>
-              )}
+            {/* Search & Export Actions */}
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <div className="relative flex-1 sm:w-64">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search donor name or phone..."
+                  className="w-full rounded-xl border border-teal-900/20 px-3 py-2 text-xs bg-white text-teal-950 focus:ring-2 focus:ring-amber-400 outline-none"
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery("")}
+                    className="absolute right-2.5 top-2 text-teal-950/40 hover:text-teal-950 text-xs"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={handleExportCsv}
+                title="Export this queue to CSV"
+                className="shrink-0 px-3 py-2 rounded-xl bg-sand/60 hover:bg-sand border border-teal-900/15 text-teal-950 text-xs font-bold transition cursor-pointer flex items-center gap-1 shadow-2xs"
+              >
+                <span>📥</span>
+                <span className="hidden sm:inline">CSV</span>
+              </button>
             </div>
           </div>
 
@@ -1133,6 +1344,40 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                       </div>
                     </div>
 
+                    {/* ── 1-TAP SEVA TIER SELECTOR PILLS ── */}
+                    <div className="rounded-2xl bg-sand/40 border border-teal-900/15 p-3 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-black uppercase text-teal-950 tracking-wider">
+                          🎯 Select Seva Tier (Sets WhatsApp &amp; UPI Links):
+                        </span>
+                        <span className="text-xs font-black text-emerald-800">
+                          Selected: ₹{formatINR(selectedSevaAmount)}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
+                        {[
+                          { amt: 501, label: "₹501 Milk / Starter" },
+                          { amt: 1500, label: "₹1,500 Breakfast" },
+                          { amt: 2500, label: "₹2,500 Feast" },
+                          { amt: 4500, label: "₹4,500 Full Day" },
+                          { amt: 6000, label: "₹6,000 Ration" },
+                        ].map((tier) => (
+                          <button
+                            key={tier.amt}
+                            type="button"
+                            onClick={() => setSelectedSevaAmount(tier.amt)}
+                            className={`py-2 px-2 rounded-xl text-xs font-bold transition cursor-pointer text-center border ${
+                              selectedSevaAmount === tier.amt
+                                ? "bg-teal-950 text-gold border-teal-950 shadow-xs font-black"
+                                : "bg-white text-teal-950 border-teal-900/15 hover:bg-sand"
+                            }`}
+                          >
+                            {tier.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
                     {/* ── PRIMARY TELECALLER ACTION BUTTONS (48px Touch Targets) ── */}
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       {/* ACTION 1: Dial Customer Now */}
@@ -1148,21 +1393,21 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                       {/* ACTION 2: Step 1 Send Kanglish Chat */}
                       <button
                         type="button"
-                        onClick={() => handleDirectWhatsAppChat(currentFocusLead)}
+                        onClick={() => handleDirectWhatsAppChat(currentFocusLead, selectedSevaAmount)}
                         className="p-3.5 rounded-2xl bg-[#25D366] hover:brightness-105 active:scale-95 text-white font-black text-sm shadow-md transition flex items-center justify-center gap-2 cursor-pointer min-h-[52px]"
                       >
                         <span className="text-xl">💬</span>
-                        <span>Step 1: Open Chat</span>
+                        <span>Step 1: Open Chat (₹{formatINR(selectedSevaAmount)})</span>
                       </button>
 
                       {/* ACTION 3: Step 2 Share Axis Bank Payment QR Scanner */}
                       <button
                         type="button"
-                        onClick={() => handleDirectSharePaymentQr(currentFocusLead)}
+                        onClick={() => handleDirectSharePaymentQr(currentFocusLead, selectedSevaAmount)}
                         className="p-3.5 rounded-2xl bg-gradient-to-r from-amber-600 to-amber-700 hover:brightness-105 active:scale-95 text-white font-black text-sm shadow-md transition flex items-center justify-center gap-2 cursor-pointer min-h-[52px]"
                       >
                         <span className="text-xl">💳</span>
-                        <span>Step 2: Share Payment QR</span>
+                        <span>Step 2: Share QR (₹{formatINR(selectedSevaAmount)})</span>
                       </button>
                     </div>
 
@@ -1277,7 +1522,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                           type="button"
                           onClick={() => {
                             setActiveDonationLead(currentFocusLead);
-                            setLoggedDonationAmount(isTodayBirthday ? 2500 : 1500);
+                            setLoggedDonationAmount(selectedSevaAmount || (isTodayBirthday ? 2500 : 1500));
                             setLoggedDonationUtr("");
                           }}
                           className="min-h-[44px] rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-black text-xs shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
@@ -1797,6 +2042,29 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
             <form onSubmit={handleSaveNotes} className="space-y-3">
               <div>
                 <label className="block text-xs font-bold text-teal-950/80 mb-1">
+                  1-Tap Quick Note Chips:
+                </label>
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                  {[
+                    `👍 Agreed to donate ₹${formatINR(selectedSevaAmount)} via UPI`,
+                    "🎂 Wished birthday, visiting ashrama on weekend",
+                    "📲 Sent Axis Bank QR scanner, will pay tonight",
+                    "⏳ Busy in meeting, call back later",
+                    "❌ Out of service / switched off",
+                    "🙏 Requested 80G tax receipt on WhatsApp",
+                  ].map((chip) => (
+                    <button
+                      key={chip}
+                      type="button"
+                      onClick={() => handleApplyQuickNote(chip)}
+                      className="text-[10px] bg-sand/60 hover:bg-amber-100/70 border border-teal-900/15 text-teal-950 px-2 py-1 rounded-lg font-semibold transition cursor-pointer text-left"
+                    >
+                      + {chip}
+                    </button>
+                  ))}
+                </div>
+
+                <label className="block text-xs font-bold text-teal-950/80 mb-1">
                   Call Notes &amp; Donor Feedback
                 </label>
                 <textarea
@@ -1809,9 +2077,41 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-teal-950/80 mb-1">
-                  Callback Date &amp; Time (Optional)
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-bold text-teal-950/80">
+                    Callback Date &amp; Time (Optional)
+                  </label>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => handleApplyPresetCallback("+2h")}
+                      className="text-[10px] bg-blue-50 hover:bg-blue-100 text-blue-900 font-bold px-1.5 py-0.5 rounded border border-blue-200 cursor-pointer"
+                    >
+                      +2 Hrs
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleApplyPresetCallback("today6pm")}
+                      className="text-[10px] bg-blue-50 hover:bg-blue-100 text-blue-900 font-bold px-1.5 py-0.5 rounded border border-blue-200 cursor-pointer"
+                    >
+                      Today 6 PM
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleApplyPresetCallback("tom10am")}
+                      className="text-[10px] bg-blue-50 hover:bg-blue-100 text-blue-900 font-bold px-1.5 py-0.5 rounded border border-blue-200 cursor-pointer"
+                    >
+                      Tom 10 AM
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleApplyPresetCallback("tom4pm")}
+                      className="text-[10px] bg-blue-50 hover:bg-blue-100 text-blue-900 font-bold px-1.5 py-0.5 rounded border border-blue-200 cursor-pointer"
+                    >
+                      Tom 4 PM
+                    </button>
+                  </div>
+                </div>
                 <input
                   type="datetime-local"
                   value={callbackDateTime}
@@ -1968,26 +2268,38 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
           <button
             type="button"
             onClick={() => handleCallLead(currentFocusLead)}
-            className="flex-1 py-3 px-2 rounded-xl bg-teal-950 text-white font-bold text-xs flex items-center justify-center gap-1 active:scale-95 shadow-xs"
+            className="flex-1 py-3 px-1 rounded-xl bg-teal-950 text-white font-bold text-xs flex items-center justify-center gap-1 active:scale-95 shadow-xs"
           >
             <span>📞</span>
             <span>Call</span>
           </button>
           <button
             type="button"
-            onClick={() => handleDirectWhatsAppChat(currentFocusLead)}
-            className="flex-1 py-3 px-2 rounded-xl bg-[#25D366] text-white font-bold text-xs flex items-center justify-center gap-1 active:scale-95 shadow-xs"
+            onClick={() => handleDirectWhatsAppChat(currentFocusLead, selectedSevaAmount)}
+            className="flex-1 py-3 px-1 rounded-xl bg-[#25D366] text-white font-bold text-xs flex items-center justify-center gap-1 active:scale-95 shadow-xs"
           >
             <span>💬</span>
             <span>Chat</span>
           </button>
           <button
             type="button"
-            onClick={() => handleDirectSharePaymentQr(currentFocusLead)}
-            className="flex-1 py-3 px-2 rounded-xl bg-amber-600 text-white font-bold text-xs flex items-center justify-center gap-1 active:scale-95 shadow-xs"
+            onClick={() => handleDirectSharePaymentQr(currentFocusLead, selectedSevaAmount)}
+            className="flex-1 py-3 px-1 rounded-xl bg-amber-600 text-white font-bold text-xs flex items-center justify-center gap-1 active:scale-95 shadow-xs"
           >
             <span>💳</span>
             <span>QR</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setActiveDonationLead(currentFocusLead);
+              setLoggedDonationAmount(selectedSevaAmount || 1500);
+              setLoggedDonationUtr("");
+            }}
+            className="flex-1 py-3 px-1 rounded-xl bg-emerald-600 text-white font-bold text-xs flex items-center justify-center gap-1 active:scale-95 shadow-xs"
+          >
+            <span>🎉</span>
+            <span>Paid</span>
           </button>
           <button
             type="button"

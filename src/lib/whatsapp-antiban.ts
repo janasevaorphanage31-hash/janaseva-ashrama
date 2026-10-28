@@ -160,6 +160,7 @@ function getTimeOfDay(): "morning" | "afternoon" | "evening" {
 }
 
 export interface AntiBanGenerateOptions {
+  leadId?: number | string;
   leadName?: string;
   donorName?: string;
   leadPhone?: string;
@@ -239,8 +240,9 @@ export function generateAntiBanMessage(options: AntiBanGenerateOptions): AntiBan
 
   // Build target donation URL with tracking parameters
   const amountParam = customPledgeAmount && customPledgeAmount > 0 ? `&amount=${customPledgeAmount}` : "";
-  const portalUrl = `${baseUrl}/give?ref=${trackingRef}${amountParam}`;
-  const birthdayUrl = `${baseUrl}/celebrate-birthday?ref=${trackingRef}`;
+  const leadParam = options.leadId ? `&lead_id=${options.leadId}` : "";
+  const portalUrl = `${baseUrl}/give?ref=${trackingRef}${leadParam}${amountParam}`;
+  const birthdayUrl = `${baseUrl}/celebrate-birthday?ref=${trackingRef}${leadParam}`;
 
   let greeting = "";
   let intro = "";

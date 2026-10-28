@@ -123,6 +123,7 @@ export function AntiBanWhatsAppModal({
 
     // 1. INSTANT LOCAL GENERATION (0ms guarantee, zero blank messages)
     const local = generateAntiBanMessage({
+      leadId: lead.leadId,
       donorName: lead.name,
       callerId,
       callerName: callerName || "Janaseva Ashrama Volunteer",
