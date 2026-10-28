@@ -917,7 +917,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
 
   // ── AUTHENTICATED STATE: DEDICATED TELECALLER WORKSPACE ──
   return (
-    <div className="space-y-5 animate-fadeIn max-w-7xl mx-auto px-3 sm:px-6 py-4">
+    <div className="space-y-4 animate-fadeIn max-w-4xl mx-auto px-3 sm:px-6 py-4 pb-28 md:pb-8">
       {/* Toast Notification */}
       {toastMsg && (
         <div className="rounded-2xl bg-teal-950 text-gold px-4 py-3 shadow-lg border border-amber-400/40 text-xs font-bold flex items-center justify-between sticky top-3 z-30 animate-fadeIn">
@@ -940,7 +940,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                   {callerProfile.name}
                 </h1>
                 <span className="rounded-full bg-emerald-500/15 text-emerald-800 px-2 py-0.5 text-[10px] font-black uppercase">
-                  Active Advisor
+                  Staff Advisor
                 </span>
               </div>
               <p className="text-xs text-teal-950/60 mt-0.5 flex flex-wrap items-center gap-2">
@@ -959,7 +959,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
               title="Download entire queue and today's work to CSV"
               className="focus-ring tap-scale inline-flex items-center gap-1.5 rounded-xl bg-white hover:bg-sand border border-teal-900/20 text-teal-950 px-3 py-2 text-xs font-bold transition cursor-pointer shadow-2xs"
             >
-              <span>📥 CSV Export</span>
+              <span>📥 CSV</span>
             </button>
 
             <button
@@ -968,7 +968,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
               title="Send End-of-Day calling report to supervisor on WhatsApp"
               className="focus-ring tap-scale inline-flex items-center gap-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-950 px-3 py-2 text-xs font-bold transition cursor-pointer shadow-2xs"
             >
-              <span>📊 Supervisor Report</span>
+              <span>📊 Daily Report</span>
             </button>
 
             <button
@@ -977,7 +977,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
               title="Copy your personal donation tracking link"
               className="focus-ring tap-scale inline-flex items-center gap-1.5 rounded-xl bg-sand hover:bg-amber-100/80 border border-teal-900/15 text-teal-950 px-3 py-2 text-xs font-bold transition cursor-pointer"
             >
-              <span>🔗 Link: ?ref={callerProfile.callerId}</span>
+              <span>🔗 Link</span>
               <span className="text-[10px] bg-white rounded px-1.5 py-0.5 font-bold shadow-2xs">Copy</span>
             </button>
 
@@ -994,7 +994,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
               onClick={handleLogout}
               className="focus-ring tap-scale inline-flex items-center gap-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-3 py-2 text-xs font-bold transition cursor-pointer"
             >
-              <span>🚪 Sign Out</span>
+              <span>🚪 Logout</span>
             </button>
           </div>
         </div>
@@ -1009,7 +1009,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
               {stats.totalAssigned}
             </p>
             <p className="text-[10px] text-teal-950/60 mt-0.5">
-              Pending: {counts.pending}
+              To Call: {counts.pending}
             </p>
           </div>
 
@@ -1044,136 +1044,94 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
             <p className="font-display text-xl sm:text-2xl font-black text-gold mt-1">
               {formatINR(stats.totalRevenue)}
             </p>
-            <p className="text-[10px] text-white/70 mt-0.5">via ref={callerProfile.callerId}</p>
+            <p className="text-[10px] text-white/70 mt-0.5">ref={callerProfile.callerId}</p>
           </div>
         </div>
 
-        {/* ── HIGH-VOLUME DAILY OUTREACH PACING & PROGRESS TRACKER (300-500 TARGET) ── */}
-        <div className="mt-4 rounded-2xl bg-gradient-to-r from-cream/90 via-sand/50 to-cream/90 p-3.5 sm:p-4 border border-teal-900/15 space-y-2">
+        {/* Clean Daily Progress Bar */}
+        <div className="mt-4 rounded-2xl bg-sand/30 p-3 sm:p-4 border border-teal-900/10 space-y-2">
           <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-bold text-teal-950">
             <div className="flex items-center gap-2">
               <span className="text-base">🎯</span>
-              <span>Daily High-Volume Goal:</span>
+              <span>Today&apos;s Outreach:</span>
               <span className="font-mono text-emerald-900 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300 text-xs font-bold">
-                {stats.contactedCount} / {dailyTarget} Dispatched ({progressPercent}%)
+                {stats.contactedCount} / {dailyTarget} Calls ({progressPercent}%)
               </span>
             </div>
             <span className="text-[11px] text-teal-950/70 font-semibold">
-              Target: 300 to 500 contacts/day per advisor
+              Daily Target: {dailyTarget} contacts
             </span>
           </div>
 
-          {/* Progress Bar */}
-          <div className="w-full bg-teal-950/10 rounded-full h-3 overflow-hidden border border-teal-900/10">
+          <div className="w-full bg-teal-950/10 rounded-full h-2.5 overflow-hidden border border-teal-900/10">
             <div
-              className="bg-gradient-to-r from-emerald-500 via-teal-700 to-teal-950 h-full rounded-full transition-all duration-500 ease-out shadow-xs"
+              className="bg-gradient-to-r from-emerald-500 to-teal-800 h-full rounded-full transition-all duration-500 ease-out"
               style={{
                 width: `${Math.min(100, Math.max(3, progressPercent))}%`,
               }}
             />
-          </div>
-
-          {/* High-Volume Anti-Ban Shield Info */}
-          <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-[11px] text-teal-950/70 border-t border-teal-900/10">
-            <span className="flex items-center gap-1.5 text-emerald-800 font-bold">
-              <span>🛡️</span>
-              <span>7-Layer Anti-Ban Protected (50,000+ Permutations · Zero-Width Cryptographic Salt · Bangalore Proof)</span>
-            </span>
-            <span className="text-teal-950/60 font-medium">
-              💡 Tip: Maintain a natural 15-20s interval between dispatches
-            </span>
           </div>
         </div>
       </div>
 
       {/* ── ASSIGNED LEADS WORKSPACE & QUEUE ── */}
       <div className="rounded-3xl bg-white p-4 sm:p-6 shadow-sm border border-teal-900/10 space-y-4">
-        {/* Campaign Guidance Banner */}
-        <div className="rounded-2xl bg-amber-500/10 border border-amber-500/30 p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="space-y-1">
-            <div className="flex items-center gap-1.5 text-xs font-black text-amber-950 uppercase tracking-wider">
-              <span>🏛️</span>
-              <span>Janaseva Calling Pitch: &apos;Sponsor 25 Boys&apos; Official Tiers</span>
-            </div>
-            <p className="text-xs text-teal-950/80 font-medium leading-relaxed">
-              When speaking with well-wishers, highlight:
-              <strong> ₹4,500 Full Day Food (All 25 Boys)</strong> · <strong>₹6,000 Monthly Ration</strong> · <strong>₹2,500 Special Feast</strong> · <strong>₹501 Starter</strong>.
-              All gifts receive Form 10AC 80G tax exemption.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={handleCopyReferralLink}
-            className="shrink-0 rounded-xl bg-amber-500 hover:bg-amber-600 active:scale-95 text-teal-950 font-black px-3.5 py-2 text-xs shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
-          >
-            <span>📋 Copy Link (?ref={callerProfile.callerId})</span>
-          </button>
-        </div>
-
         {/* Filter Tabs & Search Header */}
         <div className="space-y-3">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <h2 className="font-display text-base sm:text-lg font-bold text-teal-950 flex items-center gap-2">
-                <span>📋 Lead Calling Queue</span>
+                <span>{viewMode === "focus" ? "⚡ Calling Card" : "📋 All Leads"}</span>
                 <span className="text-xs font-mono bg-cream px-2.5 py-0.5 rounded-full border border-teal-900/15 font-bold">
-                  {filteredLeads.length} visible
+                  {filteredLeads.length} leads
                 </span>
               </h2>
               <p className="text-xs text-teal-950/60 mt-0.5">
-                Tap 📞 Call or 💬 WhatsApp to automatically mark as Attended, or tap any quick disposition pill below.
+                {viewMode === "focus"
+                  ? "Single-lead focus view. Tap Call or WhatsApp to reach donor."
+                  : "Click any lead below to load into the Calling Card."}
               </p>
             </div>
 
-            {/* Search & Export Actions */}
-            <div className="flex items-center gap-2 w-full sm:w-auto">
-              <div className="relative flex-1 sm:w-64">
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search donor name or phone..."
-                  className="w-full rounded-xl border border-teal-900/20 px-3 py-2 text-xs bg-white text-teal-950 focus:ring-2 focus:ring-amber-400 outline-none"
-                />
-                {searchQuery && (
-                  <button
-                    type="button"
-                    onClick={() => setSearchQuery("")}
-                    className="absolute right-2.5 top-2 text-teal-950/40 hover:text-teal-950 text-xs"
-                  >
-                    ✕
-                  </button>
-                )}
-              </div>
-              <button
-                type="button"
-                onClick={handleExportCsv}
-                title="Export this queue to CSV"
-                className="shrink-0 px-3 py-2 rounded-xl bg-sand/60 hover:bg-sand border border-teal-900/15 text-teal-950 text-xs font-bold transition cursor-pointer flex items-center gap-1 shadow-2xs"
-              >
-                <span>📥</span>
-                <span className="hidden sm:inline">CSV</span>
-              </button>
+            {/* Search Input */}
+            <div className="relative w-full sm:w-64">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search donor name or phone..."
+                className="w-full rounded-xl border border-teal-900/20 px-3 py-2 text-xs bg-white text-teal-950 focus:ring-2 focus:ring-amber-400 outline-none"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-2.5 top-2 text-teal-950/40 hover:text-teal-950 text-xs cursor-pointer"
+                >
+                  ✕
+                </button>
+              )}
             </div>
           </div>
 
-          {/* Filter Pills with Live Counter Badges */}
+          {/* 5 Clean Filter Tabs */}
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
             {[
-              { id: "Pending", label: "⏳ Unattended", count: counts.pending, color: "text-amber-900 bg-amber-100" },
-              { id: "Attended", label: "✓ Attended", count: counts.attended, color: "text-emerald-900 bg-emerald-100" },
-              { id: "Today_Birthday", label: "🎂 Today's Birthdays", count: counts.birthdays, color: "text-purple-900 bg-purple-100" },
-              { id: "Interested", label: "👍 Interested", count: counts.interested, color: "text-emerald-900 bg-emerald-100" },
+              { id: "Pending", label: "⏳ To Call", count: counts.pending, color: "text-amber-900 bg-amber-100" },
+              { id: "Today_Birthday", label: "🎂 Birthdays Today", count: counts.birthdays, color: "text-purple-900 bg-purple-100" },
               { id: "Reschedule", label: "📅 Callbacks", count: counts.reschedule, color: "text-blue-900 bg-blue-100" },
-              { id: "Donated", label: "🎉 Donated", count: counts.donated, color: "text-amber-900 bg-amber-100" },
-              { id: "ALL", label: "All Queue", count: counts.all, color: "text-teal-950/60 bg-white" },
+              { id: "Attended", label: "✓ Completed", count: counts.attended, color: "text-emerald-900 bg-emerald-100" },
+              { id: "ALL", label: "All Leads", count: counts.all, color: "text-teal-950/60 bg-white" },
             ].map((st) => {
               const isActive = filter === st.id;
               return (
                 <button
                   key={st.id}
                   type="button"
-                  onClick={() => setFilter(st.id)}
+                  onClick={() => {
+                    setFilter(st.id);
+                    setFocusIndex(0);
+                  }}
                   className={`rounded-xl px-3 py-1.5 text-xs font-bold transition whitespace-nowrap cursor-pointer flex items-center gap-1.5 shrink-0 ${
                     isActive
                       ? "bg-teal-950 text-white shadow-sm"
@@ -1194,7 +1152,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
           </div>
         </div>
 
-        {/* View Mode Switcher: Continuous Focus Dialer vs Full Queue */}
+        {/* View Mode Switcher */}
         <div className="flex items-center justify-between gap-3 p-1.5 rounded-2xl bg-sand/40 border border-teal-900/15">
           <div className="flex items-center gap-1.5">
             <button
@@ -1207,10 +1165,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
               }`}
             >
               <span>⚡</span>
-              <span>Continuous Focus Mode</span>
-              <span className="text-[10px] bg-emerald-500/20 text-emerald-900 px-1.5 py-0.2 rounded-full font-bold">
-                Power Dialer
-              </span>
+              <span>Calling Card</span>
             </button>
             <button
               type="button"
@@ -1222,14 +1177,14 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
               }`}
             >
               <span>📋</span>
-              <span>Full Queue ({filteredLeads.length})</span>
+              <span>All Leads List ({filteredLeads.length})</span>
             </button>
           </div>
 
           <span className="text-[11px] text-teal-950/70 font-semibold hidden sm:inline">
             {viewMode === "focus"
-              ? "🎯 1 Lead on screen · Zero-scroll power dialing · 300+ calls/day"
-              : "Table & Card browse mode"}
+              ? "🎯 Focused dialer mode"
+              : "Click any lead to open in Calling Card"}
           </span>
         </div>
 
@@ -1378,37 +1333,63 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                       </div>
                     </div>
 
-                    {/* ── PRIMARY TELECALLER ACTION BUTTONS (48px Touch Targets) ── */}
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {/* ── PRIMARY TELECALLER ACTIONS (Ultra Simple & Direct) ── */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       {/* ACTION 1: Dial Customer Now */}
                       <button
                         type="button"
                         onClick={() => handleCallLead(currentFocusLead)}
-                        className="p-3.5 rounded-2xl bg-teal-950 hover:bg-teal-900 active:scale-95 text-white font-black text-sm shadow-md transition flex items-center justify-center gap-2.5 cursor-pointer min-h-[52px]"
+                        className="p-3.5 rounded-2xl bg-teal-950 hover:bg-teal-900 active:scale-95 text-white font-black text-sm sm:text-base shadow-md transition flex items-center justify-center gap-2.5 cursor-pointer min-h-[52px]"
                       >
                         <span className="text-xl">📞</span>
-                        <span>Call {currentFocusLead.name.split(" ")[0]} ({phoneInfo.display})</span>
+                        <span>Call Now: {phoneInfo.display}</span>
                       </button>
 
-                      {/* ACTION 2: Step 1 Send Kanglish Chat */}
+                      {/* ACTION 2: WhatsApp Details & UPI Link */}
                       <button
                         type="button"
                         onClick={() => handleDirectWhatsAppChat(currentFocusLead, selectedSevaAmount)}
-                        className="p-3.5 rounded-2xl bg-[#25D366] hover:brightness-105 active:scale-95 text-white font-black text-sm shadow-md transition flex items-center justify-center gap-2 cursor-pointer min-h-[52px]"
+                        className="p-3.5 rounded-2xl bg-[#25D366] hover:brightness-105 active:scale-95 text-white font-black text-sm sm:text-base shadow-md transition flex items-center justify-center gap-2 cursor-pointer min-h-[52px]"
                       >
                         <span className="text-xl">💬</span>
-                        <span>Step 1: Open Chat (₹{formatINR(selectedSevaAmount)})</span>
+                        <span>WhatsApp Details &amp; UPI (₹{formatINR(selectedSevaAmount)})</span>
                       </button>
+                    </div>
 
-                      {/* ACTION 3: Step 2 Share Axis Bank Payment QR Scanner */}
+                    {/* Secondary Actions Row */}
+                    <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-xs">
                       <button
                         type="button"
                         onClick={() => handleDirectSharePaymentQr(currentFocusLead, selectedSevaAmount)}
-                        className="p-3.5 rounded-2xl bg-gradient-to-r from-amber-600 to-amber-700 hover:brightness-105 active:scale-95 text-white font-black text-sm shadow-md transition flex items-center justify-center gap-2 cursor-pointer min-h-[52px]"
+                        className="rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-950 border border-amber-500/30 px-3 py-1.5 font-bold transition flex items-center gap-1.5 cursor-pointer"
                       >
-                        <span className="text-xl">💳</span>
-                        <span>Step 2: Share QR (₹{formatINR(selectedSevaAmount)})</span>
+                        <span>📷</span>
+                        <span>Share QR Image File</span>
                       </button>
+
+                      <div className="flex items-center gap-2 text-teal-950/60">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setActiveNotesLead(currentFocusLead);
+                            setNotesText(currentFocusLead.notes || "");
+                            setCallbackDateTime("");
+                          }}
+                          className="font-bold text-teal-900 hover:underline cursor-pointer flex items-center gap-1"
+                        >
+                          <span>📝</span>
+                          <span>Add Note</span>
+                        </button>
+                        <span>·</span>
+                        <button
+                          type="button"
+                          onClick={() => handleOpenWhatsAppModal(currentFocusLead)}
+                          className="font-bold text-teal-900 hover:underline cursor-pointer flex items-center gap-1"
+                        >
+                          <span>⚙️</span>
+                          <span>Message Templates</span>
+                        </button>
+                      </div>
                     </div>
 
                     {/* ── INTEGRATED 30-SECOND TRUST SCRIPT BOX ── */}
@@ -1545,31 +1526,12 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
 
                     {/* Bottom Utility Strip */}
                     <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-teal-900/10 text-[11px] text-teal-950/60">
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => handleOpenWhatsAppModal(currentFocusLead)}
-                          className="font-bold text-teal-900 hover:underline cursor-pointer flex items-center gap-1"
-                        >
-                          <span>⚙️</span>
-                          <span>Open Full Anti-Ban Hub</span>
-                        </button>
-                        <span>·</span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setActiveNotesLead(currentFocusLead);
-                            setNotesText(currentFocusLead.notes || "");
-                          }}
-                          className="font-bold text-teal-900 hover:underline cursor-pointer flex items-center gap-1"
-                        >
-                          <span>📝</span>
-                          <span>Add Detailed Notes</span>
-                        </button>
-                      </div>
+                      <span className="font-semibold text-emerald-800">
+                        ✓ Safe Mode: Auto-marks lead attended upon Call or WhatsApp
+                      </span>
 
                       <div className="hidden sm:flex items-center gap-2 text-[10px] font-mono text-teal-950/50">
-                        <span>Shortcuts: [C] Call · [W] Chat · [Q] QR · [1] Warm · [2] Busy · [N] Next</span>
+                        <span>Shortcuts: [C] Call · [W] WhatsApp · [Q] QR · [1] Interested · [2] Busy · [N] Next</span>
                       </div>
                     </div>
                   </div>
@@ -1579,118 +1541,132 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
           </div>
         )}
 
-        {/* ── 2. FULL QUEUE VIEW (TABLE & TOUCH CARDS) ── */}
+        {/* ── 2. ALL LEADS LIST VIEW (CLEAN, FAST, UNIFIED) ── */}
         {viewMode === "queue" && (
-          <>
-            {/* ── MOBILE VIEW: TOUCH CARDS FEED (Optimized for Telecallers on Phones) ── */}
-            <div className="md:hidden space-y-3">
-          {loadingLeads ? (
-            <div className="p-8 text-center text-teal-950/60 text-xs">
-              Loading your assigned queue...
-            </div>
-          ) : filteredLeads.length === 0 ? (
-            <div className="p-8 text-center text-teal-950/60 text-xs bg-cream/30 rounded-2xl border border-teal-900/10">
-              No leads found matching current filter or search query.
-            </div>
-          ) : (
-            filteredLeads.map((lead) => {
-              const now = new Date();
-              const isTodayBirthday = lead.dobDay === now.getDate() && lead.dobMonth === now.getMonth() + 1;
-              const isAttended = lead.status && lead.status !== "Pending";
-
-              return (
-                <div
-                  key={lead.leadId}
-                  className={`rounded-2xl p-4 bg-white border transition shadow-xs space-y-3 ${
-                    isTodayBirthday
-                      ? "border-amber-400 ring-2 ring-amber-400/30 bg-amber-50/20"
-                      : isAttended
-                      ? "border-emerald-500/30 bg-white"
-                      : "border-teal-900/10"
-                  }`}
+          <div className="space-y-2.5 animate-fadeIn">
+            {loadingLeads ? (
+              <div className="p-8 text-center text-teal-950/60 text-xs bg-cream/30 rounded-2xl border border-teal-900/10">
+                Loading assigned leads...
+              </div>
+            ) : filteredLeads.length === 0 ? (
+              <div className="p-8 text-center text-teal-950/60 text-xs bg-cream/30 rounded-2xl border border-teal-900/10 space-y-2">
+                <p className="font-bold text-teal-950">No leads found matching current filter.</p>
+                <button
+                  type="button"
+                  onClick={() => setFilter("ALL")}
+                  className="rounded-xl bg-teal-950 text-white px-3 py-1.5 text-xs font-bold shadow-xs hover:bg-teal-900 cursor-pointer"
                 >
-                  {/* Top Header: Donor Name, Attended Status Badge */}
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <h3 className="font-display font-black text-sm text-teal-950 truncate">
-                          {lead.name}
-                        </h3>
-                        <span className="text-[10px] font-mono text-teal-950/50">
-                          #{lead.leadId}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2 mt-1 flex-wrap">
-                        <span className="font-mono text-xs font-bold text-teal-900">
-                          {parseCustomerPhone(lead.phone).display}
-                        </span>
+                  Show All ({leads.length})
+                </button>
+              </div>
+            ) : (
+              filteredLeads.map((lead, idx) => {
+                const now = new Date();
+                const isTodayBirthday = lead.dobDay === now.getDate() && lead.dobMonth === now.getMonth() + 1;
+                const isAttended = lead.status && lead.status !== "Pending";
+                const phoneInfo = parseCustomerPhone(lead.phone);
+
+                return (
+                  <div
+                    key={lead.leadId}
+                    className={`rounded-2xl p-3.5 sm:p-4 bg-white border transition shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                      isTodayBirthday
+                        ? "border-amber-400 ring-2 ring-amber-400/30 bg-amber-50/20"
+                        : isAttended
+                        ? "border-emerald-500/30 bg-white"
+                        : "border-teal-900/10 hover:border-teal-900/30"
+                    }`}
+                  >
+                    {/* Left: Lead details & 1-tap card launcher */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFocusIndex(idx);
+                            setViewMode("focus");
+                          }}
+                          className="font-display font-black text-sm sm:text-base text-teal-950 hover:text-amber-600 transition text-left cursor-pointer flex items-center gap-1.5"
+                          title="Click to open in Calling Card"
+                        >
+                          <span>{lead.name}</span>
+                          <span className="text-[10px] font-mono text-teal-950/40">#{lead.leadId}</span>
+                        </button>
+
                         {isTodayBirthday && (
                           <span className="rounded-full bg-amber-500 text-teal-950 px-2 py-0.5 text-[10px] font-black uppercase shadow-xs animate-pulse">
-                            🎂 Today&apos;s Birthday!
+                            🎂 Today!
                           </span>
                         )}
-                        {!isTodayBirthday && lead.dobDay && lead.dobMonth && (
-                          <span className="rounded-md bg-amber-100 text-amber-900 px-1.5 py-0.5 text-[10px] font-bold">
-                            🎂 {lead.dobDay}/{lead.dobMonth}
+
+                        {lead.status === "Donated" ? (
+                          <span className="rounded-full bg-emerald-600 text-white px-2 py-0.5 text-[10px] font-black shadow-xs">
+                            🎉 Donated
+                          </span>
+                        ) : lead.status === "Interested" ? (
+                          <span className="rounded-full bg-amber-500 text-teal-950 px-2 py-0.5 text-[10px] font-black">
+                            👍 Interested
+                          </span>
+                        ) : lead.status === "Reschedule" ? (
+                          <span className="rounded-full bg-blue-600 text-white px-2 py-0.5 text-[10px] font-black">
+                            📅 Callback
+                          </span>
+                        ) : isAttended ? (
+                          <span className="rounded-full bg-emerald-100 text-emerald-900 px-2 py-0.5 text-[10px] font-bold border border-emerald-300">
+                            ✓ {lead.status}
+                          </span>
+                        ) : (
+                          <span className="rounded-full bg-amber-100 text-amber-900 px-2 py-0.5 text-[10px] font-bold border border-amber-300">
+                            ⏳ To Call
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-3 mt-1 text-xs text-teal-950/70 flex-wrap">
+                        <span className="font-mono font-bold text-teal-950">
+                          {phoneInfo.display}
+                        </span>
+                        {lead.dobDay && lead.dobMonth && !isTodayBirthday && (
+                          <span>🎂 {lead.dobDay}/{lead.dobMonth}</span>
+                        )}
+                        {lead.notes && (
+                          <span className="truncate max-w-xs text-teal-950/60 italic">
+                            &quot;{lead.notes}&quot;
                           </span>
                         )}
                       </div>
                     </div>
 
-                    {/* Attended / Status Badge */}
-                    <div className="shrink-0 text-right">
-                      {lead.status === "Donated" ? (
-                        <span className="inline-block rounded-full bg-emerald-600 text-white px-2.5 py-1 text-[11px] font-black shadow-xs">
-                          🎉 Donated
-                        </span>
-                      ) : lead.status === "Interested" ? (
-                        <span className="inline-block rounded-full bg-amber-500 text-teal-950 px-2.5 py-1 text-[11px] font-black shadow-xs">
-                          ✓ Interested 👍
-                        </span>
-                      ) : lead.status === "Reschedule" ? (
-                        <span className="inline-block rounded-full bg-blue-600 text-white px-2.5 py-1 text-[11px] font-black shadow-xs">
-                          ✓ Callback 📅
-                        </span>
-                      ) : lead.status === "Contacted" ? (
-                        <span className="inline-block rounded-full bg-emerald-100 text-emerald-900 border border-emerald-300 px-2.5 py-1 text-[11px] font-bold shadow-2xs">
-                          ✓ Attended Today
-                        </span>
-                      ) : lead.status === "No_Answer" ? (
-                        <span className="inline-block rounded-full bg-gray-500 text-white px-2.5 py-1 text-[11px] font-bold shadow-2xs">
-                          ⏳ No Answer
-                        </span>
-                      ) : lead.status === "Rejected" ? (
-                        <span className="inline-block rounded-full bg-rose-600 text-white px-2.5 py-1 text-[11px] font-bold shadow-2xs">
-                          ✕ Not Interested
-                        </span>
-                      ) : (
-                        <span className="inline-block rounded-full bg-amber-100 text-amber-900 border border-amber-300 px-2.5 py-1 text-[11px] font-bold shadow-2xs">
-                          ⏳ Unattended
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* 1-Tap Inline Disposition Pills */}
-                  <div className="pt-2 border-t border-teal-900/10">
-                    <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-[10px] font-black uppercase text-teal-950/60 tracking-wider">
-                        1-Tap Mark Disposition:
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-5 gap-1">
+                    {/* Right: Quick Touch Actions */}
+                    <div className="flex items-center gap-2 shrink-0 flex-wrap sm:flex-nowrap">
                       <button
                         type="button"
-                        onClick={() => handleInlineDisposition(lead.leadId, "Interested")}
-                        className={`min-h-[34px] rounded-xl text-[10px] font-black transition flex items-center justify-center active:scale-95 cursor-pointer ${
-                          lead.status === "Interested"
-                            ? "bg-amber-500 text-teal-950 shadow-xs"
-                            : "bg-emerald-50 text-emerald-950 border border-emerald-200 hover:bg-emerald-100"
-                        }`}
-                        title="Mark Interested"
+                        onClick={() => {
+                          setFocusIndex(idx);
+                          setViewMode("focus");
+                        }}
+                        className="rounded-xl bg-sand/60 hover:bg-sand border border-teal-900/15 text-teal-950 px-2.5 py-2 text-xs font-bold transition flex items-center gap-1 cursor-pointer"
+                        title="Open full calling card"
                       >
-                        👍 Warm
+                        <span>⚡ Card</span>
                       </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleCallLead(lead)}
+                        className="rounded-xl bg-teal-950 hover:bg-teal-900 active:scale-95 text-white px-3 py-2 text-xs font-bold transition flex items-center gap-1 cursor-pointer shadow-xs"
+                      >
+                        <span>📞 Call</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleDirectWhatsAppChat(lead, selectedSevaAmount)}
+                        className="rounded-xl bg-[#25D366] hover:brightness-105 active:scale-95 text-white px-3 py-2 text-xs font-bold transition flex items-center gap-1 cursor-pointer shadow-xs"
+                      >
+                        <span>💬 WhatsApp</span>
+                      </button>
+
                       <button
                         type="button"
                         onClick={() => {
@@ -1698,237 +1674,17 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                           setNotesText(lead.notes || "");
                           setCallbackDateTime("");
                         }}
-                        className={`min-h-[34px] rounded-xl text-[10px] font-black transition flex items-center justify-center active:scale-95 cursor-pointer ${
-                          lead.status === "Reschedule"
-                            ? "bg-blue-600 text-white shadow-xs"
-                            : "bg-blue-50 text-blue-950 border border-blue-200 hover:bg-blue-100"
-                        }`}
-                        title="Callback Later"
+                        className="rounded-xl bg-white border border-teal-900/20 text-teal-950 hover:bg-cream p-2 text-xs transition cursor-pointer"
+                        title="Add Call Note / Callback"
                       >
-                        📅 Later
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleInlineDisposition(lead.leadId, "No_Answer")}
-                        className={`min-h-[34px] rounded-xl text-[10px] font-black transition flex items-center justify-center active:scale-95 cursor-pointer ${
-                          lead.status === "No_Answer"
-                            ? "bg-gray-700 text-white shadow-xs"
-                            : "bg-gray-100 text-gray-800 border border-gray-300 hover:bg-gray-200"
-                        }`}
-                        title="No Answer / Busy"
-                      >
-                        ⏳ Busy
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleInlineDisposition(lead.leadId, "Donated")}
-                        className={`min-h-[34px] rounded-xl text-[10px] font-black transition flex items-center justify-center active:scale-95 cursor-pointer ${
-                          lead.status === "Donated"
-                            ? "bg-emerald-600 text-white shadow-xs"
-                            : "bg-emerald-50 text-emerald-950 border border-emerald-300 hover:bg-emerald-100"
-                        }`}
-                        title="Donated"
-                      >
-                        🎉 Paid
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleInlineDisposition(lead.leadId, "Rejected")}
-                        className={`min-h-[34px] rounded-xl text-[10px] font-black transition flex items-center justify-center active:scale-95 cursor-pointer ${
-                          lead.status === "Rejected"
-                            ? "bg-rose-600 text-white shadow-xs"
-                            : "bg-rose-50 text-rose-950 border border-rose-200 hover:bg-rose-100"
-                        }`}
-                        title="Not Interested"
-                      >
-                        ✕ No
+                        <span>📝</span>
                       </button>
                     </div>
                   </div>
-
-                  {/* Primary Touch Actions Row: Call, WhatsApp, Notes */}
-                  <div className="grid grid-cols-12 gap-2 pt-1 border-t border-teal-900/10">
-                    <button
-                      type="button"
-                      onClick={() => handleCallLead(lead)}
-                      className="col-span-5 min-h-[44px] flex items-center justify-center gap-1.5 rounded-2xl bg-teal-950 hover:bg-teal-900 active:scale-95 text-white text-xs font-bold shadow-xs transition cursor-pointer"
-                    >
-                      <span className="text-base">📞</span>
-                      <span>Call Now</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => handleWhatsAppLead(lead)}
-                      className="col-span-5 min-h-[44px] flex items-center justify-center gap-1.5 rounded-2xl bg-[#25D366] hover:brightness-105 active:scale-95 text-white text-xs font-black shadow-xs transition cursor-pointer"
-                    >
-                      <span className="text-base">💬</span>
-                      <span>WhatsApp</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setActiveNotesLead(lead);
-                        setNotesText(lead.notes || "");
-                        setCallbackDateTime("");
-                      }}
-                      className="col-span-2 min-h-[44px] flex items-center justify-center rounded-2xl bg-cream border border-teal-900/20 text-teal-950 text-xs font-bold hover:bg-sand active:scale-95 transition cursor-pointer"
-                      title="Add call notes"
-                    >
-                      <span className="text-base">📝</span>
-                    </button>
-                  </div>
-                </div>
-              );
-            })
-          )}
-        </div>
-
-        {/* ── DESKTOP VIEW TABLE ── */}
-        <div className="hidden md:block overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-cream text-teal-950 font-bold border-b border-teal-900/10">
-              <tr>
-                <th className="p-3">Lead Donor</th>
-                <th className="p-3">Phone</th>
-                <th className="p-3">Birthday</th>
-                <th className="p-3">Attended State</th>
-                <th className="p-3">1-Tap Disposition</th>
-                <th className="p-3">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-teal-900/5">
-              {loadingLeads ? (
-                <tr>
-                  <td colSpan={6} className="p-8 text-center text-teal-950/60">
-                    Loading your assigned queue...
-                  </td>
-                </tr>
-              ) : filteredLeads.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="p-8 text-center text-teal-950/60">
-                    No leads found matching current filter or search.
-                  </td>
-                </tr>
-              ) : (
-                filteredLeads.map((lead) => {
-                  const now = new Date();
-                  const isTodayBirthday = lead.dobDay === now.getDate() && lead.dobMonth === now.getMonth() + 1;
-                  const isAttended = lead.status && lead.status !== "Pending";
-
-                  return (
-                    <tr key={lead.leadId} className={`hover:bg-sand/30 transition ${isTodayBirthday ? "bg-amber-50/40" : ""}`}>
-                      <td className="p-3">
-                        <p className="font-bold text-teal-950 text-sm">{lead.name}</p>
-                        <p className="text-[10px] text-teal-950/60">Lead #{lead.leadId}</p>
-                      </td>
-                      <td className="p-3">
-                        <button
-                          type="button"
-                          onClick={() => handleCallLead(lead)}
-                          className="font-mono font-bold text-teal-900 hover:underline flex items-center gap-1 cursor-pointer"
-                        >
-                          <span>📞</span> {parseCustomerPhone(lead.phone).display}
-                        </button>
-                      </td>
-                      <td className="p-3">
-                        {isTodayBirthday ? (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-amber-500 text-teal-950 font-black px-2.5 py-0.5 text-[11px] animate-pulse">
-                            🎂 Today!
-                          </span>
-                        ) : lead.dobDay && lead.dobMonth ? (
-                          <span className="inline-flex items-center gap-1 rounded-md bg-amber-100 text-amber-900 font-bold px-2 py-0.5 text-[11px]">
-                            🎂 {lead.dobDay}/{lead.dobMonth}
-                          </span>
-                        ) : (
-                          <span className="text-teal-950/40">-</span>
-                        )}
-                      </td>
-                      <td className="p-3">
-                        {isAttended ? (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 text-emerald-900 font-bold px-2.5 py-0.5 text-[11px] border border-emerald-300">
-                            ✓ {lead.status}
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 text-gray-700 font-bold px-2.5 py-0.5 text-[11px]">
-                            ⏳ Pending
-                          </span>
-                        )}
-                      </td>
-                      <td className="p-3">
-                        <div className="flex items-center gap-1">
-                          <button
-                            type="button"
-                            onClick={() => handleInlineDisposition(lead.leadId, "Interested")}
-                            className={`px-2 py-1 rounded-lg text-[10px] font-bold transition cursor-pointer ${
-                              lead.status === "Interested" ? "bg-amber-500 text-teal-950 font-black" : "bg-cream hover:bg-sand text-teal-950"
-                            }`}
-                          >
-                            👍 Interested
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setActiveNotesLead(lead);
-                              setNotesText(lead.notes || "");
-                              setCallbackDateTime("");
-                            }}
-                            className={`px-2 py-1 rounded-lg text-[10px] font-bold transition cursor-pointer ${
-                              lead.status === "Reschedule" ? "bg-blue-600 text-white" : "bg-cream hover:bg-sand text-teal-950"
-                            }`}
-                          >
-                            📅 Callback
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleInlineDisposition(lead.leadId, "Donated")}
-                            className={`px-2 py-1 rounded-lg text-[10px] font-bold transition cursor-pointer ${
-                              lead.status === "Donated" ? "bg-emerald-600 text-white font-black" : "bg-cream hover:bg-sand text-teal-950"
-                            }`}
-                          >
-                            🎉 Donated
-                          </button>
-                        </div>
-                      </td>
-                      <td className="p-3">
-                        <div className="flex items-center gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => handleWhatsAppLead(lead)}
-                            className="focus-ring tap-scale inline-flex items-center gap-1 rounded-xl bg-[#25D366] hover:brightness-105 text-white px-2.5 py-1.5 text-xs font-bold shadow-xs cursor-pointer"
-                          >
-                            <span>💬</span> WhatsApp
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleCallLead(lead)}
-                            className="inline-flex items-center gap-1 rounded-xl bg-teal-950 hover:bg-teal-900 text-white px-2.5 py-1.5 text-xs font-bold transition cursor-pointer"
-                          >
-                            <span>📞</span> Call
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setActiveNotesLead(lead);
-                              setNotesText(lead.notes || "");
-                              setCallbackDateTime("");
-                            }}
-                            className="rounded-xl bg-white border border-teal-900/20 text-teal-950 hover:bg-sand px-2 py-1.5 text-[11px] font-bold transition cursor-pointer"
-                            title="Notes"
-                          >
-                            📝
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-          </>
+                );
+              })
+            )}
+          </div>
         )}
       </div>
 
@@ -2279,14 +2035,14 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
             className="flex-1 py-3 px-1 rounded-xl bg-[#25D366] text-white font-bold text-xs flex items-center justify-center gap-1 active:scale-95 shadow-xs"
           >
             <span>💬</span>
-            <span>Chat</span>
+            <span>WhatsApp</span>
           </button>
           <button
             type="button"
             onClick={() => handleDirectSharePaymentQr(currentFocusLead, selectedSevaAmount)}
             className="flex-1 py-3 px-1 rounded-xl bg-amber-600 text-white font-bold text-xs flex items-center justify-center gap-1 active:scale-95 shadow-xs"
           >
-            <span>💳</span>
+            <span>📷</span>
             <span>QR</span>
           </button>
           <button

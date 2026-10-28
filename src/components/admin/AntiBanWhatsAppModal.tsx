@@ -1293,24 +1293,24 @@ export function AntiBanWhatsAppModal({
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                    {/* Step 1: Open Customer Chat */}
+                    {/* Open Customer Chat */}
                     <button
                       type="button"
                       onClick={handleSendDirectToCustomer}
                       className="p-2.5 rounded-2xl bg-teal-950 hover:bg-teal-900 active:scale-95 text-white text-left font-bold text-xs shadow-md transition flex items-center gap-2 cursor-pointer min-h-[54px]"
                     >
                       <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-amber-400 text-teal-950 text-xs font-black shadow-xs">
-                        1
+                        💬
                       </span>
                       <div className="min-w-0">
-                        <div className="font-black text-amber-300 truncate text-[11px]">Step 1: Open Chat</div>
+                        <div className="font-black text-amber-300 truncate text-[11px]">WhatsApp Message</div>
                         <div className="text-[10px] font-normal opacity-85 truncate">
-                          Pre-filled Kanglish text
+                          Pre-filled text &amp; UPI
                         </div>
                       </div>
                     </button>
 
-                    {/* Step 2A: Share Payment QR Scanner */}
+                    {/* Share Payment QR Scanner */}
                     <button
                       type="button"
                       onClick={handleShareQrScanner}
@@ -1320,14 +1320,14 @@ export function AntiBanWhatsAppModal({
                         💳
                       </span>
                       <div className="min-w-0">
-                        <div className="font-black text-white truncate text-[11px]">Step 2: Payment QR</div>
+                        <div className="font-black text-white truncate text-[11px]">Payment QR</div>
                         <div className="text-[10px] font-normal opacity-90 truncate">
                           Axis Bank Standee
                         </div>
                       </div>
                     </button>
 
-                    {/* Step 2B: Share Real Seva Photo */}
+                    {/* Share Real Seva Photo */}
                     <button
                       type="button"
                       onClick={handleShareRealMedia}
@@ -1337,7 +1337,7 @@ export function AntiBanWhatsAppModal({
                         📸
                       </span>
                       <div className="min-w-0">
-                        <div className="font-black text-white truncate text-[11px]">Share Seva Photo</div>
+                        <div className="font-black text-white truncate text-[11px]">Seva Photo</div>
                         <div className="text-[10px] font-normal opacity-90 truncate">
                           Meal Feast photo
                         </div>
