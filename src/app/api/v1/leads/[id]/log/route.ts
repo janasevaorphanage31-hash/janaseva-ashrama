@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { logCallDisposition } from "@/lib/antigravity-crm";
+import { logCallDisposition, recordPaymentAttribution } from "@/lib/antigravity-crm";
 import { authenticateCallerOrAdmin } from "@/lib/caller-auth";
 import { db } from "@/db";
 import { agLeads } from "@/db/schema";
@@ -70,6 +70,22 @@ export async function POST(
     }
 
     await logCallDisposition(leadId, auth.callerId, rawDisposition, notes, callbackTime);
+
+    // If marked Donated with an amount, record payment attribution in real-time
+    if (rawDisposition === "Donated" && body.amount) {
+      const amt = Number(body.amount);
+      if (amt > 0) {
+        const txnId = body.utr ? `utr_${clean(body.utr, 50)}` : `offline_${Date.now()}_${leadId}`;
+        await recordPaymentAttribution({
+          txnId,
+          gatewayOrderId: `order_direct_${Date.now()}`,
+          amount: amt,
+          callerRefId: auth.callerId,
+          leadId,
+          metadata: { utr: body.utr ? clean(body.utr, 50) : null, loggedBy: auth.callerId, notes },
+        });
+      }
+    }
 
     return NextResponse.json({
       success: true,

@@ -60,6 +60,17 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
     totalRevenue: 0,
   });
 
+  // Next-Gen Focus Dialing Mode state
+  const [viewMode, setViewMode] = useState<"focus" | "queue">("focus");
+  const [focusIndex, setFocusIndex] = useState<number>(0);
+  const [quickPitchLang, setQuickPitchLang] = useState<"kanglish" | "kn" | "en">("kanglish");
+
+  // Quick Direct Donation Log Modal state
+  const [activeDonationLead, setActiveDonationLead] = useState<any | null>(null);
+  const [loggedDonationAmount, setLoggedDonationAmount] = useState<number>(1500);
+  const [loggedDonationUtr, setLoggedDonationUtr] = useState<string>("");
+  const [loggingDonation, setLoggingDonation] = useState<boolean>(false);
+
   const showToast = (msg: string) => {
     setToastMsg(msg);
     setTimeout(() => setToastMsg(""), 4500);
@@ -327,6 +338,133 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
     }
   };
 
+  // 1-Tap Direct Axis Bank Payment QR Share from Portal
+  const handleDirectSharePaymentQr = async (lead: any) => {
+    if (!lead || !callerProfile) return;
+    if (!lead.status || lead.status === "Pending") {
+      void handleUpdateDisposition(lead.leadId, "Contacted", "Auto-marked attended on QR share");
+    }
+
+    const phoneInfo = parseCustomerPhone(lead.phone);
+    try {
+      await navigator.clipboard.writeText(phoneInfo.waNumber);
+    } catch {}
+
+    const siteOrigin = typeof window !== "undefined" ? window.location.origin : "https://janasevaashrama.org";
+    const qrUrl = `${siteOrigin}/media/janaseva-axis-bank-qr.jpg`;
+    const qrCaption = `🙏 Namaskara ${lead.name} Sir/Madam!\n\nAttached is our Official Axis Bank UPI Payment QR Scanner for Janaseva Ashrama (Turahalli, Bengaluru). Scan directly via GPay / PhonePe / Paytm / BHIM:\n\n💳 UPI ID: MAB.037349050110044@axisbank\n🏛️ Registered Trust: JANASEVA SAMRUDDI EDUCATI\n📜 Karnataka Govt JJ Act Reg: KA18CH0242\n🧾 100% Tax Deductible (Section 80G Form 10AC)\n📍 Turahalli, Bengaluru · Google Maps: https://maps.app.goo.gl/uPjN24rP1i1YkX6t7\n🌐 Official Portal: ${siteOrigin}/give?ref=${callerProfile.callerId}`;
+
+    try {
+      const res = await fetch(qrUrl);
+      const blob = await res.blob();
+      const file = new File([blob], "janaseva-axis-bank-qr.jpg", { type: blob.type || "image/jpeg" });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          text: qrCaption,
+          title: "Janaseva Ashrama Axis Bank Payment QR",
+        });
+        showToast(`✓ Axis Bank Payment QR shared to ${lead.name}! Phone copied to clipboard.`);
+        return;
+      }
+    } catch (err: any) {
+      if (err.name === "AbortError") return;
+    }
+
+    // Fallback: Copy QR to clipboard and open wa.me
+    try {
+      const res = await fetch(qrUrl);
+      const blob = await res.blob();
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.src = qrUrl;
+      await new Promise((resolve) => {
+        img.onload = resolve;
+      });
+
+      const canvas = document.createElement("canvas");
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext("2d");
+      ctx?.drawImage(img, 0, 0);
+
+      canvas.toBlob(async (pngBlob) => {
+        if (!pngBlob) return;
+        await navigator.clipboard.write([new ClipboardItem({ "image/png": pngBlob })]);
+      }, "image/png");
+    } catch {}
+
+    const targetUrl = `https://wa.me/${phoneInfo.waNumber}?text=${encodeURIComponent(qrCaption)}`;
+    window.open(targetUrl, "_blank", "noopener,noreferrer");
+    showToast(`✓ Opened WhatsApp to ${phoneInfo.display}! Axis Bank QR copied to clipboard.`);
+  };
+
+  // 1-Tap Direct WhatsApp Chat Launch
+  const handleDirectWhatsAppChat = (lead: any) => {
+    if (!lead || !callerProfile) return;
+    if (!lead.status || lead.status === "Pending") {
+      void handleUpdateDisposition(lead.leadId, "Contacted", "Auto-marked attended on WhatsApp dispatch");
+    }
+    const phoneInfo = parseCustomerPhone(lead.phone);
+    const siteOrigin = typeof window !== "undefined" ? window.location.origin : "https://janasevaashrama.org";
+    const text = `🙏 Namaskara ${lead.name} Sir/Madam!\n\nJanaseva Ashrama (Turahalli, Bengaluru) nalli ashrataraagiruva 25 anatha makkala kadeyinda ee vishēsha prarthane mattu namaskara! 👦✨\n\nNamma 25 makkala nitya baale ele ootakke mattu vidyabhyasakke sahaya bedi nimage ee sandēsha kalsuthiddivi.\n\n🍲 Pavitra Annadana Seva Tiers:\n• ₹501 — 3 Dinada Cow Milk & Pediatric Care\n• ₹1,500 — 25 Makkalige Bisi Breakfast Feast\n• ₹2,500 — Wholesome Festive Lunch Feast (Payasa + Sweets)\n• ₹4,500 — Full Day 4-Meal Annadana (All 25 Boys)\n\n━━━━━━━━━━━━━━━━━━━━━━━━━\n👉 [ 📲 1-TAP PAY VIA GPAY / PHONEPE / BHIM UPI ]\nupi://pay?pa=MAB.037349050110044@axisbank&pn=JANASEVA%20SAMRUDDI%20EDUCATI&cu=INR&tn=Janaseva%20Ashrama%20Seva\nOfficial UPI ID: MAB.037349050110044@axisbank\n\n👉 [ 🌐 1-TAP DONATE (ONLINE / 80G RECEIPT) ]\n${siteOrigin}/give?ref=${callerProfile.callerId}\n\n👉 [ 📞 DIRECT CALL ASHRAMA ]\n+91 99803 59595\n\n👉 [ 📍 GOOGLE MAPS ASHRAMA PIN ]\nhttps://maps.app.goo.gl/uPjN24rP1i1YkX6t7\n━━━━━━━━━━━━━━━━━━━━━━━━━\n🏛️ Govt Form 28 JJ Act: KA18CH0242 · 100% 80G Tax Exemption (Form 10AC: AABTJ7431MF20231). Instant WhatsApp receipt.\n\nShree Devaru nimage mattu nimma kutumbakke aayu, aarogya, aishwarya thumbalendu namma 25 makkalu prathidina 6:30 AM satsang nalli prarthane maduthare! 🙏✨`;
+
+    const targetUrl = `https://wa.me/${phoneInfo.waNumber}?text=${encodeURIComponent(text)}`;
+    window.open(targetUrl, "_blank", "noopener,noreferrer");
+    showToast(`✓ Opened WhatsApp directly to ${phoneInfo.display}!`);
+  };
+
+  // Focus Mode Disposition with Auto-Advance
+  const handleFocusDisposition = async (leadId: number, disposition: string, notes?: string, callbackTime?: string) => {
+    await handleUpdateDisposition(leadId, disposition, notes, callbackTime);
+    if (focusIndex < filteredLeads.length - 1) {
+      setFocusIndex((prev) => prev + 1);
+    }
+  };
+
+  // Save Direct Offline / UPI Donation Log
+  const handleSaveDonationLog = async () => {
+    if (!activeDonationLead || !callerProfile) return;
+    setLoggingDonation(true);
+    try {
+      const res = await fetch(`/api/v1/leads/${activeDonationLead.leadId}/log`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          callerId: callerProfile.callerId,
+          disposition: "Donated",
+          amount: loggedDonationAmount,
+          utr: loggedDonationUtr.trim() || undefined,
+          notes: `Donation ₹${loggedDonationAmount} logged directly by ${callerProfile.callerId}${loggedDonationUtr ? ` (UTR: ${loggedDonationUtr.trim()})` : ""}`,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        const updatedList = leads.map((l) =>
+          l.leadId === activeDonationLead.leadId ? { ...l, status: "Donated" } : l
+        );
+        setLeads(updatedList);
+        setStats((prev) => ({
+          ...prev,
+          convertedCount: prev.convertedCount + 1,
+          totalRevenue: prev.totalRevenue + loggedDonationAmount,
+        }));
+        showToast(`🎉 ₹${loggedDonationAmount} Donation logged for ${activeDonationLead.name}! Attributed to ${callerProfile.callerId}`);
+        setActiveDonationLead(null);
+        setLoggedDonationUtr("");
+        if (viewMode === "focus" && focusIndex < filteredLeads.length - 1) {
+          setFocusIndex((prev) => prev + 1);
+        }
+      } else {
+        alert("Failed to save donation: " + (data.error || "Unknown error"));
+      }
+    } catch (err: any) {
+      alert("Error logging donation: " + err.message);
+    } finally {
+      setLoggingDonation(false);
+    }
+  };
+
   // Copy Referral Link
   const handleCopyReferralLink = () => {
     if (!callerProfile) return;
@@ -398,6 +536,62 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
       return matchesFilter && matchesSearch;
     });
   }, [leads, filter, searchQuery]);
+
+  // Safe Focus Index & Lead computation
+  const safeFocusIndex = focusIndex >= filteredLeads.length ? Math.max(0, filteredLeads.length - 1) : focusIndex;
+  const currentFocusLead = filteredLeads[safeFocusIndex] || null;
+
+  // Keyboard Shortcuts for Focus Power-Dialing Mode
+  useEffect(() => {
+    if (viewMode !== "focus" || isAntiBanModalOpen || activeNotesLead || activeDonationLead || isChangePasswordOpen) {
+      return;
+    }
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
+      if (tag === "input" || tag === "textarea") return;
+
+      if (!currentFocusLead) return;
+
+      if (e.key === "c" || e.key === "C") {
+        e.preventDefault();
+        handleCallLead(currentFocusLead);
+      } else if (e.key === "w" || e.key === "W") {
+        e.preventDefault();
+        handleDirectWhatsAppChat(currentFocusLead);
+      } else if (e.key === "q" || e.key === "Q") {
+        e.preventDefault();
+        void handleDirectSharePaymentQr(currentFocusLead);
+      } else if (e.key === "1") {
+        e.preventDefault();
+        void handleFocusDisposition(currentFocusLead.leadId, "Interested");
+      } else if (e.key === "2") {
+        e.preventDefault();
+        const twoHoursLater = new Date(Date.now() + 2 * 3600 * 1000).toISOString();
+        void handleFocusDisposition(currentFocusLead.leadId, "No_Answer", "Auto-rescheduled +2 hours", twoHoursLater);
+      } else if (e.key === "3") {
+        e.preventDefault();
+        setActiveNotesLead(currentFocusLead);
+        setNotesText(currentFocusLead.notes || "");
+      } else if (e.key === "4") {
+        e.preventDefault();
+        setActiveDonationLead(currentFocusLead);
+        setLoggedDonationAmount(1500);
+      } else if (e.key === "5") {
+        e.preventDefault();
+        void handleFocusDisposition(currentFocusLead.leadId, "Rejected");
+      } else if (e.key === "n" || e.key === "N" || e.key === "ArrowRight") {
+        e.preventDefault();
+        if (focusIndex < filteredLeads.length - 1) setFocusIndex((prev) => prev + 1);
+      } else if (e.key === "p" || e.key === "P" || e.key === "ArrowLeft") {
+        e.preventDefault();
+        if (focusIndex > 0) setFocusIndex((prev) => prev - 1);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [viewMode, focusIndex, currentFocusLead, filteredLeads, isAntiBanModalOpen, activeNotesLead, activeDonationLead, isChangePasswordOpen]);
 
   // Loading Session Screen
   if (authChecking) {
@@ -789,8 +983,362 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
           </div>
         </div>
 
-        {/* ── MOBILE VIEW: TOUCH CARDS FEED (Optimized for Telecallers on Phones) ── */}
-        <div className="md:hidden space-y-3">
+        {/* View Mode Switcher: Continuous Focus Dialer vs Full Queue */}
+        <div className="flex items-center justify-between gap-3 p-1.5 rounded-2xl bg-sand/40 border border-teal-900/15">
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => setViewMode("focus")}
+              className={`rounded-xl px-3.5 py-2 text-xs font-black transition cursor-pointer flex items-center gap-1.5 shadow-xs ${
+                viewMode === "focus"
+                  ? "bg-teal-950 text-gold shadow-sm"
+                  : "bg-white text-teal-950 hover:bg-cream"
+              }`}
+            >
+              <span>⚡</span>
+              <span>Continuous Focus Mode</span>
+              <span className="text-[10px] bg-emerald-500/20 text-emerald-900 px-1.5 py-0.2 rounded-full font-bold">
+                Power Dialer
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("queue")}
+              className={`rounded-xl px-3.5 py-2 text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                viewMode === "queue"
+                  ? "bg-teal-950 text-white shadow-sm"
+                  : "bg-white text-teal-950 hover:bg-cream"
+              }`}
+            >
+              <span>📋</span>
+              <span>Full Queue ({filteredLeads.length})</span>
+            </button>
+          </div>
+
+          <span className="text-[11px] text-teal-950/70 font-semibold hidden sm:inline">
+            {viewMode === "focus"
+              ? "🎯 1 Lead on screen · Zero-scroll power dialing · 300+ calls/day"
+              : "Table & Card browse mode"}
+          </span>
+        </div>
+
+        {/* ── 1. CONTINUOUS FOCUS DIALER VIEW (EXPERT MODE) ── */}
+        {viewMode === "focus" && (
+          <div className="space-y-4 animate-fadeIn">
+            {!currentFocusLead ? (
+              <div className="rounded-3xl p-10 bg-cream/30 text-center border border-teal-900/10 space-y-3">
+                <span className="text-4xl">🎉</span>
+                <h3 className="text-base font-black text-teal-950">
+                  All filtered leads completed in this queue!
+                </h3>
+                <p className="text-xs text-teal-950/70 max-w-sm mx-auto">
+                  You have contacted or updated all leads matching this filter. Switch to another filter or view the full queue.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setFilter("ALL")}
+                  className="rounded-xl bg-teal-950 text-white px-4 py-2 text-xs font-bold shadow-xs hover:bg-teal-900 cursor-pointer"
+                >
+                  View All Queue ({leads.length})
+                </button>
+              </div>
+            ) : (
+              (() => {
+                const now = new Date();
+                const isTodayBirthday = currentFocusLead.dobDay === now.getDate() && currentFocusLead.dobMonth === now.getMonth() + 1;
+                const phoneInfo = parseCustomerPhone(currentFocusLead.phone);
+
+                return (
+                  <div
+                    className={`rounded-3xl bg-white p-5 sm:p-7 border shadow-md space-y-5 transition ${
+                      isTodayBirthday
+                        ? "border-amber-400 ring-4 ring-amber-400/20 bg-gradient-to-b from-amber-50/30 to-white"
+                        : "border-teal-900/15"
+                    }`}
+                  >
+                    {/* Top Status & Queue Index Bar */}
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-teal-900/10 pb-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-mono font-black bg-teal-950 text-gold px-2.5 py-1 rounded-xl shadow-xs">
+                          LEAD {safeFocusIndex + 1} OF {filteredLeads.length}
+                        </span>
+                        {isTodayBirthday && (
+                          <span className="rounded-full bg-amber-500 text-teal-950 px-3 py-1 text-xs font-black uppercase shadow-xs animate-pulse flex items-center gap-1">
+                            <span>🎂</span>
+                            <span>Today&apos;s Birthday!</span>
+                          </span>
+                        )}
+                        {currentFocusLead.status && currentFocusLead.status !== "Pending" ? (
+                          <span className="rounded-full bg-emerald-100 text-emerald-900 px-2.5 py-0.5 text-xs font-bold border border-emerald-300">
+                            ✓ {currentFocusLead.status}
+                          </span>
+                        ) : (
+                          <span className="rounded-full bg-amber-100 text-amber-900 px-2.5 py-0.5 text-xs font-bold border border-amber-300">
+                            ⏳ Pending
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Navigation Prev / Next buttons */}
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setFocusIndex((prev) => Math.max(0, prev - 1))}
+                          disabled={safeFocusIndex === 0}
+                          className="rounded-xl bg-cream hover:bg-sand disabled:opacity-30 border border-teal-900/15 px-3 py-1.5 text-xs font-bold transition cursor-pointer"
+                        >
+                          ◀ Prev
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setFocusIndex((prev) => Math.min(filteredLeads.length - 1, prev + 1))}
+                          disabled={safeFocusIndex >= filteredLeads.length - 1}
+                          className="rounded-xl bg-teal-950 text-white hover:bg-teal-900 disabled:opacity-30 px-3 py-1.5 text-xs font-bold transition cursor-pointer shadow-2xs"
+                        >
+                          Next ▶
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Donor Details Strip */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h2 className="font-display text-xl sm:text-2xl font-black text-teal-950">
+                            {currentFocusLead.name}
+                          </h2>
+                          <span className="text-xs font-mono text-teal-950/50">
+                            #{currentFocusLead.leadId}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-3 mt-1 text-xs text-teal-950/70 flex-wrap">
+                          <span className="font-mono text-sm font-bold text-teal-950 bg-sand/40 px-2 py-0.5 rounded-lg border border-teal-900/10">
+                            {phoneInfo.display}
+                          </span>
+                          {currentFocusLead.dobDay && currentFocusLead.dobMonth && (
+                            <span className="font-bold text-amber-900 bg-amber-100 px-2 py-0.5 rounded-lg">
+                              🎂 Birthday: {currentFocusLead.dobDay}/{currentFocusLead.dobMonth}
+                            </span>
+                          )}
+                          <span>Turahalli Outreach Queue</span>
+                        </div>
+                      </div>
+
+                      {/* Suggested Seva Amount Tag */}
+                      <div className="text-right shrink-0">
+                        <span className="text-[10px] font-bold text-teal-950/60 uppercase block">Suggested Seva:</span>
+                        <span className="text-sm sm:text-base font-black text-emerald-800">
+                          {isTodayBirthday ? "₹2,500 (Birthday Feast)" : "₹1,500 (Breakfast / Cow Milk)"}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* ── PRIMARY TELECALLER ACTION BUTTONS (48px Touch Targets) ── */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      {/* ACTION 1: Dial Customer Now */}
+                      <button
+                        type="button"
+                        onClick={() => handleCallLead(currentFocusLead)}
+                        className="p-3.5 rounded-2xl bg-teal-950 hover:bg-teal-900 active:scale-95 text-white font-black text-sm shadow-md transition flex items-center justify-center gap-2.5 cursor-pointer min-h-[52px]"
+                      >
+                        <span className="text-xl">📞</span>
+                        <span>Call {currentFocusLead.name.split(" ")[0]} ({phoneInfo.display})</span>
+                      </button>
+
+                      {/* ACTION 2: Step 1 Send Kanglish Chat */}
+                      <button
+                        type="button"
+                        onClick={() => handleDirectWhatsAppChat(currentFocusLead)}
+                        className="p-3.5 rounded-2xl bg-[#25D366] hover:brightness-105 active:scale-95 text-white font-black text-sm shadow-md transition flex items-center justify-center gap-2 cursor-pointer min-h-[52px]"
+                      >
+                        <span className="text-xl">💬</span>
+                        <span>Step 1: Open Chat</span>
+                      </button>
+
+                      {/* ACTION 3: Step 2 Share Axis Bank Payment QR Scanner */}
+                      <button
+                        type="button"
+                        onClick={() => handleDirectSharePaymentQr(currentFocusLead)}
+                        className="p-3.5 rounded-2xl bg-gradient-to-r from-amber-600 to-amber-700 hover:brightness-105 active:scale-95 text-white font-black text-sm shadow-md transition flex items-center justify-center gap-2 cursor-pointer min-h-[52px]"
+                      >
+                        <span className="text-xl">💳</span>
+                        <span>Step 2: Share Payment QR</span>
+                      </button>
+                    </div>
+
+                    {/* ── INTEGRATED 30-SECOND TRUST SCRIPT BOX ── */}
+                    <div className="rounded-2xl border border-teal-900/15 bg-sand/30 p-3.5 space-y-2 text-xs">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5 font-black text-teal-950 uppercase text-[11px]">
+                          <span>🗣️</span>
+                          <span>30-Second Trust Script (Read on Call):</span>
+                        </div>
+                        <div className="flex items-center gap-1 bg-white p-0.5 rounded-lg border border-teal-900/15 text-[10px]">
+                          <button
+                            type="button"
+                            onClick={() => setQuickPitchLang("kanglish")}
+                            className={`px-2 py-0.5 rounded font-bold transition cursor-pointer ${
+                              quickPitchLang === "kanglish" ? "bg-teal-950 text-white" : "text-teal-950/70"
+                            }`}
+                          >
+                            Kanglish
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setQuickPitchLang("kn")}
+                            className={`px-2 py-0.5 rounded font-bold transition cursor-pointer ${
+                              quickPitchLang === "kn" ? "bg-teal-950 text-white" : "text-teal-950/70"
+                            }`}
+                          >
+                            ಕನ್ನಡ
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setQuickPitchLang("en")}
+                            className={`px-2 py-0.5 rounded font-bold transition cursor-pointer ${
+                              quickPitchLang === "en" ? "bg-teal-950 text-white" : "text-teal-950/70"
+                            }`}
+                          >
+                            English
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="p-3 rounded-xl bg-white border border-teal-900/10 text-teal-950 leading-relaxed text-[11px] font-medium shadow-2xs">
+                        {quickPitchLang === "kanglish" && (
+                          <p>
+                            <strong className="text-teal-900 font-bold">&quot;Namaskara {currentFocusLead.name} Sir/Madam!</strong> Naanu Janaseva Ashrama (Turahalli, Bengaluru) inda maathadthiddeve. {isTodayBirthday ? `Namma 25 makkala tharaphinda nimage Janmadinada Shubhashayagalu! 🎂 ` : ""}Namma Ashrama dalli 25 anatha baalakarige nithya satvik oota needthiddivi. Namma samsthe Karnataka JJ Act (KA18CH0242) nalli registered aagide, mattu 80G tax receipt siguththe. <strong>Naanu iga nimma WhatsApp ge makkala photo mattu namma official Axis Bank payment scanner kalisthini Sir/Madam.</strong> Dayavittu nodi nimma shakti anukoola chikka sahaya maadi.&quot;
+                          </p>
+                        )}
+                        {quickPitchLang === "kn" && (
+                          <p>
+                            <strong className="text-teal-900 font-bold">&quot;ನಮಸ್ಕಾರ {currentFocusLead.name} ಅವರೇ!</strong> ನಾನು ತುರಹಳ್ಳಿಯ ಜನಸೇವಾ ಆಶ್ರಮದಿಂದ (ಬೆಂಗಳೂರು) ಕರೆ ಮಾಡುತ್ತಿದ್ದೇನೆ. {isTodayBirthday ? `ನಮ್ಮ 25 ಮಕ್ಕಳ ಪರವಾಗಿ ತಮಗೆ ಹುಟ್ಟುಹಬ್ಬದ ಹಾರ್ದಿಕ ಶುಭಾಶಯಗಳು! 🎂 ` : ""}ನಮ್ಮಲ್ಲಿರುವ 25 ಬಾಲಕರ ನಿತ್ಯ ಅನ್ನದಾನ ಸೇವೆಗೆ ತಮ್ಮ ಸಹಕಾರ ಕೋರುತ್ತಿದ್ದೇವೆ. ನಮ್ಮದು ಸರ್ಕಾರದ ಅಧಿಕೃತ ಬಾಲನ್ಯಾಯ ಕಾಯ್ದೆಯಡಿ (JJ Act KA18CH0242) ನೋಂದಾಯಿತ ಆಶ್ರಮವಾಗಿದ್ದು, 80G ತೆರಿಗೆ ವಿನಾಯಿತಿ ಲಭ್ಯವಿದೆ. <strong>ನಾನು ಈಗ ತಮ್ಮ WhatsApp ಗೆ ಮಕ್ಕಳ ಊಟದ ಫೋಟೋ ಹಾಗೂ ಅಧಿಕೃತ ಆಕ್ಸಿಸ್ ಬ್ಯಾಂಕ್ ಪೇಮೆಂಟ್ ಸ್ಕ್ಯಾನರ್ ಕಳುಹಿಸುತ್ತೇನೆ.</strong> ದಯವಿಟ್ಟು ಪರಿಶೀಲಿಸಿ ಸಹಾಯ ಮಾಡಿ.&quot;
+                          </p>
+                        )}
+                        {quickPitchLang === "en" && (
+                          <p>
+                            <strong className="text-teal-900 font-bold">&quot;Hello {currentFocusLead.name} Ji!</strong> Warm greetings from Janaseva Ashrama, Bengaluru. {isTodayBirthday ? `Heartfelt Birthday Wishes from all our 25 resident boys! 🎂 ` : ""}We care for 25 orphaned boys at our Turahalli home providing wholesome meals, shelter, and schooling. We are Govt-licensed under JJ Act KA18CH0242 with 80G tax exemption. <strong>I am sharing our children&apos;s meal photo and official Axis Bank UPI Payment QR Scanner directly to your WhatsApp right now.</strong> Kindly review and support our resident children with whatever amount is comfortable for you.&quot;
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* ── 1-TAP DISPOSITION & AUTO-ADVANCE STRIP ── */}
+                    <div className="space-y-2 pt-2 border-t border-teal-900/10">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-black uppercase text-teal-950 tracking-wider">
+                          ⚡ 1-Tap Result &amp; Auto-Advance:
+                        </span>
+                        <span className="text-[10px] text-teal-950/60 font-semibold">
+                          Tap any pill below to save &amp; advance to next lead
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                        {/* WARM / INTERESTED */}
+                        <button
+                          type="button"
+                          onClick={() => handleFocusDisposition(currentFocusLead.leadId, "Interested")}
+                          className="min-h-[44px] rounded-xl bg-amber-500 hover:bg-amber-600 active:scale-95 text-teal-950 font-black text-xs shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
+                        >
+                          <span>👍</span>
+                          <span>Warm / Interested</span>
+                        </button>
+
+                        {/* BUSY / NO ANSWER */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const twoHoursLater = new Date(Date.now() + 2 * 3600 * 1000).toISOString();
+                            void handleFocusDisposition(currentFocusLead.leadId, "No_Answer", "Auto-rescheduled +2 hours", twoHoursLater);
+                          }}
+                          className="min-h-[44px] rounded-xl bg-gray-600 hover:bg-gray-700 active:scale-95 text-white font-bold text-xs shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
+                        >
+                          <span>⏳</span>
+                          <span>Busy / No Answer</span>
+                        </button>
+
+                        {/* CALLBACK LATER */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setActiveNotesLead(currentFocusLead);
+                            setNotesText(currentFocusLead.notes || "");
+                            setCallbackDateTime("");
+                          }}
+                          className="min-h-[44px] rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-bold text-xs shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
+                        >
+                          <span>📅</span>
+                          <span>Schedule Callback</span>
+                        </button>
+
+                        {/* PAID / LOG DONATION */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setActiveDonationLead(currentFocusLead);
+                            setLoggedDonationAmount(isTodayBirthday ? 2500 : 1500);
+                            setLoggedDonationUtr("");
+                          }}
+                          className="min-h-[44px] rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-black text-xs shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
+                        >
+                          <span>🎉</span>
+                          <span>Log Donation</span>
+                        </button>
+
+                        {/* NOT INTERESTED */}
+                        <button
+                          type="button"
+                          onClick={() => handleFocusDisposition(currentFocusLead.leadId, "Rejected")}
+                          className="min-h-[44px] rounded-xl bg-rose-50 hover:bg-rose-100 active:scale-95 text-rose-800 border border-rose-200 font-bold text-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
+                        >
+                          <span>✕</span>
+                          <span>Not Interested</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Bottom Utility Strip */}
+                    <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-teal-900/10 text-[11px] text-teal-950/60">
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenWhatsAppModal(currentFocusLead)}
+                          className="font-bold text-teal-900 hover:underline cursor-pointer flex items-center gap-1"
+                        >
+                          <span>⚙️</span>
+                          <span>Open Full Anti-Ban Hub</span>
+                        </button>
+                        <span>·</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setActiveNotesLead(currentFocusLead);
+                            setNotesText(currentFocusLead.notes || "");
+                          }}
+                          className="font-bold text-teal-900 hover:underline cursor-pointer flex items-center gap-1"
+                        >
+                          <span>📝</span>
+                          <span>Add Detailed Notes</span>
+                        </button>
+                      </div>
+
+                      <div className="hidden sm:flex items-center gap-2 text-[10px] font-mono text-teal-950/50">
+                        <span>Shortcuts: [C] Call · [W] Chat · [Q] QR · [1] Warm · [2] Busy · [N] Next</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()
+            )}
+          </div>
+        )}
+
+        {/* ── 2. FULL QUEUE VIEW (TABLE & TOUCH CARDS) ── */}
+        {viewMode === "queue" && (
+          <>
+            {/* ── MOBILE VIEW: TOUCH CARDS FEED (Optimized for Telecallers on Phones) ── */}
+            <div className="md:hidden space-y-3">
           {loadingLeads ? (
             <div className="p-8 text-center text-teal-950/60 text-xs">
               Loading your assigned queue...
@@ -1135,6 +1683,8 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
             </tbody>
           </table>
         </div>
+          </>
+        )}
       </div>
 
       {/* ── CHANGE PASSWORD MODAL ── */}
@@ -1310,6 +1860,147 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
             handleDispositionLoggedFromModal(leadId, disp);
           }}
         />
+      )}
+
+      {/* ── DIRECT DONATION LOGGER MODAL (FOR IMMEDIATE 80G RECEIPT & ATTRIBUTION) ── */}
+      {activeDonationLead && callerProfile && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
+          onClick={() => setActiveDonationLead(null)}
+        >
+          <div
+            className="relative w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl border border-teal-900/15 text-teal-950 space-y-4 animate-fadeIn"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-teal-900/10 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-2xl">🎉</span>
+                <div>
+                  <h3 className="font-display font-black text-base text-teal-950">
+                    Log Donation: {activeDonationLead.name}
+                  </h3>
+                  <p className="text-[11px] text-teal-950/60 font-mono">
+                    {parseCustomerPhone(activeDonationLead.phone).display} · Attribution to {callerProfile.callerId}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveDonationLead(null)}
+                className="text-teal-950/60 hover:text-teal-950 text-sm font-bold p-1 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Quick Amount Presets */}
+            <div>
+              <label className="block text-xs font-bold text-teal-950 mb-1.5">
+                Select or Enter Seva Amount:
+              </label>
+              <div className="grid grid-cols-4 gap-2 mb-2">
+                {[501, 1500, 2500, 4500].map((amt) => (
+                  <button
+                    key={amt}
+                    type="button"
+                    onClick={() => setLoggedDonationAmount(amt)}
+                    className={`py-2 px-1 rounded-xl text-xs font-black transition cursor-pointer border ${
+                      loggedDonationAmount === amt
+                        ? "bg-teal-950 text-gold border-teal-950 shadow-xs"
+                        : "bg-cream text-teal-950 border-teal-900/15 hover:bg-sand"
+                    }`}
+                  >
+                    ₹{formatINR(amt)}
+                  </button>
+                ))}
+              </div>
+              <input
+                type="number"
+                value={loggedDonationAmount}
+                onChange={(e) => setLoggedDonationAmount(Number(e.target.value))}
+                className="w-full rounded-xl border border-teal-900/20 px-3 py-2 text-sm font-bold text-teal-950 focus:ring-2 focus:ring-amber-400 outline-none"
+                placeholder="Enter custom amount in INR"
+              />
+            </div>
+
+            {/* Optional UTR Number */}
+            <div>
+              <label className="block text-xs font-bold text-teal-950 mb-1">
+                UPI Reference / UTR Number (Optional):
+              </label>
+              <input
+                type="text"
+                value={loggedDonationUtr}
+                onChange={(e) => setLoggedDonationUtr(e.target.value)}
+                placeholder="e.g. 428910293847 (12 digits from GPay/PhonePe)"
+                className="w-full rounded-xl border border-teal-900/20 px-3 py-2 text-xs font-mono text-teal-950 focus:ring-2 focus:ring-amber-400 outline-none"
+              />
+              <p className="text-[10px] text-teal-950/60 mt-1">
+                Amount and attribution will immediately update your caller stats and revenue bar.
+              </p>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="grid grid-cols-2 gap-2 pt-2 border-t border-teal-900/10">
+              <button
+                type="button"
+                onClick={() => setActiveDonationLead(null)}
+                className="py-2.5 px-3 rounded-xl border border-teal-900/20 text-xs font-bold text-teal-950 hover:bg-cream transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveDonationLog}
+                disabled={loggingDonation || loggedDonationAmount <= 0}
+                className="py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-black text-xs shadow-md transition cursor-pointer disabled:opacity-50"
+              >
+                {loggingDonation ? "Saving..." : `Confirm ₹${formatINR(loggedDonationAmount)} Paid`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── MOBILE STICKY BOTTOM THUMB ACTION BAR (Always Reachable with Thumb) ── */}
+      {viewMode === "focus" && currentFocusLead && (
+        <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-teal-900/15 p-2 shadow-2xl flex items-center justify-between gap-1.5 animate-fadeIn">
+          <button
+            type="button"
+            onClick={() => handleCallLead(currentFocusLead)}
+            className="flex-1 py-3 px-2 rounded-xl bg-teal-950 text-white font-bold text-xs flex items-center justify-center gap-1 active:scale-95 shadow-xs"
+          >
+            <span>📞</span>
+            <span>Call</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => handleDirectWhatsAppChat(currentFocusLead)}
+            className="flex-1 py-3 px-2 rounded-xl bg-[#25D366] text-white font-bold text-xs flex items-center justify-center gap-1 active:scale-95 shadow-xs"
+          >
+            <span>💬</span>
+            <span>Chat</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => handleDirectSharePaymentQr(currentFocusLead)}
+            className="flex-1 py-3 px-2 rounded-xl bg-amber-600 text-white font-bold text-xs flex items-center justify-center gap-1 active:scale-95 shadow-xs"
+          >
+            <span>💳</span>
+            <span>QR</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              if (focusIndex < filteredLeads.length - 1) setFocusIndex((prev) => prev + 1);
+            }}
+            disabled={safeFocusIndex >= filteredLeads.length - 1}
+            className="py-3 px-3 rounded-xl bg-sand border border-teal-900/20 text-teal-950 font-bold text-xs flex items-center justify-center active:scale-95 disabled:opacity-40"
+            title="Next Lead"
+          >
+            <span>▶</span>
+          </button>
+        </div>
       )}
     </div>
   );
