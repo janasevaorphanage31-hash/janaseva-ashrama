@@ -254,14 +254,21 @@ export async function distributeBirthdayLeads() {
 }
 
 /**
- * 3. Fetch Assigned Leads for a Telecaller
+ * 3. Fetch Assigned Leads for a Telecaller (or All Leads if callerId === "ALL" or empty)
  */
-export async function getAssignedLeads(callerId: string) {
+export async function getAssignedLeads(callerId?: string | null) {
   await ensureTelecallersAndSeedData();
+  const cid = (callerId || "").trim().toUpperCase();
+  if (!cid || cid === "ALL") {
+    return db
+      .select()
+      .from(agLeads)
+      .orderBy(agLeads.dobMonth, agLeads.dobDay, desc(agLeads.leadId));
+  }
   return db
     .select()
     .from(agLeads)
-    .where(eq(agLeads.assignedCallerId, callerId.toUpperCase()))
+    .where(eq(agLeads.assignedCallerId, cid))
     .orderBy(agLeads.dobMonth, agLeads.dobDay, desc(agLeads.leadId));
 }
 
@@ -693,7 +700,9 @@ export interface LeadUploadItem {
 }
 
 /**
- * 12. Bulk Upload Leads & Instant Equal Distribution
+ * 12. Bulk Upload Leads & Instant Equal Distribution with Complete Deduplication
+ * - Deduplicates within the uploaded payload (removes internal duplicate numbers)
+ * - Deduplicates against existing database leads (prevents multiple telecallers contacting same donor)
  */
 export async function uploadBulkLeads(
   rawLeads: LeadUploadItem[],
@@ -709,11 +718,37 @@ export async function uploadBulkLeads(
   const currentDay = now.getDate();
   const currentMonth = now.getMonth() + 1;
 
+  // 1. Fetch all existing lead phone numbers from DB
+  const existingRows = await db.select({ phone: agLeads.phone }).from(agLeads);
+  const existingPhonesSet = new Set<string>();
+  existingRows.forEach((r) => {
+    const digits = (r.phone || "").replace(/\D/g, "").slice(-10);
+    if (digits.length === 10) existingPhonesSet.add(digits);
+  });
+
   const validLeads = [];
+  const seenInUpload = new Set<string>();
+  let internalDuplicatesSkipped = 0;
+  let alreadyInDbSkipped = 0;
+
   for (const item of rawLeads) {
     const rawName = (item.name || "").trim() || "Well-wisher";
-    const rawPhone = (item.phone || "").replace(/\D/g, "");
-    if (rawPhone.length < 10) continue;
+    const rawDigits = (item.phone || "").replace(/\D/g, "");
+    if (rawDigits.length < 10) continue;
+    const phone10 = rawDigits.slice(-10);
+
+    // Skip duplicate inside the current upload file
+    if (seenInUpload.has(phone10)) {
+      internalDuplicatesSkipped++;
+      continue;
+    }
+    seenInUpload.add(phone10);
+
+    // Skip if already in database
+    if (existingPhonesSet.has(phone10)) {
+      alreadyInDbSkipped++;
+      continue;
+    }
 
     let day = parseInt(String(item.dobDay || currentDay), 10);
     if (isNaN(day) || day < 1 || day > 31) day = currentDay;
@@ -723,7 +758,7 @@ export async function uploadBulkLeads(
 
     validLeads.push({
       name: rawName,
-      phone: rawPhone.slice(-10),
+      phone: phone10,
       email: item.email ? item.email.trim() : null,
       dobDay: day,
       dobMonth: month,
@@ -732,7 +767,17 @@ export async function uploadBulkLeads(
   }
 
   if (validLeads.length === 0) {
-    throw new Error("No valid lead rows found. Please ensure each row contains a Name and a 10-digit Phone number.");
+    return {
+      success: true,
+      totalReceived: rawLeads.length,
+      validParsed: seenInUpload.size,
+      internalDuplicatesSkipped,
+      alreadyInDbSkipped,
+      validInserted: 0,
+      distributed: 0,
+      perCaller: {},
+      message: `No new leads to import. ${alreadyInDbSkipped} numbers already exist in database, and ${internalDuplicatesSkipped} duplicates were skipped.`,
+    };
   }
 
   // Insert in batches of 100
@@ -753,9 +798,13 @@ export async function uploadBulkLeads(
   return {
     success: true,
     totalReceived: rawLeads.length,
+    validParsed: seenInUpload.size,
+    internalDuplicatesSkipped,
+    alreadyInDbSkipped,
     validInserted: validLeads.length,
     distributed: autoDistribute ? insertedLeadIds.length : 0,
     perCaller: distributedSummary,
+    message: `Successfully uploaded ${validLeads.length} unique leads (${alreadyInDbSkipped} already in database skipped, ${internalDuplicatesSkipped} file duplicates skipped).`,
   };
 }
 
@@ -857,11 +906,112 @@ export async function distributeAllPendingLeads(mode: "balanced" | "round_robin"
 }
 
 /**
+ * 14b. Clear Demo Leads or Wipe Entire Leads Queue for Real Donor Data
+ */
+export async function clearDemoLeads(onlySample = false) {
+  await ensureDbSchema();
+  if (onlySample) {
+    // Delete sample test leads created during seed / tests
+    await db.delete(agCallLogs);
+    await db.delete(agLeads).where(
+      or(
+        sql`${agLeads.name} LIKE 'Patron Donor%'`,
+        sql`${agLeads.name} LIKE 'Sample%'`,
+        sql`${agLeads.name} LIKE 'Test%'`,
+        sql`${agLeads.phone} LIKE '9800000%'`
+      )
+    );
+  } else {
+    // Complete wipe of all leads & call logs so the CRM queue is 100% clean for real donor uploads
+    await db.delete(agCallLogs);
+    await db.delete(agLeads);
+  }
+  return { success: true };
+}
+
+/**
  * 15. Agency-Grade CSV Export Generator
  */
 export async function generateAgencyCSVExport(
-  type: "performance" | "leads" | "donations" | "roster"
+  type: "performance" | "leads" | "donations" | "roster" | "caller_leads",
+  callerId?: string
 ) {
+  if (type === "caller_leads") {
+    const targetCaller = (callerId || "").trim().toUpperCase();
+    const query = db
+      .select({
+        leadId: agLeads.leadId,
+        name: agLeads.name,
+        phone: agLeads.phone,
+        email: agLeads.email,
+        dobDay: agLeads.dobDay,
+        dobMonth: agLeads.dobMonth,
+        status: agLeads.status,
+        assignedCallerId: agLeads.assignedCallerId,
+        lastContactedAt: agLeads.lastContactedAt,
+        rescheduleDate: agLeads.rescheduleDate,
+        createdAt: agLeads.createdAt,
+      })
+      .from(agLeads);
+
+    const leads = targetCaller && targetCaller !== "ALL"
+      ? await query.where(eq(agLeads.assignedCallerId, targetCaller)).orderBy(agLeads.dobMonth, agLeads.dobDay, desc(agLeads.leadId))
+      : await query.orderBy(agLeads.dobMonth, agLeads.dobDay, desc(agLeads.leadId));
+
+    const callLogs = await db
+      .select({ leadId: agCallLogs.leadId, notes: agCallLogs.notes, callbackTime: agCallLogs.callbackTime })
+      .from(agCallLogs)
+      .orderBy(desc(agCallLogs.createdAt));
+
+    const latestNotesMap = new Map<number, string>();
+    for (const log of callLogs) {
+      if (!latestNotesMap.has(log.leadId) && log.notes) {
+        latestNotesMap.set(log.leadId, log.notes);
+      }
+    }
+
+    const rows = [
+      [
+        "Lead ID",
+        "Donor Name",
+        "Mobile Number",
+        "Email",
+        "Birthday Day",
+        "Birthday Month",
+        "Current Status",
+        "Assigned Caller ID",
+        "Latest Call Notes",
+        "Last Contacted Date",
+        "Scheduled Callback Date",
+        "Assigned Date",
+      ],
+    ];
+
+    for (const l of leads) {
+      const latestNotes = latestNotesMap.get(l.leadId) || "";
+      rows.push([
+        String(l.leadId),
+        `"${l.name.replace(/"/g, '""')}"`,
+        `"+91${l.phone}"`,
+        l.email ? `"${l.email.replace(/"/g, '""')}"` : '""',
+        String(l.dobDay),
+        String(l.dobMonth),
+        l.status,
+        l.assignedCallerId || "Unassigned",
+        latestNotes ? `"${latestNotes.replace(/"/g, '""')}"` : '""',
+        l.lastContactedAt ? l.lastContactedAt.toISOString().slice(0, 19).replace("T", " ") : "",
+        l.rescheduleDate ? l.rescheduleDate.toISOString().slice(0, 19).replace("T", " ") : "",
+        l.createdAt.toISOString().slice(0, 10),
+      ]);
+    }
+
+    const fileSuffix = targetCaller ? `_${targetCaller}` : "";
+    return {
+      filename: `janaseva_assigned_leads${fileSuffix}_${new Date().toISOString().slice(0, 10)}.csv`,
+      csv: rows.map((r) => r.join(",")).join("\n"),
+    };
+  }
+
   if (type === "performance") {
     const data = await getAdminLeaderboard();
     const rows = [

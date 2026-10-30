@@ -2390,7 +2390,7 @@ export function MetaAdsDonateComponent() {
       {/* ── 8. ⚠️ MISSING DONOR DETAILS POPUP MODAL ── */}
       {showMissingDetailsModal && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs animate-fadeIn"
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs animate-fadeIn"
           onClick={() => setShowMissingDetailsModal(false)}
         >
           <div

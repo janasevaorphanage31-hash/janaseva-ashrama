@@ -13,7 +13,13 @@ export async function GET(req: Request) {
     }
 
     // Row-level security: Telecaller can ONLY query their own verified callerId
-    const targetCallerId = auth.callerId;
+    // Administrator can query any specific callerId or 'ALL'
+    const url = new URL(req.url);
+    const paramCallerId = url.searchParams.get("callerId");
+    const targetCallerId = auth.isAdmin
+      ? (paramCallerId || auth.callerId)
+      : auth.callerId;
+
     const leads = await getAssignedLeads(targetCallerId);
 
     return NextResponse.json({

@@ -16,12 +16,13 @@ export async function GET(req: Request) {
 
     const url = new URL(req.url);
     const typeParam = url.searchParams.get("type") || "performance";
+    const callerIdParam = url.searchParams.get("callerId") || undefined;
     const exportType =
-      typeParam === "leads" || typeParam === "donations" || typeParam === "roster"
-        ? (typeParam as "performance" | "leads" | "donations" | "roster")
+      typeParam === "leads" || typeParam === "donations" || typeParam === "roster" || typeParam === "caller_leads"
+        ? (typeParam as "performance" | "leads" | "donations" | "roster" | "caller_leads")
         : "performance";
 
-    const { filename, csv } = await generateAgencyCSVExport(exportType);
+    const { filename, csv } = await generateAgencyCSVExport(exportType, callerIdParam);
 
     await writeAudit({
       actorAdminUserId: session.user.id ?? null,

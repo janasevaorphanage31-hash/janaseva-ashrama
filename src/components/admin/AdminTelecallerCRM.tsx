@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
+import * as XLSX from "xlsx";
 import { formatINR } from "@/lib/site";
 import { LogoMark } from "@/components/Logo";
 import type { TelecallerStats, CrmWhatsAppSettings } from "@/lib/antigravity-crm";
@@ -122,7 +123,7 @@ export function AdminTelecallerCRM() {
           setTargetCallerId(firstActive.callerId);
         }
       }
-      await loadLeadsForReassignment("TC01");
+      await loadLeadsForReassignment("ALL");
     } catch (err: any) {
       showToast("Error loading telecaller CRM data: " + err.message);
     } finally {
@@ -474,19 +475,42 @@ export function AdminTelecallerCRM() {
     setParsedLeads(leads);
   };
 
+  const parseUploadedFile = (file: File) => {
+    setUploadedFileName(file.name);
+    const isExcel = /\.(xlsx|xls)$/i.test(file.name);
+    if (isExcel) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const buffer = event.target?.result as ArrayBuffer;
+          const workbook = XLSX.read(buffer, { type: "array" });
+          const firstSheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[firstSheetName];
+          const csv = XLSX.utils.sheet_to_csv(worksheet);
+          setPastedText(csv);
+          parseRawLeadText(csv);
+        } catch (err: any) {
+          alert("Error parsing Excel file: " + err.message);
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    } else {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const content = event.target?.result as string;
+        if (content) {
+          setPastedText(content);
+          parseRawLeadText(content);
+        }
+      };
+      reader.readAsText(file);
+    }
+  };
+
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setUploadedFileName(file.name);
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const content = event.target?.result as string;
-      if (content) {
-        setPastedText(content);
-        parseRawLeadText(content);
-      }
-    };
-    reader.readAsText(file);
+    parseUploadedFile(file);
     e.target.value = ""; // Allow re-selecting same file
   };
 
@@ -500,6 +524,31 @@ export function AdminTelecallerCRM() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  const handleClearDemoLeads = async (wipeAll: boolean = false) => {
+    const promptMsg = wipeAll
+      ? "⚠️ Reset Entire CRM Queue: Are you sure you want to delete ALL leads? Telecaller staff accounts will remain intact."
+      : "Clean Demo Leads: Are you sure you want to remove all dummy/sample leads ('Patron Donor %', 'Sample%', 'Test%')? Real leads will be preserved.";
+    const confirmed = window.confirm(promptMsg);
+    if (!confirmed) return;
+
+    setActionLoading(true);
+    try {
+      const res = await fetch("/api/v1/admin/telecallers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "clear_leads", onlySample: !wipeAll }),
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error || "Failed to clear leads");
+      showToast(`✓ ${data.message}`);
+      await loadAdminData();
+    } catch (err: any) {
+      showToast("Error cleaning leads: " + err.message);
+    } finally {
+      setActionLoading(false);
+    }
   };
 
   const handleExecuteLeadUpload = async () => {
@@ -522,14 +571,22 @@ export function AdminTelecallerCRM() {
       const data = await res.json();
       if (!data.success) throw new Error(data.error || "Lead upload failed");
 
-      showToast(`✓ ${data.message}`);
+      if (data.uploadResult) {
+        const { validInserted, alreadyInDbSkipped, internalDuplicatesSkipped } = data.uploadResult;
+        showToast(
+          `✓ Imported ${validInserted} leads! (${alreadyInDbSkipped} existing duplicates skipped, ${internalDuplicatesSkipped} in-file duplicates skipped)`
+        );
+      } else {
+        showToast(`✓ ${data.message}`);
+      }
+
       setCallers(data.callers || []);
       setTotalLeads(data.totalLeads || 0);
       setIsUploadModalOpen(false);
       setPastedText("");
       setParsedLeads([]);
       setUploadedFileName("");
-      await loadLeadsForReassignment("TC01");
+      await loadLeadsForReassignment(selectedCallerForLeads || "ALL");
     } catch (err: any) {
       alert("Error importing leads: " + err.message);
     } finally {
@@ -856,6 +913,17 @@ export function AdminTelecallerCRM() {
               className="focus-ring tap-scale inline-flex items-center gap-1.5 rounded-xl bg-white hover:bg-sand text-teal-950 px-3.5 py-2.5 text-xs font-black shadow-sm transition cursor-pointer"
             >
               <span>📤 Bulk Upload Leads</span>
+            </button>
+
+            {/* Clear Demo Leads Button */}
+            <button
+              type="button"
+              onClick={() => handleClearDemoLeads(false)}
+              disabled={actionLoading}
+              className="focus-ring tap-scale inline-flex items-center gap-1.5 rounded-xl bg-rose-900/60 hover:bg-rose-900 text-rose-100 border border-rose-700/60 px-3 py-2.5 text-xs font-bold shadow-xs transition cursor-pointer"
+              title="Remove sample and demo leads from the database for real user rollout"
+            >
+              <span>🗑️ Clean Demo Leads</span>
             </button>
 
             {/* Export Dropdown */}
@@ -1297,6 +1365,14 @@ export function AdminTelecallerCRM() {
                         </button>
                         <button
                           type="button"
+                          onClick={() => window.open(`/api/v1/admin/telecallers/export?type=caller_leads&callerId=${c.callerId}`, "_blank")}
+                          title={`Download CSV of all leads assigned to ${c.callerId} (${c.name})`}
+                          className="rounded-lg bg-teal-900/10 hover:bg-teal-900/20 text-teal-950 border border-teal-900/20 px-2 py-1 text-[10px] font-bold transition cursor-pointer"
+                        >
+                          📥 CSV
+                        </button>
+                        <button
+                          type="button"
                           onClick={() => {
                             setSelectedCallerForLeads(c.callerId);
                             loadLeadsForReassignment(c.callerId);
@@ -1403,11 +1479,11 @@ export function AdminTelecallerCRM() {
               </div>
 
               {/* Actions Toolbar */}
-              <div className="grid grid-cols-4 gap-1.5 pt-1 border-t border-teal-900/10">
+              <div className="grid grid-cols-5 gap-1 pt-1 border-t border-teal-900/10">
                 <button
                   type="button"
                   onClick={() => handleOpenEditModal(c)}
-                  className="rounded-xl bg-teal-50 border border-teal-200 text-teal-950 py-2 text-xs font-bold hover:bg-teal-100 transition cursor-pointer flex items-center justify-center gap-1"
+                  className="rounded-xl bg-teal-50 border border-teal-200 text-teal-950 py-2 text-[11px] font-bold hover:bg-teal-100 transition cursor-pointer flex items-center justify-center gap-1"
                 >
                   <span>✏️</span>
                   <span>Edit</span>
@@ -1415,10 +1491,10 @@ export function AdminTelecallerCRM() {
                 <button
                   type="button"
                   onClick={() => handleOpenAccessModal(c)}
-                  className="rounded-xl bg-amber-100 border border-amber-300 text-amber-900 py-2 text-xs font-bold hover:bg-amber-200 transition cursor-pointer flex items-center justify-center gap-1"
+                  className="rounded-xl bg-amber-100 border border-amber-300 text-amber-900 py-2 text-[11px] font-bold hover:bg-amber-200 transition cursor-pointer flex items-center justify-center gap-1"
                 >
                   <span>🔑</span>
-                  <span>Access</span>
+                  <span>Login</span>
                 </button>
                 <button
                   type="button"
@@ -1426,15 +1502,24 @@ export function AdminTelecallerCRM() {
                     setSelectedCallerForLeads(c.callerId);
                     loadLeadsForReassignment(c.callerId);
                   }}
-                  className="rounded-xl bg-cream border border-teal-900/20 text-teal-950 py-2 text-xs font-bold hover:bg-sand transition cursor-pointer flex items-center justify-center gap-1"
+                  className="rounded-xl bg-cream border border-teal-900/20 text-teal-950 py-2 text-[11px] font-bold hover:bg-sand transition cursor-pointer flex items-center justify-center gap-1"
                 >
                   <span>📋</span>
                   <span>Leads</span>
                 </button>
                 <button
                   type="button"
+                  onClick={() => window.open(`/api/v1/admin/telecallers/export?type=caller_leads&callerId=${c.callerId}`, "_blank")}
+                  title={`Export leads assigned to ${c.callerId}`}
+                  className="rounded-xl bg-teal-900/10 border border-teal-900/20 text-teal-950 py-2 text-[11px] font-bold hover:bg-teal-900/20 transition cursor-pointer flex items-center justify-center gap-1"
+                >
+                  <span>📥</span>
+                  <span>CSV</span>
+                </button>
+                <button
+                  type="button"
                   onClick={() => handlePromptDelete(c)}
-                  className="rounded-xl bg-rose-50 border border-rose-200 text-rose-700 py-2 text-xs font-bold hover:bg-rose-100 transition cursor-pointer flex items-center justify-center gap-1"
+                  className="rounded-xl bg-rose-50 border border-rose-200 text-rose-700 py-2 text-[11px] font-bold hover:bg-rose-100 transition cursor-pointer flex items-center justify-center gap-1"
                 >
                   <span>🗑️</span>
                   <span>Del</span>
@@ -1449,20 +1534,58 @@ export function AdminTelecallerCRM() {
       <div className="rounded-3xl bg-white p-6 shadow-sm border border-teal-900/10">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
           <div>
-            <h3 className="font-display text-base font-bold text-teal-950">
-              Bulk Lead Re-Assignment Engine
+            <h3 className="font-display text-base font-bold text-teal-950 flex items-center gap-2">
+              <span>Bulk Lead Re-Assignment &amp; Caller Lead Exporter</span>
+              <span className="text-xs font-mono font-bold bg-cream px-2 py-0.5 rounded-full border border-teal-900/15">
+                {leadsList.length} Leads in View
+              </span>
             </h3>
-            <p className="text-xs text-teal-950/60">
-              Select leads currently assigned to{" "}
-              <span className="font-bold text-teal-900">{selectedCallerForLeads}</span> and transfer them to another telecaller.
+            <p className="text-xs text-teal-950/60 mt-0.5">
+              Filter by caller, select leads, and re-assign in bulk or download individual CSV files.
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            {/* Caller Selector */}
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-bold text-teal-950/70">Caller:</span>
+              <select
+                value={selectedCallerForLeads}
+                onChange={(e) => {
+                  setSelectedCallerForLeads(e.target.value);
+                  loadLeadsForReassignment(e.target.value);
+                }}
+                className="rounded-xl border border-teal-900/20 px-3 py-1.5 text-xs font-bold bg-sand/30 text-teal-950 cursor-pointer"
+              >
+                <option value="ALL">ALL Telecallers ({totalLeads} total leads)</option>
+                {callers.map((c) => (
+                  <option key={c.callerId} value={c.callerId}>
+                    {c.callerId} - {c.name} ({c.assignedCount} leads)
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Export Currently Filtered Caller Leads to CSV */}
+            <button
+              type="button"
+              onClick={() => {
+                const url =
+                  selectedCallerForLeads === "ALL"
+                    ? "/api/v1/admin/telecallers/export?type=leads"
+                    : `/api/v1/admin/telecallers/export?type=caller_leads&callerId=${selectedCallerForLeads}`;
+                window.open(url, "_blank");
+                showToast(`✓ Downloading CSV for ${selectedCallerForLeads}...`);
+              }}
+              className="rounded-xl bg-white hover:bg-sand border border-teal-900/20 text-teal-950 px-3 py-1.5 text-xs font-bold shadow-2xs transition cursor-pointer flex items-center gap-1"
+            >
+              <span>📥 Export {selectedCallerForLeads} CSV</span>
+            </button>
+
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="rounded-xl border border-teal-900/20 px-3 py-1.5 text-xs font-bold bg-white text-teal-950"
+              className="rounded-xl border border-teal-900/20 px-3 py-1.5 text-xs font-bold bg-white text-teal-950 cursor-pointer"
             >
               <option value="ALL">All Statuses ({leadsList.length})</option>
               <option value="Pending">Pending</option>
@@ -1475,7 +1598,7 @@ export function AdminTelecallerCRM() {
             <select
               value={targetCallerId}
               onChange={(e) => setTargetCallerId(e.target.value)}
-              className="rounded-xl border border-teal-900/20 px-3 py-1.5 text-xs font-bold bg-white text-teal-950"
+              className="rounded-xl border border-teal-900/20 px-3 py-1.5 text-xs font-bold bg-white text-teal-950 cursor-pointer"
             >
               {callers.map((c) => (
                 <option key={c.callerId} value={c.callerId}>
@@ -1974,23 +2097,14 @@ export function AdminTelecallerCRM() {
                     e.stopPropagation();
                     const file = e.dataTransfer.files?.[0];
                     if (file) {
-                      setUploadedFileName(file.name);
-                      const reader = new FileReader();
-                      reader.onload = (event) => {
-                        const content = event.target?.result as string;
-                        if (content) {
-                          setPastedText(content);
-                          parseRawLeadText(content);
-                        }
-                      };
-                      reader.readAsText(file);
+                      parseUploadedFile(file);
                     }
                   }}
                   className="border-2 border-dashed border-teal-900/20 rounded-2xl p-6 text-center hover:bg-sand/30 transition cursor-pointer"
                 >
                   <input
                     type="file"
-                    accept=".csv,.txt,.tsv"
+                    accept=".csv,.txt,.tsv,.xlsx,.xls"
                     onChange={handleFileUpload}
                     className="hidden"
                     id="csv-file-input"
@@ -1998,10 +2112,10 @@ export function AdminTelecallerCRM() {
                   <label htmlFor="csv-file-input" className="cursor-pointer block">
                     <span className="text-3xl block mb-2">📁</span>
                     <span className="text-xs font-bold text-teal-950 block">
-                      {uploadedFileName ? `Selected: ${uploadedFileName}` : "Click to browse or Drag & Drop CSV / Excel file here"}
+                      {uploadedFileName ? `Selected: ${uploadedFileName}` : "Click to browse or Drag & Drop Excel (.xlsx / .xls) or CSV file here"}
                     </span>
                     <span className="text-[11px] text-teal-950/60 block mt-1">
-                      Supports comma, tab, or semicolon separated files
+                      Directly parses Microsoft Excel spreadsheets (.xlsx, .xls), Google Sheets exports, and CSV/TSV files
                     </span>
                   </label>
 

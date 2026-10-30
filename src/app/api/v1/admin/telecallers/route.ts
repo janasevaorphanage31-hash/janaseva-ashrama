@@ -17,6 +17,7 @@ import {
   resetTelecallerPassword,
   saveCrmWhatsAppSettings,
   updateTelecallerDetails,
+  clearDemoLeads,
 } from "@/lib/antigravity-crm";
 
 export async function GET(req: Request) {
@@ -314,6 +315,28 @@ export async function POST(req: Request) {
       return NextResponse.json({
         success: true,
         message: `Telecaller ${callerId} details updated successfully.`,
+        ...updatedLeaderboard,
+      });
+    }
+
+    if (action === "clear_leads") {
+      const { onlySample } = body;
+      await clearDemoLeads(onlySample !== false);
+
+      await writeAudit({
+        actorAdminUserId: session.user.id ?? null,
+        action: "crm.clear_leads",
+        entity: "ag_leads",
+        afterState: { onlySample: onlySample !== false },
+        ipAddress: ip,
+      });
+
+      const updatedLeaderboard = await getAdminLeaderboard();
+      return NextResponse.json({
+        success: true,
+        message: onlySample !== false
+          ? "Demo test leads removed successfully."
+          : "All leads cleared. CRM queue is now clean and ready for real donor leads.",
         ...updatedLeaderboard,
       });
     }
