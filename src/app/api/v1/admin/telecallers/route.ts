@@ -13,6 +13,7 @@ import {
   toggleTelecallerStatus,
   uploadBulkLeads,
   distributeAllPendingLeads,
+  distributeUnassignedLeads,
   generateAgencyCSVExport,
   resetTelecallerPassword,
   saveCrmWhatsAppSettings,
@@ -155,26 +156,57 @@ export async function POST(req: Request) {
       });
     }
 
-    if (action === "upload_leads") {
+    if (action === "upload_chunk" || action === "upload_leads") {
       const { leads, autoDistribute, mode } = body;
       if (!leads || !Array.isArray(leads) || leads.length === 0) {
         return NextResponse.json({ error: "Please provide an array of leads to upload." }, { status: 400 });
       }
-      const res = await uploadBulkLeads(leads, autoDistribute !== false, mode || "balanced");
+      const shouldDistribute = autoDistribute === true;
+      const res = await uploadBulkLeads(leads, shouldDistribute, mode || "balanced");
 
       await writeAudit({
         actorAdminUserId: session.user.id ?? null,
-        action: "crm.upload_bulk_leads",
+        action: action === "upload_chunk" ? "crm.upload_chunk" : "crm.upload_bulk_leads",
         entity: "ag_leads",
         afterState: { uploaded: res.validInserted, distributed: res.distributed },
         ipAddress: ip,
       });
+
+      // For chunked ingestion, return fast response without recalculating entire admin leaderboard
+      if (!shouldDistribute) {
+        return NextResponse.json({
+          success: true,
+          message: `Chunk processed: ${res.validInserted} inserted, ${res.alreadyInDbSkipped} duplicates skipped.`,
+          uploadResult: res,
+        });
+      }
 
       const updatedLeaderboard = await getAdminLeaderboard();
       return NextResponse.json({
         success: true,
         message: `Uploaded ${res.validInserted} leads successfully. ${res.distributed} leads distributed equally among active telecallers.`,
         uploadResult: res,
+        ...updatedLeaderboard,
+      });
+    }
+
+    if (action === "distribute_unassigned") {
+      const { mode } = body;
+      const res = await distributeUnassignedLeads(mode || "balanced");
+
+      await writeAudit({
+        actorAdminUserId: session.user.id ?? null,
+        action: "crm.distribute_unassigned_leads",
+        entity: "ag_leads",
+        afterState: res,
+        ipAddress: ip,
+      });
+
+      const updatedLeaderboard = await getAdminLeaderboard();
+      return NextResponse.json({
+        success: true,
+        message: `Equally distributed ${res.distributed} newly uploaded unassigned leads across active telecallers.`,
+        distributionResult: res,
         ...updatedLeaderboard,
       });
     }

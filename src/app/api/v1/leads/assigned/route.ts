@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getAssignedLeads } from "@/lib/antigravity-crm";
+import { getCallerPortalData } from "@/lib/antigravity-crm";
 import { authenticateCallerOrAdmin } from "@/lib/caller-auth";
 
 export async function GET(req: Request) {
@@ -17,12 +17,12 @@ export async function GET(req: Request) {
     const url = new URL(req.url);
     const paramCallerId = url.searchParams.get("callerId");
     const paramLimit = url.searchParams.get("limit");
-    const limit = paramLimit ? Math.min(parseInt(paramLimit, 10), 5000) : 2000;
+    const limit = paramLimit ? Math.min(parseInt(paramLimit, 10), 10000) : 10000;
     const targetCallerId = auth.isAdmin
       ? (paramCallerId || auth.callerId)
       : auth.callerId;
 
-    const leads = await getAssignedLeads(targetCallerId, limit);
+    const { leads, stats } = await getCallerPortalData(targetCallerId, limit);
 
     return NextResponse.json({
       success: true,
@@ -31,6 +31,7 @@ export async function GET(req: Request) {
       isAdmin: auth.isAdmin,
       count: leads.length,
       leads,
+      callerStats: stats,
     });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });

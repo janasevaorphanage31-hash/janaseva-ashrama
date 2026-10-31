@@ -40,6 +40,8 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
   const [loadingLeads, setLoadingLeads] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [filter, setFilter] = useState<string>("ALL");
+  const [portalPage, setPortalPage] = useState<number>(1);
+  const portalPageSize = 40;
   const [toastMsg, setToastMsg] = useState("");
 
   // Notes & Callback Modal state
@@ -101,7 +103,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
     setTimeout(() => setToastMsg(""), 4500);
   };
 
-  const computeStats = async (leadItems: any[], cid: string) => {
+  const computeStats = (leadItems: any[], _cid?: string) => {
     let contacted = 0;
     let converted = 0;
     leadItems.forEach((l) => {
@@ -109,24 +111,12 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
       if (l.status === "Donated") converted++;
     });
 
-    try {
-      const adminRes = await fetch("/api/v1/admin/telecallers");
-      const adminData = await adminRes.json();
-      const myStat = adminData.callers?.find((c: any) => c.callerId === cid);
-      setStats({
-        totalAssigned: leadItems.length,
-        contactedCount: contacted,
-        convertedCount: converted,
-        totalRevenue: myStat?.totalDonationAmount || 0,
-      });
-    } catch {
-      setStats({
-        totalAssigned: leadItems.length,
-        contactedCount: contacted,
-        convertedCount: converted,
-        totalRevenue: 0,
-      });
-    }
+    setStats((prev) => ({
+      ...prev,
+      totalAssigned: leadItems.length,
+      contactedCount: contacted,
+      convertedCount: converted,
+    }));
   };
 
   const loadCallerLeads = async (cid: string) => {
@@ -137,7 +127,11 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
       if (data.success) {
         const leadItems = data.leads || [];
         setLeads(leadItems);
-        await computeStats(leadItems, cid);
+        if (data.callerStats) {
+          setStats(data.callerStats);
+        } else {
+          computeStats(leadItems, cid);
+        }
       }
     } catch (err: any) {
       showToast("Error loading leads: " + err.message);
@@ -203,7 +197,11 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
           return newLeads;
         });
 
-        void computeStats(newLeads, callerProfile.callerId);
+        if (data.callerStats) {
+          setStats(data.callerStats);
+        } else {
+          computeStats(newLeads, callerProfile.callerId);
+        }
       } catch {
         // Silent catch for background polling
       }
@@ -718,6 +716,17 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
       return matchesFilter && matchesSearch;
     });
   }, [leads, filter, searchQuery]);
+
+  // Reset pagination when filter or search changes
+  useEffect(() => {
+    setPortalPage(1);
+  }, [filter, searchQuery]);
+
+  const totalPortalPages = Math.max(1, Math.ceil(filteredLeads.length / portalPageSize));
+  const paginatedLeads = useMemo(() => {
+    const start = (portalPage - 1) * portalPageSize;
+    return filteredLeads.slice(start, start + portalPageSize);
+  }, [filteredLeads, portalPage, portalPageSize]);
 
   // Safe Focus Index & Lead computation
   const safeFocusIndex = focusIndex >= filteredLeads.length ? Math.max(0, filteredLeads.length - 1) : focusIndex;
@@ -1581,8 +1590,10 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                 </button>
               </div>
             ) : (
-              filteredLeads.map((lead, idx) => {
-                const now = new Date();
+              <>
+                {paginatedLeads.map((lead, localIdx) => {
+                  const idx = (portalPage - 1) * portalPageSize + localIdx;
+                  const now = new Date();
                 const isTodayBirthday = lead.dobDay === now.getDate() && lead.dobMonth === now.getMonth() + 1;
                 const isAttended = lead.status && lead.status !== "Pending";
                 const phoneInfo = parseCustomerPhone(lead.phone);
@@ -1703,8 +1714,39 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                     </div>
                   </div>
                 );
-              })
-            )}
+              })}
+
+              {/* Queue Pagination Bar (Ensures 60 FPS smooth browsing on Android) */}
+              {totalPortalPages > 1 && (
+                <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-3.5 rounded-2xl border border-teal-900/10 text-xs shadow-xs mt-3">
+                  <span className="font-bold text-teal-950">
+                    Showing {(portalPage - 1) * portalPageSize + 1}–{Math.min(portalPage * portalPageSize, filteredLeads.length)} of {filteredLeads.length.toLocaleString()} leads
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setPortalPage((p) => Math.max(1, p - 1))}
+                      disabled={portalPage === 1}
+                      className="rounded-xl px-3 py-1.5 bg-sand hover:bg-amber-100 disabled:opacity-40 text-teal-950 font-bold transition cursor-pointer"
+                    >
+                      ◀ Prev
+                    </button>
+                    <span className="font-mono font-bold text-teal-950 px-2">
+                      Page {portalPage} of {totalPortalPages}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setPortalPage((p) => Math.min(totalPortalPages, p + 1))}
+                      disabled={portalPage === totalPortalPages}
+                      className="rounded-xl px-3 py-1.5 bg-sand hover:bg-amber-100 disabled:opacity-40 text-teal-950 font-bold transition cursor-pointer"
+                    >
+                      Next ▶
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
           </div>
         )}
       </div>

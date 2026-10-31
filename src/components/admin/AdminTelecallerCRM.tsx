@@ -61,6 +61,18 @@ export function AdminTelecallerCRM() {
   >([]);
   const [autoDistributeOnUpload, setAutoDistributeOnUpload] = useState(true);
   const [distributionMode, setDistributionMode] = useState<"balanced" | "round_robin">("balanced");
+  const [uploadProgress, setUploadProgress] = useState<{
+    inProgress: boolean;
+    currentChunk: number;
+    totalChunks: number;
+    processedLeads: number;
+    totalLeads: number;
+    percent: number;
+    stage: "uploading" | "distributing" | "done" | "error";
+    statusMessage: string;
+    insertedTotal: number;
+    duplicatesTotal: number;
+  } | null>(null);
 
   // 4. Export Menu State
   const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
@@ -696,37 +708,173 @@ export function AdminTelecallerCRM() {
     }
 
     setActionLoading(true);
-    try {
-      const res = await fetch("/api/v1/admin/telecallers", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "upload_leads",
-          leads: parsedLeads,
-          autoDistribute: autoDistributeOnUpload,
-          mode: distributionMode,
-        }),
-      });
-      const data = await res.json();
-      if (!data.success) throw new Error(data.error || "Lead upload failed");
+    const totalLeadsCount = parsedLeads.length;
+    // Chunk size 1,500 ensures each JSON payload is ~250KB, completely avoiding HTTP 413 "Request Entity Too Large"
+    const CHUNK_SIZE = 1500;
+    const chunks: typeof parsedLeads[] = [];
+    for (let i = 0; i < totalLeadsCount; i += CHUNK_SIZE) {
+      chunks.push(parsedLeads.slice(i, i + CHUNK_SIZE));
+    }
+    const totalChunks = chunks.length;
 
-      if (data.uploadResult) {
-        const { validInserted, alreadyInDbSkipped, internalDuplicatesSkipped } = data.uploadResult;
-        showToast(
-          `✓ Imported ${validInserted} leads! (${alreadyInDbSkipped} existing duplicates skipped, ${internalDuplicatesSkipped} in-file duplicates skipped)`
-        );
-      } else {
-        showToast(`✓ ${data.message}`);
+    setUploadProgress({
+      inProgress: true,
+      currentChunk: 0,
+      totalChunks,
+      processedLeads: 0,
+      totalLeads: totalLeadsCount,
+      percent: 0,
+      stage: "uploading",
+      statusMessage: `Preparing chunked upload of ${totalLeadsCount.toLocaleString()} leads in ${totalChunks} chunks...`,
+      insertedTotal: 0,
+      duplicatesTotal: 0,
+    });
+
+    let cumInserted = 0;
+    let cumDuplicates = 0;
+
+    try {
+      for (let i = 0; i < totalChunks; i++) {
+        const chunk = chunks[i];
+        const chunkNum = i + 1;
+        const processedSoFar = Math.min((i * CHUNK_SIZE) + chunk.length, totalLeadsCount);
+
+        setUploadProgress({
+          inProgress: true,
+          currentChunk: chunkNum,
+          totalChunks,
+          processedLeads: processedSoFar,
+          totalLeads: totalLeadsCount,
+          percent: Math.min(90, Math.max(1, Math.round((chunkNum / totalChunks) * 90))),
+          stage: "uploading",
+          statusMessage: `Uploading chunk ${chunkNum} of ${totalChunks} (${processedSoFar.toLocaleString()} / ${totalLeadsCount.toLocaleString()} leads)...`,
+          insertedTotal: cumInserted,
+          duplicatesTotal: cumDuplicates,
+        });
+
+        let attempts = 0;
+        let success = false;
+        let lastErr = "";
+
+        while (attempts < 3 && !success) {
+          attempts++;
+          try {
+            const res = await fetch("/api/v1/admin/telecallers", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                action: "upload_chunk",
+                leads: chunk,
+                autoDistribute: false,
+              }),
+            });
+
+            if (!res.ok) {
+              const errText = await res.text();
+              throw new Error(`HTTP ${res.status}: ${errText.slice(0, 100)}`);
+            }
+
+            const data = await res.json();
+            if (!data.success) {
+              throw new Error(data.error || "Chunk ingestion failed");
+            }
+
+            if (data.uploadResult) {
+              cumInserted += Number(data.uploadResult.validInserted || 0);
+              cumDuplicates +=
+                Number(data.uploadResult.alreadyInDbSkipped || 0) +
+                Number(data.uploadResult.internalDuplicatesSkipped || 0);
+            }
+            success = true;
+          } catch (err: any) {
+            lastErr = err.message || "Network error";
+            if (attempts < 3) {
+              await new Promise((r) => setTimeout(r, 600));
+            }
+          }
+        }
+
+        if (!success) {
+          throw new Error(`Failed on chunk ${chunkNum}/${totalChunks}: ${lastErr}`);
+        }
       }
 
-      setCallers(data.callers || []);
-      setTotalLeads(data.totalLeads || 0);
-      setIsUploadModalOpen(false);
-      setPastedText("");
-      setParsedLeads([]);
-      setUploadedFileName("");
+      // If Auto-Distribute is requested, balance newly uploaded unassigned leads across active callers
+      if (autoDistributeOnUpload) {
+        setUploadProgress({
+          inProgress: true,
+          currentChunk: totalChunks,
+          totalChunks,
+          processedLeads: totalLeadsCount,
+          totalLeads: totalLeadsCount,
+          percent: 95,
+          stage: "distributing",
+          statusMessage: `Balancing & distributing ${cumInserted.toLocaleString()} new leads equally across active telecallers...`,
+          insertedTotal: cumInserted,
+          duplicatesTotal: cumDuplicates,
+        });
+
+        const distRes = await fetch("/api/v1/admin/telecallers", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "distribute_unassigned",
+            mode: distributionMode,
+          }),
+        });
+
+        if (!distRes.ok) {
+          const distErr = await distRes.text();
+          throw new Error(`Distribution failed (${distRes.status}): ${distErr.slice(0, 100)}`);
+        }
+
+        const distData = await distRes.json();
+        if (distData.callers) setCallers(distData.callers);
+        if (distData.totalLeads) setTotalLeads(distData.totalLeads);
+      }
+
+      setUploadProgress({
+        inProgress: false,
+        currentChunk: totalChunks,
+        totalChunks,
+        processedLeads: totalLeadsCount,
+        totalLeads: totalLeadsCount,
+        percent: 100,
+        stage: "done",
+        statusMessage: `✓ Import complete! ${cumInserted.toLocaleString()} unique leads added (${cumDuplicates.toLocaleString()} duplicates filtered).`,
+        insertedTotal: cumInserted,
+        duplicatesTotal: cumDuplicates,
+      });
+
+      showToast(
+        `✓ Successfully imported ${cumInserted.toLocaleString()} leads! (${cumDuplicates.toLocaleString()} duplicates filtered out). Distributed across callers.`
+      );
+
+      // Refresh admin data and lead view
+      await loadAdminData();
       await loadLeadsForReassignment(selectedCallerForLeads || "ALL");
+
+      // Auto-close modal after brief delay so user sees 100% completion
+      setTimeout(() => {
+        setIsUploadModalOpen(false);
+        setUploadProgress(null);
+        setPastedText("");
+        setParsedLeads([]);
+        setUploadedFileName("");
+      }, 1800);
     } catch (err: any) {
+      setUploadProgress((prev) => ({
+        inProgress: false,
+        currentChunk: prev?.currentChunk || 0,
+        totalChunks,
+        processedLeads: prev?.processedLeads || 0,
+        totalLeads: totalLeadsCount,
+        percent: prev?.percent || 0,
+        stage: "error",
+        statusMessage: `Upload error: ${err.message}`,
+        insertedTotal: cumInserted,
+        duplicatesTotal: cumDuplicates,
+      }));
       alert("Error importing leads: " + err.message);
     } finally {
       setActionLoading(false);
@@ -883,11 +1031,11 @@ export function AdminTelecallerCRM() {
   };
 
   const handleSendWhatsAppCredentials = (caller: TelecallerStats, pwd?: string) => {
-    const origin = typeof window !== "undefined" ? window.location.origin : "https://www.janasevaorphanage.org";
-    const text = `🌟 *JANASEVA ASHRAMA TELECALLER PORTAL ACCESS*\n\nNamaste ${caller.name},\nHere are your access credentials for our telecaller outreach portal (Focus: Sponsor 25 Boys Tiers):\n\n👤 *Advisor:* ${caller.name}\n🆔 *Caller ID:* ${caller.callerId}\n📧 *Login Email:* ${caller.email || `${caller.callerId.toLowerCase()}@janaseva.org`}\n🔑 *Password:* ${pwd || "ashrama@123"}\n\n🔗 *Login to Portal:* ${origin}/portal\n🎯 *Your 'Sponsor 25 Boys' Referral Link:* ${origin}/#official-tiers?ref=${caller.callerId}\n\nPlease login and start reaching out to your assigned queue today!`;
-    const cleanNumber = (caller.whatsappNumber || "").replace(/\D/g, "");
+    const origin = typeof window !== "undefined" ? window.location.origin : "https://www.janasevaashrama.org";
+    const text = `🌸 *JANASEVA ASHRAMA TELECALLER PORTAL & CALLING DATA*\n\nNamaste ${caller.name},\nHere are your access credentials and assigned calling data:\n\n🎧 *Telecaller:* ${caller.name}\n🆔 *Caller ID:* ${caller.callerId}\n📧 *Login ID:* ${caller.callerId}\n🔑 *Password:* ${pwd || "ashrama@123"}\n🎯 *Daily Target:* ${caller.dailyQuota || 50} donors\n📋 *Total Assigned Leads:* ${caller.assignedCount.toLocaleString()}\n\n🔗 *Calling Portal (1-Tap Call & Log):*\n${origin}/portal\n\n📥 *Download Your Leads (CSV Spreadsheet):*\n${origin}/api/v1/admin/telecallers/export?type=caller_leads&callerId=${caller.callerId}\n\n🎁 *Your Direct Donation Link:*\n${origin}/donate?ref=${caller.callerId}\n\nPlease open your portal and start reaching out to donors with sincere devotion!`;
+    const cleanNumber = (caller.whatsappNumber || "").replace(/\D/g, "").slice(-10);
     window.open(`https://wa.me/91${cleanNumber}?text=${encodeURIComponent(text)}`, "_blank");
-    showToast(`✓ Opened WhatsApp to send credentials to ${caller.name}`);
+    showToast(`✓ Opened WhatsApp to send calling sheet & access to ${caller.name}`);
   };
 
   const handleCopyAgencySummary = () => {
@@ -2638,13 +2786,76 @@ export function AdminTelecallerCRM() {
                   </div>
                 )}
               </div>
+              {/* High-Volume Upload & Chunking Progress Bar */}
+              {uploadProgress && (
+                <div className="rounded-2xl bg-teal-950 text-sand p-4 space-y-3 shadow-md border border-gold/30 animate-fadeIn">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-bold text-gold flex items-center gap-2">
+                      {uploadProgress.stage === "distributing" ? (
+                        <>
+                          <span className="animate-spin text-base">⚙️</span>
+                          <span>Equal Distribution in Progress...</span>
+                        </>
+                      ) : uploadProgress.stage === "done" ? (
+                        <>
+                          <span className="text-emerald-400 text-base">✓</span>
+                          <span className="text-emerald-300 font-black">All Leads Ingested & Distributed!</span>
+                        </>
+                      ) : uploadProgress.stage === "error" ? (
+                        <>
+                          <span className="text-rose-400 text-base">⚠️</span>
+                          <span className="text-rose-300">Upload Encountered Error</span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="animate-pulse text-base">🚀</span>
+                          <span>
+                            Chunk {uploadProgress.currentChunk} of {uploadProgress.totalChunks} (1,500 leads/chunk)
+                          </span>
+                        </>
+                      )}
+                    </span>
+                    <span className="font-mono text-gold font-black text-sm">{uploadProgress.percent}%</span>
+                  </div>
+
+                  {/* Progress Track */}
+                  <div className="w-full bg-teal-900 rounded-full h-3.5 overflow-hidden p-0.5 border border-teal-800">
+                    <div
+                      className="bg-linear-to-r from-amber-400 via-amber-300 to-emerald-400 h-full rounded-full transition-all duration-300 shadow-sm"
+                      style={{ width: `${Math.max(3, uploadProgress.percent)}%` }}
+                    />
+                  </div>
+
+                  {/* Realtime Numbers */}
+                  <div className="flex flex-wrap items-center justify-between text-[11px] text-sand/80 gap-2 font-mono">
+                    <span>
+                      {uploadProgress.processedLeads.toLocaleString()} / {uploadProgress.totalLeads.toLocaleString()} leads processed
+                    </span>
+                    <div className="flex items-center gap-3">
+                      <span className="text-emerald-300 font-bold">✓ {uploadProgress.insertedTotal.toLocaleString()} unique added</span>
+                      <span className="text-amber-300">⚡ {uploadProgress.duplicatesTotal.toLocaleString()} duplicates filtered</span>
+                    </div>
+                  </div>
+
+                  <div className="text-[11px] text-sand/70 italic truncate">
+                    {uploadProgress.statusMessage}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="flex items-center justify-end gap-2 pt-3 border-t border-teal-900/10 shrink-0">
               <button
                 type="button"
-                onClick={() => setIsUploadModalOpen(false)}
-                className="rounded-xl px-4 py-2 text-xs font-bold text-teal-950/70 hover:bg-sand transition"
+                onClick={() => {
+                  if (uploadProgress?.inProgress) {
+                    if (!confirm("Upload is currently in progress. Do you want to cancel?")) return;
+                  }
+                  setIsUploadModalOpen(false);
+                  setUploadProgress(null);
+                }}
+                disabled={actionLoading}
+                className="rounded-xl px-4 py-2 text-xs font-bold text-teal-950/70 hover:bg-sand transition disabled:opacity-40"
               >
                 Cancel
               </button>
@@ -2652,9 +2863,14 @@ export function AdminTelecallerCRM() {
                 type="button"
                 onClick={handleExecuteLeadUpload}
                 disabled={actionLoading || parsedLeads.length === 0}
-                className="rounded-xl bg-teal-950 hover:bg-teal-900 text-gold px-5 py-2 text-xs font-black shadow-xs transition cursor-pointer disabled:opacity-50"
+                className="rounded-xl bg-teal-950 hover:bg-teal-900 text-gold px-5 py-2 text-xs font-black shadow-xs transition cursor-pointer disabled:opacity-50 flex items-center gap-2"
               >
-                {actionLoading ? "Importing..." : `Import & Distribute ${parsedLeads.length} Leads`}
+                {actionLoading && <span className="animate-spin text-xs">⚙️</span>}
+                <span>
+                  {actionLoading
+                    ? `Importing Chunk ${uploadProgress?.currentChunk || 1}/${uploadProgress?.totalChunks || 1}...`
+                    : `Import & Distribute ${parsedLeads.length.toLocaleString()} Leads`}
+                </span>
               </button>
             </div>
           </div>
@@ -2749,14 +2965,23 @@ export function AdminTelecallerCRM() {
               </p>
             </form>
 
-            {/* Quick 1-Click Share & Copy Actions */}
-            <div className="flex flex-col sm:flex-row items-center gap-2.5 pt-3 border-t border-teal-900/10">
+            {/* Quick 1-Click Share & Export Actions */}
+            <div className="flex flex-col sm:flex-row items-center gap-2 pt-3 border-t border-teal-900/10">
+              <button
+                type="button"
+                onClick={() => window.open(`/api/v1/admin/telecallers/export?type=caller_leads&callerId=${selectedCallerForAccess.callerId}`, "_blank")}
+                title={`Download CSV file with all leads assigned to ${selectedCallerForAccess.callerId}`}
+                className="w-full sm:w-auto flex-1 focus-ring tap-scale inline-flex items-center justify-center gap-1.5 rounded-xl bg-white hover:bg-sand border border-teal-900/20 text-teal-950 px-3 py-2.5 text-xs font-bold shadow-2xs transition cursor-pointer"
+              >
+                <span>📥 Download Leads CSV</span>
+              </button>
+
               <button
                 type="button"
                 onClick={() => handleCopyCredentials(selectedCallerForAccess, newPasswordInput || undefined)}
-                className="w-full sm:w-auto flex-1 focus-ring tap-scale inline-flex items-center justify-center gap-1.5 rounded-xl bg-sand hover:bg-amber-100 border border-teal-900/15 text-teal-950 px-3.5 py-2.5 text-xs font-bold transition cursor-pointer"
+                className="w-full sm:w-auto flex-1 focus-ring tap-scale inline-flex items-center justify-center gap-1.5 rounded-xl bg-sand hover:bg-amber-100 border border-teal-900/15 text-teal-950 px-3 py-2.5 text-xs font-bold transition cursor-pointer"
               >
-                <span>📋 Copy Credentials</span>
+                <span>📋 Copy Login</span>
               </button>
 
               <button
@@ -2764,7 +2989,7 @@ export function AdminTelecallerCRM() {
                 onClick={() => handleSendWhatsAppCredentials(selectedCallerForAccess, newPasswordInput || undefined)}
                 className="w-full sm:w-auto flex-1 focus-ring tap-scale inline-flex items-center justify-center gap-1.5 rounded-xl bg-[#25D366] hover:brightness-105 text-white px-3.5 py-2.5 text-xs font-bold shadow-xs transition cursor-pointer"
               >
-                <span>📱 WhatsApp Access Details</span>
+                <span>📱 WhatsApp Sheet & Login</span>
               </button>
             </div>
           </div>

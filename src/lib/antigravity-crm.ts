@@ -248,7 +248,7 @@ export async function distributeBirthdayLeads() {
 /**
  * 3. Fetch Assigned Leads for a Telecaller (or All Leads if callerId === "ALL" or empty)
  */
-export async function getAssignedLeads(callerId?: string | null, limit = 2000) {
+export async function getAssignedLeads(callerId?: string | null, limit = 10000) {
   await ensureTelecallersAndSeedData();
   const cid = (callerId || "").trim().toUpperCase();
   if (!cid || cid === "ALL") {
@@ -264,6 +264,52 @@ export async function getAssignedLeads(callerId?: string | null, limit = 2000) {
     .where(eq(agLeads.assignedCallerId, cid))
     .orderBy(agLeads.dobMonth, agLeads.dobDay, desc(agLeads.leadId))
     .limit(limit);
+}
+
+/**
+ * 3b. Fetch Caller Portal Data (Assigned Leads + Realtime SQL Aggregated Stats)
+ * Allows telecallers to load their verified stats directly without calling admin-only endpoints.
+ */
+export async function getCallerPortalData(callerId?: string | null, limit = 10000) {
+  await ensureTelecallersAndSeedData();
+  const cid = (callerId || "").trim().toUpperCase();
+
+  const leads = await getAssignedLeads(cid, limit);
+
+  // SQL-indexed aggregate metrics for this specific caller
+  const callerCondition = cid && cid !== "ALL" ? eq(agLeads.assignedCallerId, cid) : sql`1=1`;
+  const [leadStats] = await db
+    .select({
+      totalAssigned: sql<number>`count(*)`,
+      contactedCount: sql<number>`count(*) filter (where ${agLeads.status} IS NOT NULL and ${agLeads.status} != 'Pending')`,
+      convertedCount: sql<number>`count(*) filter (where ${agLeads.status} = 'Donated')`,
+      pendingCount: sql<number>`count(*) filter (where ${agLeads.status} = 'Pending' or ${agLeads.status} IS NULL)`,
+      interestedCount: sql<number>`count(*) filter (where ${agLeads.status} = 'Interested')`,
+      rescheduleCount: sql<number>`count(*) filter (where ${agLeads.status} = 'Reschedule')`,
+    })
+    .from(agLeads)
+    .where(callerCondition);
+
+  const donationCondition = cid && cid !== "ALL" ? eq(agDonations.callerRefId, cid) : sql`1=1`;
+  const [revRow] = await db
+    .select({
+      totalRevenue: sql<number>`coalesce(sum(${agDonations.amount}), 0)`,
+    })
+    .from(agDonations)
+    .where(donationCondition);
+
+  return {
+    leads,
+    stats: {
+      totalAssigned: Number(leadStats?.totalAssigned || 0),
+      contactedCount: Number(leadStats?.contactedCount || 0),
+      convertedCount: Number(leadStats?.convertedCount || 0),
+      pendingCount: Number(leadStats?.pendingCount || 0),
+      interestedCount: Number(leadStats?.interestedCount || 0),
+      rescheduleCount: Number(leadStats?.rescheduleCount || 0),
+      totalRevenue: Number(revRow?.totalRevenue || 0),
+    },
+  };
 }
 
 /**
@@ -746,13 +792,34 @@ export async function uploadBulkLeads(
   const currentDay = now.getDate();
   const currentMonth = now.getMonth() + 1;
 
-  // 1. Fetch all existing lead phone numbers from DB
-  const existingRows = await db.select({ phone: agLeads.phone }).from(agLeads);
+  // 1. Extract 10-digit candidate phone numbers from this batch
+  const candidatePhones = new Set<string>();
+  for (const item of rawLeads) {
+    const rawDigits = (item.phone || "").replace(/\D/g, "");
+    if (rawDigits.length >= 10) {
+      candidatePhones.add(rawDigits.slice(-10));
+    }
+  }
+
+  // 2. Fast indexed database check ONLY for candidate numbers in this batch (uses ag_leads_phone_idx)
   const existingPhonesSet = new Set<string>();
-  existingRows.forEach((r) => {
-    const digits = (r.phone || "").replace(/\D/g, "").slice(-10);
-    if (digits.length === 10) existingPhonesSet.add(digits);
-  });
+  if (candidatePhones.size > 0) {
+    const candidateArray = Array.from(candidatePhones);
+    const BATCH_LOOKUP = 500;
+    for (let i = 0; i < candidateArray.length; i += BATCH_LOOKUP) {
+      const slice = candidateArray.slice(i, i + BATCH_LOOKUP);
+      const existingRows = await db
+        .select({ phone: agLeads.phone })
+        .from(agLeads)
+        .where(inArray(agLeads.phone, slice));
+      for (const r of existingRows) {
+        if (r.phone) {
+          const digits = r.phone.replace(/\D/g, "").slice(-10);
+          if (digits.length === 10) existingPhonesSet.add(digits);
+        }
+      }
+    }
+  }
 
   const validLeads = [];
   const seenInUpload = new Set<string>();
@@ -804,13 +871,14 @@ export async function uploadBulkLeads(
       validInserted: 0,
       distributed: 0,
       perCaller: {},
+      insertedLeadIds: [] as number[],
       message: `No new leads to import. ${alreadyInDbSkipped} numbers already exist in database, and ${internalDuplicatesSkipped} duplicates were skipped.`,
     };
   }
 
-  // Insert in batches of 100
+  // Insert in batches of 500 for maximum throughput and safety
   const insertedLeadIds: number[] = [];
-  const BATCH_SIZE = 100;
+  const BATCH_SIZE = 500;
   for (let i = 0; i < validLeads.length; i += BATCH_SIZE) {
     const batch = validLeads.slice(i, i + BATCH_SIZE);
     const inserted = await db.insert(agLeads).values(batch).returning({ leadId: agLeads.leadId });
@@ -832,6 +900,7 @@ export async function uploadBulkLeads(
     validInserted: validLeads.length,
     distributed: autoDistribute ? insertedLeadIds.length : 0,
     perCaller: distributedSummary,
+    insertedLeadIds: autoDistribute ? [] : insertedLeadIds,
     message: `Successfully uploaded ${validLeads.length} unique leads (${alreadyInDbSkipped} already in database skipped, ${internalDuplicatesSkipped} file duplicates skipped).`,
   };
 }
@@ -908,29 +977,43 @@ export async function distributeSpecificLeads(
     }
   }
 
-  // Fast Bulk Batch Update using inArray (500 per batch)
-  const updatePromises: Promise<any>[] = [];
-  const CHUNK_SIZE = 500;
+  // Robust sequential batch update using inArray (1,000 per batch prevents connection pool strain)
+  const BATCH_SIZE = 1000;
   for (const [callerId, ids] of assignmentBuckets.entries()) {
     if (ids.length === 0) continue;
-    for (let i = 0; i < ids.length; i += CHUNK_SIZE) {
-      const chunk = ids.slice(i, i + CHUNK_SIZE);
-      updatePromises.push(
-        db
-          .update(agLeads)
-          .set({
-            assignedCallerId: callerId,
-            status: "Pending",
-            updatedAt: new Date(),
-          })
-          .where(inArray(agLeads.leadId, chunk))
-      );
+    for (let i = 0; i < ids.length; i += BATCH_SIZE) {
+      const chunk = ids.slice(i, i + BATCH_SIZE);
+      await db
+        .update(agLeads)
+        .set({
+          assignedCallerId: callerId,
+          status: "Pending",
+          updatedAt: new Date(),
+        })
+        .where(inArray(agLeads.leadId, chunk));
     }
   }
 
-  await Promise.all(updatePromises);
-
   return { distributed: leadIds.length, perCaller };
+}
+
+/**
+ * 13b. Distribute Only Unassigned Leads (assignedCallerId IS NULL)
+ * Used after chunked lead upload to assign newly ingested leads without altering existing callers' workloads.
+ */
+export async function distributeUnassignedLeads(mode: "balanced" | "round_robin" = "balanced") {
+  const unassigned = await db
+    .select({ leadId: agLeads.leadId })
+    .from(agLeads)
+    .where(isNull(agLeads.assignedCallerId))
+    .orderBy(agLeads.leadId);
+
+  if (unassigned.length === 0) {
+    return { distributed: 0, perCaller: {} };
+  }
+
+  const ids = unassigned.map((l) => l.leadId);
+  return distributeSpecificLeads(ids, mode);
 }
 
 /**
@@ -1061,15 +1144,23 @@ export async function generateAgencyCSVExport(
       ? await query.where(eq(agLeads.assignedCallerId, targetCaller)).orderBy(agLeads.dobMonth, agLeads.dobDay, desc(agLeads.leadId))
       : await query.orderBy(agLeads.dobMonth, agLeads.dobDay, desc(agLeads.leadId));
 
-    const callLogs = await db
-      .select({ leadId: agCallLogs.leadId, notes: agCallLogs.notes, callbackTime: agCallLogs.callbackTime })
-      .from(agCallLogs)
-      .orderBy(desc(agCallLogs.createdAt));
-
     const latestNotesMap = new Map<number, string>();
-    for (const log of callLogs) {
-      if (!latestNotesMap.has(log.leadId) && log.notes) {
-        latestNotesMap.set(log.leadId, log.notes);
+    const leadIds = leads.map((l) => l.leadId);
+    if (leadIds.length > 0) {
+      // Query recent call logs for these specific leads in safe chunks of 500
+      for (let i = 0; i < Math.min(leadIds.length, 5000); i += 500) {
+        const slice = leadIds.slice(i, i + 500);
+        const callLogs = await db
+          .select({ leadId: agCallLogs.leadId, notes: agCallLogs.notes })
+          .from(agCallLogs)
+          .where(inArray(agCallLogs.leadId, slice))
+          .orderBy(desc(agCallLogs.createdAt));
+
+        for (const log of callLogs) {
+          if (!latestNotesMap.has(log.leadId) && log.notes) {
+            latestNotesMap.set(log.leadId, log.notes);
+          }
+        }
       }
     }
 
