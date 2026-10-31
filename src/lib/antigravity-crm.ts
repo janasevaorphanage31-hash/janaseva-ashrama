@@ -1,5 +1,5 @@
 import { db, ensureDbSchema } from "@/db";
-import { agTelecallers, agLeads, agCallLogs, agDonations, contentEntries } from "@/db/schema";
+import { agTelecallers, agLeads, agCallLogs, agDonations, contentEntries, influencerProfiles } from "@/db/schema";
 import { eq, and, or, sql, desc, inArray, isNull } from "drizzle-orm";
 import { hashPassword } from "@/lib/admin-auth";
 import { parseCustomerPhone } from "@/lib/whatsapp-phone";
@@ -1448,5 +1448,314 @@ export async function resetTelecallerPassword(callerId: string, newPassword: str
     .where(eq(agTelecallers.callerId, cid));
 
   return { success: true, callerId: cid };
+}
+
+// ==============================================================================
+// 17. INSTAGRAM INFLUENCER & CREATOR REFERRAL ENGINE
+// ==============================================================================
+
+export interface InfluencerStats {
+  id: number;
+  influencerCode: string;
+  displayName: string;
+  instagramHandle: string | null;
+  whatsappNumber: string;
+  targetGoalAmount: number;
+  campaignStory: string | null;
+  coverImageUrl: string | null;
+  status: string;
+  totalDonationAmount: number;
+  totalDonorsCount: number;
+  averageDonation: number;
+  progressPercent: number;
+  createdAt: string;
+  referralLink: string;
+  vanityLink: string;
+  whatsappKitUrl: string;
+  whatsappReportUrl: string;
+}
+
+export async function getInfluencerProfiles(baseUrl?: string): Promise<{
+  influencers: InfluencerStats[];
+  totalInfluencers: number;
+  totalFundsRaised: number;
+  totalDonors: number;
+}> {
+  await ensureDbSchema();
+  const origin = (baseUrl || process.env.NEXT_PUBLIC_SITE_URL || "https://janasevaashrama.org").replace(/\/$/, "");
+
+  const profiles = await db
+    .select()
+    .from(influencerProfiles)
+    .orderBy(desc(influencerProfiles.id));
+
+  // Query aggregated donation stats grouped by callerRefId for all influencers
+  const statsRows = await db
+    .select({
+      code: agDonations.callerRefId,
+      totalAmount: sql<number>`coalesce(sum(${agDonations.amount}), 0)`,
+      totalDonors: sql<number>`count(*)`,
+    })
+    .from(agDonations)
+    .where(sql`${agDonations.callerRefId} IS NOT NULL`)
+    .groupBy(agDonations.callerRefId);
+
+  const statsMap = new Map<string, { totalAmount: number; totalDonors: number }>();
+  statsRows.forEach((r) => {
+    if (r.code) {
+      statsMap.set(r.code.toUpperCase(), {
+        totalAmount: Number(r.totalAmount || 0),
+        totalDonors: Number(r.totalDonors || 0),
+      });
+    }
+  });
+
+  let grandTotalRaised = 0;
+  let grandTotalDonors = 0;
+
+  const influencers: InfluencerStats[] = profiles.map((p) => {
+    const code = p.influencerCode.toUpperCase();
+    const stat = statsMap.get(code) || { totalAmount: 0, totalDonors: 0 };
+    grandTotalRaised += stat.totalAmount;
+    grandTotalDonors += stat.totalDonors;
+
+    const avg = stat.totalDonors > 0 ? Math.round(stat.totalAmount / stat.totalDonors) : 0;
+    const goal = p.targetGoalAmount || 50000;
+    const pct = Math.min(100, Math.round((stat.totalAmount / goal) * 100));
+
+    const refLink = `${origin}/give?ref=${code}`;
+    const vanityLink = `${origin}/campaigns/${code.toLowerCase()}`;
+
+    // 1-Click WhatsApp Creator Kit (ready to send to influencer so they can share on IG)
+    const kitText = encodeURIComponent(
+      `Namaste ${p.displayName} ji! 🙏\n\n` +
+      `Here is your official Janaseva Ashrama Instagram Campaign link:\n` +
+      `🔗 ${refLink}\n\n` +
+      `📌 Add this link to your Instagram Bio or Story sticker ("Support 25 Boys")!\n` +
+      `Every donation gives donors 100% Section 80G tax benefits and provides hot meals to our 25 resident boys in Bangalore.\n\n` +
+      `Track your live fundraising impact anytime at:\n` +
+      `${vanityLink}`
+    );
+    const whatsappKitUrl = `https://wa.me/91${p.whatsappNumber.replace(/\D/g, "").slice(-10)}?text=${kitText}`;
+
+    // 1-Click WhatsApp EOD Report Card (ready to send to influencer)
+    const reportText = encodeURIComponent(
+      `🌟 JANASEVA ASHRAMA × INFLUENCER IMPACT UPDATE 🌟\n\n` +
+      `Namaste ${p.displayName} (${p.instagramHandle || "@creator"})! 🙏\n\n` +
+      `Here is the latest live fundraising update from your audience:\n` +
+      `💰 Total Funds Raised: ₹${stat.totalAmount.toLocaleString()}\n` +
+      `🎯 Campaign Goal: ₹${goal.toLocaleString()} (${pct}% Achieved!)\n` +
+      `👥 Generous Donors: ${stat.totalDonors} supporters\n` +
+      `🍲 Wholesome Meals Sponsored: ${Math.round(stat.totalAmount / 50)} meals for our 25 resident boys\n\n` +
+      `🔗 Live Campaign Tracker:\n${vanityLink}\n\n` +
+      `Thank you for being a loving voice for our children! 👦✨`
+    );
+    const whatsappReportUrl = `https://wa.me/91${p.whatsappNumber.replace(/\D/g, "").slice(-10)}?text=${reportText}`;
+
+    return {
+      id: p.id,
+      influencerCode: code,
+      displayName: p.displayName,
+      instagramHandle: p.instagramHandle,
+      whatsappNumber: p.whatsappNumber,
+      targetGoalAmount: goal,
+      campaignStory: p.campaignStory,
+      coverImageUrl: p.coverImageUrl,
+      status: p.status,
+      totalDonationAmount: stat.totalAmount,
+      totalDonorsCount: stat.totalDonors,
+      averageDonation: avg,
+      progressPercent: pct,
+      createdAt: p.createdAt.toISOString(),
+      referralLink: refLink,
+      vanityLink,
+      whatsappKitUrl,
+      whatsappReportUrl,
+    };
+  });
+
+  return {
+    influencers,
+    totalInfluencers: profiles.length,
+    totalFundsRaised: grandTotalRaised,
+    totalDonors: grandTotalDonors,
+  };
+}
+
+export async function createOrUpdateInfluencer(input: {
+  influencerCode: string;
+  displayName: string;
+  instagramHandle?: string;
+  whatsappNumber: string;
+  targetGoalAmount?: number;
+  campaignStory?: string;
+  coverImageUrl?: string;
+}) {
+  await ensureDbSchema();
+  const cleanCode = (input.influencerCode || "").trim().toUpperCase().replace(/[^A-Z0-9_-]/g, "");
+  if (!cleanCode || cleanCode.length < 3) {
+    throw new Error("Referral code must be at least 3 alphanumeric characters.");
+  }
+
+  const cleanName = (input.displayName || "").trim();
+  if (!cleanName) throw new Error("Influencer name is required.");
+
+  const cleanPhone = (input.whatsappNumber || "").replace(/\D/g, "").slice(-10);
+  if (cleanPhone.length < 10) throw new Error("Valid 10-digit WhatsApp number required.");
+
+  const goal = Math.max(1000, Number(input.targetGoalAmount || 50000));
+  const handle = input.instagramHandle ? input.instagramHandle.trim().replace(/^@?/, "@") : null;
+
+  const [existing] = await db
+    .select({ id: influencerProfiles.id })
+    .from(influencerProfiles)
+    .where(eq(influencerProfiles.influencerCode, cleanCode))
+    .limit(1);
+
+  if (existing) {
+    await db
+      .update(influencerProfiles)
+      .set({
+        displayName: cleanName,
+        instagramHandle: handle,
+        whatsappNumber: cleanPhone,
+        targetGoalAmount: goal,
+        campaignStory: input.campaignStory || null,
+        coverImageUrl: input.coverImageUrl || null,
+        updatedAt: new Date(),
+      })
+      .where(eq(influencerProfiles.id, existing.id));
+    return { success: true, action: "updated", influencerCode: cleanCode };
+  }
+
+  await db.insert(influencerProfiles).values({
+    influencerCode: cleanCode,
+    displayName: cleanName,
+    instagramHandle: handle,
+    whatsappNumber: cleanPhone,
+    targetGoalAmount: goal,
+    campaignStory: input.campaignStory || null,
+    coverImageUrl: input.coverImageUrl || null,
+    status: "ACTIVE",
+  });
+
+  return { success: true, action: "created", influencerCode: cleanCode };
+}
+
+export async function toggleInfluencerStatus(influencerCode: string, status: "ACTIVE" | "PAUSED") {
+  await ensureDbSchema();
+  const cleanCode = influencerCode.trim().toUpperCase();
+  await db
+    .update(influencerProfiles)
+    .set({ status, updatedAt: new Date() })
+    .where(eq(influencerProfiles.influencerCode, cleanCode));
+  return { success: true, influencerCode: cleanCode, status };
+}
+
+export async function getInfluencerDonations(influencerCode: string, limit = 1000) {
+  await ensureDbSchema();
+  const code = influencerCode.trim().toUpperCase();
+  return db
+    .select()
+    .from(agDonations)
+    .where(eq(agDonations.callerRefId, code))
+    .orderBy(desc(agDonations.createdAt))
+    .limit(limit);
+}
+
+export async function exportInfluencerDonationsCsv(influencerCode?: string | null) {
+  await ensureDbSchema();
+  const cid = influencerCode ? influencerCode.trim().toUpperCase() : null;
+
+  if (cid && cid !== "ALL") {
+    // Export single influencer ledger
+    const donations = await db
+      .select()
+      .from(agDonations)
+      .where(eq(agDonations.callerRefId, cid))
+      .orderBy(desc(agDonations.createdAt));
+
+    const rows: string[][] = [
+      [
+        "Transaction ID",
+        "Gateway Order ID",
+        "Influencer Code",
+        "Donor Name",
+        "Donor Phone",
+        "Donor Email",
+        "Amount (INR)",
+        "Currency",
+        "Payment Status",
+        "80G Tax Exemption",
+        "Donation Date (IST)",
+      ],
+    ];
+
+    for (const d of donations) {
+      rows.push([
+        d.txnId,
+        d.gatewayOrderId,
+        cid,
+        d.donorName ? `"${d.donorName.replace(/"/g, '""')}"` : '""',
+        d.donorPhone ? `"+91${d.donorPhone}"` : '""',
+        d.donorEmail ? `"${d.donorEmail.replace(/"/g, '""')}"` : '""',
+        String(d.amount),
+        d.currency,
+        d.paymentStatus,
+        "Eligible (Section 80G Form 10AC)",
+        d.createdAt.toISOString().slice(0, 19).replace("T", " "),
+      ]);
+    }
+
+    return {
+      filename: `influencer_${cid.toLowerCase()}_donations_ledger_${new Date().toISOString().slice(0, 10)}.csv`,
+      csv: rows.map((r) => r.join(",")).join("\n"),
+    };
+  }
+
+  // Export consolidated summary for all influencers
+  const { influencers } = await getInfluencerProfiles();
+  const rows: string[][] = [
+    [
+      "Rank",
+      "Influencer Code",
+      "Display Name",
+      "Instagram Handle",
+      "WhatsApp Number",
+      "Status",
+      "Goal (INR)",
+      "Total Funds Raised (INR)",
+      "Goal Progress (%)",
+      "Total Donors",
+      "Average Ticket (INR)",
+      "Referral URL",
+      "Created Date",
+    ],
+  ];
+
+  // Sort by funds raised descending
+  const sorted = [...influencers].sort((a, b) => b.totalDonationAmount - a.totalDonationAmount);
+  sorted.forEach((inf, idx) => {
+    rows.push([
+      String(idx + 1),
+      inf.influencerCode,
+      `"${inf.displayName.replace(/"/g, '""')}"`,
+      inf.instagramHandle || "",
+      `"+91${inf.whatsappNumber}"`,
+      inf.status,
+      String(inf.targetGoalAmount),
+      String(inf.totalDonationAmount),
+      `${inf.progressPercent}%`,
+      String(inf.totalDonorsCount),
+      String(inf.averageDonation),
+      inf.referralLink,
+      inf.createdAt.slice(0, 10),
+    ]);
+  });
+
+  return {
+    filename: `janaseva_all_influencers_summary_${new Date().toISOString().slice(0, 10)}.csv`,
+    csv: rows.map((r) => r.join(",")).join("\n"),
+  };
 }
 

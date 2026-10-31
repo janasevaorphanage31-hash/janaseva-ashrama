@@ -173,10 +173,10 @@ export async function POST(req: Request) {
       });
 
       // For chunked ingestion, return fast response without recalculating entire admin leaderboard
-      if (!shouldDistribute) {
+      if (action === "upload_chunk") {
         return NextResponse.json({
           success: true,
-          message: `Chunk processed: ${res.validInserted} inserted, ${res.alreadyInDbSkipped} duplicates skipped.`,
+          message: `Chunk processed: ${res.validInserted} inserted, ${res.distributed} distributed, ${res.alreadyInDbSkipped} duplicates skipped.`,
           uploadResult: res,
         });
       }

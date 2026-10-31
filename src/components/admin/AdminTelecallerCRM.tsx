@@ -5,7 +5,7 @@ import Link from "next/link";
 import * as XLSX from "xlsx";
 import { formatINR } from "@/lib/site";
 import { LogoMark } from "@/components/Logo";
-import type { TelecallerStats, CrmWhatsAppSettings } from "@/lib/antigravity-crm";
+import type { TelecallerStats, CrmWhatsAppSettings, InfluencerStats } from "@/lib/antigravity-crm";
 import { AntiBanWhatsAppModal } from "@/components/admin/AntiBanWhatsAppModal";
 
 export function AdminTelecallerCRM() {
@@ -111,6 +111,24 @@ export function AdminTelecallerCRM() {
   const [isAntiBanModalOpen, setIsAntiBanModalOpen] = useState(false);
   const [selectedLeadForWhatsApp, setSelectedLeadForWhatsApp] = useState<any | null>(null);
 
+  // ── SUB-TABS: STAFF TELECALLERS vs INSTAGRAM INFLUENCERS ──
+  const [activeSubtab, setActiveSubtab] = useState<"callers" | "influencers">("callers");
+  const [influencers, setInfluencers] = useState<InfluencerStats[]>([]);
+  const [totalInfluencerRaised, setTotalInfluencerRaised] = useState(0);
+  const [totalInfluencerDonors, setTotalInfluencerDonors] = useState(0);
+  const [loadingInfluencers, setLoadingInfluencers] = useState(false);
+
+  // Add / Edit Influencer Modal State
+  const [isInfluencerModalOpen, setIsInfluencerModalOpen] = useState(false);
+  const [influencerForm, setInfluencerForm] = useState({
+    influencerCode: "",
+    displayName: "",
+    instagramHandle: "",
+    whatsappNumber: "",
+    targetGoalAmount: 50000,
+    campaignStory: "",
+  });
+
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(""), 5000);
@@ -124,6 +142,105 @@ export function AdminTelecallerCRM() {
         setLeadsList(data.leads || []);
       }
     } catch {}
+  };
+
+  const loadInfluencers = async () => {
+    setLoadingInfluencers(true);
+    try {
+      const res = await fetch("/api/v1/admin/influencers");
+      const contentType = res.headers.get("content-type") || "";
+      if (contentType.includes("application/json")) {
+        const data = await res.json();
+        if (data.success && data.influencers) {
+          setInfluencers(data.influencers);
+          setTotalInfluencerRaised(data.totalFundsRaised || 0);
+          setTotalInfluencerDonors(data.totalDonors || 0);
+        }
+      }
+    } catch (err: any) {
+      console.error("Error loading influencers:", err);
+    } finally {
+      setLoadingInfluencers(false);
+    }
+  };
+
+  const handleOpenAddInfluencer = () => {
+    setInfluencerForm({
+      influencerCode: "",
+      displayName: "",
+      instagramHandle: "",
+      whatsappNumber: "",
+      targetGoalAmount: 50000,
+      campaignStory: "",
+    });
+    setIsInfluencerModalOpen(true);
+  };
+
+  const handleSaveInfluencer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!influencerForm.displayName.trim()) return alert("Please enter the influencer display name.");
+    if (!influencerForm.influencerCode.trim()) return alert("Please enter a custom referral code (e.g. ROHIT_FIT).");
+    if (influencerForm.whatsappNumber.replace(/\D/g, "").length < 10) {
+      return alert("Please enter a valid 10-digit WhatsApp number.");
+    }
+
+    setActionLoading(true);
+    try {
+      const res = await fetch("/api/v1/admin/influencers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "create_or_update",
+          influencerCode: influencerForm.influencerCode.trim().toUpperCase(),
+          displayName: influencerForm.displayName.trim(),
+          instagramHandle: influencerForm.instagramHandle.trim(),
+          whatsappNumber: influencerForm.whatsappNumber.replace(/\D/g, "").slice(-10),
+          targetGoalAmount: Number(influencerForm.targetGoalAmount || 50000),
+          campaignStory: influencerForm.campaignStory.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error || "Failed to save influencer");
+
+      showToast(`✓ ${data.message}`);
+      setInfluencers(data.influencers || []);
+      setTotalInfluencerRaised(data.totalFundsRaised || 0);
+      setTotalInfluencerDonors(data.totalDonors || 0);
+      setIsInfluencerModalOpen(false);
+    } catch (err: any) {
+      alert("Error saving influencer: " + err.message);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleToggleInfluencerStatus = async (code: string, currentStatus: string) => {
+    const nextStatus = currentStatus === "ACTIVE" ? "PAUSED" : "ACTIVE";
+    setActionLoading(true);
+    try {
+      const res = await fetch("/api/v1/admin/influencers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "toggle_status",
+          influencerCode: code,
+          status: nextStatus,
+        }),
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error || "Failed to toggle status");
+      showToast(`✓ ${data.message}`);
+      setInfluencers(data.influencers || []);
+    } catch (err: any) {
+      showToast("Error updating status: " + err.message);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleCopyText = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    showToast(`✓ Copied ${label} to clipboard!`);
   };
 
   const loadAdminData = async () => {
@@ -148,6 +265,7 @@ export function AdminTelecallerCRM() {
         }
       }
       await loadLeadsForReassignment("ALL");
+      await loadInfluencers();
     } catch (err: any) {
       showToast("Error loading telecaller CRM data: " + err.message);
     } finally {
@@ -712,8 +830,8 @@ export function AdminTelecallerCRM() {
 
     setActionLoading(true);
     const totalLeadsCount = parsedLeads.length;
-    // Chunk size 1,500 ensures each JSON payload is ~250KB, completely avoiding HTTP 413 "Request Entity Too Large"
-    const CHUNK_SIZE = 1500;
+    // Chunk size 1,000 ensures each JSON payload is ~80KB, completely avoiding HTTP 413 "Request Entity Too Large"
+    const CHUNK_SIZE = 1000;
     const chunks: typeof parsedLeads[] = [];
     for (let i = 0; i < totalLeadsCount; i += CHUNK_SIZE) {
       chunks.push(parsedLeads.slice(i, i + CHUNK_SIZE));
@@ -748,9 +866,9 @@ export function AdminTelecallerCRM() {
           totalChunks,
           processedLeads: processedSoFar,
           totalLeads: totalLeadsCount,
-          percent: Math.min(90, Math.max(1, Math.round((chunkNum / totalChunks) * 90))),
+          percent: Math.min(95, Math.max(1, Math.round((chunkNum / totalChunks) * 95))),
           stage: "uploading",
-          statusMessage: `Uploading chunk ${chunkNum} of ${totalChunks} (${processedSoFar.toLocaleString()} / ${totalLeadsCount.toLocaleString()} leads)...`,
+          statusMessage: `Processing chunk ${chunkNum} of ${totalChunks} (${processedSoFar.toLocaleString()} / ${totalLeadsCount.toLocaleString()} leads)...`,
           insertedTotal: cumInserted,
           duplicatesTotal: cumDuplicates,
         });
@@ -768,16 +886,23 @@ export function AdminTelecallerCRM() {
               body: JSON.stringify({
                 action: "upload_chunk",
                 leads: chunk,
-                autoDistribute: false,
+                autoDistribute: autoDistributeOnUpload,
+                mode: distributionMode,
               }),
             });
 
-            if (!res.ok) {
-              const errText = await res.text();
-              throw new Error(`HTTP ${res.status}: ${errText.slice(0, 100)}`);
+            let data: any;
+            const contentType = res.headers.get("content-type") || "";
+            if (contentType.includes("application/json")) {
+              data = await res.json();
+            } else {
+              const errBody = await res.text();
+              if (!res.ok) {
+                throw new Error(`Server returned HTTP ${res.status}: ${errBody.slice(0, 150)}`);
+              }
+              throw new Error(`Server returned unexpected response: ${errBody.slice(0, 150)}`);
             }
 
-            const data = await res.json();
             if (!data.success) {
               throw new Error(data.error || "Chunk ingestion failed");
             }
@@ -792,7 +917,7 @@ export function AdminTelecallerCRM() {
           } catch (err: any) {
             lastErr = err.message || "Network error";
             if (attempts < 3) {
-              await new Promise((r) => setTimeout(r, 600));
+              await new Promise((r) => setTimeout(r, 800));
             }
           }
         }
@@ -800,40 +925,6 @@ export function AdminTelecallerCRM() {
         if (!success) {
           throw new Error(`Failed on chunk ${chunkNum}/${totalChunks}: ${lastErr}`);
         }
-      }
-
-      // If Auto-Distribute is requested, balance newly uploaded unassigned leads across active callers
-      if (autoDistributeOnUpload) {
-        setUploadProgress({
-          inProgress: true,
-          currentChunk: totalChunks,
-          totalChunks,
-          processedLeads: totalLeadsCount,
-          totalLeads: totalLeadsCount,
-          percent: 95,
-          stage: "distributing",
-          statusMessage: `Balancing & distributing ${cumInserted.toLocaleString()} new leads equally across active telecallers...`,
-          insertedTotal: cumInserted,
-          duplicatesTotal: cumDuplicates,
-        });
-
-        const distRes = await fetch("/api/v1/admin/telecallers", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "distribute_unassigned",
-            mode: distributionMode,
-          }),
-        });
-
-        if (!distRes.ok) {
-          const distErr = await distRes.text();
-          throw new Error(`Distribution failed (${distRes.status}): ${distErr.slice(0, 100)}`);
-        }
-
-        const distData = await distRes.json();
-        if (distData.callers) setCallers(distData.callers);
-        if (distData.totalLeads) setTotalLeads(distData.totalLeads);
       }
 
       setUploadProgress({
@@ -844,7 +935,7 @@ export function AdminTelecallerCRM() {
         totalLeads: totalLeadsCount,
         percent: 100,
         stage: "done",
-        statusMessage: `✓ Import complete! ${cumInserted.toLocaleString()} unique leads added (${cumDuplicates.toLocaleString()} duplicates filtered).`,
+        statusMessage: `✓ Import complete! ${cumInserted.toLocaleString()} unique leads added & distributed (${cumDuplicates.toLocaleString()} duplicates filtered).`,
         insertedTotal: cumInserted,
         duplicatesTotal: cumDuplicates,
       });
@@ -1341,6 +1432,13 @@ export function AdminTelecallerCRM() {
                     <span>👥 Telecaller Accounts Roster</span>
                     <span className="text-[10px] text-teal-950/50">.CSV</span>
                   </button>
+                  <button
+                    onClick={() => window.open("/api/v1/admin/influencers/export?type=summary", "_blank")}
+                    className="w-full text-left px-3 py-2 text-xs font-bold text-amber-900 bg-amber-50/70 hover:bg-amber-100 rounded-xl transition flex items-center justify-between"
+                  >
+                    <span>📸 Influencer Performance Summary</span>
+                    <span className="text-[10px] text-amber-900 font-bold">.CSV</span>
+                  </button>
                   <div className="border-t border-teal-900/10 mt-1 pt-1">
                     <button
                       onClick={handleCopyAgencySummary}
@@ -1364,7 +1462,55 @@ export function AdminTelecallerCRM() {
         </div>
       </div>
 
-      {/* ── 1. AGENCY SALES CAMPAIGN KPIS (6 TILES) ── */}
+      {/* ── 0. CRM SUB-NAVIGATION: STAFF TELECALLERS vs INSTAGRAM INFLUENCERS ── */}
+      <div className="flex flex-wrap items-center gap-2 border-b border-teal-900/10 pb-3">
+        <button
+          type="button"
+          onClick={() => setActiveSubtab("callers")}
+          className={`px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-black transition cursor-pointer flex items-center gap-2 ${
+            activeSubtab === "callers"
+              ? "bg-teal-950 text-gold shadow-md"
+              : "bg-white text-teal-950 hover:bg-cream border border-teal-900/10"
+          }`}
+        >
+          <span>📞</span>
+          <span>Staff Telecallers &amp; Birthday Leads</span>
+          <span className="rounded-full bg-teal-900/20 px-2 py-0.5 text-[10px] font-mono">
+            {callers.length} callers
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setActiveSubtab("influencers");
+            void loadInfluencers();
+          }}
+          className={`px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-black transition cursor-pointer flex items-center gap-2 ${
+            activeSubtab === "influencers"
+              ? "bg-teal-950 text-gold shadow-md"
+              : "bg-white text-teal-950 hover:bg-cream border border-teal-900/10"
+          }`}
+        >
+          <span>📸</span>
+          <span>Instagram Influencers &amp; Creators</span>
+          <span className="rounded-full bg-amber-500 text-teal-950 px-2 py-0.5 text-[10px] font-black">
+            {influencers.length}
+          </span>
+          {totalInfluencerRaised > 0 && (
+            <span className="rounded-full bg-emerald-600 text-white px-2 py-0.5 text-[10px] font-bold">
+              {formatINR(totalInfluencerRaised)}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {/* ══════════════════════════════════════════════════════════════════
+          VIEW 1: STAFF TELECALLERS & BIRTHDAY LEADS
+      ══════════════════════════════════════════════════════════════════ */}
+      {activeSubtab === "callers" && (
+        <div className="space-y-6">
+          {/* ── 1. AGENCY SALES CAMPAIGN KPIS (6 TILES) ── */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3.5">
         <div className="rounded-2xl bg-white p-4 shadow-sm border border-teal-900/10">
           <span className="text-[10px] font-black uppercase tracking-wider text-teal-950/60 block">
@@ -2309,6 +2455,256 @@ export function AdminTelecallerCRM() {
           </div>
         )}
       </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════════
+          VIEW 2: INSTAGRAM INFLUENCERS & CREATORS REFERRAL HUB
+      ══════════════════════════════════════════════════════════════════ */}
+      {activeSubtab === "influencers" && (
+        <div className="space-y-6">
+          {/* Top Metric Tiles */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
+            <div className="rounded-2xl bg-white p-4 shadow-sm border border-teal-900/10">
+              <span className="text-[10px] font-black uppercase tracking-wider text-teal-950/60 block">
+                Total Influencer Funds Raised
+              </span>
+              <p className="mt-1 font-display text-xl sm:text-2xl font-black text-emerald-800">
+                {formatINR(totalInfluencerRaised)}
+              </p>
+              <span className="text-[10px] text-emerald-700 font-bold mt-0.5 block">
+                {totalInfluencerDonors} completed donations
+              </span>
+            </div>
+
+            <div className="rounded-2xl bg-white p-4 shadow-sm border border-teal-900/10">
+              <span className="text-[10px] font-black uppercase tracking-wider text-teal-950/60 block">
+                Active Creators
+              </span>
+              <p className="mt-1 font-display text-xl sm:text-2xl font-black text-teal-950">
+                {influencers.filter((i) => i.status === "ACTIVE").length} / {influencers.length}
+              </p>
+              <span className="text-[10px] text-teal-950/60 font-semibold mt-0.5 block">
+                Configured with custom referral links
+              </span>
+            </div>
+
+            <div className="rounded-2xl bg-white p-4 shadow-sm border border-teal-900/10">
+              <span className="text-[10px] font-black uppercase tracking-wider text-teal-950/60 block">
+                Wholesome Meals Sponsored
+              </span>
+              <p className="mt-1 font-display text-xl sm:text-2xl font-black text-amber-900">
+                {Math.round(totalInfluencerRaised / 50).toLocaleString()} Meals
+              </p>
+              <span className="text-[10px] text-amber-700 font-bold mt-0.5 block">
+                For 25 resident boys in Bengaluru
+              </span>
+            </div>
+
+            <div className="rounded-2xl bg-white p-4 shadow-sm border border-teal-900/10">
+              <span className="text-[10px] font-black uppercase tracking-wider text-teal-950/60 block">
+                Average Donation Ticket
+              </span>
+              <p className="mt-1 font-display text-xl sm:text-2xl font-black text-teal-950">
+                {formatINR(totalInfluencerDonors > 0 ? Math.round(totalInfluencerRaised / totalInfluencerDonors) : 0)}
+              </p>
+              <span className="text-[10px] text-teal-950/60 font-semibold mt-0.5 block">
+                Per contributing follower
+              </span>
+            </div>
+          </div>
+
+          {/* Action Bar */}
+          <div className="rounded-3xl bg-amber-50/60 p-5 border border-amber-200/80 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xl">📸</span>
+                <h3 className="font-display text-base font-bold text-teal-950">
+                  Instagram Influencer Campaign Manager
+                </h3>
+                <span className="rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-black px-2 py-0.5 border border-emerald-300">
+                  30-Day Attribution Active
+                </span>
+              </div>
+              <p className="text-xs text-teal-950/70 mt-1 max-w-xl leading-relaxed">
+                Generate custom referral links (<code className="font-mono text-teal-900 font-bold">/give?ref=CODE</code>) for Instagram creators. Track every rupee raised, send 1-click WhatsApp EOD Impact Cards, and download audit-ready CSV donor ledgers.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={handleOpenAddInfluencer}
+                disabled={actionLoading}
+                className="focus-ring tap-scale inline-flex items-center gap-1.5 rounded-xl bg-teal-950 hover:bg-teal-900 text-gold px-3.5 py-2 text-xs font-black shadow-xs transition cursor-pointer"
+              >
+                <span>➕ Add Creator Partner</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => window.open("/api/v1/admin/influencers/export?type=summary", "_blank")}
+                className="focus-ring tap-scale inline-flex items-center gap-1.5 rounded-xl bg-white hover:bg-sand border border-teal-900/20 text-teal-950 px-3.5 py-2 text-xs font-bold shadow-xs transition cursor-pointer"
+              >
+                <span>📥 Export All Summary (CSV)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => void loadInfluencers()}
+                disabled={loadingInfluencers}
+                className="focus-ring tap-scale inline-flex items-center gap-1.5 rounded-xl bg-sand/60 hover:bg-sand border border-teal-900/10 text-teal-950 px-3 py-2 text-xs font-bold transition cursor-pointer"
+              >
+                <span>{loadingInfluencers ? "Refreshing..." : "🔄 Refresh"}</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Influencer Cards Grid */}
+          {influencers.length === 0 ? (
+            <div className="rounded-3xl bg-white p-12 text-center border border-teal-900/10 shadow-sm space-y-3">
+              <div className="text-4xl">📸</div>
+              <h4 className="font-display text-base font-bold text-teal-950">No Instagram Influencers Added Yet</h4>
+              <p className="text-xs text-teal-950/60 max-w-md mx-auto">
+                Partner with Instagram creators, fitness coaches, food bloggers, or public figures. Click &quot;Add Creator Partner&quot; to give them a custom referral code.
+              </p>
+              <button
+                type="button"
+                onClick={handleOpenAddInfluencer}
+                className="rounded-xl bg-teal-950 hover:bg-teal-900 text-gold px-4 py-2 text-xs font-black shadow-xs transition cursor-pointer"
+              >
+                ➕ Create First Creator Link
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {influencers.map((inf, idx) => (
+                <div
+                  key={inf.id}
+                  className="rounded-3xl bg-white p-5 border border-teal-900/10 shadow-sm space-y-4 hover:border-teal-900/30 transition flex flex-col justify-between"
+                >
+                  <div className="space-y-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2.5">
+                        <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-teal-950 text-gold text-xs font-black">
+                          #{idx + 1}
+                        </span>
+                        <div>
+                          <h4 className="font-bold text-sm text-teal-950">{inf.displayName}</h4>
+                          <p className="text-[11px] font-mono text-teal-900/70 flex items-center gap-1.5">
+                            <span>{inf.instagramHandle || "@creator"}</span>
+                            <span>•</span>
+                            <span className="font-black text-amber-800">{inf.influencerCode}</span>
+                          </p>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => handleToggleInfluencerStatus(inf.influencerCode, inf.status)}
+                        className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase cursor-pointer transition ${
+                          inf.status === "ACTIVE"
+                            ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-200"
+                            : "bg-slate-200 text-slate-700 hover:bg-slate-300"
+                        }`}
+                      >
+                        {inf.status === "ACTIVE" ? "● Active" : "○ Paused"}
+                      </button>
+                    </div>
+
+                    {/* Progress Bar & Funds Raised */}
+                    <div className="rounded-2xl bg-cream/50 p-3 border border-teal-900/10 space-y-2">
+                      <div className="flex items-center justify-between text-xs font-bold">
+                        <span className="text-teal-950/70">Funds Raised:</span>
+                        <span className="font-display font-black text-emerald-800 text-sm">
+                          {formatINR(inf.totalDonationAmount)}
+                        </span>
+                      </div>
+                      <div className="h-2 w-full rounded-full bg-slate-200 overflow-hidden">
+                        <div
+                          className="h-full bg-gradient-to-r from-amber-500 to-emerald-600 rounded-full transition-all duration-500"
+                          style={{ width: `${inf.progressPercent}%` }}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between text-[11px] text-teal-950/60">
+                        <span>Goal: {formatINR(inf.targetGoalAmount)}</span>
+                        <span className="font-black text-teal-950">{inf.progressPercent}% Achieved</span>
+                      </div>
+                    </div>
+
+                    {/* Donor & Ticket Stats */}
+                    <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                      <div className="rounded-xl bg-slate-50 p-2 border border-slate-200/60">
+                        <span className="block text-[9px] text-teal-950/60 uppercase">Donors</span>
+                        <span className="font-bold text-teal-950 text-xs">{inf.totalDonorsCount}</span>
+                      </div>
+                      <div className="rounded-xl bg-slate-50 p-2 border border-slate-200/60">
+                        <span className="block text-[9px] text-teal-950/60 uppercase">Avg Ticket</span>
+                        <span className="font-bold text-teal-950 text-xs">{formatINR(inf.averageDonation)}</span>
+                      </div>
+                      <div className="rounded-xl bg-amber-50 p-2 border border-amber-200/60">
+                        <span className="block text-[9px] text-amber-900 uppercase">Meals</span>
+                        <span className="font-bold text-amber-900 text-xs">
+                          {Math.round(inf.totalDonationAmount / 50)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Actions Grid */}
+                  <div className="space-y-1.5 pt-2 border-t border-teal-900/10">
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => handleCopyText(inf.referralLink, "Instagram Referral Link")}
+                        className="rounded-xl bg-sand/50 hover:bg-sand border border-teal-900/20 text-teal-950 py-1.5 text-[11px] font-bold transition flex items-center justify-center gap-1 cursor-pointer"
+                        title="Copy direct checkout link to clipboard"
+                      >
+                        <span>🔗</span>
+                        <span>Copy Link</span>
+                      </button>
+
+                      <a
+                        href={inf.whatsappKitUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-800 py-1.5 text-[11px] font-bold transition flex items-center justify-center gap-1 text-center"
+                        title="Open WhatsApp with ready-to-post Story caption & link"
+                      >
+                        <span>📱</span>
+                        <span>Share Kit</span>
+                      </a>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <a
+                        href={inf.whatsappReportUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-900 py-1.5 text-[11px] font-bold transition flex items-center justify-center gap-1 text-center"
+                        title="Send today's live impact update to creator via WhatsApp"
+                      >
+                        <span>📲</span>
+                        <span>EOD Card</span>
+                      </a>
+
+                      <button
+                        type="button"
+                        onClick={() => window.open(`/api/v1/admin/influencers/export?code=${inf.influencerCode}`, "_blank")}
+                        className="rounded-xl bg-teal-950 hover:bg-teal-900 text-gold py-1.5 text-[11px] font-black transition flex items-center justify-center gap-1 cursor-pointer"
+                        title="Download complete donor ledger CSV for this creator"
+                      >
+                        <span>📥</span>
+                        <span>CSV Ledger</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ══════════════════════════════════════════════════════════════════
           MODAL 1: ADD NEW TELECALLER
@@ -3259,6 +3655,138 @@ export function AdminTelecallerCRM() {
             showToast(`✓ Updated lead #${leadId} status to ${disp}`);
           }}
         />
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════════
+          MODAL 9: ADD / EDIT INFLUENCER PARTNER
+      ══════════════════════════════════════════════════════════════════ */}
+      {isInfluencerModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-teal-950/60 backdrop-blur-xs animate-fadeIn">
+          <div className="w-full max-w-md bg-white rounded-3xl p-6 shadow-2xl border border-teal-900/10">
+            <div className="flex items-center justify-between pb-4 border-b border-teal-900/10">
+              <div className="flex items-center gap-2.5">
+                <div className="h-9 w-9 rounded-xl bg-teal-950 text-gold flex items-center justify-center font-black">
+                  📸
+                </div>
+                <div>
+                  <h3 className="font-display text-base font-bold text-teal-950">Add Creator / Influencer Partner</h3>
+                  <p className="text-[11px] text-teal-950/60">Generate tracked Instagram link with 30-day attribution</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsInfluencerModalOpen(false)}
+                className="text-teal-950/40 hover:text-teal-950 text-sm font-bold cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveInfluencer} className="mt-4 space-y-3.5">
+              <div>
+                <label className="block text-xs font-bold text-teal-950">Influencer Full Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={influencerForm.displayName}
+                  onChange={(e) => setInfluencerForm({ ...influencerForm, displayName: e.target.value })}
+                  placeholder="e.g. Rohit Sharma"
+                  className="mt-1 w-full rounded-xl border border-teal-900/20 px-3.5 py-2 text-xs font-bold text-teal-950 outline-none focus:ring-2 focus:ring-amber-400"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-teal-950">Referral Code *</label>
+                  <input
+                    type="text"
+                    required
+                    value={influencerForm.influencerCode}
+                    onChange={(e) =>
+                      setInfluencerForm({
+                        ...influencerForm,
+                        influencerCode: e.target.value.toUpperCase().replace(/[^A-Z0-9_-]/g, ""),
+                      })
+                    }
+                    placeholder="ROHIT_FIT"
+                    className="mt-1 w-full rounded-xl border border-teal-900/20 px-3.5 py-2 font-mono text-xs font-black text-amber-900 outline-none focus:ring-2 focus:ring-amber-400"
+                  />
+                  <span className="text-[10px] text-teal-950/50">Used in ?ref=CODE</span>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-teal-950">Instagram Handle</label>
+                  <input
+                    type="text"
+                    value={influencerForm.instagramHandle}
+                    onChange={(e) => setInfluencerForm({ ...influencerForm, instagramHandle: e.target.value })}
+                    placeholder="@rohit_fitness"
+                    className="mt-1 w-full rounded-xl border border-teal-900/20 px-3.5 py-2 text-xs font-semibold text-teal-950 outline-none focus:ring-2 focus:ring-amber-400"
+                  />
+                  <span className="text-[10px] text-teal-950/50">Shown to followers</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-teal-950">WhatsApp Phone *</label>
+                  <input
+                    type="tel"
+                    required
+                    value={influencerForm.whatsappNumber}
+                    onChange={(e) => setInfluencerForm({ ...influencerForm, whatsappNumber: e.target.value })}
+                    placeholder="9880123456"
+                    className="mt-1 w-full rounded-xl border border-teal-900/20 px-3.5 py-2 font-mono text-xs font-bold text-teal-950 outline-none focus:ring-2 focus:ring-amber-400"
+                  />
+                  <span className="text-[10px] text-teal-950/50">For 1-click EOD card</span>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-teal-950">Target Goal (₹)</label>
+                  <input
+                    type="number"
+                    min="1000"
+                    step="1000"
+                    value={influencerForm.targetGoalAmount}
+                    onChange={(e) =>
+                      setInfluencerForm({ ...influencerForm, targetGoalAmount: Number(e.target.value) })
+                    }
+                    placeholder="50000"
+                    className="mt-1 w-full rounded-xl border border-teal-900/20 px-3.5 py-2 text-xs font-bold text-teal-950 outline-none focus:ring-2 focus:ring-amber-400"
+                  />
+                  <span className="text-[10px] text-teal-950/50">Fundraising goal</span>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-teal-950">Campaign Message / Story</label>
+                <textarea
+                  rows={2}
+                  value={influencerForm.campaignStory}
+                  onChange={(e) => setInfluencerForm({ ...influencerForm, campaignStory: e.target.value })}
+                  placeholder="e.g. Join me in feeding 25 orphaned boys at Janaseva Ashrama Bangalore..."
+                  className="mt-1 w-full rounded-xl border border-teal-900/20 p-2.5 text-xs text-teal-950 outline-none focus:ring-2 focus:ring-amber-400"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-teal-900/10">
+                <button
+                  type="button"
+                  onClick={() => setIsInfluencerModalOpen(false)}
+                  className="rounded-xl px-4 py-2 text-xs font-bold text-teal-950/70 hover:bg-sand transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={actionLoading}
+                  className="rounded-xl bg-teal-950 hover:bg-teal-900 text-gold px-5 py-2 text-xs font-black shadow-xs transition cursor-pointer disabled:opacity-50"
+                >
+                  {actionLoading ? "Saving..." : "Save & Generate Link"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
     </div>
   );

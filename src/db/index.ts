@@ -205,6 +205,32 @@ export async function ensureDbSchema(): Promise<void> {
             created_at TIMESTAMP NOT NULL DEFAULT NOW()
           );
 
+          CREATE TABLE IF NOT EXISTS influencer_profiles (
+            id SERIAL PRIMARY KEY,
+            influencer_code TEXT NOT NULL UNIQUE,
+            display_name TEXT NOT NULL,
+            instagram_handle TEXT,
+            whatsapp_number TEXT NOT NULL,
+            target_goal_amount INTEGER NOT NULL DEFAULT 50000,
+            campaign_story TEXT,
+            cover_image_url TEXT,
+            status TEXT NOT NULL DEFAULT 'ACTIVE',
+            created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+          );
+
+          -- Safe migration: allow caller_ref_id to accept telecallers or influencer codes without foreign key crashes
+          DO $$
+          BEGIN
+            IF EXISTS (
+              SELECT 1 FROM information_schema.table_constraints 
+              WHERE constraint_name = 'ag_donations_caller_ref_id_ag_telecallers_caller_id_fk' 
+              AND table_name = 'ag_donations'
+            ) THEN
+              ALTER TABLE ag_donations DROP CONSTRAINT ag_donations_caller_ref_id_ag_telecallers_caller_id_fk;
+            END IF;
+          END $$;
+
           CREATE INDEX IF NOT EXISTS ag_leads_dob_idx ON ag_leads(dob_month, dob_day);
           CREATE INDEX IF NOT EXISTS ag_leads_assigned_idx ON ag_leads(assigned_caller_id, status);
           CREATE INDEX IF NOT EXISTS ag_leads_phone_idx ON ag_leads(phone);
@@ -212,6 +238,8 @@ export async function ensureDbSchema(): Promise<void> {
           CREATE INDEX IF NOT EXISTS ag_call_logs_caller_idx ON ag_call_logs(caller_id, created_at);
           CREATE INDEX IF NOT EXISTS ag_donations_caller_idx ON ag_donations(caller_ref_id, created_at);
           CREATE INDEX IF NOT EXISTS ag_donations_order_idx ON ag_donations(gateway_order_id);
+          CREATE INDEX IF NOT EXISTS influencer_code_idx ON influencer_profiles(influencer_code);
+          CREATE INDEX IF NOT EXISTS influencer_status_idx ON influencer_profiles(status);
         `);
 
       } catch (err) {

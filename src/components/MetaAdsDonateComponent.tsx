@@ -325,7 +325,17 @@ export function MetaAdsDonateComponent() {
   // URL Attribution & UTM tracking
   const [callerRef] = useState<string>(() => {
     const urlRef = searchParams.get("ref");
-    if (urlRef) return urlRef.trim().toUpperCase();
+    if (urlRef) {
+      const clean = urlRef.trim().toUpperCase();
+      if (typeof window !== "undefined") {
+        try {
+          sessionStorage.setItem("antigravity_caller_ref", clean);
+          localStorage.setItem("antigravity_caller_ref", clean);
+          document.cookie = `antigravity_caller_ref=${clean}; path=/; max-age=2592000; SameSite=Lax`;
+        } catch {}
+      }
+      return clean;
+    }
     if (typeof window !== "undefined") {
       try {
         return (
@@ -1020,6 +1030,26 @@ export function MetaAdsDonateComponent() {
           ✓ 80G Form 10AC
         </span>
       </div>
+
+      {/* ── INFLUENCER / CREATOR PARTNER BANNER ── */}
+      {callerRef && callerRef !== "DIRECT" && !callerRef.startsWith("TC") && (
+        <div className="mb-3 rounded-2xl bg-gradient-to-r from-amber-500/15 via-emerald-500/15 to-amber-500/15 border border-amber-400/40 p-3 flex items-center justify-between text-xs text-teal-950 shadow-xs animate-fadeIn">
+          <div className="flex items-center gap-2.5">
+            <span className="text-xl">📸</span>
+            <div>
+              <p className="font-bold text-teal-950">
+                Supporting Janaseva Ashrama alongside <span className="text-amber-800 font-black">{callerRef}</span>
+              </p>
+              <p className="text-[10px] text-teal-950/70">
+                Your donation directly funds daily meals for 25 boys &amp; is 100% tax-deductible under 80G.
+              </p>
+            </div>
+          </div>
+          <span className="rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-black px-2.5 py-0.5 border border-emerald-300 shrink-0">
+            ✓ Partner Attributed
+          </span>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-8 items-start">
         {/* ── MAIN CHECKOUT CARD (ORDER-1 ON MOBILE FOR ZERO-SCROLL, RIGHT COLUMN ON DESKTOP) ── */}

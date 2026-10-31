@@ -586,7 +586,7 @@ export const agDonations = pgTable(
     amount: integer("amount").notNull(), // Amount in INR whole rupees
     currency: text("currency").notNull().default("INR"),
     paymentStatus: text("payment_status").notNull().default("captured"),
-    callerRefId: text("caller_ref_id").references(() => agTelecallers.callerId, { onDelete: "set null" }),
+    callerRefId: text("caller_ref_id"),
     leadId: integer("lead_id").references(() => agLeads.leadId, { onDelete: "set null" }),
     donorName: text("donor_name"),
     donorPhone: text("donor_phone"),
@@ -597,6 +597,27 @@ export const agDonations = pgTable(
   (t) => [
     index("ag_donations_caller_idx").on(t.callerRefId, t.createdAt),
     index("ag_donations_order_idx").on(t.gatewayOrderId),
+  ],
+);
+
+export const influencerProfiles = pgTable(
+  "influencer_profiles",
+  {
+    id: serial("id").primaryKey(),
+    influencerCode: text("influencer_code").notNull().unique(), // e.g. "ROHIT_FIT"
+    displayName: text("display_name").notNull(),               // e.g. "Rohit Sharma"
+    instagramHandle: text("instagram_handle"),                 // e.g. "@rohit_fitness"
+    whatsappNumber: text("whatsapp_number").notNull(),         // e.g. "9880123456"
+    targetGoalAmount: integer("target_goal_amount").notNull().default(50000), // e.g. ₹50,000
+    campaignStory: text("campaign_story"),
+    coverImageUrl: text("cover_image_url"),
+    status: text("status").notNull().default("ACTIVE"),        // ACTIVE | PAUSED
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => [
+    index("influencer_code_idx").on(t.influencerCode),
+    index("influencer_status_idx").on(t.status),
   ],
 );
 
