@@ -18,6 +18,8 @@ import {
   saveCrmWhatsAppSettings,
   updateTelecallerDetails,
   clearDemoLeads,
+  deleteAllLeads,
+  resetDailyQuotaLeads,
 } from "@/lib/antigravity-crm";
 
 export async function GET(req: Request) {
@@ -320,23 +322,64 @@ export async function POST(req: Request) {
     }
 
     if (action === "clear_leads") {
-      const { onlySample } = body;
-      await clearDemoLeads(onlySample !== false);
+      const { onlySample, wipeAll } = body;
+      const shouldWipeAll = wipeAll === true || onlySample === false;
+      const res = await clearDemoLeads(!shouldWipeAll);
 
       await writeAudit({
         actorAdminUserId: session.user.id ?? null,
         action: "crm.clear_leads",
         entity: "ag_leads",
-        afterState: { onlySample: onlySample !== false },
+        afterState: { onlySample: !shouldWipeAll, wipeAll: shouldWipeAll },
         ipAddress: ip,
       });
 
       const updatedLeaderboard = await getAdminLeaderboard();
       return NextResponse.json({
         success: true,
-        message: onlySample !== false
-          ? "Demo test leads removed successfully."
-          : "All leads cleared. CRM queue is now clean and ready for real donor leads.",
+        message: shouldWipeAll
+          ? "All leads and call logs deleted. Telecaller staff accounts are preserved."
+          : "Demo test leads removed successfully.",
+        ...updatedLeaderboard,
+      });
+    }
+
+    if (action === "delete_all_leads") {
+      const res = await deleteAllLeads();
+
+      await writeAudit({
+        actorAdminUserId: session.user.id ?? null,
+        action: "crm.delete_all_leads",
+        entity: "ag_leads",
+        afterState: res,
+        ipAddress: ip,
+      });
+
+      const updatedLeaderboard = await getAdminLeaderboard();
+      return NextResponse.json({
+        success: true,
+        message: "All leads and call logs permanently deleted. Telecaller staff accounts remain active.",
+        ...updatedLeaderboard,
+      });
+    }
+
+    if (action === "reset_daily_quota" || action === "reset_daily_leads") {
+      const { mode } = body;
+      const res = await resetDailyQuotaLeads(mode || "balanced");
+
+      await writeAudit({
+        actorAdminUserId: session.user.id ?? null,
+        action: "crm.reset_daily_quota",
+        entity: "ag_leads",
+        afterState: res,
+        ipAddress: ip,
+      });
+
+      const updatedLeaderboard = await getAdminLeaderboard();
+      return NextResponse.json({
+        success: true,
+        message: res.message,
+        resetResult: res,
         ...updatedLeaderboard,
       });
     }

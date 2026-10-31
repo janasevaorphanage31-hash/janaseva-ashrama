@@ -105,10 +105,13 @@ export interface TelecallerStats {
   rank: number;
 }
 
+let telecallersSeeded = false;
+
 /**
  * 1. Seeds 15 telecallers (TC01 to TC15) and realistic birthday leads if tables are fresh.
  */
-export async function ensureTelecallersAndSeedData() {
+export async function ensureTelecallersAndSeedData(forceCheck = false) {
+  if (telecallersSeeded && !forceCheck) return;
   await ensureDbSchema();
   const existing = await db.select({ count: sql<number>`count(*)` }).from(agTelecallers);
   const count = Number(existing[0]?.count || 0);
@@ -192,6 +195,7 @@ export async function ensureTelecallersAndSeedData() {
     // Automatically trigger initial round-robin routing
     await distributeBirthdayLeads();
   }
+  telecallersSeeded = true;
 }
 
 /**
@@ -214,7 +218,7 @@ export async function distributeBirthdayLeads() {
     .orderBy(agTelecallers.callerId);
 
   if (activeCallers.length === 0) {
-    return { distributed: 0, callersCount: 0 };
+    return { distributed: 0, callersCount: 0, perCaller: {} };
   }
 
   const conditions = targets.map(
@@ -232,44 +236,34 @@ export async function distributeBirthdayLeads() {
     );
 
   if (pendingLeads.length === 0) {
-    return { distributed: 0, callersCount: activeCallers.length };
+    return { distributed: 0, callersCount: activeCallers.length, perCaller: {} };
   }
 
-  let index = 0;
-  for (const lead of pendingLeads) {
-    const callerId = activeCallers[index % activeCallers.length].callerId;
-    index++;
+  const ids = pendingLeads.map((l) => l.leadId);
+  const result = await distributeSpecificLeads(ids, "balanced");
 
-    await db
-      .update(agLeads)
-      .set({
-        assignedCallerId: callerId,
-        status: "Pending",
-        updatedAt: new Date(),
-      })
-      .where(eq(agLeads.leadId, lead.leadId));
-  }
-
-  return { distributed: pendingLeads.length, callersCount: activeCallers.length };
+  return { distributed: result.distributed, callersCount: activeCallers.length, perCaller: result.perCaller };
 }
 
 /**
  * 3. Fetch Assigned Leads for a Telecaller (or All Leads if callerId === "ALL" or empty)
  */
-export async function getAssignedLeads(callerId?: string | null) {
+export async function getAssignedLeads(callerId?: string | null, limit = 2000) {
   await ensureTelecallersAndSeedData();
   const cid = (callerId || "").trim().toUpperCase();
   if (!cid || cid === "ALL") {
     return db
       .select()
       .from(agLeads)
-      .orderBy(agLeads.dobMonth, agLeads.dobDay, desc(agLeads.leadId));
+      .orderBy(agLeads.dobMonth, agLeads.dobDay, desc(agLeads.leadId))
+      .limit(limit);
   }
   return db
     .select()
     .from(agLeads)
     .where(eq(agLeads.assignedCallerId, cid))
-    .orderBy(agLeads.dobMonth, agLeads.dobDay, desc(agLeads.leadId));
+    .orderBy(agLeads.dobMonth, agLeads.dobDay, desc(agLeads.leadId))
+    .limit(limit);
 }
 
 /**
@@ -425,6 +419,7 @@ export async function recordPaymentAttribution(data: {
 
 /**
  * 7. Super Admin Leaderboard & Conversion Metrics
+ * High-performance SQL aggregation: zero full table scans into memory.
  */
 export async function getAdminLeaderboard(): Promise<{
   callers: TelecallerStats[];
@@ -437,15 +432,48 @@ export async function getAdminLeaderboard(): Promise<{
   await ensureTelecallersAndSeedData();
 
   const allCallers = await db.select().from(agTelecallers).orderBy(agTelecallers.callerId);
-  const leads = await db.select().from(agLeads);
-  const donations = await db.select().from(agDonations);
 
-  let totalRevenue = 0;
+  // 1. Total leads count
+  const [totalLeadsResult] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(agLeads);
+  const totalLeads = Number(totalLeadsResult?.count || 0);
+
+  // 2. Lead counts grouped by assignedCallerId and status (Index Scan)
+  const leadStatsRows = await db
+    .select({
+      callerId: agLeads.assignedCallerId,
+      status: agLeads.status,
+      count: sql<number>`count(*)`,
+    })
+    .from(agLeads)
+    .where(sql`${agLeads.assignedCallerId} IS NOT NULL`)
+    .groupBy(agLeads.assignedCallerId, agLeads.status);
+
+  // 3. Donation stats
+  const [donationAgg] = await db
+    .select({
+      count: sql<number>`count(*)`,
+      totalRevenue: sql<number>`coalesce(sum(${agDonations.amount}), 0)`,
+    })
+    .from(agDonations);
+  const totalDonations = Number(donationAgg?.count || 0);
+  const totalRevenue = Number(donationAgg?.totalRevenue || 0);
+
+  // 4. Donations grouped by callerRefId
+  const callerDonationRows = await db
+    .select({
+      callerRefId: agDonations.callerRefId,
+      totalAmount: sql<number>`coalesce(sum(${agDonations.amount}), 0)`,
+    })
+    .from(agDonations)
+    .where(sql`${agDonations.callerRefId} IS NOT NULL`)
+    .groupBy(agDonations.callerRefId);
+
   const donationsByCaller: Record<string, number> = {};
-  for (const d of donations) {
-    totalRevenue += d.amount;
-    if (d.callerRefId) {
-      donationsByCaller[d.callerRefId] = (donationsByCaller[d.callerRefId] || 0) + d.amount;
+  for (const row of callerDonationRows) {
+    if (row.callerRefId) {
+      donationsByCaller[row.callerRefId] = Number(row.totalAmount || 0);
     }
   }
 
@@ -453,15 +481,15 @@ export async function getAdminLeaderboard(): Promise<{
   const contactedByCaller: Record<string, number> = {};
   const convertedByCaller: Record<string, number> = {};
 
-  for (const l of leads) {
-    if (l.assignedCallerId) {
-      assignedByCaller[l.assignedCallerId] = (assignedByCaller[l.assignedCallerId] || 0) + 1;
-      if (l.status !== "Pending") {
-        contactedByCaller[l.assignedCallerId] = (contactedByCaller[l.assignedCallerId] || 0) + 1;
-      }
-      if (l.status === "Donated") {
-        convertedByCaller[l.assignedCallerId] = (convertedByCaller[l.assignedCallerId] || 0) + 1;
-      }
+  for (const row of leadStatsRows) {
+    if (!row.callerId) continue;
+    const cnt = Number(row.count || 0);
+    assignedByCaller[row.callerId] = (assignedByCaller[row.callerId] || 0) + cnt;
+    if (row.status !== "Pending") {
+      contactedByCaller[row.callerId] = (contactedByCaller[row.callerId] || 0) + cnt;
+    }
+    if (row.status === "Donated") {
+      convertedByCaller[row.callerId] = (convertedByCaller[row.callerId] || 0) + cnt;
     }
   }
 
@@ -498,8 +526,8 @@ export async function getAdminLeaderboard(): Promise<{
 
   return {
     callers: statsList,
-    totalLeads: leads.length,
-    totalDonations: donations.length,
+    totalLeads,
+    totalDonations,
     totalRevenue,
     crmWhatsAppSettings,
   };
@@ -830,7 +858,11 @@ export async function distributeSpecificLeads(
   }
 
   const perCaller: Record<string, number> = {};
-  activeCallers.forEach((c) => (perCaller[c.callerId] = 0));
+  const assignmentBuckets = new Map<string, number[]>();
+  activeCallers.forEach((c) => {
+    perCaller[c.callerId] = 0;
+    assignmentBuckets.set(c.callerId, []);
+  });
 
   if (mode === "balanced") {
     const pendingCounts = await db
@@ -862,12 +894,8 @@ export async function distributeSpecificLeads(
         }
       }
 
-      await db
-        .update(agLeads)
-        .set({ assignedCallerId: minCaller, status: "Pending", updatedAt: new Date() })
-        .where(eq(agLeads.leadId, leadId));
-
       loadMap.set(minCaller, minLoad + 1);
+      assignmentBuckets.get(minCaller)!.push(leadId);
       perCaller[minCaller] = (perCaller[minCaller] || 0) + 1;
     }
   } else {
@@ -875,15 +903,32 @@ export async function distributeSpecificLeads(
     for (const leadId of leadIds) {
       const callerId = activeCallers[idx % activeCallers.length].callerId;
       idx++;
-
-      await db
-        .update(agLeads)
-        .set({ assignedCallerId: callerId, status: "Pending", updatedAt: new Date() })
-        .where(eq(agLeads.leadId, leadId));
-
+      assignmentBuckets.get(callerId)!.push(leadId);
       perCaller[callerId] = (perCaller[callerId] || 0) + 1;
     }
   }
+
+  // Fast Bulk Batch Update using inArray (500 per batch)
+  const updatePromises: Promise<any>[] = [];
+  const CHUNK_SIZE = 500;
+  for (const [callerId, ids] of assignmentBuckets.entries()) {
+    if (ids.length === 0) continue;
+    for (let i = 0; i < ids.length; i += CHUNK_SIZE) {
+      const chunk = ids.slice(i, i + CHUNK_SIZE);
+      updatePromises.push(
+        db
+          .update(agLeads)
+          .set({
+            assignedCallerId: callerId,
+            status: "Pending",
+            updatedAt: new Date(),
+          })
+          .where(inArray(agLeads.leadId, chunk))
+      );
+    }
+  }
+
+  await Promise.all(updatePromises);
 
   return { distributed: leadIds.length, perCaller };
 }
@@ -906,27 +951,85 @@ export async function distributeAllPendingLeads(mode: "balanced" | "round_robin"
 }
 
 /**
- * 14b. Clear Demo Leads or Wipe Entire Leads Queue for Real Donor Data
+ * 14b. Reset All Leads for Daily Limit / Queue
+ * - Keeps actual 'Donated' donors intact
+ * - Resets all pending, reschedule, and non-donated leads back to 'Pending'
+ * - Mathematically rebalances them across active telecallers so callers start fresh with their daily targets
+ */
+export async function resetDailyQuotaLeads(mode: "balanced" | "round_robin" = "balanced") {
+  await ensureTelecallersAndSeedData();
+
+  const activeCallers = await db
+    .select({ callerId: agTelecallers.callerId })
+    .from(agTelecallers)
+    .where(eq(agTelecallers.isActive, true))
+    .orderBy(agTelecallers.callerId);
+
+  if (activeCallers.length === 0) {
+    throw new Error("Cannot reset daily queue: No active telecallers found.");
+  }
+
+  // Find all leads that are NOT 'Donated'
+  const nonDonatedLeads = await db
+    .select({ leadId: agLeads.leadId })
+    .from(agLeads)
+    .where(or(isNull(agLeads.status), sql`${agLeads.status} != 'Donated'`));
+
+  if (nonDonatedLeads.length === 0) {
+    return {
+      success: true,
+      resetCount: 0,
+      distributed: 0,
+      perCaller: {},
+      message: "No uncompleted leads to reset.",
+    };
+  }
+
+  const ids = nonDonatedLeads.map((l) => l.leadId);
+  const dist = await distributeSpecificLeads(ids, mode);
+
+  return {
+    success: true,
+    resetCount: ids.length,
+    distributed: dist.distributed,
+    perCaller: dist.perCaller,
+    message: `Daily queue reset successfully: ${dist.distributed} leads refreshed to 'Pending' and balanced across ${activeCallers.length} active telecallers.`,
+  };
+}
+
+/**
+ * 14c. Complete Wipe of All Leads & Call Logs
+ * Retains telecaller login accounts (TC01-TC16) while clearing the leads queue completely for a fresh start.
+ */
+export async function deleteAllLeads() {
+  await ensureDbSchema();
+  // Clear call logs first due to foreign key constraint
+  await db.delete(agCallLogs);
+  await db.delete(agLeads);
+  return {
+    success: true,
+    message: "All leads and call logs deleted. Telecaller staff accounts are preserved.",
+  };
+}
+
+/**
+ * 14d. Clear Demo Leads or Wipe Entire Leads Queue for Real Donor Data
  */
 export async function clearDemoLeads(onlySample = false) {
-  await ensureDbSchema();
-  if (onlySample) {
-    // Delete sample test leads created during seed / tests
-    await db.delete(agCallLogs);
-    await db.delete(agLeads).where(
-      or(
-        sql`${agLeads.name} LIKE 'Patron Donor%'`,
-        sql`${agLeads.name} LIKE 'Sample%'`,
-        sql`${agLeads.name} LIKE 'Test%'`,
-        sql`${agLeads.phone} LIKE '9800000%'`
-      )
-    );
-  } else {
-    // Complete wipe of all leads & call logs so the CRM queue is 100% clean for real donor uploads
-    await db.delete(agCallLogs);
-    await db.delete(agLeads);
+  if (!onlySample) {
+    return deleteAllLeads();
   }
-  return { success: true };
+  await ensureDbSchema();
+  await db.delete(agCallLogs);
+  await db.delete(agLeads).where(
+    or(
+      sql`${agLeads.name} LIKE 'Patron Donor%'`,
+      sql`${agLeads.name} LIKE 'Sample%'`,
+      sql`${agLeads.name} LIKE 'Test%'`,
+      sql`${agLeads.phone} LIKE '9800000%'`
+    )
+  );
+  return { success: true, message: "Sample test leads removed successfully." };
 }
 
 /**

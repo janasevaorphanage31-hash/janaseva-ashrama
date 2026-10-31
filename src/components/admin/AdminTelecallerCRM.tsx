@@ -26,6 +26,15 @@ export function AdminTelecallerCRM() {
   const [toastMessage, setToastMessage] = useState<string>("");
   const [actionLoading, setActionLoading] = useState<boolean>(false);
 
+  // Virtual Client Pagination (Prevents DOM overload and browser freezes)
+  const [leadsPage, setLeadsPage] = useState<number>(1);
+  const [leadsPerPage, setLeadsPerPage] = useState<number>(50);
+
+  // Wipe All Leads & Reset Daily Queue Modals
+  const [isDeleteAllModalOpen, setIsDeleteAllModalOpen] = useState<boolean>(false);
+  const [isResetDailyModalOpen, setIsResetDailyModalOpen] = useState<boolean>(false);
+  const [resetDistributionMode, setResetDistributionMode] = useState<"balanced" | "round_robin">("balanced");
+
   // 1. Add Telecaller Modal State
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [addCallerForm, setAddCallerForm] = useState({
@@ -254,7 +263,276 @@ export function AdminTelecallerCRM() {
     }
   };
 
-  // ── UNIVERSAL CSV & SPREADSHEET PARSER ──
+  // ── UNIVERSAL SPREADSHEET & CSV PARSING ENGINE ──
+  const MONTH_MAP: Record<string, number> = {
+    jan: 1, january: 1, feb: 2, february: 2, mar: 3, march: 3,
+    apr: 4, april: 4, may: 5, jun: 6, june: 6, jul: 7, july: 7,
+    aug: 8, august: 8, sep: 9, sept: 9, september: 9, oct: 10,
+    october: 10, nov: 11, november: 11, dec: 12, december: 12,
+  };
+
+  const normalizePhoneNumber = (raw: any): string => {
+    if (raw == null) return "";
+    let str = String(raw).trim();
+    if (/^[+-]?\d+(\.\d+)?[eE][+-]?\d+$/.test(str)) {
+      try {
+        const num = Number(str);
+        if (!isNaN(num)) {
+          str = BigInt(Math.round(num)).toString();
+        }
+      } catch {}
+    }
+    const digits = str.replace(/\D/g, "");
+    if (digits.length === 12 && digits.startsWith("91")) return digits.slice(2);
+    if (digits.length === 11 && digits.startsWith("0")) return digits.slice(1);
+    if (digits.length >= 10) return digits.slice(-10);
+    return "";
+  };
+
+  const parseBirthdayCell = (
+    val: any,
+    defaultDay: number,
+    defaultMonth: number
+  ): { day: number; month: number } => {
+    if (val == null) return { day: defaultDay, month: defaultMonth };
+    if (typeof val === "number" && val > 100 && val < 60000) {
+      try {
+        const parsed = (XLSX.SSF as any)?.parse_date_code?.(val);
+        if (parsed && parsed.d && parsed.m) {
+          return { day: parsed.d, month: parsed.m };
+        }
+      } catch {}
+    }
+
+    const str = String(val).trim();
+    if (!str) return { day: defaultDay, month: defaultMonth };
+
+    const monthMatch = str.match(
+      /\b(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t|tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\b/i
+    );
+    if (monthMatch) {
+      const mName = monthMatch[1].toLowerCase();
+      const m = MONTH_MAP[mName] || defaultMonth;
+      const dayMatch = str.match(/\b([0-2]?[0-9]|3[01])\b/);
+      const d = dayMatch ? parseInt(dayMatch[1], 10) : defaultDay;
+      return { day: d >= 1 && d <= 31 ? d : defaultDay, month: m };
+    }
+
+    const parts = str
+      .split(/[-/.\s]+/)
+      .map((p) => parseInt(p, 10))
+      .filter((n) => !isNaN(n));
+    if (parts.length >= 2) {
+      if (parts[0] > 31) {
+        // YYYY-MM-DD
+        const m = parts[1];
+        const d = parts[2] || defaultDay;
+        return {
+          day: d >= 1 && d <= 31 ? d : defaultDay,
+          month: m >= 1 && m <= 12 ? m : defaultMonth,
+        };
+      } else {
+        // DD/MM/YYYY
+        const d = parts[0];
+        const m = parts[1];
+        return {
+          day: d >= 1 && d <= 31 ? d : defaultDay,
+          month: m >= 1 && m <= 12 ? m : defaultMonth,
+        };
+      }
+    }
+
+    return { day: defaultDay, month: defaultMonth };
+  };
+
+  const parse2DGrid = (grid: any[][]) => {
+    if (!grid || grid.length === 0) {
+      setParsedLeads([]);
+      return;
+    }
+
+    const now = new Date();
+    const curDay = now.getDate();
+    const curMonth = now.getMonth() + 1;
+
+    // Multi-row header detection: scan up to the first 6 rows for donor/name/phone/dob columns
+    let headerRowIdx = -1;
+    let nameCol = -1;
+    let phoneCol = -1;
+    let dayCol = -1;
+    let monthCol = -1;
+    let emailCol = -1;
+    let dateCol = -1;
+
+    const maxHeaderScan = Math.min(grid.length, 6);
+    for (let r = 0; r < maxHeaderScan; r++) {
+      const row = grid[r] || [];
+      let tempNameCol = -1;
+      let tempPhoneCol = -1;
+      let tempDayCol = -1;
+      let tempMonthCol = -1;
+      let tempEmailCol = -1;
+      let tempDateCol = -1;
+
+      row.forEach((cellVal: any, colIdx: number) => {
+        const raw = String(cellVal || "").toLowerCase().trim();
+        const h = raw.replace(/[^a-z0-9]/g, "");
+
+        if (h.includes("name") || h.includes("donor") || h.includes("person") || h.includes("contactname") || h.includes("leadname")) {
+          if (!h.includes("id")) tempNameCol = colIdx;
+        } else if (h === "lead" || h === "donors" || h === "contacts") {
+          tempNameCol = colIdx;
+        }
+
+        if (
+          h.includes("phone") ||
+          h.includes("mobile") ||
+          h.includes("whatsapp") ||
+          h.includes("contact") ||
+          h.includes("cell") ||
+          h.includes("tel") ||
+          h.includes("number")
+        ) {
+          if (!h.includes("date") && !h.includes("time") && !h.includes("id")) {
+            tempPhoneCol = colIdx;
+          }
+        }
+
+        if (h.includes("month")) {
+          tempMonthCol = colIdx;
+        }
+
+        if (h.includes("dobday") || h.includes("birthdayday") || (h.includes("day") && !h.includes("month"))) {
+          tempDayCol = colIdx;
+        }
+
+        if (h.includes("email") || h.includes("mail")) {
+          tempEmailCol = colIdx;
+        }
+
+        if (
+          (h.includes("birthday") || h.includes("dob") || h.includes("birthdate") || h.includes("dateofbirth")) &&
+          !h.includes("day") &&
+          !h.includes("month")
+        ) {
+          tempDateCol = colIdx;
+        }
+      });
+
+      if (tempPhoneCol !== -1 || (tempNameCol !== -1 && tempDateCol !== -1)) {
+        headerRowIdx = r;
+        nameCol = tempNameCol;
+        phoneCol = tempPhoneCol;
+        dayCol = tempDayCol;
+        monthCol = tempMonthCol;
+        emailCol = tempEmailCol;
+        dateCol = tempDateCol;
+        break;
+      }
+    }
+
+    const startRow = headerRowIdx !== -1 ? headerRowIdx + 1 : 0;
+    const leads: Array<{ name: string; phone: string; dobDay: number; dobMonth: number; email?: string }> = [];
+
+    for (let r = startRow; r < grid.length; r++) {
+      const cells = grid[r] || [];
+      if (cells.length === 0 || cells.every((c) => c === "" || c == null)) continue;
+
+      let leadName = "";
+      let leadPhone = "";
+      let leadDay = curDay;
+      let leadMonth = curMonth;
+      let leadEmail: string | undefined = undefined;
+
+      if (headerRowIdx !== -1 && phoneCol !== -1) {
+        leadPhone = normalizePhoneNumber(cells[phoneCol]);
+        if (nameCol !== -1 && cells[nameCol] != null) {
+          leadName = String(cells[nameCol]).trim();
+        }
+
+        if (dateCol !== -1 && cells[dateCol] != null) {
+          const parsedDate = parseBirthdayCell(cells[dateCol], curDay, curMonth);
+          leadDay = parsedDate.day;
+          leadMonth = parsedDate.month;
+        } else {
+          if (dayCol !== -1 && cells[dayCol] != null) {
+            const d = parseInt(String(cells[dayCol]), 10);
+            if (!isNaN(d) && d >= 1 && d <= 31) leadDay = d;
+          }
+          if (monthCol !== -1 && cells[monthCol] != null) {
+            const rawM = String(cells[monthCol]).trim().toLowerCase();
+            if (MONTH_MAP[rawM]) {
+              leadMonth = MONTH_MAP[rawM];
+            } else {
+              const m = parseInt(rawM, 10);
+              if (!isNaN(m) && m >= 1 && m <= 12) leadMonth = m;
+            }
+          }
+        }
+
+        if (emailCol !== -1 && cells[emailCol] != null) {
+          const em = String(cells[emailCol]).trim();
+          if (em.includes("@")) leadEmail = em;
+        }
+      }
+
+      // If phone wasn't detected by header, do dynamic cell scan across the row
+      if (!leadPhone || leadPhone.length < 10) {
+        let phoneIdx = -1;
+        for (let c = 0; c < cells.length; c++) {
+          const p = normalizePhoneNumber(cells[c]);
+          if (p.length === 10) {
+            leadPhone = p;
+            phoneIdx = c;
+            break;
+          }
+        }
+
+        if (!leadPhone || phoneIdx === -1) continue;
+
+        for (let c = 0; c < cells.length; c++) {
+          if (c === phoneIdx) continue;
+          const val = cells[c];
+          if (val == null) continue;
+          const s = String(val).trim();
+          if (!s) continue;
+
+          if (s.includes("@") && !leadEmail) {
+            leadEmail = s;
+            continue;
+          }
+
+          if (/[a-zA-Z]/.test(s) && !/^\d+$/.test(s) && !leadName) {
+            leadName = s;
+            continue;
+          }
+
+          const parsedD = parseBirthdayCell(s, leadDay, leadMonth);
+          if (parsedD.day !== curDay || parsedD.month !== curMonth) {
+            leadDay = parsedD.day;
+            leadMonth = parsedD.month;
+          }
+        }
+      }
+
+      if (!leadName || leadName.length < 2) {
+        leadName = `Well-wisher (${leadPhone.slice(-4)})`;
+      }
+
+      if (leadPhone.length === 10) {
+        leads.push({
+          name: leadName.replace(/^["']|["']$/g, "").trim(),
+          phone: leadPhone,
+          dobDay: leadDay,
+          dobMonth: leadMonth,
+          email: leadEmail,
+        });
+      }
+    }
+
+    setParsedLeads(leads);
+  };
+
   const parseCSVLine = (line: string): string[] => {
     const result: string[] = [];
     let current = "";
@@ -284,195 +562,9 @@ export function AdminTelecallerCRM() {
       setParsedLeads([]);
       return;
     }
-
     const rawLines = text.split(/\r?\n/).map((l) => l.trim()).filter((l) => l.length > 0);
-    if (rawLines.length === 0) {
-      setParsedLeads([]);
-      return;
-    }
-
-    const now = new Date();
-    const curDay = now.getDate();
-    const curMonth = now.getMonth() + 1;
-
-    // Check if first row is a header
-    const firstRowCells = parseCSVLine(rawLines[0]);
-    let hasHeader = false;
-    let nameCol = -1;
-    let phoneCol = -1;
-    let dayCol = -1;
-    let monthCol = -1;
-    let emailCol = -1;
-    let dateCol = -1;
-
-    firstRowCells.forEach((header, idx) => {
-      const raw = header.toLowerCase().trim();
-      const h = raw.replace(/[^a-z0-9]/g, "");
-
-      // Name column: match 'lead name', 'name', 'donor', 'person', 'contact name'
-      if (h.includes("name") || h.includes("donor") || h.includes("person")) {
-        if (!h.includes("id")) nameCol = idx;
-      } else if (h.includes("lead") && !h.includes("id")) {
-        nameCol = idx;
-      }
-
-      // Phone column: prioritize 'phone', 'mobile', 'whatsapp', 'tel', 'cell'
-      if (
-        h.includes("phone") ||
-        h.includes("mobile") ||
-        h.includes("whatsapp") ||
-        h.includes("tel") ||
-        h.includes("cell")
-      ) {
-        phoneCol = idx;
-      } else if (
-        h.includes("contact") &&
-        !h.includes("date") &&
-        !h.includes("time") &&
-        !h.includes("last") &&
-        phoneCol === -1
-      ) {
-        phoneCol = idx;
-      }
-
-      // Month column: must have 'month'
-      if (h.includes("month")) {
-        monthCol = idx;
-      }
-
-      // Day column: check 'day' but NOT 'birthday month'
-      if (
-        h.includes("dobday") ||
-        h.includes("birthdayday") ||
-        h.endsWith("day") ||
-        h === "day" ||
-        (h.includes("day") && !h.includes("month") && (h.includes("birth") ? h.includes("birthdayday") || raw.includes("day") : true))
-      ) {
-        if (!h.includes("month")) {
-          dayCol = idx;
-        }
-      }
-
-      // Email column
-      if (h.includes("email") || h.includes("mail")) {
-        emailCol = idx;
-      }
-
-      // Combined birthday or date column (e.g. Birthday, DOB, Birthdate)
-      if (
-        (h.includes("birthday") || h.includes("dob") || h.includes("birthdate") || h.includes("date")) &&
-        !h.includes("day") &&
-        !h.includes("month") &&
-        !h.includes("contact") &&
-        !h.includes("create")
-      ) {
-        dateCol = idx;
-      }
-    });
-
-    if (nameCol !== -1 || phoneCol !== -1 || dayCol !== -1) {
-      hasHeader = true;
-    }
-
-    const startLine = hasHeader ? 1 : 0;
-    const leads: Array<{ name: string; phone: string; dobDay: number; dobMonth: number; email?: string }> = [];
-
-    for (let i = startLine; i < rawLines.length; i++) {
-      const line = rawLines[i];
-      const cells = parseCSVLine(line);
-      if (cells.length === 0 || cells.every((c) => c === "")) continue;
-
-      let leadName = "";
-      let leadPhone = "";
-      let leadDay = curDay;
-      let leadMonth = curMonth;
-      let leadEmail: string | undefined = undefined;
-
-      if (hasHeader && phoneCol !== -1 && nameCol !== -1) {
-        leadName = cells[nameCol] || "";
-        const rawPhone = cells[phoneCol] || "";
-        const cleanDigits = rawPhone.replace(/\D/g, "");
-        leadPhone = cleanDigits.slice(-10);
-
-        if (dayCol !== -1 && cells[dayCol]) {
-          const d = parseInt(cells[dayCol], 10);
-          if (!isNaN(d) && d >= 1 && d <= 31) leadDay = d;
-        }
-        if (monthCol !== -1 && cells[monthCol]) {
-          const m = parseInt(cells[monthCol], 10);
-          if (!isNaN(m) && m >= 1 && m <= 12) leadMonth = m;
-        }
-        if (emailCol !== -1 && cells[emailCol] && cells[emailCol].includes("@")) {
-          leadEmail = cells[emailCol];
-        }
-        if (dateCol !== -1 && cells[dateCol]) {
-          const parts = cells[dateCol].split(/[-/.]/);
-          if (parts.length >= 2) {
-            const p0 = parseInt(parts[0], 10);
-            const p1 = parseInt(parts[1], 10);
-            if (p0 > 31) {
-              if (p1 >= 1 && p1 <= 12) leadMonth = p1;
-              const p2 = parseInt(parts[2], 10);
-              if (p2 >= 1 && p2 <= 31) leadDay = p2;
-            } else {
-              if (p0 >= 1 && p0 <= 31) leadDay = p0;
-              if (p1 >= 1 && p1 <= 12) leadMonth = p1;
-            }
-          }
-        }
-      } else {
-        // Dynamic Cell Detection across all cells in this row
-        let phoneCellIdx = -1;
-        for (let c = 0; c < cells.length; c++) {
-          const digits = cells[c].replace(/\D/g, "");
-          if (digits.length >= 10 && digits.length <= 13) {
-            leadPhone = digits.slice(-10);
-            phoneCellIdx = c;
-            break;
-          }
-        }
-
-        if (!leadPhone || phoneCellIdx === -1) continue;
-
-        for (let c = 0; c < cells.length; c++) {
-          if (c === phoneCellIdx) continue;
-          const cell = cells[c];
-          if (cell.includes("@")) {
-            leadEmail = cell;
-            continue;
-          }
-          const isNumericOnly = /^\d+$/.test(cell.trim());
-          if (!isNumericOnly && /[a-zA-Z]/.test(cell)) {
-            if (!leadName) {
-              leadName = cell;
-            }
-          } else if (isNumericOnly) {
-            const num = parseInt(cell, 10);
-            if (num >= 1 && num <= 31 && leadDay === curDay) {
-              leadDay = num;
-            } else if (num >= 1 && num <= 12 && leadMonth === curMonth) {
-              leadMonth = num;
-            }
-          }
-        }
-      }
-
-      if (!leadName.trim()) {
-        leadName = `Well-wisher (${leadPhone.slice(-4)})`;
-      }
-
-      if (leadPhone.length >= 10) {
-        leads.push({
-          name: leadName.trim(),
-          phone: leadPhone,
-          dobDay: leadDay,
-          dobMonth: leadMonth,
-          email: leadEmail,
-        });
-      }
-    }
-
-    setParsedLeads(leads);
+    const grid = rawLines.map((line) => parseCSVLine(line));
+    parse2DGrid(grid);
   };
 
   const parseUploadedFile = (file: File) => {
@@ -483,12 +575,14 @@ export function AdminTelecallerCRM() {
       reader.onload = (event) => {
         try {
           const buffer = event.target?.result as ArrayBuffer;
-          const workbook = XLSX.read(buffer, { type: "array" });
+          const workbook = XLSX.read(buffer, { type: "array", cellDates: false });
           const firstSheetName = workbook.SheetNames[0];
           const worksheet = workbook.Sheets[firstSheetName];
-          const csv = XLSX.utils.sheet_to_csv(worksheet);
-          setPastedText(csv);
-          parseRawLeadText(csv);
+          const grid = XLSX.utils.sheet_to_json<any[]>(worksheet, { header: 1, raw: false, defval: "" });
+          // Generate clean CSV preview for textarea
+          const csvPreview = grid.slice(0, 50).map((r) => r.map((c: any) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
+          setPastedText(csvPreview);
+          parse2DGrid(grid);
         } catch (err: any) {
           alert("Error parsing Excel file: " + err.message);
         }
@@ -546,6 +640,51 @@ export function AdminTelecallerCRM() {
       await loadAdminData();
     } catch (err: any) {
       showToast("Error cleaning leads: " + err.message);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleDeleteAllLeads = async () => {
+    setActionLoading(true);
+    try {
+      const res = await fetch("/api/v1/admin/telecallers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "delete_all_leads" }),
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error || "Failed to delete leads");
+      showToast(`✓ ${data.message}`);
+      setIsDeleteAllModalOpen(false);
+      setLeadsList([]);
+      setSelectedLeadIds([]);
+      setLeadsPage(1);
+      await loadAdminData();
+    } catch (err: any) {
+      showToast("Error deleting leads: " + err.message);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleResetDailyQuota = async () => {
+    setActionLoading(true);
+    try {
+      const res = await fetch("/api/v1/admin/telecallers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "reset_daily_quota", mode: resetDistributionMode }),
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error || "Failed to reset daily quota");
+      showToast(`✓ ${data.message}`);
+      setIsResetDailyModalOpen(false);
+      setLeadsPage(1);
+      await loadAdminData();
+      await loadLeadsForReassignment(selectedCallerForLeads || "ALL");
+    } catch (err: any) {
+      showToast("Error resetting daily queue: " + err.message);
     } finally {
       setActionLoading(false);
     }
@@ -837,6 +976,17 @@ export function AdminTelecallerCRM() {
     setIsAntiBanModalOpen(true);
   };
 
+  const filteredLeads = leadsList.filter((l) => {
+    if (statusFilter === "ALL") return true;
+    return l.status === statusFilter;
+  });
+
+  const totalPages = Math.max(1, Math.ceil(filteredLeads.length / leadsPerPage));
+  const paginatedLeads = useMemo(() => {
+    const start = (leadsPage - 1) * leadsPerPage;
+    return filteredLeads.slice(start, start + leadsPerPage);
+  }, [filteredLeads, leadsPage, leadsPerPage]);
+
   const toggleSelectAllLeads = () => {
     if (selectedLeadIds.length === filteredLeads.length) {
       setSelectedLeadIds([]);
@@ -845,16 +995,21 @@ export function AdminTelecallerCRM() {
     }
   };
 
+  const toggleSelectCurrentPage = () => {
+    const pageIds = paginatedLeads.map((l) => l.leadId);
+    const allPageSelected = pageIds.length > 0 && pageIds.every((id) => selectedLeadIds.includes(id));
+    if (allPageSelected) {
+      setSelectedLeadIds((prev) => prev.filter((id) => !pageIds.includes(id)));
+    } else {
+      setSelectedLeadIds((prev) => Array.from(new Set([...prev, ...pageIds])));
+    }
+  };
+
   const toggleLeadSelection = (leadId: number) => {
     setSelectedLeadIds((prev) =>
       prev.includes(leadId) ? prev.filter((id) => id !== leadId) : [...prev, leadId]
     );
   };
-
-  const filteredLeads = leadsList.filter((l) => {
-    if (statusFilter === "ALL") return true;
-    return l.status === statusFilter;
-  });
 
   // Agency Metrics calculations
   const activeCallersCount = callers.filter((c) => c.isActive).length;
@@ -915,15 +1070,37 @@ export function AdminTelecallerCRM() {
               <span>📤 Bulk Upload Leads</span>
             </button>
 
-            {/* Clear Demo Leads Button */}
+            {/* Reset Daily Limit / Queue Button */}
+            <button
+              type="button"
+              onClick={() => setIsResetDailyModalOpen(true)}
+              disabled={actionLoading}
+              className="focus-ring tap-scale inline-flex items-center gap-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-teal-950 px-3.5 py-2.5 text-xs font-black shadow-sm transition cursor-pointer disabled:opacity-50"
+              title="Reset non-donated leads to Pending and refresh daily quota across active callers"
+            >
+              <span>🔄 Reset Daily Limit</span>
+            </button>
+
+            {/* Delete All Leads Button */}
+            <button
+              type="button"
+              onClick={() => setIsDeleteAllModalOpen(true)}
+              disabled={actionLoading}
+              className="focus-ring tap-scale inline-flex items-center gap-1.5 rounded-xl bg-rose-700 hover:bg-rose-800 text-white border border-rose-600 px-3.5 py-2.5 text-xs font-black shadow-sm transition cursor-pointer disabled:opacity-50"
+              title="Permanently delete all leads and call logs to start 100% fresh (keeps telecaller login accounts safe)"
+            >
+              <span>🗑️ Delete All Leads</span>
+            </button>
+
+            {/* Clean Demo Leads Button */}
             <button
               type="button"
               onClick={() => handleClearDemoLeads(false)}
               disabled={actionLoading}
-              className="focus-ring tap-scale inline-flex items-center gap-1.5 rounded-xl bg-rose-900/60 hover:bg-rose-900 text-rose-100 border border-rose-700/60 px-3 py-2.5 text-xs font-bold shadow-xs transition cursor-pointer"
-              title="Remove sample and demo leads from the database for real user rollout"
+              className="focus-ring tap-scale inline-flex items-center gap-1.5 rounded-xl bg-teal-900/60 hover:bg-teal-900 text-teal-200 border border-teal-700/60 px-3 py-2.5 text-xs font-bold shadow-xs transition cursor-pointer"
+              title="Remove sample and dummy test leads from the database"
             >
-              <span>🗑️ Clean Demo Leads</span>
+              <span>🧹 Clean Demo Leads</span>
             </button>
 
             {/* Export Dropdown */}
@@ -1082,6 +1259,16 @@ export function AdminTelecallerCRM() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => setIsResetDailyModalOpen(true)}
+            disabled={actionLoading}
+            className="focus-ring tap-scale inline-flex items-center gap-1.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white px-3.5 py-2 text-xs font-black shadow-xs transition cursor-pointer disabled:opacity-50"
+            title="Reset non-donated leads to Pending and refresh daily quota across active callers"
+          >
+            <span>🔄 Reset Daily Limit / Queue</span>
+          </button>
+
           <button
             type="button"
             onClick={() => handleDistributeEqually("balanced")}
@@ -1618,6 +1805,53 @@ export function AdminTelecallerCRM() {
           </div>
         </div>
 
+        {/* Quick Selection & Pagination Helper Bar */}
+        <div className="flex flex-wrap items-center justify-between gap-3 bg-sand/40 p-3 rounded-2xl border border-teal-900/10 text-xs mb-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-bold text-teal-950">
+              Showing {filteredLeads.length === 0 ? 0 : (leadsPage - 1) * leadsPerPage + 1} - {Math.min(leadsPage * leadsPerPage, filteredLeads.length)} of {filteredLeads.length} leads
+            </span>
+            <span className="text-teal-950/40">|</span>
+            <button
+              type="button"
+              onClick={toggleSelectCurrentPage}
+              className="text-xs font-semibold text-teal-950 hover:underline cursor-pointer"
+            >
+              Select Page ({paginatedLeads.length})
+            </button>
+            <span className="text-teal-950/40">•</span>
+            <button
+              type="button"
+              onClick={toggleSelectAllLeads}
+              className="text-xs font-semibold text-teal-950 hover:underline cursor-pointer"
+            >
+              {selectedLeadIds.length === filteredLeads.length ? "Deselect All" : `Select All (${filteredLeads.length})`}
+            </button>
+            {selectedLeadIds.length > 0 && (
+              <span className="bg-amber-100 text-amber-900 px-2 py-0.5 rounded-full font-bold text-[11px]">
+                {selectedLeadIds.length} selected
+              </span>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] text-teal-950/70 font-semibold">Rows per page:</span>
+            <select
+              value={leadsPerPage}
+              onChange={(e) => {
+                setLeadsPerPage(Number(e.target.value));
+                setLeadsPage(1);
+              }}
+              className="rounded-lg border border-teal-900/20 px-2 py-1 text-xs font-bold bg-white text-teal-950 cursor-pointer"
+            >
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+              <option value={200}>200</option>
+            </select>
+          </div>
+        </div>
+
         {/* Leads Table (Desktop) */}
         <div className="hidden md:block overflow-x-auto max-h-96">
           <table className="w-full text-left text-xs">
@@ -1627,11 +1861,12 @@ export function AdminTelecallerCRM() {
                   <input
                     type="checkbox"
                     checked={
-                      filteredLeads.length > 0 &&
-                      selectedLeadIds.length === filteredLeads.length
+                      paginatedLeads.length > 0 &&
+                      paginatedLeads.every((l) => selectedLeadIds.includes(l.leadId))
                     }
-                    onChange={toggleSelectAllLeads}
+                    onChange={toggleSelectCurrentPage}
                     className="rounded text-teal-950"
+                    title="Select/Deselect current page"
                   />
                 </th>
                 <th className="p-3">Lead Name</th>
@@ -1650,7 +1885,7 @@ export function AdminTelecallerCRM() {
                   </td>
                 </tr>
               ) : (
-                filteredLeads.map((lead) => {
+                paginatedLeads.map((lead) => {
                   const isSelected = selectedLeadIds.includes(lead.leadId);
                   return (
                     <tr
@@ -1727,7 +1962,7 @@ export function AdminTelecallerCRM() {
               No leads found matching filter.
             </div>
           ) : (
-            filteredLeads.map((lead) => {
+            paginatedLeads.map((lead) => {
               const isSelected = selectedLeadIds.includes(lead.leadId);
               return (
                 <div
@@ -1812,6 +2047,53 @@ export function AdminTelecallerCRM() {
             })
           )}
         </div>
+
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-teal-900/10 text-xs mt-3">
+            <div className="text-teal-950/60 font-semibold">
+              Page {leadsPage} of {totalPages}
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setLeadsPage(1)}
+                disabled={leadsPage === 1}
+                className="rounded-xl border border-teal-900/20 px-2.5 py-1 text-xs font-bold bg-white hover:bg-sand disabled:opacity-40 transition cursor-pointer"
+              >
+                ◀◀ First
+              </button>
+              <button
+                type="button"
+                onClick={() => setLeadsPage((p) => Math.max(1, p - 1))}
+                disabled={leadsPage === 1}
+                className="rounded-xl border border-teal-900/20 px-3 py-1 text-xs font-bold bg-white hover:bg-sand disabled:opacity-40 transition cursor-pointer"
+              >
+                ◀ Prev
+              </button>
+              <span className="px-2 font-mono font-bold text-teal-950">
+                {leadsPage} / {totalPages}
+              </span>
+              <button
+                type="button"
+                onClick={() => setLeadsPage((p) => Math.min(totalPages, p + 1))}
+                disabled={leadsPage === totalPages}
+                className="rounded-xl border border-teal-900/20 px-3 py-1 text-xs font-bold bg-white hover:bg-sand disabled:opacity-40 transition cursor-pointer"
+              >
+                Next ▶
+              </button>
+              <button
+                type="button"
+                onClick={() => setLeadsPage(totalPages)}
+                disabled={leadsPage === totalPages}
+                className="rounded-xl border border-teal-900/20 px-2.5 py-1 text-xs font-bold bg-white hover:bg-sand disabled:opacity-40 transition cursor-pointer"
+              >
+                Last ▶▶
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ══════════════════════════════════════════════════════════════════
@@ -1994,6 +2276,155 @@ export function AdminTelecallerCRM() {
       )}
 
       {/* ══════════════════════════════════════════════════════════════════
+          MODAL 2B: DELETE ALL LEADS CONFIRMATION
+      ══════════════════════════════════════════════════════════════════ */}
+      {isDeleteAllModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-teal-950/70 backdrop-blur-xs animate-fadeIn">
+          <div className="w-full max-w-md bg-white rounded-3xl p-6 shadow-2xl border-2 border-rose-300">
+            <div className="flex items-center gap-3 text-rose-700 pb-3 border-b border-rose-100">
+              <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-rose-100 text-rose-700 text-2xl font-bold">
+                🗑️
+              </span>
+              <div>
+                <h3 className="font-display text-base font-bold text-rose-950">Delete ALL Leads from CRM?</h3>
+                <p className="text-xs text-rose-700">Permanent database wipe for real donor rollout</p>
+              </div>
+            </div>
+
+            <div className="my-4 space-y-3 text-xs text-teal-950/80">
+              <div className="p-3.5 bg-rose-50 rounded-2xl border border-rose-200 space-y-1.5">
+                <p className="font-bold text-rose-950 text-sm">
+                  ⚠️ Warning: This will delete all {totalLeads} leads and all historical call logs!
+                </p>
+                <p className="text-rose-900 text-[11px] leading-relaxed">
+                  Use this when you are ready to remove test/demo data and upload the official real donor Excel sheet.
+                </p>
+              </div>
+
+              <div className="p-3 bg-emerald-50 rounded-2xl border border-emerald-200">
+                <p className="font-bold text-emerald-950 text-xs flex items-center gap-1.5">
+                  <span>✓</span> Telecaller Staff Logins Preserved
+                </p>
+                <p className="text-emerald-900 text-[11px] mt-0.5">
+                  All telecaller accounts (TC01 to TC16), passwords, and phone numbers remain completely safe and untouched.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-teal-900/10">
+              <button
+                type="button"
+                onClick={() => setIsDeleteAllModalOpen(false)}
+                className="rounded-xl px-4 py-2 text-xs font-bold text-teal-950/70 hover:bg-sand transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteAllLeads}
+                disabled={actionLoading}
+                className="rounded-xl bg-rose-700 hover:bg-rose-800 text-white px-5 py-2 text-xs font-black shadow-md transition cursor-pointer disabled:opacity-50"
+              >
+                {actionLoading ? "Deleting All..." : "Confirm Delete All Leads"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════════
+          MODAL 2C: RESET DAILY LIMIT & REBALANCE QUEUE
+      ══════════════════════════════════════════════════════════════════ */}
+      {isResetDailyModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-teal-950/70 backdrop-blur-xs animate-fadeIn">
+          <div className="w-full max-w-md bg-white rounded-3xl p-6 shadow-2xl border-2 border-amber-300">
+            <div className="flex items-center gap-3 text-amber-800 pb-3 border-b border-amber-100">
+              <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-100 text-amber-800 text-2xl font-bold">
+                🔄
+              </span>
+              <div>
+                <h3 className="font-display text-base font-bold text-teal-950">Reset Daily Calling Queue</h3>
+                <p className="text-xs text-amber-800">Fresh daily limit distribution for active callers</p>
+              </div>
+            </div>
+
+            <div className="my-4 space-y-3 text-xs text-teal-950/80">
+              <div className="p-3.5 bg-amber-50 rounded-2xl border border-amber-200 space-y-1.5">
+                <p className="font-bold text-amber-950 text-xs">
+                  How Daily Reset Works:
+                </p>
+                <ul className="list-disc list-inside space-y-1 text-amber-900 text-[11px] leading-relaxed">
+                  <li>Resets all non-donated leads back to <span className="font-bold">Pending</span> status.</li>
+                  <li>Preserves all confirmed <span className="font-bold text-emerald-800">Donated</span> gifts and payment receipts.</li>
+                  <li>Mathematically balances and divides pending leads equally across all {activeCallersCount} active telecallers (~{equalQuotaPerCaller} each).</li>
+                </ul>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-teal-950 mb-1">
+                  Distribution Arithmetic Algorithm:
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <label
+                    onClick={() => setResetDistributionMode("balanced")}
+                    className={`p-2.5 rounded-xl border text-xs font-bold cursor-pointer transition flex items-center gap-2 ${
+                      resetDistributionMode === "balanced"
+                        ? "bg-teal-950 text-gold border-teal-950"
+                        : "bg-white text-teal-950 border-teal-900/20 hover:bg-sand"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="resetMode"
+                      checked={resetDistributionMode === "balanced"}
+                      onChange={() => setResetDistributionMode("balanced")}
+                      className="hidden"
+                    />
+                    <span>⚖️ Workload Balanced</span>
+                  </label>
+                  <label
+                    onClick={() => setResetDistributionMode("round_robin")}
+                    className={`p-2.5 rounded-xl border text-xs font-bold cursor-pointer transition flex items-center gap-2 ${
+                      resetDistributionMode === "round_robin"
+                        ? "bg-teal-950 text-gold border-teal-950"
+                        : "bg-white text-teal-950 border-teal-900/20 hover:bg-sand"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="resetMode"
+                      checked={resetDistributionMode === "round_robin"}
+                      onChange={() => setResetDistributionMode("round_robin")}
+                      className="hidden"
+                    />
+                    <span>🔄 Round Robin</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-teal-900/10">
+              <button
+                type="button"
+                onClick={() => setIsResetDailyModalOpen(false)}
+                className="rounded-xl px-4 py-2 text-xs font-bold text-teal-950/70 hover:bg-sand transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleResetDailyQuota}
+                disabled={actionLoading}
+                className="rounded-xl bg-amber-600 hover:bg-amber-700 text-white px-5 py-2 text-xs font-black shadow-md transition cursor-pointer disabled:opacity-50"
+              >
+                {actionLoading ? "Resetting..." : "Confirm Reset Daily Queue"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════════
           MODAL 3: BULK LEAD UPLOAD & EQUAL DISTRIBUTION
       ══════════════════════════════════════════════════════════════════ */}
       {isUploadModalOpen && (
@@ -2042,7 +2473,7 @@ export function AdminTelecallerCRM() {
                       : "bg-cream text-teal-950 hover:bg-sand"
                   }`}
                 >
-                  📁 Upload CSV File
+                  📁 Upload Excel / CSV File (.xlsx, .xls, .csv)
                 </button>
               </div>
 

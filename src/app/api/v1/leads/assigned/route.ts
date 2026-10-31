@@ -16,11 +16,13 @@ export async function GET(req: Request) {
     // Administrator can query any specific callerId or 'ALL'
     const url = new URL(req.url);
     const paramCallerId = url.searchParams.get("callerId");
+    const paramLimit = url.searchParams.get("limit");
+    const limit = paramLimit ? Math.min(parseInt(paramLimit, 10), 5000) : 2000;
     const targetCallerId = auth.isAdmin
       ? (paramCallerId || auth.callerId)
       : auth.callerId;
 
-    const leads = await getAssignedLeads(targetCallerId);
+    const leads = await getAssignedLeads(targetCallerId, limit);
 
     return NextResponse.json({
       success: true,
