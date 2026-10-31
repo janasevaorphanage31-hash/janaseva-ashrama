@@ -254,8 +254,8 @@ export async function POST(req: Request) {
     }
 
     if (action === "export_csv") {
-      const { exportType } = body;
-      const result = await generateAgencyCSVExport(exportType || "performance");
+      const { exportType, callerId } = body;
+      const result = await generateAgencyCSVExport(exportType || "performance", callerId);
 
       await writeAudit({
         actorAdminUserId: session.user.id ?? null,

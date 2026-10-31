@@ -621,7 +621,11 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
 
     const supervisorWaNumber = "919980359595";
     const targetUrl = `https://wa.me/${supervisorWaNumber}?text=${encodeURIComponent(reportText)}`;
-    window.open(targetUrl, "_blank", "noopener,noreferrer");
+    if (typeof navigator !== "undefined" && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+      window.location.href = targetUrl;
+    } else {
+      window.open(targetUrl, "_blank", "noopener,noreferrer");
+    }
     showToast("✓ Opened WhatsApp with Daily EOD Summary for Supervisor!");
   };
 

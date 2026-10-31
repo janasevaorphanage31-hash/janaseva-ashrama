@@ -3,6 +3,7 @@ import { agTelecallers, agLeads, agCallLogs, agDonations, contentEntries } from 
 import { eq, and, or, sql, desc, inArray, isNull } from "drizzle-orm";
 import { hashPassword } from "@/lib/admin-auth";
 import { parseCustomerPhone } from "@/lib/whatsapp-phone";
+import { signCallerToken } from "@/lib/caller-auth";
 import {
   generateAntiBanMessage,
   CURATED_OUTREACH_MEDIA,
@@ -103,6 +104,7 @@ export interface TelecallerStats {
   conversionRate: number;
   totalDonationAmount: number;
   rank: number;
+  exportToken?: string;
 }
 
 let telecallersSeeded = false;
@@ -559,6 +561,7 @@ export async function getAdminLeaderboard(): Promise<{
       conversionRate: Math.round(rate * 10) / 10,
       totalDonationAmount: totalAmount,
       rank: 0,
+      exportToken: signCallerToken(c.callerId),
     };
   });
 
