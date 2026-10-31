@@ -54,3 +54,6 @@ data/baileys_auth/
 .baileys_auth/
 
 *.sw?
+
+.vercel
+.env*
