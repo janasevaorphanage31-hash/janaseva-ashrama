@@ -21,6 +21,9 @@ export function AdminTelecallerCRM() {
   const [selectedLeadIds, setSelectedLeadIds] = useState<number[]>([]);
   const [targetCallerId, setTargetCallerId] = useState<string>("TC01");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
+  const [leadDateSort, setLeadDateSort] = useState<
+    "birthday_upcoming" | "birthday_calendar" | "date_newest" | "date_oldest" | "callback_earliest"
+  >("birthday_upcoming");
 
   // Notifications & Loaders
   const [toastMessage, setToastMessage] = useState<string>("");
@@ -1125,10 +1128,53 @@ export function AdminTelecallerCRM() {
     setIsAntiBanModalOpen(true);
   };
 
-  const filteredLeads = leadsList.filter((l) => {
-    if (statusFilter === "ALL") return true;
-    return l.status === statusFilter;
-  });
+  const filteredLeads = useMemo(() => {
+    const now = new Date();
+    const curDay = now.getDate();
+    const curMonth = now.getMonth() + 1;
+
+    const base = leadsList.filter((l) => {
+      if (statusFilter === "ALL") return true;
+      return l.status === statusFilter;
+    });
+
+    const getBirthdayDistance = (m?: number, d?: number) => {
+      if (!m || !d) return 9999;
+      let diff = (m - curMonth) * 31 + (d - curDay);
+      if (diff < 0) diff += 372;
+      return diff;
+    };
+
+    return [...base].sort((a, b) => {
+      if (leadDateSort === "birthday_upcoming") {
+        const distA = getBirthdayDistance(a.dobMonth, a.dobDay);
+        const distB = getBirthdayDistance(b.dobMonth, b.dobDay);
+        return distA - distB || (a.leadId - b.leadId);
+      }
+      if (leadDateSort === "birthday_calendar") {
+        const monthDiff = (a.dobMonth || 0) - (b.dobMonth || 0);
+        if (monthDiff !== 0) return monthDiff;
+        return (a.dobDay || 0) - (b.dobDay || 0) || (a.leadId - b.leadId);
+      }
+      if (leadDateSort === "date_newest") {
+        const timeA = a.createdAt ? new Date(a.createdAt).getTime() : a.leadId;
+        const timeB = b.createdAt ? new Date(b.createdAt).getTime() : b.leadId;
+        return timeB - timeA;
+      }
+      if (leadDateSort === "date_oldest") {
+        const timeA = a.createdAt ? new Date(a.createdAt).getTime() : a.leadId;
+        const timeB = b.createdAt ? new Date(b.createdAt).getTime() : b.leadId;
+        return timeA - timeB;
+      }
+      if (leadDateSort === "callback_earliest") {
+        if (!a.rescheduleDate && !b.rescheduleDate) return a.leadId - b.leadId;
+        if (!a.rescheduleDate) return 1;
+        if (!b.rescheduleDate) return -1;
+        return new Date(a.rescheduleDate).getTime() - new Date(b.rescheduleDate).getTime();
+      }
+      return 0;
+    });
+  }, [leadsList, statusFilter, leadDateSort]);
 
   const totalPages = Math.max(1, Math.ceil(filteredLeads.length / leadsPerPage));
   const paginatedLeads = useMemo(() => {
@@ -1930,6 +1976,25 @@ export function AdminTelecallerCRM() {
               <option value="Donated">Donated</option>
             </select>
 
+            {/* Sort by Date Selector */}
+            <div className="flex items-center gap-1.5 bg-sand/40 border border-teal-900/15 rounded-xl px-2.5 py-1">
+              <span className="text-xs font-bold text-teal-950/70 whitespace-nowrap">📅 Sort by Date:</span>
+              <select
+                value={leadDateSort}
+                onChange={(e) => {
+                  setLeadDateSort(e.target.value as any);
+                  setLeadsPage(1);
+                }}
+                className="bg-transparent text-xs font-bold text-teal-950 outline-none cursor-pointer"
+              >
+                <option value="birthday_upcoming">🎂 Upcoming Birthday First</option>
+                <option value="birthday_calendar">🎂 Calendar Date (Jan 1 → Dec 31)</option>
+                <option value="date_newest">🆕 Date Added (Newest First)</option>
+                <option value="date_oldest">⏳ Date Added (Oldest First)</option>
+                <option value="callback_earliest">⏰ Callback Due (Earliest First)</option>
+              </select>
+            </div>
+
             <span className="text-xs text-teal-950/50">Transfer to:</span>
             <select
               value={targetCallerId}
@@ -2716,12 +2781,35 @@ export function AdminTelecallerCRM() {
                 </div>
               )}
 
-              {/* Live Preview */}
+              {/* Live Preview with Date Sort Option */}
               {parsedLeads.length > 0 && (
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between text-xs font-bold text-teal-950">
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-bold text-teal-950">
                     <span className="text-emerald-700">✓ Detected {parsedLeads.length} Valid Leads Ready for Distribution</span>
-                    <span className="text-[10px] text-teal-950/50">Previewing first 4 rows</span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const now = new Date();
+                          const curM = now.getMonth() + 1;
+                          const curD = now.getDate();
+                          const sorted = [...parsedLeads].sort((a, b) => {
+                            let diffA = (a.dobMonth - curM) * 31 + (a.dobDay - curD);
+                            if (diffA < 0) diffA += 372;
+                            let diffB = (b.dobMonth - curM) * 31 + (b.dobDay - curD);
+                            if (diffB < 0) diffB += 372;
+                            return diffA - diffB;
+                          });
+                          setParsedLeads(sorted);
+                          showToast("✓ Sorted parsed leads by upcoming birthday date!");
+                        }}
+                        className="rounded-lg bg-sand border border-teal-900/20 px-2.5 py-1 text-[11px] font-bold text-teal-950 hover:bg-amber-100 transition cursor-pointer"
+                        title="Sort so donors with birthdays today or coming soon are distributed first"
+                      >
+                        🎂 Sort by Birthday (Upcoming First)
+                      </button>
+                      <span className="text-[10px] text-teal-950/50">Previewing first 4 rows</span>
+                    </div>
                   </div>
                   <div className="overflow-x-auto max-h-36 rounded-xl border border-teal-900/10">
                     <table className="w-full text-left text-[11px]">

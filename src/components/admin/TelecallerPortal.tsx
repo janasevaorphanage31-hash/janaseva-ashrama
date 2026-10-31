@@ -43,6 +43,9 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
   const [loadingLeads, setLoadingLeads] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [filter, setFilter] = useState<string>("ALL");
+  const [dateSortOrder, setDateSortOrder] = useState<
+    "birthday_upcoming" | "birthday_calendar" | "date_newest" | "date_oldest" | "callback_earliest"
+  >("birthday_upcoming");
   const [portalPage, setPortalPage] = useState<number>(1);
   const portalPageSize = 40;
   const [toastMsg, setToastMsg] = useState("");
@@ -569,7 +572,8 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
       return `"${s}"`;
     };
 
-    const rows = leads.map((l) => [
+    const exportData = filteredLeads.length > 0 ? filteredLeads : leads;
+    const rows = exportData.map((l) => [
       escapeCsv(l.leadId),
       escapeCsv(l.name),
       escapeCsv(parseCustomerPhone(l.phone).display),
@@ -586,13 +590,13 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `janaseva-telecaller-${callerProfile.callerId}-${todayStr}.csv`;
+    link.download = `janaseva-telecaller-${callerProfile.callerId}-${dateSortOrder}-${todayStr}.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
 
-    showToast(`✓ Exported ${leads.length} leads to CSV file!`);
+    showToast(`✓ Exported ${exportData.length} leads in sorted order to CSV file!`);
   };
 
   // 1-Click WhatsApp EOD Summary to Supervisor
@@ -752,13 +756,13 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
     };
   }, [leads]);
 
-  // Filter & Search Leads
+  // Filter & Search Leads with Date Sorting
   const filteredLeads = useMemo(() => {
     const now = new Date();
     const curDay = now.getDate();
     const curMonth = now.getMonth() + 1;
 
-    return leads.filter((l) => {
+    const base = leads.filter((l) => {
       let matchesFilter = true;
       if (filter === "Today_Birthday") {
         matchesFilter = l.dobDay === curDay && l.dobMonth === curMonth;
@@ -778,12 +782,50 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
         String(l.leadId).includes(q);
       return matchesFilter && matchesSearch;
     });
-  }, [leads, filter, searchQuery]);
 
-  // Reset pagination when filter or search changes
+    // Helper for upcoming birthday distance in days
+    const getBirthdayDistance = (m?: number, d?: number) => {
+      if (!m || !d) return 9999;
+      let diff = (m - curMonth) * 31 + (d - curDay);
+      if (diff < 0) diff += 372; // rolls over into next calendar year
+      return diff;
+    };
+
+    return [...base].sort((a, b) => {
+      if (dateSortOrder === "birthday_upcoming") {
+        const distA = getBirthdayDistance(a.dobMonth, a.dobDay);
+        const distB = getBirthdayDistance(b.dobMonth, b.dobDay);
+        return distA - distB || (a.leadId - b.leadId);
+      }
+      if (dateSortOrder === "birthday_calendar") {
+        const monthDiff = (a.dobMonth || 0) - (b.dobMonth || 0);
+        if (monthDiff !== 0) return monthDiff;
+        return (a.dobDay || 0) - (b.dobDay || 0) || (a.leadId - b.leadId);
+      }
+      if (dateSortOrder === "date_newest") {
+        const timeA = a.createdAt ? new Date(a.createdAt).getTime() : a.leadId;
+        const timeB = b.createdAt ? new Date(b.createdAt).getTime() : b.leadId;
+        return timeB - timeA;
+      }
+      if (dateSortOrder === "date_oldest") {
+        const timeA = a.createdAt ? new Date(a.createdAt).getTime() : a.leadId;
+        const timeB = b.createdAt ? new Date(b.createdAt).getTime() : b.leadId;
+        return timeA - timeB;
+      }
+      if (dateSortOrder === "callback_earliest") {
+        if (!a.rescheduleDate && !b.rescheduleDate) return a.leadId - b.leadId;
+        if (!a.rescheduleDate) return 1;
+        if (!b.rescheduleDate) return -1;
+        return new Date(a.rescheduleDate).getTime() - new Date(b.rescheduleDate).getTime();
+      }
+      return 0;
+    });
+  }, [leads, filter, searchQuery, dateSortOrder]);
+
+  // Reset pagination when filter, search, or date sort changes
   useEffect(() => {
     setPortalPage(1);
-  }, [filter, searchQuery]);
+  }, [filter, searchQuery, dateSortOrder]);
 
   const totalPortalPages = Math.max(1, Math.ceil(filteredLeads.length / portalPageSize));
   const paginatedLeads = useMemo(() => {
@@ -1304,41 +1346,64 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
             </div>
           </div>
 
-          {/* 5 Clean Filter Tabs */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
-            {[
-              { id: "Pending", label: "⏳ ಕರೆ ಬಾಕಿ (To Call)", count: counts.pending, color: "text-amber-900 bg-amber-100" },
-              { id: "Today_Birthday", label: "🎂 ಇಂದು ಹುಟ್ಟುಹಬ್ಬ (Birthdays)", count: counts.birthdays, color: "text-purple-900 bg-purple-100" },
-              { id: "Reschedule", label: "📅 ಮತ್ತೆ ಕರೆ (Callbacks)", count: counts.reschedule, color: "text-blue-900 bg-blue-100" },
-              { id: "Attended", label: "✓ ಮುಗಿದಿದೆ (Completed)", count: counts.attended, color: "text-emerald-900 bg-emerald-100" },
-              { id: "ALL", label: "📋 ಎಲ್ಲವೂ (All)", count: counts.all, color: "text-teal-950/60 bg-white" },
-            ].map((st) => {
-              const isActive = filter === st.id;
-              return (
-                <button
-                  key={st.id}
-                  type="button"
-                  onClick={() => {
-                    setFilter(st.id);
-                    setFocusIndex(0);
-                  }}
-                  className={`rounded-xl px-3 py-1.5 text-xs font-bold transition whitespace-nowrap cursor-pointer flex items-center gap-1.5 shrink-0 ${
-                    isActive
-                      ? "bg-teal-950 text-white shadow-sm"
-                      : "bg-cream text-teal-950/80 hover:bg-sand border border-teal-900/10"
-                  }`}
-                >
-                  <span>{st.label}</span>
-                  <span
-                    className={`rounded-full px-1.5 py-0.2 text-[10px] font-mono font-bold ${
-                      isActive ? "bg-white/20 text-white" : st.color
+          {/* Controls Bar: Filter Tabs + Date Sort Option */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-1">
+            {/* 5 Clean Filter Tabs */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar flex-1">
+              {[
+                { id: "Pending", label: "⏳ ಕರೆ ಬಾಕಿ (To Call)", count: counts.pending, color: "text-amber-900 bg-amber-100" },
+                { id: "Today_Birthday", label: "🎂 ಇಂದು ಹುಟ್ಟುಹಬ್ಬ (Birthdays)", count: counts.birthdays, color: "text-purple-900 bg-purple-100" },
+                { id: "Reschedule", label: "📅 ಮತ್ತೆ ಕರೆ (Callbacks)", count: counts.reschedule, color: "text-blue-900 bg-blue-100" },
+                { id: "Attended", label: "✓ ಮುಗಿದಿದೆ (Completed)", count: counts.attended, color: "text-emerald-900 bg-emerald-100" },
+                { id: "ALL", label: "📋 ಎಲ್ಲವೂ (All)", count: counts.all, color: "text-teal-950/60 bg-white" },
+              ].map((st) => {
+                const isActive = filter === st.id;
+                return (
+                  <button
+                    key={st.id}
+                    type="button"
+                    onClick={() => {
+                      setFilter(st.id);
+                      setFocusIndex(0);
+                    }}
+                    className={`rounded-xl px-3 py-1.5 text-xs font-bold transition whitespace-nowrap cursor-pointer flex items-center gap-1.5 shrink-0 ${
+                      isActive
+                        ? "bg-teal-950 text-white shadow-sm"
+                        : "bg-cream text-teal-950/80 hover:bg-sand border border-teal-900/10"
                     }`}
                   >
-                    {st.count}
-                  </span>
-                </button>
-              );
-            })}
+                    <span>{st.label}</span>
+                    <span
+                      className={`rounded-full px-1.5 py-0.2 text-[10px] font-mono font-bold ${
+                        isActive ? "bg-white/20 text-white" : st.color
+                      }`}
+                    >
+                      {st.count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Date Sort Selector */}
+            <div className="flex items-center gap-1.5 shrink-0 bg-sand/40 border border-teal-900/15 rounded-xl px-2.5 py-1 self-start sm:self-auto">
+              <span className="font-bold text-teal-950/70 text-[11px] whitespace-nowrap">📅 ವಿಂಗಡಣೆ (Sort):</span>
+              <select
+                value={dateSortOrder}
+                onChange={(e) => {
+                  setDateSortOrder(e.target.value as any);
+                  setFocusIndex(0);
+                  setPortalPage(1);
+                }}
+                className="bg-transparent text-xs font-bold text-teal-950 outline-none cursor-pointer"
+              >
+                <option value="birthday_upcoming">🎂 ಇಂದು &amp; ಮುಂಬರುವ ಹುಟ್ಟುಹಬ್ಬ (Upcoming First)</option>
+                <option value="birthday_calendar">🎂 ಕ್ಯಾಲೆಂಡರ್ ದಿನಾಂಕ (Jan 1 → Dec 31)</option>
+                <option value="date_newest">🆕 ಹೊಸ ಲೀಡ್ ಮೊದಲು (Newest Added First)</option>
+                <option value="date_oldest">⏳ ಹಳೆಯ ಲೀಡ್ ಮೊದಲು (Oldest Added First)</option>
+                <option value="callback_earliest">⏰ ಮರುಕರೆ ಸಮಯ (Urgent Callbacks First)</option>
+              </select>
+            </div>
           </div>
         </div>
 
