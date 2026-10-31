@@ -3295,7 +3295,7 @@ export function AdminTelecallerCRM() {
                         <>
                           <span className="animate-pulse text-base">🚀</span>
                           <span>
-                            Chunk {uploadProgress.currentChunk} of {uploadProgress.totalChunks} (1,500 leads/chunk)
+                            Chunk {uploadProgress.currentChunk} of {uploadProgress.totalChunks} (1,000 leads/chunk)
                           </span>
                         </>
                       )}

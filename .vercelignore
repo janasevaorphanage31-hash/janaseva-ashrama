@@ -1,0 +1,16 @@
+# Vercel Deployment Ignore - Minimize artifact size and build time
+.git/
+.venv/
+.claude/
+.system_generated/
+janaseva-audit/
+scripts/
+tests/
+docs/
+brain/
+*.md
+*.log
+*.xlsx
+*.xls
+*.csv
+d nov 26 1.xlsx
