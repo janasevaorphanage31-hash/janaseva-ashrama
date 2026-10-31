@@ -811,10 +811,12 @@ export async function uploadBulkLeads(
     const BATCH_LOOKUP = 500;
     for (let i = 0; i < candidateArray.length; i += BATCH_LOOKUP) {
       const slice = candidateArray.slice(i, i + BATCH_LOOKUP);
+      // Check exact 10-digit candidate plus all common stored database variants (+91, 91, 0)
+      const lookupVariants = slice.flatMap((p) => [p, `+91${p}`, `91${p}`, `0${p}`, `+91 ${p}`]);
       const existingRows = await db
         .select({ phone: agLeads.phone })
         .from(agLeads)
-        .where(inArray(agLeads.phone, slice));
+        .where(inArray(agLeads.phone, lookupVariants));
       for (const r of existingRows) {
         if (r.phone) {
           const digits = r.phone.replace(/\D/g, "").slice(-10);

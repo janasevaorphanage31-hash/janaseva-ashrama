@@ -42,7 +42,8 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
   const [leads, setLeads] = useState<any[]>([]);
   const [loadingLeads, setLoadingLeads] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [filter, setFilter] = useState<string>("ALL");
+  // Default to Pending so telecallers immediately start with fresh, uncalled numbers (prevents seeing already-contacted numbers)
+  const [filter, setFilter] = useState<string>("Pending");
   const [dateSortOrder, setDateSortOrder] = useState<
     "birthday_upcoming" | "birthday_calendar" | "date_newest" | "date_oldest" | "callback_earliest"
   >("birthday_upcoming");
@@ -68,9 +69,12 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
     totalRevenue: 0,
   });
 
-  // Next-Gen Focus Dialing Mode state
+  // Next-Gen Focus Dialing Mode state (Lead ID anchored for zero index drift & zero duplicate repetition)
   const [viewMode, setViewMode] = useState<"focus" | "queue">("focus");
   const [focusIndex, setFocusIndex] = useState<number>(0);
+  const [activeFocusLeadId, setActiveFocusLeadId] = useState<number | null>(null);
+  const [currentlyDialedLeadId, setCurrentlyDialedLeadId] = useState<number | null>(null);
+  const [sessionContactedIds, setSessionContactedIds] = useState<Set<number>>(() => new Set());
   const [quickPitchLang, setQuickPitchLang] = useState<"kanglish" | "kn" | "en">("kanglish");
   const [selectedSevaAmount, setSelectedSevaAmount] = useState<number>(1500);
 
@@ -400,20 +404,21 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
     await handleUpdateDisposition(leadId, disposition);
   };
 
-  // Auto-Mark Attended on Phone Call Launch (Direct Customer Call)
+  // Safe Phone Call Launch (Direct Customer Call) - Locks card onto current lead so it does not jump or advance while dialing
   const handleCallLead = (lead: any) => {
-    if (!lead.status || lead.status === "Pending") {
-      void handleUpdateDisposition(lead.leadId, "Contacted", "Auto-marked attended on call click");
-    }
+    if (!lead) return;
+    setActiveFocusLeadId(lead.leadId);
+    setCurrentlyDialedLeadId(lead.leadId);
     const phoneInfo = parseCustomerPhone(lead.phone);
     window.location.href = `tel:${phoneInfo.e164}`;
+    showToast(`📞 Dialing ${lead.name}... After call, tap outcome below to advance!`);
   };
 
-  // Auto-Mark Attended on WhatsApp Dispatch Launch
+  // Safe WhatsApp Dispatch Launch - Locks card onto current lead
   const handleWhatsAppLead = (lead: any) => {
-    if (!lead.status || lead.status === "Pending") {
-      void handleUpdateDisposition(lead.leadId, "Contacted", "Auto-marked attended on WhatsApp dispatch");
-    }
+    if (!lead) return;
+    setActiveFocusLeadId(lead.leadId);
+    setCurrentlyDialedLeadId(lead.leadId);
     handleOpenWhatsAppModal(lead);
   };
 
@@ -527,9 +532,8 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
   // 1-Tap Direct WhatsApp Chat Launch
   const handleDirectWhatsAppChat = (lead: any, customAmount?: number) => {
     if (!lead || !callerProfile) return;
-    if (!lead.status || lead.status === "Pending") {
-      void handleUpdateDisposition(lead.leadId, "Contacted", "Auto-marked attended on WhatsApp dispatch");
-    }
+    setActiveFocusLeadId(lead.leadId);
+    setCurrentlyDialedLeadId(lead.leadId);
     const phoneInfo = parseCustomerPhone(lead.phone);
     const amount = customAmount || selectedSevaAmount || 1500;
     const siteOrigin = typeof window !== "undefined" ? window.location.origin : "https://janasevaashrama.org";
@@ -661,20 +665,103 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
     setCallbackDateTime(formatted);
   };
 
-  // Focus Mode Disposition with Auto-Advance
+  // Focus Mode Safe Navigation Handlers (Lead ID Anchored)
+  const handleNextFocusLead = () => {
+    if (safeFocusIndex < filteredLeads.length - 1) {
+      const nextIdx = safeFocusIndex + 1;
+      setFocusIndex(nextIdx);
+      setActiveFocusLeadId(filteredLeads[nextIdx].leadId);
+    }
+  };
+
+  const handlePrevFocusLead = () => {
+    if (safeFocusIndex > 0) {
+      const prevIdx = safeFocusIndex - 1;
+      setFocusIndex(prevIdx);
+      setActiveFocusLeadId(filteredLeads[prevIdx].leadId);
+    }
+  };
+
+  const handleJumpToNextPending = () => {
+    // Find the next lead in filteredLeads starting after safeFocusIndex that is Pending
+    let nextPending = filteredLeads.slice(safeFocusIndex + 1).find((l) => !l.status || l.status === "Pending");
+    if (!nextPending) {
+      // Wrap around from beginning of queue
+      nextPending = filteredLeads.find((l) => !l.status || l.status === "Pending");
+    }
+    if (nextPending) {
+      const nextIdx = filteredLeads.findIndex((l) => l.leadId === nextPending.leadId);
+      if (nextIdx !== -1) setFocusIndex(nextIdx);
+      setActiveFocusLeadId(nextPending.leadId);
+      showToast(`⏭️ Jumped to fresh lead: ${nextPending.name}`);
+    } else {
+      showToast("🎉 All leads in this filter have been completed!");
+    }
+  };
+
+  // Focus Mode Disposition with Auto-Advance (Prevents skipping and duplicate bounce)
   const handleFocusDisposition = async (leadId: number, disposition: string, notes?: string, callbackTime?: string) => {
+    // Mark as contacted in this active browser session
+    setSessionContactedIds((prev) => new Set(prev).add(leadId));
+    setCurrentlyDialedLeadId(null);
+
+    // Compute next candidate BEFORE updating disposition
+    const currentIdx = filteredLeads.findIndex((l) => l.leadId === leadId);
+    let nextLeadId: number | null = null;
+
+    if (filter === "Pending") {
+      // In "Pending" filter, updating status removes current lead from the list.
+      // The subsequent lead naturally slides into currentIdx position!
+      if (currentIdx + 1 < filteredLeads.length) {
+        nextLeadId = filteredLeads[currentIdx + 1].leadId;
+      } else if (currentIdx > 0) {
+        nextLeadId = filteredLeads[currentIdx - 1].leadId;
+      }
+    } else {
+      // In "ALL" or other views where the lead remains in the list, advance to next pending lead
+      const nextPending = filteredLeads.slice(currentIdx + 1).find((l) => !l.status || l.status === "Pending");
+      if (nextPending) {
+        nextLeadId = nextPending.leadId;
+      } else if (currentIdx + 1 < filteredLeads.length) {
+        nextLeadId = filteredLeads[currentIdx + 1].leadId;
+      }
+    }
+
     await handleUpdateDisposition(leadId, disposition, notes, callbackTime);
-    if (focusIndex < filteredLeads.length - 1) {
-      setFocusIndex((prev) => prev + 1);
+
+    if (nextLeadId) {
+      setActiveFocusLeadId(nextLeadId);
+    } else {
+      setActiveFocusLeadId(null);
     }
   };
 
   // Save Direct Offline / UPI Donation Log
   const handleSaveDonationLog = async () => {
     if (!activeDonationLead || !callerProfile) return;
+    const currentLeadId = activeDonationLead.leadId;
     setLoggingDonation(true);
+
+    // Identify next lead before state update
+    const currentIdx = filteredLeads.findIndex((l) => l.leadId === currentLeadId);
+    let nextLeadId: number | null = null;
+    if (filter === "Pending") {
+      if (currentIdx + 1 < filteredLeads.length) {
+        nextLeadId = filteredLeads[currentIdx + 1].leadId;
+      } else if (currentIdx > 0) {
+        nextLeadId = filteredLeads[currentIdx - 1].leadId;
+      }
+    } else {
+      const nextPending = filteredLeads.slice(currentIdx + 1).find((l) => !l.status || l.status === "Pending");
+      if (nextPending) {
+        nextLeadId = nextPending.leadId;
+      } else if (currentIdx + 1 < filteredLeads.length) {
+        nextLeadId = filteredLeads[currentIdx + 1].leadId;
+      }
+    }
+
     try {
-      const res = await fetch(`/api/v1/leads/${activeDonationLead.leadId}/log`, {
+      const res = await fetch(`/api/v1/leads/${currentLeadId}/log`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -688,7 +775,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
       const data = await res.json();
       if (data.success) {
         const updatedList = leads.map((l) =>
-          l.leadId === activeDonationLead.leadId ? { ...l, status: "Donated" } : l
+          l.leadId === currentLeadId ? { ...l, status: "Donated" } : l
         );
         setLeads(updatedList);
         setStats((prev) => ({
@@ -699,8 +786,14 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
         showToast(`🎉 ₹${loggedDonationAmount} Donation logged for ${activeDonationLead.name}! Attributed to ${callerProfile.callerId}`);
         setActiveDonationLead(null);
         setLoggedDonationUtr("");
-        if (viewMode === "focus" && focusIndex < filteredLeads.length - 1) {
-          setFocusIndex((prev) => prev + 1);
+        setCurrentlyDialedLeadId(null);
+
+        if (viewMode === "focus") {
+          if (nextLeadId) {
+            setActiveFocusLeadId(nextLeadId);
+          } else {
+            setActiveFocusLeadId(null);
+          }
         }
       } else {
         alert("Failed to save donation: " + (data.error || "Unknown error"));
@@ -792,6 +885,13 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
     };
 
     return [...base].sort((a, b) => {
+      // CRITICAL FIX: Uncontacted Pending leads ALWAYS sort ahead of attended leads
+      // so telecallers never see already-called numbers at the top of any queue
+      const aPending = !a.status || a.status === "Pending";
+      const bPending = !b.status || b.status === "Pending";
+      if (aPending && !bPending) return -1;
+      if (!aPending && bPending) return 1;
+
       if (dateSortOrder === "birthday_upcoming") {
         const distA = getBirthdayDistance(a.dobMonth, a.dobDay);
         const distB = getBirthdayDistance(b.dobMonth, b.dobDay);
@@ -833,9 +933,24 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
     return filteredLeads.slice(start, start + portalPageSize);
   }, [filteredLeads, portalPage, portalPageSize]);
 
-  // Safe Focus Index & Lead computation
-  const safeFocusIndex = focusIndex >= filteredLeads.length ? Math.max(0, filteredLeads.length - 1) : focusIndex;
+  // Safe Focus Index & Lead computation (Anchored to activeFocusLeadId for zero drift)
+  const safeFocusIndex = useMemo(() => {
+    if (filteredLeads.length === 0) return 0;
+    if (activeFocusLeadId) {
+      const idx = filteredLeads.findIndex((l) => l.leadId === activeFocusLeadId);
+      if (idx !== -1) return idx;
+    }
+    return Math.min(Math.max(0, focusIndex), filteredLeads.length - 1);
+  }, [filteredLeads, activeFocusLeadId, focusIndex]);
+
   const currentFocusLead = filteredLeads[safeFocusIndex] || null;
+
+  // Keep activeFocusLeadId synced with the currently displayed lead
+  useEffect(() => {
+    if (currentFocusLead && currentFocusLead.leadId !== activeFocusLeadId) {
+      setActiveFocusLeadId(currentFocusLead.leadId);
+    }
+  }, [currentFocusLead, activeFocusLeadId]);
 
   // Keyboard Shortcuts for Focus Power-Dialing Mode
   useEffect(() => {
@@ -878,16 +993,16 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
         void handleFocusDisposition(currentFocusLead.leadId, "Rejected");
       } else if (e.key === "n" || e.key === "N" || e.key === "ArrowRight") {
         e.preventDefault();
-        if (focusIndex < filteredLeads.length - 1) setFocusIndex((prev) => prev + 1);
+        handleNextFocusLead();
       } else if (e.key === "p" || e.key === "P" || e.key === "ArrowLeft") {
         e.preventDefault();
-        if (focusIndex > 0) setFocusIndex((prev) => prev - 1);
+        handlePrevFocusLead();
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [viewMode, focusIndex, currentFocusLead, filteredLeads, isAntiBanModalOpen, activeNotesLead, activeDonationLead, isChangePasswordOpen]);
+  }, [viewMode, focusIndex, safeFocusIndex, currentFocusLead, filteredLeads, isAntiBanModalOpen, activeNotesLead, activeDonationLead, isChangePasswordOpen]);
 
   // Loading Session Screen
   if (authChecking) {
@@ -1504,22 +1619,73 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                       <div className="flex items-center gap-1.5">
                         <button
                           type="button"
-                          onClick={() => setFocusIndex((prev) => Math.max(0, prev - 1))}
+                          onClick={handlePrevFocusLead}
                           disabled={safeFocusIndex === 0}
-                          className="rounded-xl bg-cream hover:bg-sand disabled:opacity-30 border border-teal-900/15 px-3 py-1.5 text-xs font-bold transition cursor-pointer"
+                          className="rounded-xl bg-cream hover:bg-sand disabled:opacity-30 border border-teal-900/15 px-2.5 py-1.5 text-xs font-bold transition cursor-pointer"
                         >
                           ◀ Prev
                         </button>
                         <button
                           type="button"
-                          onClick={() => setFocusIndex((prev) => Math.min(filteredLeads.length - 1, prev + 1))}
+                          onClick={handleNextFocusLead}
                           disabled={safeFocusIndex >= filteredLeads.length - 1}
-                          className="rounded-xl bg-teal-950 text-white hover:bg-teal-900 disabled:opacity-30 px-3 py-1.5 text-xs font-bold transition cursor-pointer shadow-2xs"
+                          className="rounded-xl bg-teal-950 text-white hover:bg-teal-900 disabled:opacity-30 px-2.5 py-1.5 text-xs font-bold transition cursor-pointer shadow-2xs"
                         >
                           Next ▶
                         </button>
+                        <button
+                          type="button"
+                          onClick={handleJumpToNextPending}
+                          title="Jump to the next fresh pending lead in queue"
+                          className="rounded-xl bg-amber-500 hover:bg-amber-600 text-teal-950 px-2.5 py-1.5 text-xs font-black transition cursor-pointer shadow-2xs flex items-center gap-1"
+                        >
+                          <span>⏭️ Fresh</span>
+                        </button>
                       </div>
                     </div>
+
+                    {/* Active Dial Banner */}
+                    {currentlyDialedLeadId === currentFocusLead.leadId && (
+                      <div className="rounded-2xl bg-emerald-100 border-2 border-emerald-500 p-3.5 flex items-center justify-between gap-3 animate-pulse shadow-xs">
+                        <div className="flex items-center gap-2.5">
+                          <span className="text-xl">📞</span>
+                          <div>
+                            <p className="text-xs font-black text-emerald-950 leading-tight">
+                              ಕರೆ ಪ್ರಾರಂಭವಾಗಿದೆ (Call in Progress...)
+                            </p>
+                            <p className="text-[11px] text-emerald-800 mt-0.5">
+                              After call, tap an outcome button below (Interested / Busy / Paid / Not Interested) to save &amp; advance!
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setCurrentlyDialedLeadId(null)}
+                          className="text-[11px] font-bold text-emerald-900 bg-white/70 px-2.5 py-1 rounded-lg border border-emerald-300 hover:bg-white cursor-pointer shrink-0"
+                        >
+                          Dismiss
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Already Attended Lead Warning Banner */}
+                    {currentFocusLead.status && currentFocusLead.status !== "Pending" && (
+                      <div className="rounded-2xl bg-amber-50 border border-amber-300 p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-xs">
+                        <div className="flex items-center gap-2 text-xs font-bold text-amber-950">
+                          <span className="text-base">⚠️</span>
+                          <span>
+                            ಈ ನಂಬರ್‌ಗೆ ಈಗಾಗಲೇ ಕರೆ ಮಾಡಲಾಗಿದೆ (Already Contacted: <strong>{currentFocusLead.status}</strong>).
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleJumpToNextPending}
+                          className="rounded-xl bg-teal-950 hover:bg-teal-900 text-gold px-3 py-1.5 text-xs font-black transition cursor-pointer shadow-xs flex items-center justify-center gap-1.5 self-start sm:self-auto"
+                        >
+                          <span>⏭️ ಮುಂದಿನ ಹೊಸ ನಂಬರ್ (Jump to Fresh Lead)</span>
+                        </button>
+                      </div>
+                    )}
 
                     {/* Donor Details Strip */}
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -1879,7 +2045,9 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                         <button
                           type="button"
                           onClick={() => {
-                            setFocusIndex(idx);
+                            setActiveFocusLeadId(lead.leadId);
+                            const overallIdx = filteredLeads.findIndex((fl) => fl.leadId === lead.leadId);
+                            if (overallIdx !== -1) setFocusIndex(overallIdx);
                             setViewMode("focus");
                           }}
                           className="font-display font-black text-sm sm:text-base text-teal-950 hover:text-amber-600 transition text-left cursor-pointer flex items-center gap-1.5"
@@ -1938,7 +2106,9 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                       <button
                         type="button"
                         onClick={() => {
-                          setFocusIndex(idx);
+                          setActiveFocusLeadId(lead.leadId);
+                          const overallIdx = filteredLeads.findIndex((fl) => fl.leadId === lead.leadId);
+                          if (overallIdx !== -1) setFocusIndex(overallIdx);
                           setViewMode("focus");
                         }}
                         className="rounded-xl bg-sand/60 hover:bg-sand border border-teal-900/15 text-teal-950 px-2.5 py-2 text-xs font-bold transition flex items-center gap-1 cursor-pointer"
@@ -2427,9 +2597,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
             </button>
             <button
               type="button"
-              onClick={() => {
-                if (focusIndex < filteredLeads.length - 1) setFocusIndex((prev) => prev + 1);
-              }}
+              onClick={handleNextFocusLead}
               disabled={safeFocusIndex >= filteredLeads.length - 1}
               className="py-2.5 px-2.5 rounded-xl bg-sand border border-teal-900/20 text-teal-950 font-black text-xs flex flex-col items-center justify-center active:scale-95 disabled:opacity-40 cursor-pointer"
               title="Next Lead"
