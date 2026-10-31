@@ -1024,15 +1024,15 @@ export function AdminTelecallerCRM() {
   };
 
   const handleCopyCredentials = (caller: TelecallerStats, pwd?: string) => {
-    const origin = typeof window !== "undefined" ? window.location.origin : "https://www.janasevaorphanage.org";
-    const text = `🌟 *JANASEVA ASHRAMA TELECALLER PORTAL ACCESS*\n👤 Advisor Name: ${caller.name}\n🆔 Caller ID: ${caller.callerId}\n📧 Login Email: ${caller.email || `${caller.callerId.toLowerCase()}@janaseva.org`}\n🔑 Password: ${pwd || "ashrama@123"}\n🔗 Login Portal: ${origin}/portal\n🎯 Primary 'Sponsor 25 Boys' Campaign Link: ${origin}/#official-tiers?ref=${caller.callerId}`;
+    const origin = typeof window !== "undefined" ? window.location.origin : "https://janasevaashrama.org";
+    const text = `🌟 *JANASEVA ASHRAMA TELECALLER PORTAL ACCESS*\n👤 Advisor Name: ${caller.name}\n🆔 Caller ID: ${caller.callerId}\n📧 Login Email: ${caller.email || `${caller.callerId.toLowerCase()}@janaseva.org`}\n🔑 Password: ${pwd || "ashrama@123"}\n🔗 Login Portal: ${origin}/portal?caller=${caller.callerId}\n🎯 Primary 'Sponsor 25 Boys' Campaign Link: ${origin}/give?ref=${caller.callerId}`;
     navigator.clipboard.writeText(text);
     showToast(`✓ Copied login credentials for ${caller.callerId} to clipboard!`);
   };
 
   const handleSendWhatsAppCredentials = (caller: TelecallerStats, pwd?: string) => {
-    const origin = typeof window !== "undefined" ? window.location.origin : "https://www.janasevaashrama.org";
-    const text = `🌸 *JANASEVA ASHRAMA TELECALLER PORTAL & CALLING DATA*\n\nNamaste ${caller.name},\nHere are your access credentials and assigned calling data:\n\n🎧 *Telecaller:* ${caller.name}\n🆔 *Caller ID:* ${caller.callerId}\n📧 *Login ID:* ${caller.callerId}\n🔑 *Password:* ${pwd || "ashrama@123"}\n🎯 *Daily Target:* ${caller.dailyQuota || 50} donors\n📋 *Total Assigned Leads:* ${caller.assignedCount.toLocaleString()}\n\n🔗 *Calling Portal (1-Tap Call & Log):*\n${origin}/portal\n\n📥 *Download Your Leads (CSV Spreadsheet):*\n${origin}/api/v1/admin/telecallers/export?type=caller_leads&callerId=${caller.callerId}\n\n🎁 *Your Direct Donation Link:*\n${origin}/donate?ref=${caller.callerId}\n\nPlease open your portal and start reaching out to donors with sincere devotion!`;
+    const origin = typeof window !== "undefined" ? window.location.origin : "https://janasevaashrama.org";
+    const text = `🌸 *JANASEVA ASHRAMA TELECALLER PORTAL & CALLING DATA*\n\nNamaste ${caller.name},\nHere are your access credentials and assigned calling data:\n\n🎧 *Telecaller:* ${caller.name}\n🆔 *Caller ID:* ${caller.callerId}\n📧 *Login ID:* ${caller.callerId}\n🔑 *Password:* ${pwd || "ashrama@123"}\n🎯 *Daily Target:* ${caller.dailyQuota || 50} donors\n📋 *Total Assigned Leads:* ${caller.assignedCount.toLocaleString()}\n\n🔗 *Calling Portal (1-Tap Call & Log):*\n${origin}/portal?caller=${caller.callerId}\n\n📥 *Download Your Leads (CSV Spreadsheet):*\n${origin}/api/v1/admin/telecallers/export?type=caller_leads&callerId=${caller.callerId}\n\n🎁 *Your Direct Donation Link:*\n${origin}/give?ref=${caller.callerId}\n\nPlease open your portal and start reaching out to donors with sincere devotion!`;
     const cleanNumber = (caller.whatsappNumber || "").replace(/\D/g, "").slice(-10);
     window.open(`https://wa.me/91${cleanNumber}?text=${encodeURIComponent(text)}`, "_blank");
     showToast(`✓ Opened WhatsApp to send calling sheet & access to ${caller.name}`);

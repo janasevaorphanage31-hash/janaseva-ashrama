@@ -21,11 +21,14 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
   const [callerProfile, setCallerProfile] = useState<CallerProfile | null>(null);
 
   // Login Form state
-  const [loginIdentifier, setLoginIdentifier] = useState(initialCallerId || "TC01");
-  const [loginPassword, setLoginPassword] = useState("ashrama@123");
+  const [loginIdentifier, setLoginIdentifier] = useState(initialCallerId || "");
+  const [loginPassword, setLoginPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [loginSubmitting, setLoginSubmitting] = useState(false);
   const [loginError, setLoginError] = useState("");
+  const [isScriptExpanded, setIsScriptExpanded] = useState(false);
+  const [isMobileStatsExpanded, setIsMobileStatsExpanded] = useState(false);
 
   // Change Password Modal state
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
@@ -148,12 +151,45 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
       if (data.authenticated && data.caller) {
         setCallerProfile(data.caller);
         setIsLoggedIn(true);
+        if (typeof window !== "undefined") {
+          localStorage.setItem("janaseva_telecaller_profile", JSON.stringify(data.caller));
+        }
         await loadCallerLeads(data.caller.callerId);
       } else {
+        // Fallback to saved localStorage profile if user enabled Remember Me on mobile
+        if (typeof window !== "undefined") {
+          const saved = localStorage.getItem("janaseva_telecaller_profile");
+          if (saved) {
+            try {
+              const parsed = JSON.parse(saved);
+              if (parsed?.callerId) {
+                setCallerProfile(parsed);
+                setIsLoggedIn(true);
+                await loadCallerLeads(parsed.callerId);
+                return;
+              }
+            } catch {}
+          }
+        }
         setIsLoggedIn(false);
         setCallerProfile(null);
       }
     } catch {
+      // If offline/error, fallback to saved local session
+      if (typeof window !== "undefined") {
+        const saved = localStorage.getItem("janaseva_telecaller_profile");
+        if (saved) {
+          try {
+            const parsed = JSON.parse(saved);
+            if (parsed?.callerId) {
+              setCallerProfile(parsed);
+              setIsLoggedIn(true);
+              void loadCallerLeads(parsed.callerId);
+              return;
+            }
+          } catch {}
+        }
+      }
       setIsLoggedIn(false);
     } finally {
       setAuthChecking(false);
@@ -161,13 +197,21 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
   };
 
   useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const urlCaller = params.get("caller") || params.get("id");
+      if (urlCaller) {
+        setLoginIdentifier(urlCaller.toUpperCase());
+      }
+    }
+
     queueMicrotask(() => {
       void checkCurrentSession();
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Real-Time Background Heartbeat Polling (every 15s)
+  // Real-Time Background Heartbeat Polling (every 45s for mobile battery and data savings)
   useEffect(() => {
     if (!isLoggedIn || !callerProfile) return;
 
@@ -207,7 +251,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
       }
     };
 
-    const interval = setInterval(heartbeat, 15000);
+    const interval = setInterval(heartbeat, 45000);
     return () => {
       isMounted = false;
       clearInterval(interval);
@@ -234,6 +278,9 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
       }
       setCallerProfile(data.caller);
       setIsLoggedIn(true);
+      if (rememberMe && typeof window !== "undefined") {
+        localStorage.setItem("janaseva_telecaller_profile", JSON.stringify(data.caller));
+      }
       showToast(`Welcome back, ${data.caller.name}! (${data.caller.callerId})`);
       await loadCallerLeads(data.caller.callerId);
     } catch (err: any) {
@@ -252,6 +299,9 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
         body: JSON.stringify({ action: "logout" }),
       });
     } catch {}
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("janaseva_telecaller_profile");
+    }
     setIsLoggedIn(false);
     setCallerProfile(null);
     setLeads([]);
@@ -463,7 +513,11 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
     } catch {}
 
     const targetUrl = `https://wa.me/${phoneInfo.waNumber}?text=${encodeURIComponent(qrCaption)}`;
-    window.open(targetUrl, "_blank", "noopener,noreferrer");
+    if (typeof navigator !== "undefined" && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+      window.location.href = targetUrl;
+    } else {
+      window.open(targetUrl, "_blank", "noopener,noreferrer");
+    }
     showToast(`✓ Opened WhatsApp to ${phoneInfo.display}! Axis Bank QR copied to clipboard.`);
   };
 
@@ -477,10 +531,15 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
     const amount = customAmount || selectedSevaAmount || 1500;
     const siteOrigin = typeof window !== "undefined" ? window.location.origin : "https://janasevaashrama.org";
     const donationUrl = `${siteOrigin}/give?ref=${callerProfile.callerId}&lead_id=${lead.leadId}&amount=${amount}`;
-    const text = `🙏 Namaskara ${lead.name} Sir/Madam!\n\nJanaseva Ashrama (Turahalli, Bengaluru) nalli ashrataraagiruva 25 anatha makkala kadeyinda ee vishēsha prarthane mattu namaskara! 👦✨\n\nNamma 25 makkala nitya baale ele ootakke mattu vidyabhyasakke sahaya bedi nimage ee sandēsha kalsuthiddivi.\n\n🍲 Pavitra Annadana Seva Tiers:\n• ₹501 — 3 Dinada Cow Milk & Pediatric Care\n• ₹1,500 — 25 Makkalige Bisi Breakfast Feast\n• ₹2,500 — Wholesome Festive Lunch Feast (Payasa + Sweets)\n• ₹4,500 — Full Day 4-Meal Annadana (All 25 Boys)\n\n━━━━━━━━━━━━━━━━━━━━━━━━━\n👉 [ 📲 1-TAP PAY ₹${formatINR(amount)} (GPay / PhonePe / 80G Tax Receipt) ]\n${donationUrl}\n\n💳 Direct UPI ID (GPay / PhonePe / BHIM):\nMAB.037349050110044@axisbank\n🏛️ Account: JANASEVA SAMRUDDI EDUCATI\n\n👉 [ 📍 GOOGLE MAPS ASHRAMA PIN ]\nhttps://maps.app.goo.gl/uPjN24rP1i1YkX6t7\n\n👉 [ 📞 DIRECT CALL ASHRAMA ]\n+91 99803 59595\n━━━━━━━━━━━━━━━━━━━━━━━━━\n🏛️ Govt Form 28 JJ Act: KA18CH0242 · 100% 80G Tax Exemption (Form 10AC: AABTJ7431MF20231). Instant WhatsApp receipt.\n\nShree Devaru nimage mattu nimma kutumbakke aayu, aarogya, aishwarya thumbalendu namma 25 makkalu prathidina 6:30 AM satsang nalli prarthane maduthare! 🙏✨`;
+    const upiLink = `upi://pay?pa=MAB.037349050110044@axisbank&pn=Janaseva%20Ashrama&am=${amount}&cu=INR&tn=Annadana%20Seva%20${callerProfile.callerId}`;
+    const text = `🙏 Namaskara ${lead.name} Sir/Madam!\n\nJanaseva Ashrama (Turahalli, Bengaluru) nalli ashrataraagiruva 25 anatha makkala kadeyinda ee vishēsha prarthane mattu namaskara! 👦✨\n\nNamma 25 makkala nitya baale ele ootakke mattu vidyabhyasakke sahaya bedi nimage ee sandēsha kalsuthiddivi.\n\n🍲 Pavitra Annadana Seva Tiers:\n• ₹501 — 3 Dinada Cow Milk & Pediatric Care\n• ₹1,500 — 25 Makkalige Bisi Breakfast Feast\n• ₹2,500 — Wholesome Festive Lunch Feast (Payasa + Sweets)\n• ₹4,500 — Full Day 4-Meal Annadana (All 25 Boys)\n\n━━━━━━━━━━━━━━━━━━━━━━━━━\n👉 [ 📲 1-TAP PAY ₹${formatINR(amount)} (GPay / PhonePe / 80G Tax Receipt) ]\n${donationUrl}\n\n⚡ 1-Tap GPay / PhonePe App Link:\n${upiLink}\n\n💳 Direct UPI ID (GPay / PhonePe / BHIM):\nMAB.037349050110044@axisbank\n🏛️ Registered Account: JANASEVA SAMRUDDI EDUCATI\n📜 Karnataka Govt JJ Act Reg: KA18CH0242 · 100% 80G Tax Exemption (Form 10AC: AABTJ7431MF20231)\n\n👉 [ 📍 GOOGLE MAPS ASHRAMA PIN ]\nhttps://maps.app.goo.gl/uPjN24rP1i1YkX6t7\n\n👉 [ 📞 DIRECT CALL ASHRAMA ]\n+91 99803 59595\n━━━━━━━━━━━━━━━━━━━━━━━━━\nShree Devaru nimage mattu nimma kutumbakke aayu, aarogya, aishwarya thumbalendu namma 25 makkalu prathidina 6:30 AM satsang nalli prarthane maduthare! 🙏✨`;
 
     const targetUrl = `https://wa.me/${phoneInfo.waNumber}?text=${encodeURIComponent(text)}`;
-    window.open(targetUrl, "_blank", "noopener,noreferrer");
+    if (typeof navigator !== "undefined" && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+      window.location.href = targetUrl;
+    } else {
+      window.open(targetUrl, "_blank", "noopener,noreferrer");
+    }
     showToast(`✓ Opened WhatsApp directly to ${phoneInfo.display}!`);
   };
 
@@ -648,8 +707,8 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
   // Copy Referral Link
   const handleCopyReferralLink = () => {
     if (!callerProfile) return;
-    const origin = typeof window !== "undefined" ? window.location.origin : "https://www.janasevaorphanage.org";
-    const refLink = `${origin}/#official-tiers?ref=${callerProfile.callerId}`;
+    const origin = typeof window !== "undefined" ? window.location.origin : "https://janasevaashrama.org";
+    const refLink = `${origin}/give?ref=${callerProfile.callerId}`;
     navigator.clipboard.writeText(refLink);
     showToast("✓ Referral link copied: " + refLink);
   };
@@ -873,46 +932,51 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
               </div>
             </div>
 
+            {/* Remember Me Checkbox */}
+            <div className="flex items-center justify-between pt-1">
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="rounded border-teal-900/30 text-teal-950 focus:ring-amber-400 h-4 w-4"
+                />
+                <span className="text-xs font-bold text-teal-950">
+                  ನೆನಪಿಡಿ (Keep Me Signed In)
+                </span>
+              </label>
+              <span className="text-[10px] text-teal-950/60 font-semibold">
+                Auto-saves on this phone
+              </span>
+            </div>
+
             <button
               type="submit"
               disabled={loginSubmitting}
-              className="w-full mt-2 focus-ring tap-scale rounded-xl bg-teal-950 hover:bg-teal-900 text-gold py-3 text-xs font-black shadow-md transition cursor-pointer flex items-center justify-center gap-2 disabled:opacity-60"
+              className="w-full mt-2 focus-ring tap-scale rounded-xl bg-teal-950 hover:bg-teal-900 text-gold py-3 text-xs font-black shadow-md transition cursor-pointer flex items-center justify-center gap-2 disabled:opacity-60 min-h-[48px]"
             >
               {loginSubmitting ? (
                 <>
                   <span className="animate-spin text-base">⏳</span>
-                  <span>Authenticating...</span>
+                  <span>ಪರಿಶೀಲಿಸಲಾಗುತ್ತಿದೆ (Authenticating)...</span>
                 </>
               ) : (
                 <>
-                  <span>🔐 Access My Caller Workspace</span>
+                  <span>🔐 ಲಾಗಿನ್ ಆಗಿ (Access My Workspace)</span>
                 </>
               )}
             </button>
           </form>
 
-          {/* Quick Demo Access Pills */}
-          <div className="mt-6 pt-5 border-t border-teal-900/10">
-            <p className="text-[10px] font-black uppercase text-teal-950/50 text-center tracking-wider mb-2">
-              Quick Test Accounts (Default Pwd: <code className="text-amber-900 font-mono">ashrama@123</code>)
+          {/* Real User Help Notice (No Demo Buttons) */}
+          <div className="mt-6 pt-5 border-t border-teal-900/10 text-center space-y-2">
+            <p className="text-[11px] font-bold text-teal-950/80">
+              🌸 ಜನಸೇವಾ ಆಶ್ರಮ ತುರಹಳ್ಳಿ ಸಿಬ್ಬಂದಿ ಪೋರ್ಟಲ್
             </p>
-            <div className="grid grid-cols-3 gap-1.5">
-              {["TC01", "TC02", "TC03", "TC04", "TC05", "TC06"].map((cid) => (
-                <button
-                  key={cid}
-                  type="button"
-                  onClick={() => {
-                    setLoginIdentifier(cid);
-                    setLoginPassword("ashrama@123");
-                  }}
-                  className="rounded-lg bg-sand/60 hover:bg-amber-100/70 border border-teal-900/10 py-1 px-2 text-[11px] font-bold text-teal-950 transition text-center cursor-pointer"
-                >
-                  {cid}
-                </button>
-              ))}
-            </div>
-            <p className="text-[10px] text-teal-950/60 text-center mt-3">
-              Need password assistance? Contact the Super Admin at <span className="font-bold">admin@janaseva.org</span>
+            <p className="text-[10px] text-teal-950/60 max-w-xs mx-auto">
+              ನಿಮ್ಮ Caller ID (ಉದಾ: TC01) ಅಥವಾ ಪಾಸ್‌ವರ್ಡ್ ಸಹಾಯಕ್ಕಾಗಿ ಸೂಪರ್‌ವೈಸರ್ ಅನ್ನು ಸಂಪರ್ಕಿಸಿ:
+              <br />
+              <strong className="text-teal-950 font-bold">Admin Helpline: +91 99803 59595</strong>
             </p>
           </div>
         </div>
@@ -926,7 +990,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
 
   // ── AUTHENTICATED STATE: DEDICATED TELECALLER WORKSPACE ──
   return (
-    <div className="space-y-4 animate-fadeIn max-w-4xl mx-auto px-3 sm:px-6 py-4 pb-28 md:pb-8">
+    <div className="space-y-4 animate-fadeIn max-w-4xl mx-auto px-2 sm:px-6 py-2 sm:py-4 pb-36 md:pb-8">
       {/* Toast Notification */}
       {toastMsg && (
         <div className="rounded-2xl bg-teal-950 text-gold px-4 py-3 shadow-lg border border-amber-400/40 text-xs font-bold flex items-center justify-between sticky top-3 z-30 animate-fadeIn">
@@ -936,7 +1000,120 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
       )}
 
       {/* ── TOP TELECALLER HEADER & STATS BAR ── */}
-      <div className="rounded-3xl bg-white p-4 sm:p-6 shadow-sm border border-teal-900/10">
+      {/* Mobile-Optimized Compact Header (< sm): Takes only ~75px so donor card is immediately visible! */}
+      <div className="sm:hidden rounded-2xl bg-white p-3 shadow-xs border border-teal-900/10 space-y-2.5">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="grid h-9 w-9 place-items-center rounded-xl bg-teal-950 text-gold font-display font-black text-xs shrink-0 shadow-xs">
+              {callerProfile.callerId}
+            </div>
+            <div className="min-w-0">
+              <h1 className="font-display text-sm font-black text-teal-950 truncate">
+                {callerProfile.name}
+              </h1>
+              <p className="text-[10px] text-teal-950/60 leading-tight">
+                📱 +91 {callerProfile.whatsappNumber}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1 shrink-0">
+            <button
+              type="button"
+              onClick={handleExportCsv}
+              title="Download Leads CSV"
+              className="rounded-lg bg-sand border border-teal-900/15 text-teal-950 px-2 py-1 text-[10px] font-bold"
+            >
+              📥 CSV
+            </button>
+            <button
+              type="button"
+              onClick={handleSendDailySupervisorReport}
+              title="Daily EOD Report"
+              className="rounded-lg bg-emerald-50 border border-emerald-300 text-emerald-950 px-2 py-1 text-[10px] font-bold"
+            >
+              📊 ವರದಿ
+            </button>
+            <button
+              type="button"
+              onClick={handleLogout}
+              title="Sign Out"
+              className="rounded-lg bg-rose-50 border border-rose-200 text-rose-700 px-2 py-1 text-[10px] font-bold"
+            >
+              🚪
+            </button>
+          </div>
+        </div>
+
+        {/* 4 Quick Stat Badges */}
+        <div className="grid grid-cols-4 gap-1.5 text-center">
+          <div className="bg-cream rounded-xl p-1.5 border border-teal-900/10">
+            <span className="block text-[8px] font-black uppercase text-teal-950/60">ಕ್ಯೂ (Queue)</span>
+            <span className="font-mono text-xs font-black text-teal-950">{stats.totalAssigned}</span>
+          </div>
+          <div className="bg-emerald-50 rounded-xl p-1.5 border border-emerald-200">
+            <span className="block text-[8px] font-black uppercase text-emerald-800">ಕರೆ (Today)</span>
+            <span className="font-mono text-xs font-black text-emerald-800">{stats.contactedCount}/{dailyTarget}</span>
+          </div>
+          <div className="bg-amber-50 rounded-xl p-1.5 border border-amber-200">
+            <span className="block text-[8px] font-black uppercase text-amber-900">ದಾನ (Paid)</span>
+            <span className="font-mono text-xs font-black text-amber-900">{stats.convertedCount}</span>
+          </div>
+          <div className="bg-teal-950 text-gold rounded-xl p-1.5 border border-teal-900">
+            <span className="block text-[8px] font-black uppercase text-amber-300">ಸಂಗ್ರಹ</span>
+            <span className="font-mono text-[10px] font-black truncate">{formatINR(stats.totalRevenue)}</span>
+          </div>
+        </div>
+
+        {/* Toggle Detailed Mobile Stats if user wants */}
+        <div className="pt-0.5 text-center">
+          <button
+            type="button"
+            onClick={() => setIsMobileStatsExpanded((prev) => !prev)}
+            className="text-[10px] font-bold text-teal-900/70 hover:text-teal-950 inline-flex items-center gap-1 cursor-pointer"
+          >
+            <span>{isMobileStatsExpanded ? "ಅಂಕಿಅಂಶ ಮುಚ್ಚಿ ▲" : "ಹೆಚ್ಚಿನ ವಿವರ (Progress & Links) ▼"}</span>
+          </button>
+        </div>
+
+        {isMobileStatsExpanded && (
+          <div className="space-y-2 pt-2 border-t border-teal-900/10 animate-fadeIn">
+            {/* Progress Bar */}
+            <div className="space-y-1">
+              <div className="flex items-center justify-between text-[11px] font-bold text-teal-950">
+                <span>🎯 ದಿನದ ಗುರಿ: {stats.contactedCount}/{dailyTarget} ({progressPercent}%)</span>
+                <span>{progressPercent}% Complete</span>
+              </div>
+              <div className="w-full bg-teal-950/10 rounded-full h-2 overflow-hidden border border-teal-900/10">
+                <div
+                  className="bg-gradient-to-r from-emerald-500 to-teal-800 h-full rounded-full transition-all duration-500 ease-out"
+                  style={{ width: `${Math.min(100, Math.max(3, progressPercent))}%` }}
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between gap-2 pt-1">
+              <button
+                type="button"
+                onClick={handleCopyReferralLink}
+                className="flex-1 py-1 px-2 rounded-lg bg-sand border border-teal-900/15 text-teal-950 text-[10px] font-bold"
+              >
+                🔗 ರೆಫರಲ್ ಲಿಂಕ್ ಕಾಪಿ
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsChangePasswordOpen(true)}
+                className="py-1 px-2 rounded-lg bg-white border border-teal-900/15 text-teal-950 text-[10px] font-bold"
+              >
+                🔑 ಪಾಸ್‌ವರ್ಡ್
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Desktop Full Header (hidden on mobile, visible on sm and up) */}
+      <div className="hidden sm:block rounded-3xl bg-white p-4 sm:p-6 shadow-sm border border-teal-900/10">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-teal-900/10 pb-4">
           <div className="flex items-center gap-3">
             <LogoMark size={44} className="ring-2 ring-amber-400/30 shrink-0" />
@@ -1126,11 +1303,11 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
           {/* 5 Clean Filter Tabs */}
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
             {[
-              { id: "Pending", label: "⏳ To Call", count: counts.pending, color: "text-amber-900 bg-amber-100" },
-              { id: "Today_Birthday", label: "🎂 Birthdays Today", count: counts.birthdays, color: "text-purple-900 bg-purple-100" },
-              { id: "Reschedule", label: "📅 Callbacks", count: counts.reschedule, color: "text-blue-900 bg-blue-100" },
-              { id: "Attended", label: "✓ Completed", count: counts.attended, color: "text-emerald-900 bg-emerald-100" },
-              { id: "ALL", label: "All Leads", count: counts.all, color: "text-teal-950/60 bg-white" },
+              { id: "Pending", label: "⏳ ಕರೆ ಬಾಕಿ (To Call)", count: counts.pending, color: "text-amber-900 bg-amber-100" },
+              { id: "Today_Birthday", label: "🎂 ಇಂದು ಹುಟ್ಟುಹಬ್ಬ (Birthdays)", count: counts.birthdays, color: "text-purple-900 bg-purple-100" },
+              { id: "Reschedule", label: "📅 ಮತ್ತೆ ಕರೆ (Callbacks)", count: counts.reschedule, color: "text-blue-900 bg-blue-100" },
+              { id: "Attended", label: "✓ ಮುಗಿದಿದೆ (Completed)", count: counts.attended, color: "text-emerald-900 bg-emerald-100" },
+              { id: "ALL", label: "📋 ಎಲ್ಲವೂ (All)", count: counts.all, color: "text-teal-950/60 bg-white" },
             ].map((st) => {
               const isActive = filter === st.id;
               return (
@@ -1407,17 +1584,27 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                       </div>
                     </div>
 
-                    {/* ── INTEGRATED 30-SECOND TRUST SCRIPT BOX ── */}
-                    <div className="rounded-2xl border border-teal-900/15 bg-sand/30 p-3.5 space-y-2 text-xs">
+                    {/* ── INTEGRATED 30-SECOND TRUST SCRIPT BOX (Collapsible) ── */}
+                    <div className="rounded-2xl border border-teal-900/15 bg-sand/30 p-2.5 sm:p-3.5 space-y-2 text-xs">
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-1.5 font-black text-teal-950 uppercase text-[11px]">
+                        <button
+                          type="button"
+                          onClick={() => setIsScriptExpanded((prev) => !prev)}
+                          className="flex items-center gap-1.5 font-black text-teal-950 text-[11px] cursor-pointer"
+                        >
                           <span>🗣️</span>
-                          <span>30-Second Trust Script (Read on Call):</span>
-                        </div>
+                          <span>ಮಾತನಾಡುವ ವಿಧಾನ (30s Pitch Script)</span>
+                          <span className="text-[10px] bg-teal-950/10 rounded px-1.5 py-0.5 font-bold">
+                            {isScriptExpanded ? "ಮುಚ್ಚಿ ▲" : "ಓದಿ (Open) ▼"}
+                          </span>
+                        </button>
                         <div className="flex items-center gap-1 bg-white p-0.5 rounded-lg border border-teal-900/15 text-[10px]">
                           <button
                             type="button"
-                            onClick={() => setQuickPitchLang("kanglish")}
+                            onClick={() => {
+                              setQuickPitchLang("kanglish");
+                              setIsScriptExpanded(true);
+                            }}
                             className={`px-2 py-0.5 rounded font-bold transition cursor-pointer ${
                               quickPitchLang === "kanglish" ? "bg-teal-950 text-white" : "text-teal-950/70"
                             }`}
@@ -1426,7 +1613,10 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                           </button>
                           <button
                             type="button"
-                            onClick={() => setQuickPitchLang("kn")}
+                            onClick={() => {
+                              setQuickPitchLang("kn");
+                              setIsScriptExpanded(true);
+                            }}
                             className={`px-2 py-0.5 rounded font-bold transition cursor-pointer ${
                               quickPitchLang === "kn" ? "bg-teal-950 text-white" : "text-teal-950/70"
                             }`}
@@ -1435,7 +1625,10 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                           </button>
                           <button
                             type="button"
-                            onClick={() => setQuickPitchLang("en")}
+                            onClick={() => {
+                              setQuickPitchLang("en");
+                              setIsScriptExpanded(true);
+                            }}
                             className={`px-2 py-0.5 rounded font-bold transition cursor-pointer ${
                               quickPitchLang === "en" ? "bg-teal-950 text-white" : "text-teal-950/70"
                             }`}
@@ -1445,23 +1638,25 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                         </div>
                       </div>
 
-                      <div className="p-3 rounded-xl bg-white border border-teal-900/10 text-teal-950 leading-relaxed text-[11px] font-medium shadow-2xs">
-                        {quickPitchLang === "kanglish" && (
-                          <p>
-                            <strong className="text-teal-900 font-bold">&quot;Namaskara {currentFocusLead.name} Sir/Madam!</strong> Naanu Janaseva Ashrama (Turahalli, Bengaluru) inda maathadthiddeve. {isTodayBirthday ? `Namma 25 makkala tharaphinda nimage Janmadinada Shubhashayagalu! 🎂 ` : ""}Namma Ashrama dalli 25 anatha baalakarige nithya satvik oota needthiddivi. Namma samsthe Karnataka JJ Act (KA18CH0242) nalli registered aagide, mattu 80G tax receipt siguththe. <strong>Naanu iga nimma WhatsApp ge makkala photo mattu namma official Axis Bank payment scanner kalisthini Sir/Madam.</strong> Dayavittu nodi nimma shakti anukoola chikka sahaya maadi.&quot;
-                          </p>
-                        )}
-                        {quickPitchLang === "kn" && (
-                          <p>
-                            <strong className="text-teal-900 font-bold">&quot;ನಮಸ್ಕಾರ {currentFocusLead.name} ಅವರೇ!</strong> ನಾನು ತುರಹಳ್ಳಿಯ ಜನಸೇವಾ ಆಶ್ರಮದಿಂದ (ಬೆಂಗಳೂರು) ಕರೆ ಮಾಡುತ್ತಿದ್ದೇನೆ. {isTodayBirthday ? `ನಮ್ಮ 25 ಮಕ್ಕಳ ಪರವಾಗಿ ತಮಗೆ ಹುಟ್ಟುಹಬ್ಬದ ಹಾರ್ದಿಕ ಶುಭಾಶಯಗಳು! 🎂 ` : ""}ನಮ್ಮಲ್ಲಿರುವ 25 ಬಾಲಕರ ನಿತ್ಯ ಅನ್ನದಾನ ಸೇವೆಗೆ ತಮ್ಮ ಸಹಕಾರ ಕೋರುತ್ತಿದ್ದೇವೆ. ನಮ್ಮದು ಸರ್ಕಾರದ ಅಧಿಕೃತ ಬಾಲನ್ಯಾಯ ಕಾಯ್ದೆಯಡಿ (JJ Act KA18CH0242) ನೋಂದಾಯಿತ ಆಶ್ರಮವಾಗಿದ್ದು, 80G ತೆರಿಗೆ ವಿನಾಯಿತಿ ಲಭ್ಯವಿದೆ. <strong>ನಾನು ಈಗ ತಮ್ಮ WhatsApp ಗೆ ಮಕ್ಕಳ ಊಟದ ಫೋಟೋ ಹಾಗೂ ಅಧಿಕೃತ ಆಕ್ಸಿಸ್ ಬ್ಯಾಂಕ್ ಪೇಮೆಂಟ್ ಸ್ಕ್ಯಾನರ್ ಕಳುಹಿಸುತ್ತೇನೆ.</strong> ದಯವಿಟ್ಟು ಪರಿಶೀಲಿಸಿ ಸಹಾಯ ಮಾಡಿ.&quot;
-                          </p>
-                        )}
-                        {quickPitchLang === "en" && (
-                          <p>
-                            <strong className="text-teal-900 font-bold">&quot;Hello {currentFocusLead.name} Ji!</strong> Warm greetings from Janaseva Ashrama, Bengaluru. {isTodayBirthday ? `Heartfelt Birthday Wishes from all our 25 resident boys! 🎂 ` : ""}We care for 25 orphaned boys at our Turahalli home providing wholesome meals, shelter, and schooling. We are Govt-licensed under JJ Act KA18CH0242 with 80G tax exemption. <strong>I am sharing our children&apos;s meal photo and official Axis Bank UPI Payment QR Scanner directly to your WhatsApp right now.</strong> Kindly review and support our resident children with whatever amount is comfortable for you.&quot;
-                          </p>
-                        )}
-                      </div>
+                      {isScriptExpanded && (
+                        <div className="p-3 rounded-xl bg-white border border-teal-900/10 text-teal-950 leading-relaxed text-[11px] font-medium shadow-2xs animate-fadeIn">
+                          {quickPitchLang === "kanglish" && (
+                            <p>
+                              <strong className="text-teal-900 font-bold">&quot;Namaskara {currentFocusLead.name} Sir/Madam!</strong> Naanu Janaseva Ashrama (Turahalli, Bengaluru) inda maathadthiddeve. {isTodayBirthday ? `Namma 25 makkala tharaphinda nimage Janmadinada Shubhashayagalu! 🎂 ` : ""}Namma Ashrama dalli 25 anatha baalakarige nithya satvik oota needthiddivi. Namma samsthe Karnataka JJ Act (KA18CH0242) nalli registered aagide, mattu 80G tax receipt siguththe. <strong>Naanu iga nimma WhatsApp ge makkala photo mattu namma official Axis Bank payment scanner kalisthini Sir/Madam.</strong> Dayavittu nodi nimma shakti anukoola chikka sahaya maadi.&quot;
+                            </p>
+                          )}
+                          {quickPitchLang === "kn" && (
+                            <p>
+                              <strong className="text-teal-900 font-bold">&quot;ನಮಸ್ಕಾರ {currentFocusLead.name} ಅವರೇ!</strong> ನಾನು ತುರಹಳ್ಳಿಯ ಜನಸೇವಾ ಆಶ್ರಮದಿಂದ (ಬೆಂಗಳೂರು) ಕರೆ ಮಾಡುತ್ತಿದ್ದೇನೆ. {isTodayBirthday ? `ನಮ್ಮ 25 ಮಕ್ಕಳ ಪರವಾಗಿ ತಮಗೆ ಹುಟ್ಟುಹಬ್ಬದ ಹಾರ್ದಿಕ ಶುಭಾಶಯಗಳು! 🎂 ` : ""}ನಮ್ಮಲ್ಲಿರುವ 25 ಬಾಲಕರ ನಿತ್ಯ ಅನ್ನದಾನ ಸೇವೆಗೆ ತಮ್ಮ ಸಹಕಾರ ಕೋರುತ್ತಿದ್ದೇವೆ. ನಮ್ಮದು ಸರ್ಕಾರದ ಅಧಿಕೃತ ಬಾಲನ್ಯಾಯ ಕಾಯ್ದೆಯಡಿ (JJ Act KA18CH0242) ನೋಂದಾಯಿತ ಆಶ್ರಮವಾಗಿದ್ದು, 80G ತೆರಿಗೆ ವಿನಾಯಿತಿ ಲಭ್ಯವಿದೆ. <strong>ನಾನು ಈಗ ತಮ್ಮ WhatsApp ಗೆ ಮಕ್ಕಳ ಊಟದ ಫೋಟೋ ಹಾಗೂ ಅಧಿಕೃತ ಆಕ್ಸಿಸ್ ಬ್ಯಾಂಕ್ ಪೇಮೆಂಟ್ ಸ್ಕ್ಯಾನರ್ ಕಳುಹಿಸುತ್ತೇನೆ.</strong> ದಯವಿಟ್ಟು ಪರಿಶೀಲಿಸಿ ಸಹಾಯ ಮಾಡಿ.&quot;
+                            </p>
+                          )}
+                          {quickPitchLang === "en" && (
+                            <p>
+                              <strong className="text-teal-900 font-bold">&quot;Hello {currentFocusLead.name} Ji!</strong> Warm greetings from Janaseva Ashrama, Bengaluru. {isTodayBirthday ? `Heartfelt Birthday Wishes from all our 25 resident boys! 🎂 ` : ""}We care for 25 orphaned boys at our Turahalli home providing wholesome meals, shelter, and schooling. We are Govt-licensed under JJ Act KA18CH0242 with 80G tax exemption. <strong>I am sharing our children&apos;s meal photo and official Axis Bank UPI Payment QR Scanner directly to your WhatsApp right now.</strong> Kindly review and support our resident children with whatever amount is comfortable for you.&quot;
+                            </p>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     {/* ── 1-TAP DISPOSITION & AUTO-ADVANCE STRIP ── */}
@@ -2081,57 +2276,99 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
         </div>
       )}
 
-      {/* ── MOBILE STICKY BOTTOM THUMB ACTION BAR (Always Reachable with Thumb) ── */}
+      {/* ── MOBILE STICKY BOTTOM THUMB ACTION COCKPIT ── */}
       {viewMode === "focus" && currentFocusLead && (
-        <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-teal-900/15 p-2 shadow-2xl flex items-center justify-between gap-1.5 animate-fadeIn">
-          <button
-            type="button"
-            onClick={() => handleCallLead(currentFocusLead)}
-            className="flex-1 py-3 px-1 rounded-xl bg-teal-950 text-white font-black text-xs flex flex-col items-center justify-center active:scale-95 shadow-xs"
-          >
-            <span className="text-base">📞</span>
-            <span className="text-[10px] leading-tight">ಕರೆ (Call)</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => handleDirectWhatsAppChat(currentFocusLead, selectedSevaAmount)}
-            className="flex-1 py-3 px-1 rounded-xl bg-[#25D366] text-white font-black text-xs flex flex-col items-center justify-center active:scale-95 shadow-xs"
-          >
-            <span className="text-base">💬</span>
-            <span className="text-[10px] leading-tight">WhatsApp</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => handleDirectSharePaymentQr(currentFocusLead, selectedSevaAmount)}
-            className="flex-1 py-3 px-1 rounded-xl bg-amber-600 text-white font-black text-xs flex flex-col items-center justify-center active:scale-95 shadow-xs"
-          >
-            <span className="text-base">📷</span>
-            <span className="text-[10px] leading-tight">QR ಸ್ಕ್ಯಾನ್</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setActiveDonationLead(currentFocusLead);
-              setLoggedDonationAmount(selectedSevaAmount || 1500);
-              setLoggedDonationUtr("");
-            }}
-            className="flex-1 py-3 px-1 rounded-xl bg-emerald-600 text-white font-black text-xs flex flex-col items-center justify-center active:scale-95 shadow-xs"
-          >
-            <span className="text-base">🎉</span>
-            <span className="text-[10px] leading-tight">ಪಾವತಿ (Paid)</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              if (focusIndex < filteredLeads.length - 1) setFocusIndex((prev) => prev + 1);
-            }}
-            disabled={safeFocusIndex >= filteredLeads.length - 1}
-            className="py-3 px-3 rounded-xl bg-sand border border-teal-900/20 text-teal-950 font-black text-xs flex flex-col items-center justify-center active:scale-95 disabled:opacity-40"
-            title="Next Lead"
-          >
-            <span className="text-base">▶</span>
-            <span className="text-[10px] leading-tight">ಮುಂದಕ್ಕೆ</span>
-          </button>
+        <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-teal-900/15 p-2 shadow-2xl space-y-1.5 animate-fadeIn">
+          {/* Row 1: 1-Tap Fast Disposition Auto-Advance */}
+          <div className="grid grid-cols-4 gap-1 text-[11px] font-black">
+            <button
+              type="button"
+              onClick={() => handleFocusDisposition(currentFocusLead.leadId, "Interested")}
+              className="py-1 px-1 rounded-lg bg-amber-500 hover:bg-amber-600 active:scale-95 text-teal-950 text-center truncate shadow-2xs cursor-pointer"
+            >
+              👍 ಒಪ್ಪಿದ್ದಾರೆ
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const twoHoursLater = new Date(Date.now() + 2 * 3600 * 1000).toISOString();
+                void handleFocusDisposition(currentFocusLead.leadId, "No_Answer", "Auto-rescheduled +2 hours", twoHoursLater);
+              }}
+              className="py-1 px-1 rounded-lg bg-slate-700 hover:bg-slate-800 active:scale-95 text-white text-center truncate shadow-2xs cursor-pointer"
+            >
+              ⏳ ಬಿಜಿ (+2h)
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveNotesLead(currentFocusLead);
+                setNotesText(currentFocusLead.notes || "");
+                setCallbackDateTime("");
+              }}
+              className="py-1 px-1 rounded-lg bg-blue-600 hover:bg-blue-700 active:scale-95 text-white text-center truncate shadow-2xs cursor-pointer"
+            >
+              📅 ನಂತರ ಕರೆ
+            </button>
+            <button
+              type="button"
+              onClick={() => handleFocusDisposition(currentFocusLead.leadId, "Rejected")}
+              className="py-1 px-1 rounded-lg bg-rose-100 hover:bg-rose-200 active:scale-95 text-rose-800 border border-rose-200 text-center truncate shadow-2xs cursor-pointer"
+            >
+              ✕ ಬೇಡ
+            </button>
+          </div>
+
+          {/* Row 2: Dial & Outreach Actions */}
+          <div className="flex items-center justify-between gap-1">
+            <button
+              type="button"
+              onClick={() => handleCallLead(currentFocusLead)}
+              className="flex-1 py-2.5 px-1 rounded-xl bg-teal-950 text-white font-black text-xs flex flex-col items-center justify-center active:scale-95 shadow-xs cursor-pointer"
+            >
+              <span className="text-sm">📞</span>
+              <span className="text-[10px] leading-tight">ಕರೆ</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleDirectWhatsAppChat(currentFocusLead, selectedSevaAmount)}
+              className="flex-1 py-2.5 px-1 rounded-xl bg-[#25D366] text-white font-black text-xs flex flex-col items-center justify-center active:scale-95 shadow-xs cursor-pointer"
+            >
+              <span className="text-sm">💬</span>
+              <span className="text-[10px] leading-tight">WhatsApp</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleDirectSharePaymentQr(currentFocusLead, selectedSevaAmount)}
+              className="flex-1 py-2.5 px-1 rounded-xl bg-amber-600 text-white font-black text-xs flex flex-col items-center justify-center active:scale-95 shadow-xs cursor-pointer"
+            >
+              <span className="text-sm">📷</span>
+              <span className="text-[10px] leading-tight">QR ಸ್ಕ್ಯಾನ್</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveDonationLead(currentFocusLead);
+                setLoggedDonationAmount(selectedSevaAmount || 1500);
+                setLoggedDonationUtr("");
+              }}
+              className="flex-1 py-2.5 px-1 rounded-xl bg-emerald-600 text-white font-black text-xs flex flex-col items-center justify-center active:scale-95 shadow-xs cursor-pointer"
+            >
+              <span className="text-sm">🎉</span>
+              <span className="text-[10px] leading-tight">ಪಾವತಿ</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (focusIndex < filteredLeads.length - 1) setFocusIndex((prev) => prev + 1);
+              }}
+              disabled={safeFocusIndex >= filteredLeads.length - 1}
+              className="py-2.5 px-2.5 rounded-xl bg-sand border border-teal-900/20 text-teal-950 font-black text-xs flex flex-col items-center justify-center active:scale-95 disabled:opacity-40 cursor-pointer"
+              title="Next Lead"
+            >
+              <span className="text-sm">▶</span>
+              <span className="text-[10px] leading-tight">ಮುಂದಕ್ಕೆ</span>
+            </button>
+          </div>
         </div>
       )}
     </div>
