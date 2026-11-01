@@ -251,7 +251,7 @@ export async function distributeBirthdayLeads() {
 /**
  * 3. Fetch Assigned Leads for a Telecaller (or All Leads if callerId === "ALL" or empty)
  */
-export async function getAssignedLeads(callerId?: string | null, limit = 10000) {
+export async function getAssignedLeads(callerId?: string | null, limit = 10000, offset = 0) {
   await ensureTelecallersAndSeedData();
   const cid = (callerId || "").trim().toUpperCase();
   if (!cid || cid === "ALL") {
@@ -259,25 +259,27 @@ export async function getAssignedLeads(callerId?: string | null, limit = 10000) 
       .select()
       .from(agLeads)
       .orderBy(agLeads.dobMonth, agLeads.dobDay, desc(agLeads.leadId))
-      .limit(limit);
+      .limit(limit)
+      .offset(offset);
   }
   return db
     .select()
     .from(agLeads)
     .where(eq(agLeads.assignedCallerId, cid))
     .orderBy(agLeads.dobMonth, agLeads.dobDay, desc(agLeads.leadId))
-    .limit(limit);
+    .limit(limit)
+    .offset(offset);
 }
 
 /**
  * 3b. Fetch Caller Portal Data (Assigned Leads + Realtime SQL Aggregated Stats)
  * Allows telecallers to load their verified stats directly without calling admin-only endpoints.
  */
-export async function getCallerPortalData(callerId?: string | null, limit = 10000) {
+export async function getCallerPortalData(callerId?: string | null, limit = 10000, offset = 0) {
   await ensureTelecallersAndSeedData();
   const cid = (callerId || "").trim().toUpperCase();
 
-  const leads = await getAssignedLeads(cid, limit);
+  const leads = await getAssignedLeads(cid, limit, offset);
 
   // SQL-indexed aggregate metrics for this specific caller
   const callerCondition = cid && cid !== "ALL" ? eq(agLeads.assignedCallerId, cid) : sql`1=1`;

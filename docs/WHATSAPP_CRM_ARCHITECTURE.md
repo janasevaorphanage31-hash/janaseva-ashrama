@@ -132,7 +132,7 @@ The WhatsApp CRM introduces 10 dedicated models into `src/db/schema.ts`:
 3. **AI Chatbot Guardrails**:
    - Grounded RAG with strict organization knowledge:
      - Form 28 JJ Act: `KA18CH0242`
-     - Form 10AC Section 80G: `AAATJ5578EF20214`
+     - Form 10AC Section 80G: `AABTJ7431MF20231`
      - Daily Meals: ₹4,500
      - Monthly Ration: ₹6,000
      - Sponsoring 25 boys core focus

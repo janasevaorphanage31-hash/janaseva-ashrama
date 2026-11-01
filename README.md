@@ -4,7 +4,7 @@ Official web application, donor management portal, and AI-powered WhatsApp CRM s
 
 ## 🌟 Overview & Mission
 
-Janaseva Ashrama is a registered non-governmental organization dedicated to caring for, feeding, educating, and sheltering children in need (currently supporting 25 resident boys under the Juvenile Justice Act registration `KA18CH0242`). Donors in India are eligible for 50% tax deduction under Section 80G of the Income Tax Act (URN: `AAATJ5578EF20214`).
+Janaseva Ashrama is a registered non-governmental organization dedicated to caring for, feeding, educating, and sheltering children in need (currently supporting 25 resident boys under the Juvenile Justice Act registration `KA18CH0242`). Donors in India are eligible for 50% tax deduction under Section 80G of the Income Tax Act (URN: `AABTJ7431MF20231`).
 
 This repository contains the complete Next.js 16 App Router application featuring:
 - **Donation Flow**: Fast, transparent Giving Basket, Birthday Seva Feast, Daily Meals (₹4,500), Monthly Ration (₹6,000), and custom contributions via Razorpay UPI/Netbanking/Cards.
@@ -22,7 +22,7 @@ This repository contains the complete Next.js 16 App Router application featurin
    - Webhook callback endpoint: `/api/webhook/whatsapp`.
 
 2. **Bilingual AI Chatbot & Copilot (English & Kannada)**:
-   - Grounded RAG with official organization details: Form 28 JJ Act `KA18CH0242`, Form 10AC Section 80G `AAATJ5578EF20214`, 25 resident boys, ₹4,500 Daily Meals, ₹6,000 Monthly Ration.
+   - Grounded RAG with official organization details: Form 28 JJ Act `KA18CH0242`, Form 10AC Section 80G `AABTJ7431MF20231`, 25 resident boys, ₹4,500 Daily Meals, ₹6,000 Monthly Ration.
    - Dual-language support with automatic language detection (`en` or `kn`).
    - Strict safety guardrails preventing hallucinations or fabricated legal/financial claims.
    - Human takeover trigger for complex queries or donor dispute requests.

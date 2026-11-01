@@ -118,7 +118,7 @@ With immense gratitude, *Janaseva Ashrama (Bengaluru)* acknowledges your loving 
 • *Receipt No:* ${params.receiptNumber}
 • *Contribution:* ${formattedAmount}
 • *Seva:* ${params.sevaType || "Annadana & Care for 25 Boys"}
-• *80G Tax Exemption:* Form 10AC No. AAATJ5578EF20214 (50% Tax Exemption)
+• *80G Tax Exemption:* Form 10AC No. AABTJ7431MF20231 (50% Tax Exemption)
 ${params.pan ? `• *PAN:* ${params.pan}` : ""}
 
 📥 *Download Your Official 80G Receipt:*

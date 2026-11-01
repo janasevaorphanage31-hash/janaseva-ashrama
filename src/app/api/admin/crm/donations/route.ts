@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { and, desc, eq, ilike, or, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { donations, donationLines } from "@/db/schema";
+import { donations, donationLines, agDonations } from "@/db/schema";
 import { requireAdminApi } from "@/lib/admin-auth";
 import { isEmail, isPhone, normalizePhone, clientIp } from "@/lib/server-utils";
 import { NAME_REGEX, PAN_REGEX } from "@/lib/validation";
@@ -213,6 +213,12 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: "Invalid donation ID." }, { status: 400 });
   }
 
+  const donationId = Number(body.id);
+  const [existing] = await db.select().from(donations).where(eq(donations.id, donationId)).limit(1);
+  if (!existing) {
+    return NextResponse.json({ error: "Donation record not found." }, { status: 404 });
+  }
+
   const updates: Record<string, unknown> = {};
   if (body.status) {
     updates.status = String(body.status);
@@ -224,13 +230,31 @@ export async function PATCH(req: Request) {
   await db
     .update(donations)
     .set(updates)
-    .where(eq(donations.id, Number(body.id)));
+    .where(eq(donations.id, donationId));
+
+  // Dual-ledger sync: keep agDonations in sync with donations status
+  if (body.status) {
+    const matchingAgStatus = body.status === "paid" ? "captured" : body.status === "refunded" ? "refunded" : "failed";
+    const orClauses = [
+      existing.razorpayPaymentId ? eq(agDonations.txnId, existing.razorpayPaymentId) : null,
+      existing.razorpayOrderId ? eq(agDonations.gatewayOrderId, existing.razorpayOrderId) : null,
+      existing.publicId ? eq(agDonations.txnId, existing.publicId) : null,
+    ].filter(Boolean);
+
+    if (orClauses.length > 0) {
+      await db
+        .update(agDonations)
+        .set({ paymentStatus: matchingAgStatus })
+        .where(orClauses.length === 1 ? (orClauses[0] as any) : or(...(orClauses as any[])))
+        .catch(() => null);
+    }
+  }
 
   await writeAudit({
     actorAdminUserId: session.user.id ?? null,
     action: "crm.update_donation",
     entity: "donations",
-    entityId: Number(body.id),
+    entityId: donationId,
     afterState: updates,
     ipAddress: clientIp(req),
   });
@@ -261,6 +285,20 @@ export async function DELETE(req: Request) {
   // Delete line items first then donation
   await db.delete(donationLines).where(eq(donationLines.donationId, id));
   await db.delete(donations).where(eq(donations.id, id));
+
+  // Dual-ledger sync: remove matching agDonations record to prevent phantom influencer/telecaller revenue
+  const orClauses = [
+    before.razorpayPaymentId ? eq(agDonations.txnId, before.razorpayPaymentId) : null,
+    before.razorpayOrderId ? eq(agDonations.gatewayOrderId, before.razorpayOrderId) : null,
+    before.publicId ? eq(agDonations.txnId, before.publicId) : null,
+  ].filter(Boolean);
+
+  if (orClauses.length > 0) {
+    await db
+      .delete(agDonations)
+      .where(orClauses.length === 1 ? (orClauses[0] as any) : or(...(orClauses as any[])))
+      .catch(() => null);
+  }
 
   await writeAudit({
     actorAdminUserId: session.user.id ?? null,

@@ -33,7 +33,6 @@ export async function GET(req: Request) {
       );
     }
 
-    await ensureDbSchema();
     await ensureTelecallersAndSeedData();
     const data = await getAdminLeaderboard();
     return NextResponse.json({ success: true, ...data });

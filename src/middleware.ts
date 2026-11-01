@@ -72,10 +72,9 @@ export function middleware(req: NextRequest) {
     pathname === "/admin" ||
     (pathname.startsWith("/admin/") && pathname !== "/admin/login");
 
-  const hasAdminCookie =
-    Boolean(req.cookies.get("janaseva_admin_session")?.value) ||
-    Boolean(req.cookies.get("admin_session")?.value) ||
-    Boolean(req.cookies.get("session")?.value);
+  // Strict session token structure validation: {id}.{64-hex-hmac}
+  const adminCookieVal = req.cookies.get("janaseva_admin_session")?.value || "";
+  const hasAdminCookie = /^[a-zA-Z0-9_-]+\.[a-f0-9]{64}$/.test(adminCookieVal);
 
   if (isAdminPage && !hasAdminCookie) {
     const loginUrl = new URL("/admin/login", req.url);

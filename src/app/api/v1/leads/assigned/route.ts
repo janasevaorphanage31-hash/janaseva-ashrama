@@ -17,19 +17,26 @@ export async function GET(req: Request) {
     const url = new URL(req.url);
     const paramCallerId = url.searchParams.get("callerId");
     const paramLimit = url.searchParams.get("limit");
-    const limit = paramLimit ? Math.min(parseInt(paramLimit, 10), 10000) : 10000;
+    const paramPage = url.searchParams.get("page");
+    const page = paramPage ? Math.max(1, parseInt(paramPage, 10)) : 1;
+    const limit = paramLimit ? Math.min(parseInt(paramLimit, 10), 10000) : (paramPage ? 100 : 10000);
+    const offset = (page - 1) * limit;
+
     const targetCallerId = auth.isAdmin
       ? (paramCallerId || auth.callerId)
       : auth.callerId;
 
-    const { leads, stats } = await getCallerPortalData(targetCallerId, limit);
+    const { leads, stats } = await getCallerPortalData(targetCallerId, limit, offset);
 
     return NextResponse.json({
       success: true,
       callerId: targetCallerId,
       callerName: auth.name,
       isAdmin: auth.isAdmin,
+      page,
+      limit,
       count: leads.length,
+      totalAssigned: stats.totalAssigned,
       leads,
       callerStats: stats,
     });

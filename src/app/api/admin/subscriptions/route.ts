@@ -9,10 +9,8 @@ import { clean } from "@/lib/server-utils";
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
-  await ensureDbSchema();
   const session = await requireAdminApi(["SUPER_ADMIN", "STAFF_ADMIN", "FINANCE", "DONATION_ADMIN"]);
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
 
   const url = new URL(req.url);
   const q = (url.searchParams.get("q") || "").trim().toLowerCase();
@@ -48,27 +46,25 @@ export async function GET(req: Request) {
     .orderBy(desc(recurringSubscriptions.createdAt))
     .limit(100);
 
-  // Compute live metrics across all subscriptions
-  const allSubs = await db.select().from(recurringSubscriptions);
-
-  let activeCount = 0;
-  let pendingCount = 0;
-  let haltedCount = 0;
-  let cancelledCount = 0;
-  let mrr = 0;
-
-  for (const s of allSubs) {
-    if (s.status === "active") {
-      activeCount++;
-      mrr += s.amount;
-    } else if (s.status === "created" || s.status === "authenticated") {
-      pendingCount++;
-    } else if (s.status === "halted") {
-      haltedCount++;
-    } else if (s.status === "cancelled") {
-      cancelledCount++;
-    }
-  }
+  // Compute live metrics across all subscriptions via fast SQL aggregation and normalized MRR math
+  const [metricRow] = await db
+    .select({
+      total: sql<number>`count(*)::int`,
+      active: sql<number>`count(case when ${recurringSubscriptions.status} = 'active' then 1 end)::int`,
+      pending: sql<number>`count(case when ${recurringSubscriptions.status} in ('created', 'authenticated') then 1 end)::int`,
+      halted: sql<number>`count(case when ${recurringSubscriptions.status} = 'halted' then 1 end)::int`,
+      cancelled: sql<number>`count(case when ${recurringSubscriptions.status} = 'cancelled' then 1 end)::int`,
+      mrr: sql<number>`coalesce(round(sum(
+        case 
+          when ${recurringSubscriptions.status} = 'active' and ${recurringSubscriptions.frequency} = 'yearly' then ${recurringSubscriptions.amount} / 12.0
+          when ${recurringSubscriptions.status} = 'active' and ${recurringSubscriptions.frequency} = 'weekly' then ${recurringSubscriptions.amount} * 4.33
+          when ${recurringSubscriptions.status} = 'active' and ${recurringSubscriptions.frequency} = 'daily' then ${recurringSubscriptions.amount} * 30.4
+          when ${recurringSubscriptions.status} = 'active' then ${recurringSubscriptions.amount}::numeric
+          else 0
+        end
+      )), 0)::int`,
+    })
+    .from(recurringSubscriptions);
 
   // Get recent 50 recurring charges from donations
   const recentCharges = await db
@@ -91,12 +87,12 @@ export async function GET(req: Request) {
 
   return NextResponse.json({
     metrics: {
-      total: allSubs.length,
-      active: activeCount,
-      pending: pendingCount,
-      halted: haltedCount,
-      cancelled: cancelledCount,
-      mrr,
+      total: metricRow?.total ?? 0,
+      active: metricRow?.active ?? 0,
+      pending: metricRow?.pending ?? 0,
+      halted: metricRow?.halted ?? 0,
+      cancelled: metricRow?.cancelled ?? 0,
+      mrr: metricRow?.mrr ?? 0,
       recentChargesCount: recentCharges.length,
     },
     subscriptions: subList,

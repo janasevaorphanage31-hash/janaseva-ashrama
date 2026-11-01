@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { desc } from "drizzle-orm";
+import { and, desc, gte, inArray, lte } from "drizzle-orm";
 import { db } from "@/db";
 import { donations, donationLines } from "@/db/schema";
 import { requireAdminApi } from "@/lib/admin-auth";
@@ -22,6 +22,9 @@ export async function GET(req: Request) {
 
   const url = new URL(req.url);
   const format = url.searchParams.get("format")?.toLowerCase();
+  const startDateStr = url.searchParams.get("startDate");
+  const endDateStr = url.searchParams.get("endDate");
+  const limitParam = Math.min(50000, Math.max(1, Number(url.searchParams.get("limit")) || 50000));
 
   await writeAudit({
     actorAdminUserId: session.user.id,
@@ -30,10 +33,22 @@ export async function GET(req: Request) {
     ipAddress: clientIp(req),
   });
 
+  const conditions: any[] = [];
+  if (startDateStr) {
+    const sDate = new Date(startDateStr);
+    if (!isNaN(sDate.getTime())) conditions.push(gte(donations.createdAt, sDate));
+  }
+  if (endDateStr) {
+    const eDate = new Date(endDateStr);
+    if (!isNaN(eDate.getTime())) conditions.push(lte(donations.createdAt, eDate));
+  }
+
   const rows = await db
     .select()
     .from(donations)
-    .orderBy(desc(donations.createdAt));
+    .where(conditions.length > 0 ? (conditions.length === 1 ? conditions[0] : and(...conditions)) : undefined)
+    .orderBy(desc(donations.createdAt))
+    .limit(limitParam);
 
   // If Form 10BD format requested (Indian Income Tax Act Statement of Donations under Section 80G)
   if (format === "form10bd") {
@@ -87,14 +102,26 @@ export async function GET(req: Request) {
     });
   }
 
-  // Default Full CRM Ledger Export
-  const lines = await db.select().from(donationLines);
-  const linesMap = lines.reduce<Record<number, string[]>>((acc, l) => {
-    if (!l.donationId) return acc;
-    if (!acc[l.donationId]) acc[l.donationId] = [];
-    acc[l.donationId].push(`${l.label} (x${l.qty})`);
-    return acc;
-  }, {});
+  // Default Full CRM Ledger Export - fetch donation lines only for returned rows to prevent memory blowout
+  const donationIds = rows.map((r) => r.id);
+  const linesMap: Record<number, string[]> = {};
+
+  if (donationIds.length > 0) {
+    // Process in batches of 500 to stay within PostgreSQL parameter limits
+    for (let i = 0; i < donationIds.length; i += 500) {
+      const batchIds = donationIds.slice(i, i + 500);
+      const batchLines = await db
+        .select()
+        .from(donationLines)
+        .where(inArray(donationLines.donationId, batchIds));
+
+      for (const l of batchLines) {
+        if (!l.donationId) continue;
+        if (!linesMap[l.donationId]) linesMap[l.donationId] = [];
+        linesMap[l.donationId].push(`${l.label} (x${l.qty})`);
+      }
+    }
+  }
 
   const headers = [
     "ID",

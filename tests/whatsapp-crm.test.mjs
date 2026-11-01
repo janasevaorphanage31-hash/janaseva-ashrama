@@ -154,7 +154,7 @@ const VERIFIED_ASHRAMA_FACTS = {
   email: "janasevaorphanage@gmail.com",
   beneficiariesCount: 25,
   legalForm28JJAct: "KA18CH0242",
-  tax80GForm10AC: "AAATJ5578EF20214",
+  tax80GForm10AC: "AABTJ7431MF20231",
   dailyMealsCost: 4500,
   monthlyRationCost: 6000,
 };
@@ -330,7 +330,7 @@ test("Grounded AI Chatbot Knowledge & Language Detection", async (t) => {
   await t.test("Verified organizational facts are preserved and accurate", () => {
     assert.equal(VERIFIED_ASHRAMA_FACTS.beneficiariesCount, 25);
     assert.equal(VERIFIED_ASHRAMA_FACTS.legalForm28JJAct, "KA18CH0242");
-    assert.equal(VERIFIED_ASHRAMA_FACTS.tax80GForm10AC, "AAATJ5578EF20214");
+    assert.equal(VERIFIED_ASHRAMA_FACTS.tax80GForm10AC, "AABTJ7431MF20231");
     assert.equal(VERIFIED_ASHRAMA_FACTS.dailyMealsCost, 4500);
     assert.equal(VERIFIED_ASHRAMA_FACTS.monthlyRationCost, 6000);
   });

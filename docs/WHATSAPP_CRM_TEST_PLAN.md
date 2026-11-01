@@ -15,7 +15,7 @@
 | **TC-W04** | Opt-Out & Opt-In Rules | Verify regulatory `STOP` / `UNSUBSCRIBE` and `START` handling. | Sets `optInStatus = false` on `STOP`/`UNSUBSCRIBE`, logs consent withdrawal; re-enables on `START`. |
 | **TC-W05** | Delivery Status Tracking | Verify idempotency and message status state machine. | Updates message status (`sent` -> `delivered` -> `read` -> `failed`) based on Meta webhook status packets. |
 | **TC-W06** | Audience Segmentation | Verify campaign segment filter logic. | Accurately subsets contacts by tags, donation amount, and seva type while strictly filtering out opt-outs. |
-| **TC-W07** | AI Grounding & Guardrails | Verify AI RAG response formatting & factual constraints. | System prompt includes verified Form 28 JJ Act `KA18CH0242` and Form 10AC `AAATJ5578EF20214`; flags high-value queries for human takeover. |
+| **TC-W07** | AI Grounding & Guardrails | Verify AI RAG response formatting & factual constraints. | System prompt includes verified Form 28 JJ Act `KA18CH0242` and Form 10AC `AABTJ7431MF20231`; flags high-value queries for human takeover. |
 | **TC-W08** | Template Parameter Mapper | Verify dynamic parameter substitution. | Correctly maps donor name, amount, receipt link, and seva title into Meta template components. |
 
 ---

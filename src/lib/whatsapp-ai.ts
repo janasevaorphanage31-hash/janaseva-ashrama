@@ -16,7 +16,7 @@ export const VERIFIED_ASHRAMA_FACTS = {
   beneficiariesCount: 25,
   beneficiaryDescription: "25 resident boys receiving shelter, nutrition, English-medium schooling, and moral guidance",
   legalForm28JJAct: "KA18CH0242",
-  tax80GForm10AC: "AAATJ5578EF20214",
+  tax80GForm10AC: "AABTJ7431MF20231",
   taxBenefit: "50% tax exemption under Section 80G of the Income Tax Act",
   sevas: [
     {

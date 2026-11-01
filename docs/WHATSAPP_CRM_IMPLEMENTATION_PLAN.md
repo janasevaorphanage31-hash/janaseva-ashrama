@@ -46,7 +46,7 @@
 
 ### Phase 4: Grounded Bilingual AI Chatbot & Knowledge Base
 1. **Grounded RAG Engine (`src/lib/whatsapp-ai.ts`)**:
-   - Verified Ashrama facts: Form 28 JJ Act `KA18CH0242`, 80G Form 10AC `AAATJ5578EF20214`, 25 boys, ₹4500 daily meals, ₹6000 monthly ration.
+   - Verified Ashrama facts: Form 28 JJ Act `KA18CH0242`, 80G Form 10AC `AABTJ7431MF20231`, 25 boys, ₹4500 daily meals, ₹6000 monthly ration.
    - Kannada & English language detection and natural responses.
    - Safety guardrail: Never hallucinate unverified bank accounts or unauthorized claims.
    - Automatic handoff to human admin when complex issues or requests arise.

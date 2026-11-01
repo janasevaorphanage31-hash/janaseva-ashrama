@@ -91,7 +91,7 @@ export async function POST(req: NextRequest) {
             { type: "HEADER", format: "TEXT", text: "Janaseva Ashrama Official Receipt" },
             {
               type: "BODY",
-              text: "Namaste {{1}} Ji, thank you for your seva donation of {{2}} for our 25 boys. Receipt: {{3}}. Tax exempt under 80G Form 10AC AAATJ5578EF20214.",
+              text: "Namaste {{1}} Ji, thank you for your seva donation of {{2}} for our 25 boys. Receipt: {{3}}. Tax exempt under 80G Form 10AC AABTJ7431MF20231.",
             },
           ],
         },
