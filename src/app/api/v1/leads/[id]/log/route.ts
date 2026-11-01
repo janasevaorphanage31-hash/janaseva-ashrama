@@ -30,6 +30,8 @@ export async function POST(
       .select({
         leadId: agLeads.leadId,
         assignedCallerId: agLeads.assignedCallerId,
+        name: agLeads.name,
+        phone: agLeads.phone,
       })
       .from(agLeads)
       .where(eq(agLeads.leadId, leadId))
@@ -82,6 +84,8 @@ export async function POST(
           amount: amt,
           callerRefId: auth.callerId,
           leadId,
+          donorName: lead.name || null,
+          donorPhone: lead.phone || null,
           metadata: { utr: body.utr ? clean(body.utr, 50) : null, loggedBy: auth.callerId, notes },
         });
       }

@@ -174,7 +174,7 @@ export async function markPaid(donationId: number, paymentId: string): Promise<b
       await db.update(impactGifts).set({ status: "ready" }).where(eq(impactGifts.donationId, donationId)).catch(() => {});
       await db.insert(analyticsEvents).values({ event: "verified_donation", sessionId: "server", meta: { donationId: donationId } }).catch(() => {});
 
-      // Dispatch automated WhatsApp 80G receipt & blessing
+      // Dispatch automated WhatsApp 80G receipt & sync to CRM ledger
       try {
         const [updatedDonation] = await db
           .select()
@@ -182,17 +182,44 @@ export async function markPaid(donationId: number, paymentId: string): Promise<b
           .where(eq(donations.id, donationId))
           .limit(1);
 
-        if (updatedDonation && updatedDonation.donorPhone && updatedDonation.receiptNo) {
-          const { triggerDonationWhatsAppAutomation } = await import("./whatsapp-automation");
-          await triggerDonationWhatsAppAutomation({
-            donationId: updatedDonation.id,
-            donorName: updatedDonation.donorName,
-            donorPhone: updatedDonation.donorPhone,
-            donorEmail: updatedDonation.donorEmail || undefined,
-            amount: updatedDonation.amount,
-            receiptNumber: updatedDonation.receiptNo,
-            pan: (updatedDonation.meta as any)?.donorPan || undefined,
-          });
+        if (updatedDonation) {
+          // Sync to CRM ledger (agDonations)
+          try {
+            const callerRef = (updatedDonation.meta as any)?.callerRefId || (updatedDonation.meta as any)?.caller_ref_id || null;
+            const leadId = (updatedDonation.meta as any)?.leadId || (updatedDonation.meta as any)?.lead_id || null;
+            const { agDonations } = await import("@/db/schema");
+            await db
+              .insert(agDonations)
+              .values({
+                txnId: paymentId,
+                gatewayOrderId: updatedDonation.razorpayOrderId || `order_${Date.now()}`,
+                amount: updatedDonation.amount,
+                currency: "INR",
+                paymentStatus: "captured",
+                callerRefId: callerRef ? String(callerRef).toUpperCase() : null,
+                leadId: leadId ? Number(leadId) : null,
+                donorName: updatedDonation.donorName,
+                donorPhone: updatedDonation.donorPhone,
+                donorEmail: updatedDonation.donorEmail,
+                metadata: updatedDonation.meta,
+              })
+              .onConflictDoNothing({ target: agDonations.txnId });
+          } catch (crmErr) {
+            console.warn("agDonations sync warning in markPaid:", crmErr);
+          }
+
+          if (updatedDonation.donorPhone && updatedDonation.receiptNo) {
+            const { triggerDonationWhatsAppAutomation } = await import("./whatsapp-automation");
+            await triggerDonationWhatsAppAutomation({
+              donationId: updatedDonation.id,
+              donorName: updatedDonation.donorName,
+              donorPhone: updatedDonation.donorPhone,
+              donorEmail: updatedDonation.donorEmail || undefined,
+              amount: updatedDonation.amount,
+              receiptNumber: updatedDonation.receiptNo,
+              pan: (updatedDonation.meta as any)?.donorPan || undefined,
+            });
+          }
         }
       } catch (err) {
         console.error("Failed to trigger donation WhatsApp receipt:", err);

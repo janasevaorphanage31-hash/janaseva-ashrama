@@ -3,6 +3,7 @@ import { and, eq } from "drizzle-orm";
 import { db, ensureDbSchema } from "@/db";
 import { analyticsEvents, donations, recurringSubscriptions } from "@/db/schema";
 import { markPaid, recordSubscriptionCharge, webhookSignatureValid } from "@/lib/payments";
+import { recordPaymentAttribution } from "@/lib/antigravity-crm";
 
 export const dynamic = "force-dynamic";
 
@@ -77,7 +78,41 @@ export async function POST(req: Request) {
         await markPaid(d.id, p.id);
       } else if (d && p.amount !== d.amount * 100) {
         console.error("Webhook amount mismatch", { donation: d.id, got: p.amount });
+      } else if (!d && p.id) {
+        // Fallback for orders not pre-registered in donations: synchronize dual-ledger immediately
+        const notes = (p as any).notes || {};
+        const callerRefId = notes.caller_ref_id || null;
+        const leadId = notes.lead_id ? parseInt(notes.lead_id, 10) : null;
+        const amountInRupees = Number(p.amount || 0) / 100;
+        await recordPaymentAttribution({
+          txnId: p.id,
+          gatewayOrderId: p.order_id || `order_${Date.now()}`,
+          amount: amountInRupees,
+          callerRefId,
+          leadId,
+          donorName: notes.donor_name || (p as any).description || null,
+          donorPhone: (p as any).contact || notes.donor_phone || null,
+          donorEmail: (p as any).email || notes.donor_email || null,
+          metadata: p,
+        });
       }
+    } else if (p?.id) {
+      // Payment without order_id (e.g. direct UPI QR payment or direct gateway link)
+      const notes = (p as any).notes || {};
+      const callerRefId = notes.caller_ref_id || null;
+      const leadId = notes.lead_id ? parseInt(notes.lead_id, 10) : null;
+      const amountInRupees = Number(p.amount || 0) / 100;
+      await recordPaymentAttribution({
+        txnId: p.id,
+        gatewayOrderId: `pay_direct_${p.id}`,
+        amount: amountInRupees,
+        callerRefId,
+        leadId,
+        donorName: notes.donor_name || (p as any).description || null,
+        donorPhone: (p as any).contact || notes.donor_phone || null,
+        donorEmail: (p as any).email || notes.donor_email || null,
+        metadata: p,
+      });
     }
   }
 

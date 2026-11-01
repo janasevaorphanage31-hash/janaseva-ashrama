@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db, ensureDbSchema } from "@/db";
-import { recurringSubscriptions } from "@/db/schema";
+import { donations, recurringSubscriptions } from "@/db/schema";
 import { createRazorpayPlan, createRazorpaySubscription } from "@/lib/payments";
 import { clean, cleanRazorpayNote, normalizePhone, isEmail, isPhone, publicToken } from "@/lib/server-utils";
 
@@ -192,6 +192,31 @@ export async function POST(req: Request) {
         }
 
         const order = await orderRes.json();
+
+        // Pre-create pending donation record for webhook and status tracking
+        const donPublicId = "don_" + publicToken();
+        const cleanPhoneDigits = (donorPhone || "").replace(/\D/g, "").slice(-10);
+        const defaultEmail = cleanPhoneDigits ? `donor_${cleanPhoneDigits}@janasevaashrama.org` : "donor@janasevaashrama.org";
+
+        await db.insert(donations).values({
+          publicId: donPublicId,
+          mode: "razorpay",
+          status: "created",
+          amount: Math.round(amount),
+          donorName,
+          donorEmail: donorEmail || defaultEmail,
+          donorPhone: donorPhone || null,
+          razorpayOrderId: order.id,
+          idempotencyKey: `chk_create_${order.id}`,
+          meta: {
+            ...safeNotes,
+            donorPan: donorPan || null,
+            callerRefId,
+            leadId,
+          },
+        }).catch((err) => {
+          console.warn("[CHECKOUT CREATE] Pre-insert donation warning:", err);
+        });
 
         return NextResponse.json({
           success: true,

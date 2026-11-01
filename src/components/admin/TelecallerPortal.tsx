@@ -129,6 +129,26 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
     }));
   };
 
+  // ── Contacted Leads Persistent Session Cache Helpers ──
+  // Guarantees zero number repetition across app switches, phone dialer launches, and mobile browser reloads
+  const getSessionDialedKey = (cid: string) => {
+    const today = new Date().toISOString().slice(0, 10);
+    return `janaseva_dialed_${cid}_${today}`;
+  };
+
+  const persistContactedLead = (cid: string, leadId: number) => {
+    setSessionContactedIds((prev) => {
+      const next = new Set(prev).add(leadId);
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem(getSessionDialedKey(cid), JSON.stringify(Array.from(next)));
+          localStorage.setItem(`janaseva_last_lead_${cid}`, String(leadId));
+        } catch {}
+      }
+      return next;
+    });
+  };
+
   const loadCallerLeads = async (cid: string) => {
     setLoadingLeads(true);
     try {
@@ -141,6 +161,26 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
           setStats(data.callerStats);
         } else {
           computeStats(leadItems, cid);
+        }
+
+        // Restore today's session dialed/contacted lead IDs and active focus lead
+        if (typeof window !== "undefined") {
+          try {
+            const savedDialed = localStorage.getItem(getSessionDialedKey(cid));
+            if (savedDialed) {
+              const parsed = JSON.parse(savedDialed);
+              if (Array.isArray(parsed) && parsed.length > 0) {
+                setSessionContactedIds(new Set(parsed));
+              }
+            }
+            const savedLastLead = localStorage.getItem(`janaseva_last_lead_${cid}`);
+            if (savedLastLead) {
+              const num = Number(savedLastLead);
+              if (num && leadItems.some((l: any) => l.leadId === num)) {
+                setActiveFocusLeadId(num);
+              }
+            }
+          } catch {}
         }
       }
     } catch (err: any) {
@@ -364,13 +404,18 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
     setIsAntiBanModalOpen(true);
   };
 
-  const handleDispositionLoggedFromModal = (leadId: number, disp: string) => {
+  const handleDispositionLoggedFromModal = async (leadId: number, disp: string) => {
+    if (callerProfile) {
+      persistContactedLead(callerProfile.callerId, leadId);
+      await handleUpdateDisposition(leadId, disp, "Logged from WhatsApp anti-ban modal");
+    }
     const updatedList = leads.map((l) => (l.leadId === leadId ? { ...l, status: disp } : l));
     setLeads(updatedList);
     if (callerProfile) {
       computeStats(updatedList, callerProfile.callerId);
     }
     showToast(`✓ Marked lead #${leadId} as ${disp}`);
+    handleNextFocusLead();
   };
 
   // Update Call Disposition
@@ -409,6 +454,9 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
     if (!lead) return;
     setActiveFocusLeadId(lead.leadId);
     setCurrentlyDialedLeadId(lead.leadId);
+    if (callerProfile) {
+      persistContactedLead(callerProfile.callerId, lead.leadId);
+    }
     const phoneInfo = parseCustomerPhone(lead.phone);
     window.location.href = `tel:${phoneInfo.e164}`;
     showToast(`📞 Dialing ${lead.name}... After call, tap outcome below to advance!`);
@@ -419,6 +467,9 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
     if (!lead) return;
     setActiveFocusLeadId(lead.leadId);
     setCurrentlyDialedLeadId(lead.leadId);
+    if (callerProfile) {
+      persistContactedLead(callerProfile.callerId, lead.leadId);
+    }
     handleOpenWhatsAppModal(lead);
   };
 
@@ -428,11 +479,14 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
     if (!activeNotesLead || !callerProfile) return;
     setSavingNotes(true);
     try {
+      const currentId = activeNotesLead.leadId;
       const newStatus = callbackDateTime ? "Reschedule" : activeNotesLead.status || "Contacted";
-      await handleUpdateDisposition(activeNotesLead.leadId, newStatus, notesText, callbackDateTime);
+      await handleUpdateDisposition(currentId, newStatus, notesText, callbackDateTime);
+      persistContactedLead(callerProfile.callerId, currentId);
       setActiveNotesLead(null);
       setNotesText("");
       setCallbackDateTime("");
+      handleNextFocusLead();
     } finally {
       setSavingNotes(false);
     }
@@ -465,6 +519,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
   // 1-Tap Direct Axis Bank Payment QR Share from Portal
   const handleDirectSharePaymentQr = async (lead: any, customAmount?: number) => {
     if (!lead || !callerProfile) return;
+    persistContactedLead(callerProfile.callerId, lead.leadId);
     if (!lead.status || lead.status === "Pending") {
       void handleUpdateDisposition(lead.leadId, "Contacted", "Auto-marked attended on QR share");
     }
@@ -534,6 +589,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
     if (!lead || !callerProfile) return;
     setActiveFocusLeadId(lead.leadId);
     setCurrentlyDialedLeadId(lead.leadId);
+    persistContactedLead(callerProfile.callerId, lead.leadId);
     const phoneInfo = parseCustomerPhone(lead.phone);
     const amount = customAmount || selectedSevaAmount || 1500;
     const siteOrigin = typeof window !== "undefined" ? window.location.origin : "https://janasevaashrama.org";
@@ -670,7 +726,15 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
     if (safeFocusIndex < filteredLeads.length - 1) {
       const nextIdx = safeFocusIndex + 1;
       setFocusIndex(nextIdx);
-      setActiveFocusLeadId(filteredLeads[nextIdx].leadId);
+      const nextId = filteredLeads[nextIdx]?.leadId;
+      if (nextId) {
+        setActiveFocusLeadId(nextId);
+        if (callerProfile) {
+          try {
+            localStorage.setItem(`janaseva_last_lead_${callerProfile.callerId}`, String(nextId));
+          } catch {}
+        }
+      }
     }
   };
 
@@ -678,8 +742,23 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
     if (safeFocusIndex > 0) {
       const prevIdx = safeFocusIndex - 1;
       setFocusIndex(prevIdx);
-      setActiveFocusLeadId(filteredLeads[prevIdx].leadId);
+      const prevId = filteredLeads[prevIdx]?.leadId;
+      if (prevId) {
+        setActiveFocusLeadId(prevId);
+        if (callerProfile) {
+          try {
+            localStorage.setItem(`janaseva_last_lead_${callerProfile.callerId}`, String(prevId));
+          } catch {}
+        }
+      }
     }
+  };
+
+  const handleSkipFocusLead = (lead: any) => {
+    if (!lead || !callerProfile) return;
+    persistContactedLead(callerProfile.callerId, lead.leadId);
+    showToast(`⏭️ Skipped #${lead.leadId} for today's queue.`);
+    handleNextFocusLead();
   };
 
   const handleJumpToNextPending = () => {
@@ -701,8 +780,9 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
 
   // Focus Mode Disposition with Auto-Advance (Prevents skipping and duplicate bounce)
   const handleFocusDisposition = async (leadId: number, disposition: string, notes?: string, callbackTime?: string) => {
-    // Mark as contacted in this active browser session
-    setSessionContactedIds((prev) => new Set(prev).add(leadId));
+    if (callerProfile) {
+      persistContactedLead(callerProfile.callerId, leadId);
+    }
     setCurrentlyDialedLeadId(null);
 
     // Compute next candidate BEFORE updating disposition
@@ -731,6 +811,11 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
 
     if (nextLeadId) {
       setActiveFocusLeadId(nextLeadId);
+      if (callerProfile) {
+        try {
+          localStorage.setItem(`janaseva_last_lead_${callerProfile.callerId}`, String(nextLeadId));
+        } catch {}
+      }
     } else {
       setActiveFocusLeadId(null);
     }
@@ -740,6 +825,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
   const handleSaveDonationLog = async () => {
     if (!activeDonationLead || !callerProfile) return;
     const currentLeadId = activeDonationLead.leadId;
+    persistContactedLead(callerProfile.callerId, currentLeadId);
     setLoggingDonation(true);
 
     // Identify next lead before state update
@@ -855,14 +941,25 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
     const curDay = now.getDate();
     const curMonth = now.getMonth() + 1;
 
+    // Strict phone number deduplication across cards to eliminate repetition
+    const seenPhones = new Set<string>();
+
     const base = leads.filter((l) => {
+      // 1. Strict deduplication by normalized 10-digit mobile number
+      const cleanPhone = (l.phone || "").replace(/\D/g, "").slice(-10);
+      if (cleanPhone) {
+        if (seenPhones.has(cleanPhone)) return false;
+        seenPhones.add(cleanPhone);
+      }
+
       let matchesFilter = true;
       if (filter === "Today_Birthday") {
         matchesFilter = l.dobDay === curDay && l.dobMonth === curMonth;
       } else if (filter === "Pending") {
-        matchesFilter = !l.status || l.status === "Pending";
+        // Pending leads: status is pending AND NOT dialed/contacted in today's active session!
+        matchesFilter = (!l.status || l.status === "Pending") && !sessionContactedIds.has(l.leadId);
       } else if (filter === "Attended") {
-        matchesFilter = l.status && l.status !== "Pending";
+        matchesFilter = (l.status && l.status !== "Pending") || sessionContactedIds.has(l.leadId);
       } else if (filter !== "ALL") {
         matchesFilter = l.status === filter;
       }
@@ -920,7 +1017,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
       }
       return 0;
     });
-  }, [leads, filter, searchQuery, dateSortOrder]);
+  }, [leads, filter, searchQuery, dateSortOrder, sessionContactedIds]);
 
   // Reset pagination when filter, search, or date sort changes
   useEffect(() => {
@@ -1981,6 +2078,20 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                           </span>
                           <span className="text-[10px] text-rose-600 font-bold uppercase tracking-wider">Not Interested</span>
                         </button>
+
+                        {/* SKIP LEAD */}
+                        <button
+                          type="button"
+                          onClick={() => handleSkipFocusLead(currentFocusLead)}
+                          className="min-h-[54px] p-2 rounded-2xl bg-amber-50 hover:bg-amber-100 active:scale-95 text-amber-900 border border-amber-300 font-black transition flex flex-col items-center justify-center cursor-pointer text-center"
+                          title="Skip to next number without repeating today"
+                        >
+                          <span className="flex items-center gap-1 text-sm font-black">
+                            <span>⏭️</span>
+                            <span>ದಾಟಿಸಿ</span>
+                          </span>
+                          <span className="text-[10px] text-amber-700 font-bold uppercase tracking-wider">Skip Card</span>
+                        </button>
                       </div>
                     </div>
 
@@ -2554,6 +2665,13 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
               className="py-1 px-1 rounded-lg bg-rose-100 hover:bg-rose-200 active:scale-95 text-rose-800 border border-rose-200 text-center truncate shadow-2xs cursor-pointer"
             >
               ✕ ಬೇಡ
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSkipFocusLead(currentFocusLead)}
+              className="py-1 px-1 rounded-lg bg-amber-100 hover:bg-amber-200 active:scale-95 text-amber-900 border border-amber-300 text-center truncate shadow-2xs cursor-pointer"
+            >
+              ⏭️ ದಾಟಿಸಿ
             </button>
           </div>
 

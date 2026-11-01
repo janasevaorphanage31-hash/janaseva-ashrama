@@ -901,37 +901,28 @@ export function MetaAdsDonateComponent() {
             });
 
             try {
-              await fetch("/api/v1/webhooks/payment", {
+              await fetch("/api/v1/checkout/verify", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                  event: "payment.captured",
-                  payload: {
-                    payment: {
-                      entity: {
-                        id: response.razorpay_payment_id,
-                        order_id: response.razorpay_order_id,
-                        subscription_id: response.razorpay_subscription_id,
-                        amount: data.amount,
-                        currency: "INR",
-                        status: "captured",
-                        notes: {
-                          caller_ref_id: callerRef,
-                          lead_id: leadId || "",
-                          donor_name: donorName.trim(),
-                          donor_phone: donorPhone.trim(),
-                          donor_email: donorEmail.trim(),
-                          occasion: cleanOccasion,
-                          prayer_note: cleanPrayerNote,
-                          frequency,
-                        },
-                      },
-                    },
-                  },
+                  orderId: response.razorpay_order_id,
+                  paymentId: response.razorpay_payment_id,
+                  signature: response.razorpay_signature,
+                  subscriptionId: response.razorpay_subscription_id,
+                  callerRefId: callerRef,
+                  leadId: leadId ? Number(leadId) : undefined,
+                  amount: finalAmount,
+                  donorName: donorName.trim(),
+                  donorPhone: donorPhone.trim(),
+                  donorEmail: donorEmail.trim(),
+                  donorPan: donorPan.trim(),
+                  occasion: cleanOccasion,
+                  prayerNote: cleanPrayerNote,
+                  frequency,
                 }),
               });
-            } catch (webhookErr) {
-              console.warn("Attribution webhook delivery:", webhookErr);
+            } catch (verifyErr) {
+              console.warn("Attribution verification delivery:", verifyErr);
             }
 
             window.location.href = `/thank-you?amount=${finalAmount}&payment_id=${encodeURIComponent(
@@ -946,11 +937,10 @@ export function MetaAdsDonateComponent() {
       } else if (data.mode === "demo") {
         const demoPaymentId = `pay_sim_${Date.now()}`;
         const demoSubId = data.subscriptionId || undefined;
-        await fetch("/api/v1/webhooks/payment", {
+        await fetch("/api/v1/checkout/verify", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            action: "simulate_donation",
             callerRefId: callerRef,
             amount: finalAmount,
             donorName: donorName.trim(),
@@ -959,6 +949,8 @@ export function MetaAdsDonateComponent() {
             subscriptionId: demoSubId,
             leadId: leadId ? Number(leadId) : undefined,
             frequency,
+            occasion: cleanOccasion,
+            prayerNote: cleanPrayerNote,
           }),
         }).catch(() => {});
 

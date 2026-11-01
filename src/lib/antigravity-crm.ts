@@ -1,9 +1,10 @@
 import { db, ensureDbSchema } from "@/db";
-import { agTelecallers, agLeads, agCallLogs, agDonations, contentEntries, influencerProfiles } from "@/db/schema";
+import { agTelecallers, agLeads, agCallLogs, agDonations, contentEntries, influencerProfiles, donations } from "@/db/schema";
 import { eq, and, or, sql, desc, inArray, isNull } from "drizzle-orm";
 import { hashPassword } from "@/lib/admin-auth";
 import { parseCustomerPhone } from "@/lib/whatsapp-phone";
 import { signCallerToken } from "@/lib/caller-auth";
+import { randomUUID } from "node:crypto";
 import {
   generateAntiBanMessage,
   CURATED_OUTREACH_MEDIA,
@@ -423,6 +424,11 @@ export async function generateWhatsAppLink(
 /**
  * 6. Record Gateway Webhook Payment Attribution
  */
+/**
+ * 6. Record Gateway Webhook Payment Attribution & Dual-Ledger Sync
+ * Atomically writes to both agDonations (influencer & telecaller attribution)
+ * AND primary donations table (public donor wall, 80G tax receipt, WhatsApp receipt).
+ */
 export async function recordPaymentAttribution(data: {
   txnId: string;
   gatewayOrderId: string;
@@ -434,15 +440,17 @@ export async function recordPaymentAttribution(data: {
   donorEmail?: string | null;
   metadata?: any;
 }) {
-  const cleanRef = data.callerRefId ? data.callerRefId.toUpperCase() : null;
+  await ensureDbSchema();
+  const cleanRef = data.callerRefId ? data.callerRefId.trim().toUpperCase() : null;
+  const roundedAmount = Math.max(1, Math.round(data.amount));
 
-  // Insert or ignore duplicate txn
+  // 1. Insert into agDonations (influencer/telecaller ledger)
   await db
     .insert(agDonations)
     .values({
       txnId: data.txnId,
       gatewayOrderId: data.gatewayOrderId,
-      amount: Math.round(data.amount),
+      amount: roundedAmount,
       currency: "INR",
       paymentStatus: "captured",
       callerRefId: cleanRef,
@@ -454,7 +462,7 @@ export async function recordPaymentAttribution(data: {
     })
     .onConflictDoNothing({ target: agDonations.txnId });
 
-  // If lead is linked, mark as Donated
+  // 2. If lead is linked, mark lead as Donated in real-time
   if (data.leadId) {
     await db
       .update(agLeads)
@@ -462,7 +470,103 @@ export async function recordPaymentAttribution(data: {
       .where(eq(agLeads.leadId, data.leadId));
   }
 
-  return { success: true, txnId: data.txnId, callerRefId: cleanRef };
+  // 3. Financial year helper for official 80G receipt number (e.g. JSA/26-27/000123)
+  const now = new Date();
+  const fyYear = now.getMonth() + 1 >= 4 ? now.getFullYear() : now.getFullYear() - 1;
+  const fyStr = `${String(fyYear).slice(-2)}-${String(fyYear + 1).slice(-2)}`;
+
+  // 4. Synchronize into primary `donations` table (for public donor wall, 80G receipt, live stats)
+  let primaryDonationId: number | null = null;
+  try {
+    const existing = await db
+      .select({ id: donations.id, status: donations.status })
+      .from(donations)
+      .where(or(eq(donations.razorpayPaymentId, data.txnId), eq(donations.razorpayOrderId, data.gatewayOrderId)))
+      .limit(1);
+
+    if (existing.length === 0) {
+      const publicId = "rec_" + randomUUID().replace(/-/g, "").slice(0, 20);
+      const cleanPhoneDigits = (data.donorPhone || "").replace(/\D/g, "").slice(-10);
+      const defaultEmail = cleanPhoneDigits ? `donor_${cleanPhoneDigits}@janasevaashrama.org` : "donor@janasevaashrama.org";
+
+      const [inserted] = await db
+        .insert(donations)
+        .values({
+          publicId,
+          mode: "razorpay",
+          status: "paid",
+          amount: roundedAmount,
+          donorName: data.donorName || "Janaseva Supporter",
+          donorEmail: data.donorEmail || defaultEmail,
+          donorPhone: data.donorPhone || null,
+          anonymous: false,
+          razorpayOrderId: data.gatewayOrderId,
+          razorpayPaymentId: data.txnId,
+          idempotencyKey: `idemp_${data.txnId || Date.now()}`,
+          paidAt: new Date(),
+          meta: {
+            callerRefId: cleanRef,
+            leadId: data.leadId || null,
+            ...data.metadata,
+          },
+        })
+        .returning({ id: donations.id });
+
+      primaryDonationId = inserted.id;
+
+      // Assign official 80G receipt number
+      await db
+        .update(donations)
+        .set({
+          receiptNo: sql`${"JSA/" + fyStr + "/"} || lpad(${inserted.id}::text, 6, '0')`,
+        })
+        .where(eq(donations.id, inserted.id));
+    } else {
+      primaryDonationId = existing[0].id;
+      if (existing[0].status !== "paid") {
+        await db
+          .update(donations)
+          .set({
+            status: "paid",
+            paidAt: new Date(),
+            razorpayPaymentId: data.txnId,
+            receiptNo: sql`${"JSA/" + fyStr + "/"} || lpad(${existing[0].id}::text, 6, '0')`,
+            meta: sql`coalesce(meta, '{}'::jsonb) || ${JSON.stringify({ callerRefId: cleanRef, leadId: data.leadId || null })}::jsonb`,
+          })
+          .where(eq(donations.id, existing[0].id));
+      }
+    }
+  } catch (syncErr) {
+    console.error("Dual-ledger synchronization to donations table failed:", syncErr);
+  }
+
+  // 5. Trigger automated WhatsApp 80G receipt & blessing
+  if (primaryDonationId && data.donorPhone) {
+    try {
+      const [updatedDonation] = await db
+        .select()
+        .from(donations)
+        .where(eq(donations.id, primaryDonationId))
+        .limit(1);
+
+      if (updatedDonation && updatedDonation.receiptNo && updatedDonation.donorPhone) {
+        const { triggerDonationWhatsAppAutomation } = await import("./whatsapp-automation");
+        await triggerDonationWhatsAppAutomation({
+          donationId: updatedDonation.id,
+          donorName: updatedDonation.donorName,
+          donorPhone: updatedDonation.donorPhone,
+          donorEmail: updatedDonation.donorEmail || undefined,
+          amount: updatedDonation.amount,
+          receiptNumber: updatedDonation.receiptNo,
+          pan: (updatedDonation.meta as any)?.donorPan || undefined,
+        });
+      }
+    } catch (err) {
+      console.error("Failed to trigger automated WhatsApp donation receipt:", err);
+    }
+  }
+
+  return { success: true, txnId: data.txnId, callerRefId: cleanRef, primaryDonationId };
 }
 
 /**
