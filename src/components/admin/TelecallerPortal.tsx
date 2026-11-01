@@ -415,7 +415,16 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
       computeStats(updatedList, callerProfile.callerId);
     }
     showToast(`✓ Marked lead #${leadId} as ${disp}`);
-    handleNextFocusLead();
+
+    // Compute next candidate cleanly without double increment
+    const currentIdx = filteredLeads.findIndex((l) => l.leadId === leadId);
+    if (currentIdx + 1 < filteredLeads.length) {
+      setActiveFocusLeadId(filteredLeads[currentIdx + 1].leadId);
+    } else if (currentIdx > 0) {
+      setActiveFocusLeadId(filteredLeads[currentIdx - 1].leadId);
+    } else {
+      setActiveFocusLeadId(null);
+    }
   };
 
   // Update Call Disposition
@@ -481,12 +490,21 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
     try {
       const currentId = activeNotesLead.leadId;
       const newStatus = callbackDateTime ? "Reschedule" : activeNotesLead.status || "Contacted";
+
+      const currentIdx = filteredLeads.findIndex((l) => l.leadId === currentId);
+      const nextCandidate =
+        currentIdx + 1 < filteredLeads.length
+          ? filteredLeads[currentIdx + 1].leadId
+          : currentIdx > 0
+          ? filteredLeads[currentIdx - 1].leadId
+          : null;
+
       await handleUpdateDisposition(currentId, newStatus, notesText, callbackDateTime);
       persistContactedLead(callerProfile.callerId, currentId);
       setActiveNotesLead(null);
       setNotesText("");
       setCallbackDateTime("");
-      handleNextFocusLead();
+      setActiveFocusLeadId(nextCandidate);
     } finally {
       setSavingNotes(false);
     }
@@ -758,23 +776,28 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
     if (!lead || !callerProfile) return;
     persistContactedLead(callerProfile.callerId, lead.leadId);
     showToast(`⏭️ Skipped #${lead.leadId} for today's queue.`);
-    handleNextFocusLead();
+
+    const currentIdx = filteredLeads.findIndex((l) => l.leadId === lead.leadId);
+    const nextCandidate =
+      currentIdx + 1 < filteredLeads.length
+        ? filteredLeads[currentIdx + 1].leadId
+        : currentIdx > 0
+        ? filteredLeads[currentIdx - 1].leadId
+        : null;
+    setActiveFocusLeadId(nextCandidate);
   };
 
   const handleJumpToNextPending = () => {
     // Find the next lead in filteredLeads starting after safeFocusIndex that is Pending
-    let nextPending = filteredLeads.slice(safeFocusIndex + 1).find((l) => !l.status || l.status === "Pending");
-    if (!nextPending) {
-      // Wrap around from beginning of queue
-      nextPending = filteredLeads.find((l) => !l.status || l.status === "Pending");
-    }
+    const nextPending = filteredLeads.slice(safeFocusIndex + 1).find((l) => !l.status || l.status === "Pending");
     if (nextPending) {
       const nextIdx = filteredLeads.findIndex((l) => l.leadId === nextPending.leadId);
       if (nextIdx !== -1) setFocusIndex(nextIdx);
       setActiveFocusLeadId(nextPending.leadId);
       showToast(`⏭️ Jumped to fresh lead: ${nextPending.name}`);
     } else {
-      showToast("🎉 All leads in this filter have been completed!");
+      // Clean completion: never wrap around to repeat the first 5 numbers
+      showToast("🎉 All pending leads in this queue have been reached!");
     }
   };
 
@@ -1659,21 +1682,46 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
         {viewMode === "focus" && (
           <div className="space-y-4 animate-fadeIn">
             {!currentFocusLead ? (
-              <div className="rounded-3xl p-10 bg-cream/30 text-center border border-teal-900/10 space-y-3">
-                <span className="text-4xl">🎉</span>
-                <h3 className="text-base font-black text-teal-950">
-                  All filtered leads completed in this queue!
-                </h3>
-                <p className="text-xs text-teal-950/70 max-w-sm mx-auto">
-                  You have contacted or updated all leads matching this filter. Switch to another filter or view the full queue.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setFilter("ALL")}
-                  className="rounded-xl bg-teal-950 text-white px-4 py-2 text-xs font-bold shadow-xs hover:bg-teal-900 cursor-pointer"
-                >
-                  View All Queue ({leads.length})
-                </button>
+              <div className="rounded-3xl p-8 sm:p-12 bg-gradient-to-b from-amber-50/50 via-white to-cream/30 text-center border border-teal-900/15 shadow-sm space-y-4">
+                <div className="h-16 w-16 mx-auto rounded-2xl bg-amber-500/10 flex items-center justify-center text-3xl">
+                  🎉
+                </div>
+                <div>
+                  <h3 className="text-lg sm:text-xl font-display font-black text-teal-950">
+                    {filter === "Pending" ? "Outstanding Effort! Today's Pending Queue Reached!" : "All Leads Completed in This Filter!"}
+                  </h3>
+                  <p className="text-xs text-teal-950/70 max-w-md mx-auto mt-1">
+                    {filter === "Pending"
+                      ? "You have contacted or updated every pending lead assigned to your queue today. Zero repetition guarantee active."
+                      : "No more leads match the selected filter. Review scheduled callbacks, check attended donors, or switch filters below."}
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setFilter("Reschedule")}
+                    className="rounded-xl bg-amber-500 text-teal-950 px-4 py-2 text-xs font-black shadow-xs hover:bg-amber-600 transition cursor-pointer flex items-center gap-1.5"
+                  >
+                    <span>📅</span>
+                    <span>Review Callbacks ({counts.reschedule || 0})</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFilter("Attended")}
+                    className="rounded-xl bg-teal-950 text-white px-4 py-2 text-xs font-bold shadow-xs hover:bg-teal-900 transition cursor-pointer flex items-center gap-1.5"
+                  >
+                    <span>📞</span>
+                    <span>View Attended Today ({stats.contactedCount || 0})</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFilter("ALL")}
+                    className="rounded-xl bg-white border border-teal-900/20 text-teal-950 hover:bg-sand px-4 py-2 text-xs font-bold transition cursor-pointer"
+                  >
+                    Full Roster ({leads.length})
+                  </button>
+                </div>
               </div>
             ) : (
               (() => {

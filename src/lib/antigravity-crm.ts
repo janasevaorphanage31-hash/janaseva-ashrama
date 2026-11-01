@@ -203,6 +203,7 @@ export async function ensureTelecallersAndSeedData(forceCheck = false) {
 
 /**
  * 2. Round-Robin Birthday Lead Routing (Today, Tomorrow, Day+2)
+ * Only routes UNASSIGNED birthday leads so existing callers' working queues are not disrupted.
  */
 export async function distributeBirthdayLeads() {
   await ensureTelecallersAndSeedData();
@@ -234,9 +235,10 @@ export async function distributeBirthdayLeads() {
     .where(
       and(
         sql`(${sql.join(conditions, sql` OR `)})`,
-        sql`(${agLeads.assignedCallerId} IS NULL OR ${agLeads.status} = 'Pending')`
+        isNull(agLeads.assignedCallerId)
       )
-    );
+    )
+    .orderBy(agLeads.dobMonth, agLeads.dobDay, desc(agLeads.leadId));
 
   if (pendingLeads.length === 0) {
     return { distributed: 0, callersCount: activeCallers.length, perCaller: {} };
@@ -250,15 +252,33 @@ export async function distributeBirthdayLeads() {
 
 /**
  * 3. Fetch Assigned Leads for a Telecaller (or All Leads if callerId === "ALL" or empty)
+ * Guaranteed priority ordering:
+ * 1. Fresh uncalled Pending leads first
+ * 2. Today's birthdays at top
+ * 3. Tomorrow's birthdays next
+ * 4. Deterministic order by leadId (prevents card jumping)
  */
 export async function getAssignedLeads(callerId?: string | null, limit = 10000, offset = 0) {
   await ensureTelecallersAndSeedData();
   const cid = (callerId || "").trim().toUpperCase();
+  const now = new Date();
+  const curDay = now.getDate();
+  const curMonth = now.getMonth() + 1;
+
+  const orderClauses = [
+    sql`case when ${agLeads.status} = 'Pending' or ${agLeads.status} is null then 0 else 1 end`,
+    sql`case when ${agLeads.dobMonth} = ${curMonth} and ${agLeads.dobDay} = ${curDay} then 0 else 1 end`,
+    sql`case when ${agLeads.dobMonth} = ${curMonth} and ${agLeads.dobDay} = ${curDay + 1} then 0 else 1 end`,
+    agLeads.dobMonth,
+    agLeads.dobDay,
+    desc(agLeads.leadId),
+  ];
+
   if (!cid || cid === "ALL") {
     return db
       .select()
       .from(agLeads)
-      .orderBy(agLeads.dobMonth, agLeads.dobDay, desc(agLeads.leadId))
+      .orderBy(...orderClauses)
       .limit(limit)
       .offset(offset);
   }
@@ -266,7 +286,7 @@ export async function getAssignedLeads(callerId?: string | null, limit = 10000, 
     .select()
     .from(agLeads)
     .where(eq(agLeads.assignedCallerId, cid))
-    .orderBy(agLeads.dobMonth, agLeads.dobDay, desc(agLeads.leadId))
+    .orderBy(...orderClauses)
     .limit(limit)
     .offset(offset);
 }
@@ -1023,7 +1043,8 @@ export async function uploadBulkLeads(
  */
 export async function distributeSpecificLeads(
   leadIds: number[],
-  mode: "balanced" | "round_robin" = "balanced"
+  mode: "balanced" | "round_robin" = "balanced",
+  cleanSlate = false
 ) {
   if (leadIds.length === 0) return { distributed: 0, perCaller: {} };
 
@@ -1044,7 +1065,10 @@ export async function distributeSpecificLeads(
     assignmentBuckets.set(c.callerId, []);
   });
 
-  if (mode === "balanced") {
+  const loadMap = new Map<string, number>();
+  activeCallers.forEach((c) => loadMap.set(c.callerId, 0));
+
+  if (mode === "balanced" && !cleanSlate) {
     const pendingCounts = await db
       .select({
         callerId: agLeads.assignedCallerId,
@@ -1054,15 +1078,17 @@ export async function distributeSpecificLeads(
       .where(and(eq(agLeads.status, "Pending"), sql`${agLeads.assignedCallerId} IS NOT NULL`))
       .groupBy(agLeads.assignedCallerId);
 
-    const loadMap = new Map<string, number>();
-    activeCallers.forEach((c) => loadMap.set(c.callerId, 0));
     pendingCounts.forEach((p) => {
       if (p.callerId && loadMap.has(p.callerId)) {
         loadMap.set(p.callerId, Number(p.count));
       }
     });
+  }
 
-    for (const leadId of leadIds) {
+  let idx = 0;
+  for (const leadId of leadIds) {
+    let targetCaller: string;
+    if (mode === "balanced") {
       let minCaller = activeCallers[0].callerId;
       let minLoad = loadMap.get(minCaller) ?? 0;
 
@@ -1073,19 +1099,15 @@ export async function distributeSpecificLeads(
           minCaller = caller.callerId;
         }
       }
-
-      loadMap.set(minCaller, minLoad + 1);
-      assignmentBuckets.get(minCaller)!.push(leadId);
-      perCaller[minCaller] = (perCaller[minCaller] || 0) + 1;
-    }
-  } else {
-    let idx = 0;
-    for (const leadId of leadIds) {
-      const callerId = activeCallers[idx % activeCallers.length].callerId;
+      targetCaller = minCaller;
+      loadMap.set(targetCaller, minLoad + 1);
+    } else {
+      targetCaller = activeCallers[idx % activeCallers.length].callerId;
       idx++;
-      assignmentBuckets.get(callerId)!.push(leadId);
-      perCaller[callerId] = (perCaller[callerId] || 0) + 1;
     }
+
+    assignmentBuckets.get(targetCaller)!.push(leadId);
+    perCaller[targetCaller] = (perCaller[targetCaller] || 0) + 1;
   }
 
   // Robust sequential batch update using inArray (1,000 per batch prevents connection pool strain)
@@ -1128,20 +1150,36 @@ export async function distributeUnassignedLeads(mode: "balanced" | "round_robin"
 }
 
 /**
- * 14. Distribute All Unassigned or Pending Leads Equally
+ * 14. Distribute All Unassigned or Pending Leads Equally (Clean-Slate Balanced)
+ * Pre-sorts deterministic birthday priorities:
+ * 1. Today's birthdays
+ * 2. Tomorrow's birthdays
+ * 3. Calendar order
+ * Distributes evenly so each caller receives an exact equal share without double-counting.
  */
 export async function distributeAllPendingLeads(mode: "balanced" | "round_robin" = "balanced") {
+  const now = new Date();
+  const curDay = now.getDate();
+  const curMonth = now.getMonth() + 1;
+
   const pendingLeads = await db
     .select({ leadId: agLeads.leadId })
     .from(agLeads)
-    .where(or(isNull(agLeads.assignedCallerId), eq(agLeads.status, "Pending")));
+    .where(or(isNull(agLeads.assignedCallerId), eq(agLeads.status, "Pending")))
+    .orderBy(
+      sql`case when ${agLeads.dobMonth} = ${curMonth} and ${agLeads.dobDay} = ${curDay} then 0 else 1 end`,
+      sql`case when ${agLeads.dobMonth} = ${curMonth} and ${agLeads.dobDay} = ${curDay + 1} then 0 else 1 end`,
+      agLeads.dobMonth,
+      agLeads.dobDay,
+      desc(agLeads.leadId)
+    );
 
   if (pendingLeads.length === 0) {
     return { distributed: 0, perCaller: {} };
   }
 
   const ids = pendingLeads.map((l) => l.leadId);
-  return distributeSpecificLeads(ids, mode);
+  return distributeSpecificLeads(ids, mode, true);
 }
 
 /**
@@ -1180,7 +1218,7 @@ export async function resetDailyQuotaLeads(mode: "balanced" | "round_robin" = "b
   }
 
   const ids = nonDonatedLeads.map((l) => l.leadId);
-  const dist = await distributeSpecificLeads(ids, mode);
+  const dist = await distributeSpecificLeads(ids, mode, true);
 
   return {
     success: true,
