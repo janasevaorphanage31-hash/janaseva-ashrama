@@ -21,6 +21,7 @@ export function AdminTelecallerCRM() {
   const [selectedLeadIds, setSelectedLeadIds] = useState<number[]>([]);
   const [targetCallerId, setTargetCallerId] = useState<string>("TC01");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
+  const [leadStreamFilter, setLeadStreamFilter] = useState<"ALL" | "PARENTS" | "DIRECT_DONOR">("ALL");
   const [leadDateSort, setLeadDateSort] = useState<
     "birthday_upcoming" | "birthday_calendar" | "date_newest" | "date_oldest" | "callback_earliest"
   >("birthday_upcoming");
@@ -56,11 +57,21 @@ export function AdminTelecallerCRM() {
 
   // 3. Bulk Lead Upload Modal State
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [uploadStream, setUploadStream] = useState<"PARENTS" | "DIRECT_DONOR">("PARENTS");
   const [uploadMode, setUploadMode] = useState<"paste" | "file">("paste");
   const [pastedText, setPastedText] = useState("");
   const [uploadedFileName, setUploadedFileName] = useState("");
   const [parsedLeads, setParsedLeads] = useState<
-    Array<{ name: string; phone: string; dobDay: number; dobMonth: number; email?: string }>
+    Array<{
+      stream?: "PARENTS" | "DIRECT_DONOR";
+      name: string;
+      parentName?: string;
+      childName?: string;
+      phone: string;
+      dobDay: number;
+      dobMonth: number;
+      email?: string;
+    }>
   >([]);
   const [autoDistributeOnUpload, setAutoDistributeOnUpload] = useState(true);
   const [distributionMode, setDistributionMode] = useState<"balanced" | "round_robin">("balanced");
@@ -478,7 +489,7 @@ export function AdminTelecallerCRM() {
     return { day: defaultDay, month: defaultMonth };
   };
 
-  const parse2DGrid = (grid: any[][]) => {
+  const parse2DGrid = (grid: any[][], streamOverride?: "PARENTS" | "DIRECT_DONOR") => {
     if (!grid || grid.length === 0) {
       setParsedLeads([]);
       return;
@@ -491,6 +502,8 @@ export function AdminTelecallerCRM() {
     // Multi-row header detection: scan up to the first 6 rows for donor/name/phone/dob columns
     let headerRowIdx = -1;
     let nameCol = -1;
+    let parentCol = -1;
+    let childCol = -1;
     let phoneCol = -1;
     let dayCol = -1;
     let monthCol = -1;
@@ -501,6 +514,8 @@ export function AdminTelecallerCRM() {
     for (let r = 0; r < maxHeaderScan; r++) {
       const row = grid[r] || [];
       let tempNameCol = -1;
+      let tempParentCol = -1;
+      let tempChildCol = -1;
       let tempPhoneCol = -1;
       let tempDayCol = -1;
       let tempMonthCol = -1;
@@ -511,7 +526,11 @@ export function AdminTelecallerCRM() {
         const raw = String(cellVal || "").toLowerCase().trim();
         const h = raw.replace(/[^a-z0-9]/g, "");
 
-        if (h.includes("name") || h.includes("donor") || h.includes("person") || h.includes("contactname") || h.includes("leadname")) {
+        if (h.includes("child") || h.includes("kid") || h.includes("baby") || h.includes("son") || h.includes("daughter")) {
+          tempChildCol = colIdx;
+        } else if (h.includes("parent") || h.includes("father") || h.includes("mother") || h.includes("guardian")) {
+          tempParentCol = colIdx;
+        } else if (h.includes("name") || h.includes("donor") || h.includes("person") || h.includes("contactname") || h.includes("leadname")) {
           if (!h.includes("id")) tempNameCol = colIdx;
         } else if (h === "lead" || h === "donors" || h === "contacts") {
           tempNameCol = colIdx;
@@ -555,6 +574,8 @@ export function AdminTelecallerCRM() {
       if (tempPhoneCol !== -1 || (tempNameCol !== -1 && tempDateCol !== -1)) {
         headerRowIdx = r;
         nameCol = tempNameCol;
+        parentCol = tempParentCol;
+        childCol = tempChildCol;
         phoneCol = tempPhoneCol;
         dayCol = tempDayCol;
         monthCol = tempMonthCol;
@@ -565,13 +586,24 @@ export function AdminTelecallerCRM() {
     }
 
     const startRow = headerRowIdx !== -1 ? headerRowIdx + 1 : 0;
-    const leads: Array<{ name: string; phone: string; dobDay: number; dobMonth: number; email?: string }> = [];
+    const leads: Array<{
+      stream?: "PARENTS" | "DIRECT_DONOR";
+      name: string;
+      parentName?: string;
+      childName?: string;
+      phone: string;
+      dobDay: number;
+      dobMonth: number;
+      email?: string;
+    }> = [];
 
     for (let r = startRow; r < grid.length; r++) {
       const cells = grid[r] || [];
       if (cells.length === 0 || cells.every((c) => c === "" || c == null)) continue;
 
       let leadName = "";
+      let leadParentName = "";
+      let leadChildName = "";
       let leadPhone = "";
       let leadDay = curDay;
       let leadMonth = curMonth;
@@ -581,6 +613,12 @@ export function AdminTelecallerCRM() {
         leadPhone = normalizePhoneNumber(cells[phoneCol]);
         if (nameCol !== -1 && cells[nameCol] != null) {
           leadName = String(cells[nameCol]).trim();
+        }
+        if (parentCol !== -1 && cells[parentCol] != null) {
+          leadParentName = String(cells[parentCol]).trim();
+        }
+        if (childCol !== -1 && cells[childCol] != null) {
+          leadChildName = String(cells[childCol]).trim();
         }
 
         if (dateCol !== -1 && cells[dateCol] != null) {
@@ -648,13 +686,20 @@ export function AdminTelecallerCRM() {
         }
       }
 
-      if (!leadName || leadName.length < 2) {
-        leadName = `Well-wisher (${leadPhone.slice(-4)})`;
-      }
+      const activeStream = streamOverride || uploadStream;
+      const isParentsStream = activeStream === "PARENTS";
+      const finalParentName = isParentsStream ? (leadParentName || leadName || "Parent") : undefined;
+      const finalChildName = isParentsStream ? (leadChildName || "Child") : undefined;
+      const finalDisplayName = isParentsStream
+        ? (finalChildName ? `${finalChildName} (Child)` : "Child")
+        : (leadName || `Well-wisher (${leadPhone.slice(-4)})`);
 
       if (leadPhone.length === 10) {
         leads.push({
-          name: leadName.replace(/^["']|["']$/g, "").trim(),
+          stream: activeStream,
+          name: finalDisplayName.replace(/^["']|["']$/g, "").trim(),
+          parentName: finalParentName ? finalParentName.replace(/^["']|["']$/g, "").trim() : undefined,
+          childName: finalChildName ? finalChildName.replace(/^["']|["']$/g, "").trim() : undefined,
           phone: leadPhone,
           dobDay: leadDay,
           dobMonth: leadMonth,
@@ -741,16 +786,36 @@ export function AdminTelecallerCRM() {
     e.target.value = ""; // Allow re-selecting same file
   };
 
-  const handleDownloadSampleTemplate = () => {
-    const sample = `Lead Name,Phone Number,Birthday Day,Birthday Month,Email\n"Ramesh Patil","9880123456",14,10,"ramesh@gmail.com"\n"Deepa Rao","9845011002",15,10,"deepa@yahoo.com"\n"Anand Joshi","9845011003",16,10,"anand@gmail.com"`;
+  const handleDownloadParentsTemplate = () => {
+    const sample = `Parent Name,Parent Phone,Child Name,Child Birthday Day,Child Birthday Month,Email\n"Suresh Gowda","9880123456","Aarav Gowda",14,10,"suresh@gmail.com"\n"Lakshmi Devi","9845011002","Ananya",15,10,"lakshmi@yahoo.com"\n"Venkatesh Rao","9845011003","Rohan Rao",16,10,"venkatesh@gmail.com"`;
     const blob = new Blob([sample], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.setAttribute("download", "sample_birthday_leads_template.csv");
+    link.setAttribute("download", "sample_parents_child_birthday.csv");
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  const handleDownloadDonorsTemplate = () => {
+    const sample = `Donor Name,Donor Phone,Birthday Day,Birthday Month,Email\n"Dr. Ramesh Patil","9880123456",14,10,"ramesh@patilclinic.com"\n"Deepa Rao","9845011002",15,10,"deepa@yahoo.com"\n"Anand Joshi","9845011003",16,10,"anand@gmail.com"`;
+    const blob = new Blob([sample], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", "sample_direct_donors_birthday.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleDownloadSampleTemplate = () => {
+    if (uploadStream === "PARENTS") {
+      handleDownloadParentsTemplate();
+    } else {
+      handleDownloadDonorsTemplate();
+    }
   };
 
   const handleClearDemoLeads = async (wipeAll: boolean = false) => {
@@ -1225,8 +1290,9 @@ export function AdminTelecallerCRM() {
     const curMonth = now.getMonth() + 1;
 
     const base = leadsList.filter((l) => {
-      if (statusFilter === "ALL") return true;
-      return l.status === statusFilter;
+      if (statusFilter !== "ALL" && l.status !== statusFilter) return false;
+      if (leadStreamFilter !== "ALL" && (l.stream || "PARENTS") !== leadStreamFilter) return false;
+      return true;
     });
 
     const getBirthdayDistance = (m?: number, d?: number) => {
@@ -1265,7 +1331,7 @@ export function AdminTelecallerCRM() {
       }
       return 0;
     });
-  }, [leadsList, statusFilter, leadDateSort]);
+  }, [leadsList, statusFilter, leadStreamFilter, leadDateSort]);
 
   const totalPages = Math.max(1, Math.ceil(filteredLeads.length / leadsPerPage));
   const paginatedLeads = useMemo(() => {
@@ -1354,6 +1420,17 @@ export function AdminTelecallerCRM() {
               className="focus-ring tap-scale inline-flex items-center gap-1.5 rounded-xl bg-white hover:bg-sand text-teal-950 px-3.5 py-2.5 text-xs font-black shadow-sm transition cursor-pointer"
             >
               <span>📤 Bulk Upload Leads</span>
+            </button>
+
+            {/* Distribute Tomorrow's Calling Queue (50/50 Mix) */}
+            <button
+              type="button"
+              onClick={handleTriggerRouting}
+              disabled={actionLoading}
+              className="focus-ring tap-scale inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-teal-950 px-3.5 py-2.5 text-xs font-black shadow-sm transition cursor-pointer disabled:opacity-50"
+              title="Distribute tomorrow's birthdays (T+1) with 50% Parents + 50% Donors fair share across all active callers"
+            >
+              <span>🎯 Distribute Tomorrow (50/50 Mix)</span>
             </button>
 
             {/* Reset Daily Limit / Queue Button */}
@@ -1623,9 +1700,10 @@ export function AdminTelecallerCRM() {
             type="button"
             onClick={handleTriggerRouting}
             disabled={actionLoading}
-            className="focus-ring tap-scale inline-flex items-center gap-1.5 rounded-xl bg-white hover:bg-sand border border-teal-900/20 text-teal-950 px-3.5 py-2 text-xs font-bold shadow-xs transition cursor-pointer disabled:opacity-50"
+            className="focus-ring tap-scale inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-teal-950 px-3.5 py-2 text-xs font-black shadow-xs transition cursor-pointer disabled:opacity-50"
+            title="Distribute tomorrow's birthdays (T+1) with 50% Parents + 50% Donors fair share across all active callers"
           >
-            <span>🚀 Run Birthday Cron (00:01 AM)</span>
+            <span>🎯 Distribute Tomorrow's Queue (50/50 Mix)</span>
           </button>
         </div>
       </div>
@@ -2122,6 +2200,20 @@ export function AdminTelecallerCRM() {
               <option value="Donated">Donated</option>
             </select>
 
+            {/* Stream Selector */}
+            <select
+              value={leadStreamFilter}
+              onChange={(e) => {
+                setLeadStreamFilter(e.target.value as any);
+                setLeadsPage(1);
+              }}
+              className="rounded-xl border border-teal-900/20 px-3 py-1.5 text-xs font-bold bg-white text-teal-950 cursor-pointer"
+            >
+              <option value="ALL">All Sheets (Parents &amp; Donors)</option>
+              <option value="PARENTS">👶 Parents Sheet (Child Birthday)</option>
+              <option value="DIRECT_DONOR">🎂 Direct Donors Sheet</option>
+            </select>
+
             {/* Sort by Date Selector */}
             <div className="flex items-center gap-1.5 bg-sand/40 border border-teal-900/15 rounded-xl px-2.5 py-1">
               <span className="text-xs font-bold text-teal-950/70 whitespace-nowrap">📅 Sort by Date:</span>
@@ -2229,7 +2321,8 @@ export function AdminTelecallerCRM() {
                     title="Select/Deselect current page"
                   />
                 </th>
-                <th className="p-3">Lead Name</th>
+                <th className="p-3">Stream / Sheet</th>
+                <th className="p-3">Contact &amp; Celebrant</th>
                 <th className="p-3">Phone</th>
                 <th className="p-3">Birthday Date</th>
                 <th className="p-3">Status</th>
@@ -2240,7 +2333,7 @@ export function AdminTelecallerCRM() {
             <tbody className="divide-y divide-teal-900/5">
               {filteredLeads.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="p-6 text-center text-teal-950/50">
+                  <td colSpan={8} className="p-6 text-center text-teal-950/50">
                     No leads found matching filter.
                   </td>
                 </tr>
@@ -2263,7 +2356,28 @@ export function AdminTelecallerCRM() {
                           className="rounded text-teal-950"
                         />
                       </td>
-                      <td className="p-3 font-bold text-teal-950">{lead.name}</td>
+                      <td className="p-3">
+                        <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${
+                          lead.stream === "DIRECT_DONOR"
+                            ? "bg-amber-100 text-amber-900 border border-amber-300"
+                            : "bg-indigo-100 text-indigo-900 border border-indigo-200"
+                        }`}>
+                          {lead.stream === "DIRECT_DONOR" ? "🎂 Donor" : "👶 Parents"}
+                        </span>
+                      </td>
+                      <td className="p-3 font-bold text-teal-950">
+                        <div>{lead.stream === "PARENTS" && lead.parentName ? lead.parentName : lead.name}</div>
+                        {lead.stream === "PARENTS" && lead.childName && (
+                          <div className="text-[10px] font-normal text-teal-950/65">
+                            Child: <span className="font-semibold text-teal-900">{lead.childName}</span>
+                          </div>
+                        )}
+                        {lead.lifetimeDonations && lead.lifetimeDonations > 0 ? (
+                          <div className="text-[10px] font-black text-emerald-700">
+                            ★ Prior Donor (₹{lead.lifetimeDonations.toLocaleString()})
+                          </div>
+                        ) : null}
+                      </td>
                       <td className="p-3 font-mono text-teal-950/80">{lead.phone}</td>
                       <td className="p-3 text-amber-800 font-semibold">
                         Day {lead.dobDay} / Month {lead.dobMonth}
@@ -2344,8 +2458,29 @@ export function AdminTelecallerCRM() {
                         className="rounded text-teal-950 h-4 w-4 shrink-0"
                       />
                       <div className="min-w-0">
-                        <h4 className="font-bold text-teal-950 text-sm truncate">{lead.name}</h4>
-                        <div className="flex items-center gap-2 text-xs">
+                        <div className="flex items-center gap-1.5 mb-0.5">
+                          <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded-md ${
+                            lead.stream === "DIRECT_DONOR"
+                              ? "bg-amber-100 text-amber-900 border border-amber-300"
+                              : "bg-indigo-100 text-indigo-900 border border-indigo-200"
+                          }`}>
+                            {lead.stream === "DIRECT_DONOR" ? "🎂 Donor" : "👶 Parents"}
+                          </span>
+                          {lead.lifetimeDonations && lead.lifetimeDonations > 0 ? (
+                            <span className="text-[9px] font-black text-emerald-700">
+                              ★ Prior Donor
+                            </span>
+                          ) : null}
+                        </div>
+                        <h4 className="font-bold text-teal-950 text-sm truncate">
+                          {lead.stream === "PARENTS" && lead.parentName ? lead.parentName : lead.name}
+                        </h4>
+                        {lead.stream === "PARENTS" && lead.childName && (
+                          <p className="text-[10px] text-teal-950/65 font-medium truncate">
+                            Child: <span className="font-bold text-teal-900">{lead.childName}</span>
+                          </p>
+                        )}
+                        <div className="flex items-center gap-2 text-xs mt-0.5">
                           <span className="font-mono text-teal-950/70">{lead.phone}</span>
                           {lead.dobDay && lead.dobMonth && (
                             <span className="rounded-full bg-amber-100 text-amber-900 px-2 py-0.5 text-[10px] font-bold">
@@ -3061,6 +3196,69 @@ export function AdminTelecallerCRM() {
             </div>
 
             <div className="overflow-y-auto py-4 space-y-4">
+              {/* Dual-Stream Category Selector */}
+              <div className="rounded-2xl bg-teal-950/5 p-3.5 border border-teal-900/10 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black text-teal-950 uppercase tracking-wider">
+                    Select Data Stream / Sheet Type:
+                  </span>
+                  <span className="rounded-full bg-teal-950 text-gold text-[10px] font-black px-2.5 py-0.5">
+                    {uploadStream === "PARENTS" ? "👶 Parents Sheet Selected" : "🎂 Direct Donors Sheet Selected"}
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setUploadStream("PARENTS");
+                      if (pastedText && pastedText.trim()) {
+                        const rawLines = pastedText.split(/\r?\n/).map((l) => l.trim()).filter((l) => l.length > 0);
+                        const grid = rawLines.map((line) => parseCSVLine(line));
+                        parse2DGrid(grid, "PARENTS");
+                      }
+                    }}
+                    className={`flex items-start gap-3 p-3 rounded-2xl text-left border transition cursor-pointer ${
+                      uploadStream === "PARENTS"
+                        ? "bg-teal-950 text-white border-teal-950 shadow-md ring-2 ring-amber-400"
+                        : "bg-white text-teal-950 border-teal-900/15 hover:bg-sand/60"
+                    }`}
+                  >
+                    <span className="text-2xl shrink-0">👶</span>
+                    <div>
+                      <p className="font-bold text-xs">Sheet 1: Parents (Child Birthday)</p>
+                      <p className="text-[11px] opacity-80 mt-0.5 leading-snug">
+                        Parent Name &amp; Phone, Child Name &amp; Birthday. Callers wish child 1 day in advance &amp; seek meal sponsorship for ashrama boys.
+                      </p>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setUploadStream("DIRECT_DONOR");
+                      if (pastedText && pastedText.trim()) {
+                        const rawLines = pastedText.split(/\r?\n/).map((l) => l.trim()).filter((l) => l.length > 0);
+                        const grid = rawLines.map((line) => parseCSVLine(line));
+                        parse2DGrid(grid, "DIRECT_DONOR");
+                      }
+                    }}
+                    className={`flex items-start gap-3 p-3 rounded-2xl text-left border transition cursor-pointer ${
+                      uploadStream === "DIRECT_DONOR"
+                        ? "bg-teal-950 text-white border-teal-950 shadow-md ring-2 ring-amber-400"
+                        : "bg-white text-teal-950 border-teal-900/15 hover:bg-sand/60"
+                    }`}
+                  >
+                    <span className="text-2xl shrink-0">🎂</span>
+                    <div>
+                      <p className="font-bold text-xs">Sheet 2: Direct Donors (Donor Birthday)</p>
+                      <p className="text-[11px] opacity-80 mt-0.5 leading-snug">
+                        Donor Name &amp; Phone, Donor Birthday. Callers wish donor 1 day in advance for ashrama blessings &amp; contributions.
+                      </p>
+                    </div>
+                  </button>
+                </div>
+              </div>
+
               {/* Mode Tabs */}
               <div className="flex items-center gap-2 border-b border-teal-900/10 pb-2">
                 <button
@@ -3091,19 +3289,30 @@ export function AdminTelecallerCRM() {
               <div className="rounded-2xl bg-amber-50/80 p-3.5 border border-amber-200/80 text-xs text-amber-950 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div className="space-y-1">
                   <p className="font-bold flex items-center gap-1.5 text-amber-900">
-                    <span>💡</span> Universal Column Support: Name, Phone (10-digit), Birthday Day (1-31), Birthday Month (1-12), Email
+                    <span>💡</span> Column Support for {uploadStream === "PARENTS" ? "Parents Sheet" : "Direct Donors"}
                   </p>
                   <p className="text-[11px] text-amber-800/80 font-mono">
-                    Works automatically with Janaseva registry exports, Google Sheets, or custom CSV files.
+                    {uploadStream === "PARENTS"
+                      ? "Parent Name, Parent Mobile (10-digit), Child Name, Child Birthday Day & Month"
+                      : "Donor Name, Donor Mobile (10-digit), Birthday Day & Month, Email"}
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={handleDownloadSampleTemplate}
-                  className="shrink-0 px-3 py-1.5 rounded-xl bg-white hover:bg-amber-100/60 border border-amber-300 text-amber-900 text-xs font-bold transition shadow-2xs"
-                >
-                  📥 Download Sample CSV
-                </button>
+                <div className="flex flex-wrap items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={handleDownloadParentsTemplate}
+                    className="px-2.5 py-1.5 rounded-xl bg-white hover:bg-amber-100/60 border border-amber-300 text-amber-900 text-[11px] font-bold transition shadow-2xs cursor-pointer"
+                  >
+                    📥 Parents Template (.csv)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDownloadDonorsTemplate}
+                    className="px-2.5 py-1.5 rounded-xl bg-white hover:bg-amber-100/60 border border-amber-300 text-amber-900 text-[11px] font-bold transition shadow-2xs cursor-pointer"
+                  >
+                    📥 Donors Template (.csv)
+                  </button>
+                </div>
               </div>
 
               {uploadMode === "paste" ? (
@@ -3123,7 +3332,11 @@ export function AdminTelecallerCRM() {
                       setPastedText(e.target.value);
                       parseRawLeadText(e.target.value);
                     }}
-                    placeholder={`Lead Name, Phone Number, Birthday Day, Birthday Month, Email\nVijay Kumar, 9845011001, 14, 10, vijay@gmail.com\nDeepa Rao, 9845011002, 15, 10, deepa@yahoo.com`}
+                    placeholder={
+                      uploadStream === "PARENTS"
+                        ? `Parent Name, Parent Phone, Child Name, Birthday Day, Birthday Month, Email\nSuresh Gowda, 9880123456, Aarav Gowda, 14, 10, suresh@gmail.com\nLakshmi Devi, 9845011002, Ananya, 15, 10, lakshmi@yahoo.com`
+                        : `Donor Name, Phone Number, Birthday Day, Birthday Month, Email\nVijay Kumar, 9845011001, 14, 10, vijay@gmail.com\nDeepa Rao, 9845011002, 15, 10, deepa@yahoo.com`
+                    }
                     className="w-full rounded-2xl border border-teal-900/20 p-3 font-mono text-xs text-teal-950 focus:ring-2 focus:ring-amber-400 outline-none"
                   />
                 </div>
@@ -3211,20 +3424,35 @@ export function AdminTelecallerCRM() {
                     <table className="w-full text-left text-[11px]">
                       <thead className="bg-cream font-bold border-b border-teal-900/10">
                         <tr>
-                          <th className="p-2">Name</th>
+                          <th className="p-2">Stream</th>
+                          <th className="p-2">Name / Celebrant</th>
                           <th className="p-2">Phone</th>
-                          <th className="p-2">DOB Day</th>
-                          <th className="p-2">DOB Month</th>
+                          <th className="p-2">Birthday Date</th>
                           <th className="p-2">Email</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-teal-900/5">
                         {parsedLeads.slice(0, 4).map((pl, idx) => (
                           <tr key={idx} className="hover:bg-sand/40">
-                            <td className="p-2 font-bold">{pl.name}</td>
+                            <td className="p-2">
+                              <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${
+                                pl.stream === "PARENTS" ? "bg-indigo-100 text-indigo-800" : "bg-amber-100 text-amber-800"
+                              }`}>
+                                {pl.stream === "PARENTS" ? "👶 Parents" : "🎂 Donor"}
+                              </span>
+                            </td>
+                            <td className="p-2 font-bold">
+                              <div>{pl.name}</div>
+                              {pl.childName && (
+                                <div className="text-[10px] font-normal text-teal-950/60">
+                                  Parent: {pl.parentName || "—"} | Child: {pl.childName}
+                                </div>
+                              )}
+                            </td>
                             <td className="p-2 font-mono">+91 {pl.phone}</td>
-                            <td className="p-2">{pl.dobDay}</td>
-                            <td className="p-2">{pl.dobMonth}</td>
+                            <td className="p-2 font-semibold text-amber-800">
+                              {pl.dobDay}/{pl.dobMonth}
+                            </td>
                             <td className="p-2 text-teal-950/60">{pl.email || "—"}</td>
                           </tr>
                         ))}

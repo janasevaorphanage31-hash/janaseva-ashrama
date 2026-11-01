@@ -202,18 +202,18 @@ export async function ensureTelecallersAndSeedData(forceCheck = false) {
 }
 
 /**
- * 2. Round-Robin Birthday Lead Routing (Today, Tomorrow, Day+2)
- * Only routes UNASSIGNED birthday leads so existing callers' working queues are not disrupted.
+ * 2. Distribute Tomorrow's Birthday Leads with 50/50 Dual-Stream Balancing:
+ * - Calculates Tomorrow's date (T+1 day) with month/leap-year rollover.
+ * - Pulls unassigned Pending leads for Parents (Child Birthday) and Direct Donors.
+ * - Allocates an equal mix (50% Parents + 50% Donors) mathematically across all active callers.
+ * - If a caller is inactive/deleted, they receive 0 leads.
  */
-export async function distributeBirthdayLeads() {
+export async function distributeTomorrowBirthdayLeads(mode: "balanced" | "round_robin" = "balanced") {
   await ensureTelecallersAndSeedData();
   const now = new Date();
-
-  const targets = [0, 1, 2].map((offset) => {
-    const d = new Date(now);
-    d.setDate(d.getDate() + offset);
-    return { day: d.getDate(), month: d.getMonth() + 1 };
-  });
+  const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+  const targetDay = tomorrow.getDate();
+  const targetMonth = tomorrow.getMonth() + 1;
 
   const activeCallers = await db
     .select({ callerId: agTelecallers.callerId })
@@ -221,54 +221,136 @@ export async function distributeBirthdayLeads() {
     .where(eq(agTelecallers.isActive, true))
     .orderBy(agTelecallers.callerId);
 
-  if (activeCallers.length === 0) {
-    return { distributed: 0, callersCount: 0, perCaller: {} };
+  const K = activeCallers.length;
+  if (K === 0) {
+    return { distributed: 0, parentsDistributed: 0, donorsDistributed: 0, callersCount: 0, perCaller: {} };
   }
 
-  const conditions = targets.map(
-    (t) => sql`(${agLeads.dobMonth} = ${t.month} AND ${agLeads.dobDay} = ${t.day})`
-  );
-
-  const pendingLeads = await db
+  // 1. Fetch unassigned Pending leads for Parents (Child Birthday Tomorrow)
+  const parentsLeads = await db
     .select({ leadId: agLeads.leadId })
     .from(agLeads)
     .where(
       and(
-        sql`(${sql.join(conditions, sql` OR `)})`,
-        isNull(agLeads.assignedCallerId)
+        eq(agLeads.stream, "PARENTS"),
+        eq(agLeads.dobDay, targetDay),
+        eq(agLeads.dobMonth, targetMonth),
+        isNull(agLeads.assignedCallerId),
+        or(eq(agLeads.status, "Pending"), isNull(agLeads.status))
       )
     )
-    .orderBy(agLeads.dobMonth, agLeads.dobDay, desc(agLeads.leadId));
+    .orderBy(desc(agLeads.leadId));
 
-  if (pendingLeads.length === 0) {
-    return { distributed: 0, callersCount: activeCallers.length, perCaller: {} };
+  // 2. Fetch unassigned Pending leads for Direct Donors (Donor Birthday Tomorrow)
+  const donorLeads = await db
+    .select({ leadId: agLeads.leadId })
+    .from(agLeads)
+    .where(
+      and(
+        or(eq(agLeads.stream, "DIRECT_DONOR"), isNull(agLeads.stream)),
+        eq(agLeads.dobDay, targetDay),
+        eq(agLeads.dobMonth, targetMonth),
+        isNull(agLeads.assignedCallerId),
+        or(eq(agLeads.status, "Pending"), isNull(agLeads.status))
+      )
+    )
+    .orderBy(desc(agLeads.leadId));
+
+  const perCaller: Record<string, number> = {};
+  for (const c of activeCallers) {
+    perCaller[c.callerId] = 0;
   }
 
-  const ids = pendingLeads.map((l) => l.leadId);
-  const result = await distributeSpecificLeads(ids, "balanced");
+  const updates: Array<{ leadId: number; callerId: string }> = [];
 
-  return { distributed: result.distributed, callersCount: activeCallers.length, perCaller: result.perCaller };
+  // 3. Mathematical fair-share distribution for Parents stream
+  const P = parentsLeads.length;
+  if (P > 0) {
+    const qP = Math.floor(P / K);
+    const rP = P % K;
+    let pIdx = 0;
+    for (let i = 0; i < K; i++) {
+      const callerId = activeCallers[i].callerId;
+      const count = qP + (i < rP ? 1 : 0);
+      for (let j = 0; j < count && pIdx < P; j++) {
+        updates.push({ leadId: parentsLeads[pIdx].leadId, callerId });
+        perCaller[callerId] = (perCaller[callerId] || 0) + 1;
+        pIdx++;
+      }
+    }
+  }
+
+  // 4. Mathematical fair-share distribution for Direct Donors stream
+  const D = donorLeads.length;
+  if (D > 0) {
+    const qD = Math.floor(D / K);
+    const rD = D % K;
+    let dIdx = 0;
+    for (let i = 0; i < K; i++) {
+      const callerId = activeCallers[i].callerId;
+      const count = qD + (i < rD ? 1 : 0);
+      for (let j = 0; j < count && dIdx < D; j++) {
+        updates.push({ leadId: donorLeads[dIdx].leadId, callerId });
+        perCaller[callerId] = (perCaller[callerId] || 0) + 1;
+        dIdx++;
+      }
+    }
+  }
+
+  // 5. Batch update in database
+  if (updates.length > 0) {
+    const callerToLeadIds = new Map<string, number[]>();
+    for (const u of updates) {
+      if (!callerToLeadIds.has(u.callerId)) callerToLeadIds.set(u.callerId, []);
+      callerToLeadIds.get(u.callerId)!.push(u.leadId);
+    }
+
+    for (const [callerId, ids] of callerToLeadIds.entries()) {
+      for (let i = 0; i < ids.length; i += 200) {
+        const chunk = ids.slice(i, i + 200);
+        await db
+          .update(agLeads)
+          .set({ assignedCallerId: callerId, updatedAt: new Date() })
+          .where(inArray(agLeads.leadId, chunk));
+      }
+    }
+  }
+
+  return {
+    distributed: updates.length,
+    parentsDistributed: P,
+    donorsDistributed: D,
+    callersCount: K,
+    perCaller,
+    targetDay,
+    targetMonth,
+  };
+}
+
+export async function distributeBirthdayLeads() {
+  return distributeTomorrowBirthdayLeads("balanced");
 }
 
 /**
  * 3. Fetch Assigned Leads for a Telecaller (or All Leads if callerId === "ALL" or empty)
  * Guaranteed priority ordering:
- * 1. Fresh uncalled Pending leads first
- * 2. Today's birthdays at top
- * 3. Tomorrow's birthdays next
+ * 1. Rescheduled Callbacks due today or earlier (pinned to top)
+ * 2. Fresh uncalled Pending leads
+ * 3. Tomorrow's birthdays (T+1 advance calling target)
  * 4. Deterministic order by leadId (prevents card jumping)
  */
 export async function getAssignedLeads(callerId?: string | null, limit = 10000, offset = 0) {
   await ensureTelecallersAndSeedData();
   const cid = (callerId || "").trim().toUpperCase();
   const now = new Date();
-  const curDay = now.getDate();
-  const curMonth = now.getMonth() + 1;
+  const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+  const targetDay = tomorrow.getDate();
+  const targetMonth = tomorrow.getMonth() + 1;
 
   const orderClauses = [
+    sql`case when ${agLeads.status} = 'Reschedule' and ${agLeads.rescheduleDate} <= ${now} then 0 else 1 end`,
     sql`case when ${agLeads.status} = 'Pending' or ${agLeads.status} is null then 0 else 1 end`,
-    sql`case when ${agLeads.dobMonth} = ${curMonth} and ${agLeads.dobDay} = ${curDay} then 0 else 1 end`,
-    sql`case when ${agLeads.dobMonth} = ${curMonth} and ${agLeads.dobDay} = ${curDay + 1} then 0 else 1 end`,
+    sql`case when ${agLeads.dobMonth} = ${targetMonth} and ${agLeads.dobDay} = ${targetDay} then 0 else 1 end`,
     agLeads.dobMonth,
     agLeads.dobDay,
     desc(agLeads.leadId),
@@ -338,7 +420,7 @@ export async function getCallerPortalData(callerId?: string | null, limit = 1000
 }
 
 /**
- * 4. Log Call Disposition & Notes
+ * 4. Log Call Disposition, Validation Quality & Notes
  */
 export async function logCallDisposition(
   leadId: number,
@@ -356,18 +438,36 @@ export async function logCallDisposition(
     callbackTime: callbackTime ? new Date(callbackTime) : null,
   });
 
+  let validationStatus = "UNVERIFIED";
+  if (disposition === "Donated") {
+    validationStatus = "VALID_DONATED";
+  } else if (disposition === "Interested") {
+    validationStatus = "VALID_INTERESTED";
+  } else if (disposition === "Reschedule") {
+    validationStatus = "VALID_CALLBACK";
+  } else if (disposition === "Rejected" || disposition === "Not Interested") {
+    validationStatus = "SOFT_REJECT";
+  } else if (
+    disposition === "Wrong_Number" ||
+    disposition === "Junk" ||
+    disposition === "Invalid"
+  ) {
+    validationStatus = "JUNK_INVALID";
+  }
+
   // Update lead current status
   await db
     .update(agLeads)
     .set({
       status: disposition,
+      validationStatus,
       rescheduleDate: callbackTime ? new Date(callbackTime) : null,
       lastContactedAt: new Date(),
       updatedAt: new Date(),
     })
     .where(eq(agLeads.leadId, leadId));
 
-  return { success: true };
+  return { success: true, validationStatus };
 }
 
 /**
@@ -405,11 +505,16 @@ export async function generateWhatsAppLink(
   const effectiveSenderMode = options?.senderMode || settings.senderMode || "central";
 
   const generated = generateAntiBanMessage({
-    donorName: lead.name,
+    leadId: lead.leadId,
+    leadName: lead.stream === "PARENTS" ? (lead.parentName || lead.name) : lead.name,
+    donorName: lead.stream === "PARENTS" ? (lead.parentName || lead.name) : lead.name,
+    childName: lead.childName || undefined,
+    parentName: lead.parentName || undefined,
+    stream: lead.stream as any,
     callerId: callerId.toUpperCase(),
     callerName,
     language: options?.language || settings.defaultLanguage || "kanglish",
-    angle: options?.angle || settings.defaultAngle || "annadana",
+    angle: options?.angle || (lead.stream === "PARENTS" ? "birthday" : settings.defaultAngle || "annadana"),
     mediaId: options?.mediaId || "annadana_feast",
     amount: options?.amount,
     baseUrl: siteUrl,
@@ -484,11 +589,18 @@ export async function recordPaymentAttribution(data: {
     })
     .onConflictDoNothing({ target: agDonations.txnId });
 
-  // 2. If lead is linked, mark lead as Donated in real-time
+  // 2. If lead is linked, mark lead as Donated in real-time and increment lifetime donation
   if (data.leadId) {
+    const curYear = new Date().getFullYear();
     await db
       .update(agLeads)
-      .set({ status: "Donated", updatedAt: new Date() })
+      .set({
+        status: "Donated",
+        validationStatus: "VALID_DONATED",
+        lastDonationYear: curYear,
+        lifetimeDonations: sql`${agLeads.lifetimeDonations} + ${roundedAmount}`,
+        updatedAt: new Date(),
+      })
       .where(eq(agLeads.leadId, data.leadId));
   }
 
@@ -895,7 +1007,10 @@ export async function updateTelecallerDetails(
 }
 
 export interface LeadUploadItem {
-  name: string;
+  stream?: "PARENTS" | "DIRECT_DONOR";
+  name?: string;
+  parentName?: string;
+  childName?: string;
   phone: string;
   email?: string;
   dobDay?: number | string;
@@ -904,6 +1019,7 @@ export interface LeadUploadItem {
 
 /**
  * 12. Bulk Upload Leads & Instant Equal Distribution with Complete Deduplication
+ * - Supports dual streams: PARENTS (Child Birthday) and DIRECT_DONOR (Donor Birthday)
  * - Deduplicates within the uploaded payload (removes internal duplicate numbers)
  * - Deduplicates against existing database leads (prevents multiple telecallers contacting same donor)
  */
@@ -958,7 +1074,6 @@ export async function uploadBulkLeads(
   let alreadyInDbSkipped = 0;
 
   for (const item of rawLeads) {
-    const rawName = (item.name || "").trim() || "Well-wisher";
     const rawDigits = (item.phone || "").replace(/\D/g, "");
     if (rawDigits.length < 10) continue;
     const phone10 = rawDigits.slice(-10);
@@ -970,7 +1085,7 @@ export async function uploadBulkLeads(
     }
     seenInUpload.add(phone10);
 
-    // Skip if already in database
+    // Skip if already in database (prevents duplicate calls across callers)
     if (existingPhonesSet.has(phone10)) {
       alreadyInDbSkipped++;
       continue;
@@ -982,13 +1097,26 @@ export async function uploadBulkLeads(
     let month = parseInt(String(item.dobMonth || currentMonth), 10);
     if (isNaN(month) || month < 1 || month > 12) month = currentMonth;
 
+    const isParent = item.stream === "PARENTS" || Boolean(item.parentName || item.childName);
+    const stream = isParent ? "PARENTS" : "DIRECT_DONOR";
+    const parentName = isParent ? (item.parentName?.trim() || item.name?.trim() || "Parent") : null;
+    const childName = isParent ? (item.childName?.trim() || "Child") : null;
+    const displayName = isParent
+      ? (childName ? `${childName} (Child)` : "Child")
+      : (item.name?.trim() || "Well-wisher");
+
     validLeads.push({
-      name: rawName,
+      stream,
+      name: displayName,
+      parentName,
+      childName,
       phone: phone10,
       email: item.email ? item.email.trim() : null,
       dobDay: day,
       dobMonth: month,
       status: "Pending",
+      validationStatus: "UNVERIFIED",
+      lifetimeDonations: 0,
     });
   }
 
@@ -1276,12 +1404,17 @@ export async function generateAgencyCSVExport(
     const query = db
       .select({
         leadId: agLeads.leadId,
+        stream: agLeads.stream,
         name: agLeads.name,
+        parentName: agLeads.parentName,
+        childName: agLeads.childName,
         phone: agLeads.phone,
         email: agLeads.email,
         dobDay: agLeads.dobDay,
         dobMonth: agLeads.dobMonth,
         status: agLeads.status,
+        validationStatus: agLeads.validationStatus,
+        lifetimeDonations: agLeads.lifetimeDonations,
         assignedCallerId: agLeads.assignedCallerId,
         lastContactedAt: agLeads.lastContactedAt,
         rescheduleDate: agLeads.rescheduleDate,
@@ -1296,7 +1429,6 @@ export async function generateAgencyCSVExport(
     const latestNotesMap = new Map<number, string>();
     const leadIds = leads.map((l) => l.leadId);
     if (leadIds.length > 0) {
-      // Query recent call logs for these specific leads in safe chunks of 500
       for (let i = 0; i < Math.min(leadIds.length, 5000); i += 500) {
         const slice = leadIds.slice(i, i + 500);
         const callLogs = await db
@@ -1316,12 +1448,17 @@ export async function generateAgencyCSVExport(
     const rows = [
       [
         "Lead ID",
-        "Donor Name",
+        "Stream",
+        "Celebrant / Donor Name",
+        "Parent Name",
+        "Child Name",
         "Mobile Number",
         "Email",
         "Birthday Day",
         "Birthday Month",
-        "Current Status",
+        "Call Disposition Status",
+        "Validation Quality",
+        "Lifetime Donated (INR)",
         "Assigned Caller ID",
         "Latest Call Notes",
         "Last Contacted Date",
@@ -1334,12 +1471,17 @@ export async function generateAgencyCSVExport(
       const latestNotes = latestNotesMap.get(l.leadId) || "";
       rows.push([
         String(l.leadId),
-        `"${l.name.replace(/"/g, '""')}"`,
+        l.stream || "DIRECT_DONOR",
+        `"${(l.name || "").replace(/"/g, '""')}"`,
+        l.parentName ? `"${l.parentName.replace(/"/g, '""')}"` : '""',
+        l.childName ? `"${l.childName.replace(/"/g, '""')}"` : '""',
         `"+91${l.phone}"`,
         l.email ? `"${l.email.replace(/"/g, '""')}"` : '""',
         String(l.dobDay),
         String(l.dobMonth),
-        l.status,
+        l.status || "Pending",
+        l.validationStatus || "UNVERIFIED",
+        String(l.lifetimeDonations || 0),
         l.assignedCallerId || "Unassigned",
         latestNotes ? `"${latestNotes.replace(/"/g, '""')}"` : '""',
         l.lastContactedAt ? l.lastContactedAt.toISOString().slice(0, 19).replace("T", " ") : "",
@@ -1409,12 +1551,17 @@ export async function generateAgencyCSVExport(
     const leads = await db
       .select({
         leadId: agLeads.leadId,
+        stream: agLeads.stream,
         name: agLeads.name,
+        parentName: agLeads.parentName,
+        childName: agLeads.childName,
         phone: agLeads.phone,
         email: agLeads.email,
         dobDay: agLeads.dobDay,
         dobMonth: agLeads.dobMonth,
         status: agLeads.status,
+        validationStatus: agLeads.validationStatus,
+        lifetimeDonations: agLeads.lifetimeDonations,
         assignedCallerId: agLeads.assignedCallerId,
         lastContactedAt: agLeads.lastContactedAt,
         rescheduleDate: agLeads.rescheduleDate,
@@ -1444,12 +1591,17 @@ export async function generateAgencyCSVExport(
     const rows = [
       [
         "Lead ID",
+        "Stream",
         "Lead Name",
+        "Parent Name",
+        "Child Name",
         "Phone Number",
         "Email",
         "Birthday Day",
         "Birthday Month",
         "Call Disposition Status",
+        "Validation Quality",
+        "Lifetime Donated (INR)",
         "Assigned Caller ID",
         "Assigned Caller Name",
         "Total Calls Made",
@@ -1467,12 +1619,17 @@ export async function generateAgencyCSVExport(
 
       rows.push([
         String(l.leadId),
-        `"${l.name.replace(/"/g, '""')}"`,
+        l.stream || "DIRECT_DONOR",
+        `"${(l.name || "").replace(/"/g, '""')}"`,
+        l.parentName ? `"${l.parentName.replace(/"/g, '""')}"` : '""',
+        l.childName ? `"${l.childName.replace(/"/g, '""')}"` : '""',
         `"+91${l.phone}"`,
         l.email ? `"${l.email.replace(/"/g, '""')}"` : '""',
         String(l.dobDay),
         String(l.dobMonth),
-        l.status,
+        l.status || "Pending",
+        l.validationStatus || "UNVERIFIED",
+        String(l.lifetimeDonations || 0),
         l.assignedCallerId || "Unassigned",
         `"${callerName.replace(/"/g, '""')}"`,
         String(totalCalls),

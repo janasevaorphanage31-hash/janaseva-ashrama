@@ -163,6 +163,9 @@ export interface AntiBanGenerateOptions {
   leadId?: number | string;
   leadName?: string;
   donorName?: string;
+  childName?: string;
+  parentName?: string;
+  stream?: "PARENTS" | "DIRECT_DONOR";
   leadPhone?: string;
   phone?: string;
   callerId: string;
@@ -264,11 +267,19 @@ export function generateAntiBanMessage(options: AntiBanGenerateOptions): AntiBan
 
     greeting = `${pick(timeGreetingKanglish)} ${cleanName} Sir/Madam! 🙏`;
 
-    intro = pick([
-      `Janaseva Ashrama (Turahalli, Bengaluru) nalli ashrataraagiruva 25 anatha makkala kadeyinda ee vishēsha prarthane mattu namaskara! 👦✨`,
-      `Namma Turahalli Janaseva Ashrama da 25 makkala nitya baale ele ootakke mattu vidyabhyasakke sahaya bedi nimage ee sandēsha kalsuthiddivi. 🌸`,
-      `I hope neevu mattu nimma family kshemavaagiddiri. Namma Ashrama da 25 makkalu daily 6:30 AM satsang nalli noble donors ge shloka chanting maadthaare. 🌺`,
-    ]);
+    if (options.stream === "PARENTS" || options.childName) {
+      const cName = options.childName || "nimma muddu magu";
+      intro = `Janaseva Ashrama (Turahalli, Bengaluru) da 25 makkala tharaphinda nimma muddu magu *${cName}* ge munjaneya Janmadinada Shubhashayagalu! 🎂✨ Makkalinda hrudayapurvaka prarthanegalu.`;
+      if (angle === "birthday" || angle === "annadana") {
+        body = `Nimma magu *${cName}* na janmadinada shubha sandarbhadalli namma 25 anatha baalakarige nithya satvik baale ele oota / annadana prayojisi ashervada thagoli. Nimma chikka sahaya namma makkala mukhagalalli nagemugulu moodisuththe.`;
+      }
+    } else {
+      intro = pick([
+        `Janaseva Ashrama (Turahalli, Bengaluru) nalli ashrataraagiruva 25 anatha makkala kadeyinda ee vishēsha prarthane mattu namaskara! 👦✨`,
+        `Namma Turahalli Janaseva Ashrama da 25 makkala nitya baale ele ootakke mattu vidyabhyasakke sahaya bedi nimage ee sandēsha kalsuthiddivi. 🌸`,
+        `I hope neevu mattu nimma family kshemavaagiddiri. Namma Ashrama da 25 makkalu daily 6:30 AM satsang nalli noble donors ge shloka chanting maadthaare. 🌺`,
+      ]);
+    }
 
     if (angle === "birthday") {
       body = pick([
@@ -318,11 +329,19 @@ export function generateAntiBanMessage(options: AntiBanGenerateOptions): AntiBan
 
     greeting = `${pick(timeGreetingKn)} ${cleanName} ನವರೇ! 🙏`;
 
-    intro = pick([
-      `ಬೆಂಗಳೂರಿನ ಜನಸೇವಾ ಆಶ್ರಮದ (ತುರಹಳ್ಳಿ) 25 ಮುಗ್ಧ ಅನಾಥ ಮಕ್ಕಳ ಪರವಾಗಿ ಹೃತ್ಪೂರ್ವಕ ಪ್ರಣಾಮಗಳು! 👦✨`,
-      `ನಮ್ಮ ಜನಸೇವಾ ಆಶ್ರಮದಲ್ಲಿ ಆಶ್ರಯ ಪಡೆದಿರುವ 25 ಬಾಲಕರ ಪಾಲನೆ ಹಾಗೂ ಸೇವೆಯ ಕುರಿತು ಈ ಪುಟ್ಟ ಸಂದೇಶವನ್ನು ಕಳುಹಿಸುತ್ತಿದ್ದೇವೆ. 🌸`,
-      `ನಮ್ಮ ಜನಸೇವಾ ಆಶ್ರಮದ (KA18CH0242) 25 ವಸತಿ ಬಾಲಕರ ನಿತ್ಯ ಅನ್ನದಾನ ಹಾಗೂ ವಿದ್ಯಾಭ್ಯಾಸದ ಸಹಕಾರಕ್ಕಾಗಿ ತಮ್ಮಲ್ಲಿ ವಿನಮ್ರ ವಿನಂತಿ. 🍲`,
-    ]);
+    if (options.stream === "PARENTS" || options.childName) {
+      const cName = options.childName || "ನಿಮ್ಮ ಮುದ್ದು ಕಂದ";
+      intro = `ಬೆಂಗಳೂರಿನ ಜನಸೇವಾ ಆಶ್ರಮದ (ತುರಹಳ್ಳಿ) 25 ಮುಗ್ಧ ಅನಾಥ ಮಕ್ಕಳ ಕಡೆಯಿಂದ ನಿಮ್ಮ ಮುದ್ದು ಕಂದ *${cName}* ಅವರಿಗೆ ಮುಂಚಿತ ಹುಟ್ಟುಹಬ್ಬದ ಹಾರ್ದಿಕ ಶುಭಾಶಯಗಳು! 🎂✨`;
+      if (angle === "birthday" || angle === "annadana") {
+        body = `ನಿಮ್ಮ ಮುದ್ದು ಕಂದ *${cName}* ರವರ ಹುಟ್ಟುಹಬ್ಬದ ಸಂಭ್ರಮವನ್ನು ನಮ್ಮಲ್ಲಿರುವ 25 ಅನಾಥ ಬಾಲಕರಿಗೆ ಒಂದು ದಿನದ ಅನ್ನದಾನ ಸೇವೆ ಮಾಡಿಸುವ ಮೂಲಕ ಅತ್ಯಂತ ಅರ್ಥಪೂರ್ಣವಾಗಿ ಆಚರಿಸಿ ಮತ್ತು ಮಕ್ಕಳ ಮುಗ್ಧ ಆಶೀರ್ವಾದ ಪಡೆಯಿರಿ.`;
+      }
+    } else {
+      intro = pick([
+        `ಬೆಂಗಳೂರಿನ ಜನಸೇವಾ ಆಶ್ರಮದ (ತುರಹಳ್ಳಿ) 25 ಮುಗ್ಧ ಅನಾಥ ಮಕ್ಕಳ ಪರವಾಗಿ ಹೃತ್ಪೂರ್ವಕ ಪ್ರಣಾಮಗಳು! 👦✨`,
+        `ನಮ್ಮ ಜನಸೇವಾ ಆಶ್ರಮದಲ್ಲಿ ಆಶ್ರಯ ಪಡೆದಿರುವ 25 ಬಾಲಕರ ಪಾಲನೆ ಹಾಗೂ ಸೇವೆಯ ಕುರಿತು ಈ ಪುಟ್ಟ ಸಂದೇಶವನ್ನು ಕಳುಹಿಸುತ್ತಿದ್ದೇವೆ. 🌸`,
+        `ನಮ್ಮ ಜನಸೇವಾ ಆಶ್ರಮದ (KA18CH0242) 25 ವಸತಿ ಬಾಲಕರ ನಿತ್ಯ ಅನ್ನದಾನ ಹಾಗೂ ವಿದ್ಯಾಭ್ಯಾಸದ ಸಹಕಾರಕ್ಕಾಗಿ ತಮ್ಮಲ್ಲಿ ವಿನಮ್ರ ವಿನಂತಿ. 🍲`,
+      ]);
+    }
 
     if (angle === "birthday") {
       body = pick([
@@ -372,11 +391,19 @@ export function generateAntiBanMessage(options: AntiBanGenerateOptions): AntiBan
 
     greeting = `${pick(timeGreetingEn)} ${cleanName} Ji! 🙏`;
 
-    intro = pick([
-      `Heartfelt blessings and warmest prayers from all 25 young resident boys at Janaseva Ashrama, Bangalore! 👦✨`,
-      `On behalf of our 25 resident boys and elder caregivers at Janaseva Ashrama (Turahalli, Bengaluru), I am reaching out with deep gratitude. 🌸`,
-      `I hope this message finds you in radiant health and happiness. Our 25 resident boys remember our noble well-wishers every morning during our 6:30 AM satsang prayers. 🌺`,
-    ]);
+    if (options.stream === "PARENTS" || options.childName) {
+      const cName = options.childName || "your child";
+      intro = `Heartfelt Advance Birthday Wishes to your precious child *${cName}* from all 25 young resident boys at Janaseva Ashrama, Bangalore! 👦🎂✨`;
+      if (angle === "birthday" || angle === "annadana") {
+        body = `Celebrate *${cName}*'s milestone birthday in the most sacred manner—by sponsoring a fresh festive feast for 25 orphaned boys in your child's honor. The children will offer special prayers for ${cName}'s bright future, health, and happiness.`;
+      }
+    } else {
+      intro = pick([
+        `Heartfelt blessings and warmest prayers from all 25 young resident boys at Janaseva Ashrama, Bangalore! 👦✨`,
+        `On behalf of our 25 resident boys and elder caregivers at Janaseva Ashrama (Turahalli, Bengaluru), I am reaching out with deep gratitude. 🌸`,
+        `I hope this message finds you in radiant health and happiness. Our 25 resident boys remember our noble well-wishers every morning during our 6:30 AM satsang prayers. 🌺`,
+      ]);
+    }
 
     if (angle === "birthday") {
       body = pick([

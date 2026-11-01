@@ -167,18 +167,70 @@ export async function ensureDbSchema(): Promise<void> {
 
           CREATE TABLE IF NOT EXISTS ag_leads (
             lead_id SERIAL PRIMARY KEY,
+            stream TEXT NOT NULL DEFAULT 'DIRECT_DONOR',
             name TEXT NOT NULL,
+            parent_name TEXT,
+            child_name TEXT,
             phone TEXT NOT NULL,
             email TEXT,
             dob_day INTEGER NOT NULL,
             dob_month INTEGER NOT NULL,
             assigned_caller_id TEXT REFERENCES ag_telecallers(caller_id) ON DELETE SET NULL,
             status TEXT NOT NULL DEFAULT 'Pending',
+            validation_status TEXT NOT NULL DEFAULT 'UNVERIFIED',
+            last_donation_year INTEGER,
+            lifetime_donations INTEGER NOT NULL DEFAULT 0,
             reschedule_date TIMESTAMP,
             last_contacted_at TIMESTAMP,
             created_at TIMESTAMP NOT NULL DEFAULT NOW(),
             updated_at TIMESTAMP NOT NULL DEFAULT NOW()
           );
+
+          -- Safe migration for existing ag_leads tables
+          DO $$
+          BEGIN
+            IF NOT EXISTS (
+              SELECT 1 FROM information_schema.columns 
+              WHERE table_name = 'ag_leads' AND column_name = 'stream'
+            ) THEN
+              ALTER TABLE ag_leads ADD COLUMN stream TEXT NOT NULL DEFAULT 'DIRECT_DONOR';
+            END IF;
+
+            IF NOT EXISTS (
+              SELECT 1 FROM information_schema.columns 
+              WHERE table_name = 'ag_leads' AND column_name = 'parent_name'
+            ) THEN
+              ALTER TABLE ag_leads ADD COLUMN parent_name TEXT;
+            END IF;
+
+            IF NOT EXISTS (
+              SELECT 1 FROM information_schema.columns 
+              WHERE table_name = 'ag_leads' AND column_name = 'child_name'
+            ) THEN
+              ALTER TABLE ag_leads ADD COLUMN child_name TEXT;
+            END IF;
+
+            IF NOT EXISTS (
+              SELECT 1 FROM information_schema.columns 
+              WHERE table_name = 'ag_leads' AND column_name = 'validation_status'
+            ) THEN
+              ALTER TABLE ag_leads ADD COLUMN validation_status TEXT NOT NULL DEFAULT 'UNVERIFIED';
+            END IF;
+
+            IF NOT EXISTS (
+              SELECT 1 FROM information_schema.columns 
+              WHERE table_name = 'ag_leads' AND column_name = 'last_donation_year'
+            ) THEN
+              ALTER TABLE ag_leads ADD COLUMN last_donation_year INTEGER;
+            END IF;
+
+            IF NOT EXISTS (
+              SELECT 1 FROM information_schema.columns 
+              WHERE table_name = 'ag_leads' AND column_name = 'lifetime_donations'
+            ) THEN
+              ALTER TABLE ag_leads ADD COLUMN lifetime_donations INTEGER NOT NULL DEFAULT 0;
+            END IF;
+          END $$;
 
           CREATE TABLE IF NOT EXISTS ag_call_logs (
             log_id SERIAL PRIMARY KEY,
@@ -234,6 +286,8 @@ export async function ensureDbSchema(): Promise<void> {
           CREATE INDEX IF NOT EXISTS ag_leads_dob_idx ON ag_leads(dob_month, dob_day);
           CREATE INDEX IF NOT EXISTS ag_leads_assigned_idx ON ag_leads(assigned_caller_id, status);
           CREATE INDEX IF NOT EXISTS ag_leads_phone_idx ON ag_leads(phone);
+          CREATE INDEX IF NOT EXISTS ag_leads_stream_dob_idx ON ag_leads(stream, dob_month, dob_day, status);
+          CREATE INDEX IF NOT EXISTS ag_leads_validation_idx ON ag_leads(validation_status);
           CREATE INDEX IF NOT EXISTS ag_call_logs_lead_idx ON ag_call_logs(lead_id);
           CREATE INDEX IF NOT EXISTS ag_call_logs_caller_idx ON ag_call_logs(caller_id, created_at);
           CREATE INDEX IF NOT EXISTS ag_donations_caller_idx ON ag_donations(caller_ref_id, created_at);

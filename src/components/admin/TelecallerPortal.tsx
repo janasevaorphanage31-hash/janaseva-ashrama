@@ -44,6 +44,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
   const [searchQuery, setSearchQuery] = useState("");
   // Default to Pending so telecallers immediately start with fresh, uncalled numbers (prevents seeing already-contacted numbers)
   const [filter, setFilter] = useState<string>("Pending");
+  const [streamFilter, setStreamFilter] = useState<"ALL" | "PARENTS" | "DIRECT_DONOR">("ALL");
   const [dateSortOrder, setDateSortOrder] = useState<
     "birthday_upcoming" | "birthday_calendar" | "date_newest" | "date_oldest" | "callback_earliest"
   >("birthday_upcoming");
@@ -613,7 +614,16 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
     const siteOrigin = typeof window !== "undefined" ? window.location.origin : "https://janasevaashrama.org";
     const donationUrl = `${siteOrigin}/give?ref=${callerProfile.callerId}&lead_id=${lead.leadId}&amount=${amount}`;
     const upiLink = `upi://pay?pa=MAB.037349050110044@axisbank&pn=Janaseva%20Ashrama&am=${amount}&cu=INR&tn=Annadana%20Seva%20${callerProfile.callerId}`;
-    const text = `🙏 Namaskara ${lead.name} Sir/Madam!\n\nJanaseva Ashrama (Turahalli, Bengaluru) nalli ashrataraagiruva 25 anatha makkala kadeyinda ee vishēsha prarthane mattu namaskara! 👦✨\n\nNamma 25 makkala nitya baale ele ootakke mattu vidyabhyasakke sahaya bedi nimage ee sandēsha kalsuthiddivi.\n\n🍲 Pavitra Annadana Seva Tiers:\n• ₹501 — 3 Dinada Cow Milk & Pediatric Care\n• ₹1,500 — 25 Makkalige Bisi Breakfast Feast\n• ₹2,500 — Wholesome Festive Lunch Feast (Payasa + Sweets)\n• ₹4,500 — Full Day 4-Meal Annadana (All 25 Boys)\n\n━━━━━━━━━━━━━━━━━━━━━━━━━\n👉 [ 📲 1-TAP PAY ₹${formatINR(amount)} (GPay / PhonePe / 80G Tax Receipt) ]\n${donationUrl}\n\n⚡ 1-Tap GPay / PhonePe App Link:\n${upiLink}\n\n💳 Direct UPI ID (GPay / PhonePe / BHIM):\nMAB.037349050110044@axisbank\n🏛️ Registered Account: JANASEVA SAMRUDDI EDUCATI\n📜 Karnataka Govt JJ Act Reg: KA18CH0242 · 100% 80G Tax Exemption (Form 10AC: AABTJ7431MF20231)\n\n👉 [ 📍 GOOGLE MAPS ASHRAMA PIN ]\nhttps://maps.app.goo.gl/uPjN24rP1i1YkX6t7\n\n👉 [ 📞 DIRECT CALL ASHRAMA ]\n+91 99803 59595\n━━━━━━━━━━━━━━━━━━━━━━━━━\nShree Devaru nimage mattu nimma kutumbakke aayu, aarogya, aishwarya thumbalendu namma 25 makkalu prathidina 6:30 AM satsang nalli prarthane maduthare! 🙏✨`;
+    
+    const isParent = lead.stream === "PARENTS";
+    const parentName = lead.parentName || lead.name || "Parent";
+    const childName = lead.childName || "muddu magu";
+
+    const greetingText = isParent
+      ? `🙏 Namaskara ${parentName} Sir/Madam!\n\nNamma 25 ashrama makkala tharaphinda nimma muddu magu *${childName}* ge munjaneya Janmadinada Shubhashayagalu! 🎂✨ Makkalinda hrudayapurvaka prarthanegalu.\n\nNimma magu *${childName}* na janmadinada shubha sandarbhadalli namma 25 anatha baalakarige nithya satvik baale ele oota / annadana prayojisi ashervada thagoli.`
+      : `🙏 Namaskara ${lead.name} Sir/Madam!\n\nJanaseva Ashrama (Turahalli, Bengaluru) nalli ashrataraagiruva 25 anatha makkala kadeyinda ee vishēsha prarthane mattu namaskara! 👦✨\n\nNamma 25 makkala nitya baale ele ootakke mattu vidyabhyasakke sahaya bedi nimage ee sandēsha kalsuthiddivi.`;
+
+    const text = `${greetingText}\n\n🍲 Pavitra Annadana Seva Tiers:\n• ₹501 — 3 Dinada Cow Milk & Pediatric Care\n• ₹1,500 — 25 Makkalige Bisi Breakfast Feast\n• ₹2,500 — Wholesome Festive Lunch Feast (Payasa + Sweets)\n• ₹4,500 — Full Day 4-Meal Annadana (All 25 Boys)\n\n━━━━━━━━━━━━━━━━━━━━━━━━━\n👉 [ 📲 1-TAP PAY ₹${formatINR(amount)} (GPay / PhonePe / 80G Tax Receipt) ]\n${donationUrl}\n\n⚡ 1-Tap GPay / PhonePe App Link:\n${upiLink}\n\n💳 Direct UPI ID (GPay / PhonePe / BHIM):\nMAB.037349050110044@axisbank\n🏛️ Registered Account: JANASEVA SAMRUDDI EDUCATI\n📜 Karnataka Govt JJ Act Reg: KA18CH0242 · 100% 80G Tax Exemption (Form 10AC: AABTJ7431MF20231)\n\n👉 [ 📍 GOOGLE MAPS ASHRAMA PIN ]\nhttps://maps.app.goo.gl/uPjN24rP1i1YkX6t7\n\n👉 [ 📞 DIRECT CALL ASHRAMA ]\n+91 99803 59595\n━━━━━━━━━━━━━━━━━━━━━━━━━\nShree Devaru nimage mattu nimma kutumbakke aayu, aarogya, aishwarya thumbalendu namma 25 makkalu prathidina 6:30 AM satsang nalli prarthane maduthare! 🙏✨`;
 
     const targetUrl = `https://wa.me/${phoneInfo.waNumber}?text=${encodeURIComponent(text)}`;
     if (typeof navigator !== "undefined" && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
@@ -928,20 +938,32 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
     const now = new Date();
     const curDay = now.getDate();
     const curMonth = now.getMonth() + 1;
+    const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+    const tomorrowDay = tomorrow.getDate();
+    const tomorrowMonth = tomorrow.getMonth() + 1;
 
     let pending = 0;
     let attended = 0;
     let birthdays = 0;
+    let tomorrowBirthdays = 0;
     let interested = 0;
     let reschedule = 0;
     let donated = 0;
+    let parents = 0;
+    let donors = 0;
 
     leads.forEach((l) => {
-      const isAttended = l.status && l.status !== "Pending";
-      if (!isAttended) pending++;
-      else attended++;
+      const isAttended = (l.status && l.status !== "Pending") || sessionContactedIds.has(l.leadId);
+      if (!isAttended) {
+        pending++;
+        if (l.stream === "PARENTS") parents++;
+        else donors++;
+      } else {
+        attended++;
+      }
 
       if (l.dobDay === curDay && l.dobMonth === curMonth) birthdays++;
+      if (l.dobDay === tomorrowDay && l.dobMonth === tomorrowMonth) tomorrowBirthdays++;
       if (l.status === "Interested") interested++;
       if (l.status === "Reschedule") reschedule++;
       if (l.status === "Donated") donated++;
@@ -952,17 +974,23 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
       pending,
       attended,
       birthdays,
+      tomorrowBirthdays,
       interested,
       reschedule,
       donated,
+      parents,
+      donors,
     };
-  }, [leads]);
+  }, [leads, sessionContactedIds]);
 
   // Filter & Search Leads with Date Sorting
   const filteredLeads = useMemo(() => {
     const now = new Date();
     const curDay = now.getDate();
     const curMonth = now.getMonth() + 1;
+    const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+    const tomorrowDay = tomorrow.getDate();
+    const tomorrowMonth = tomorrow.getMonth() + 1;
 
     // Strict phone number deduplication across cards to eliminate repetition
     const seenPhones = new Set<string>();
@@ -975,8 +1003,14 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
         seenPhones.add(cleanPhone);
       }
 
+      // 2. Stream filter (Parents vs Direct Donors)
+      if (streamFilter === "PARENTS" && l.stream !== "PARENTS") return false;
+      if (streamFilter === "DIRECT_DONOR" && l.stream === "PARENTS") return false;
+
       let matchesFilter = true;
-      if (filter === "Today_Birthday") {
+      if (filter === "Tomorrow_Birthday") {
+        matchesFilter = l.dobDay === tomorrowDay && l.dobMonth === tomorrowMonth && (!l.status || l.status === "Pending") && !sessionContactedIds.has(l.leadId);
+      } else if (filter === "Today_Birthday") {
         matchesFilter = l.dobDay === curDay && l.dobMonth === curMonth;
       } else if (filter === "Pending") {
         // Pending leads: status is pending AND NOT dialed/contacted in today's active session!
@@ -1581,13 +1615,71 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
             </div>
           </div>
 
+          {/* Dual-Stream Switcher Bar: Parents Sheet vs Direct Donors Sheet */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-sand/35 p-2 rounded-2xl border border-teal-900/10">
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+              <span className="text-[11px] font-black text-teal-950 uppercase tracking-wider px-1 shrink-0">
+                📂 ಡೇಟಾ ಶೀಟ್ (Stream):
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setStreamFilter("ALL");
+                  setFocusIndex(0);
+                }}
+                className={`px-3 py-1 rounded-xl text-xs font-black transition cursor-pointer flex items-center gap-1.5 shrink-0 ${
+                  streamFilter === "ALL"
+                    ? "bg-teal-950 text-gold shadow-xs"
+                    : "bg-white text-teal-950/80 hover:bg-sand border border-teal-900/10"
+                }`}
+              >
+                <span>🌟 ಎಲ್ಲಾ ಶೀಟ್‌ಗಳು (All Streams)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setStreamFilter("PARENTS");
+                  setFocusIndex(0);
+                }}
+                className={`px-3 py-1 rounded-xl text-xs font-black transition cursor-pointer flex items-center gap-1.5 shrink-0 ${
+                  streamFilter === "PARENTS"
+                    ? "bg-indigo-950 text-amber-300 shadow-xs"
+                    : "bg-white text-indigo-950 hover:bg-indigo-50 border border-indigo-900/20"
+                }`}
+              >
+                <span>👶 1. ಪೋಷಕರ ಶೀಟ್ (Parents / Child DOB)</span>
+                <span className="text-[10px] bg-amber-400 text-teal-950 px-1.5 py-0.2 rounded-full font-black">
+                  {counts.parents} ಬಾಕಿ
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setStreamFilter("DIRECT_DONOR");
+                  setFocusIndex(0);
+                }}
+                className={`px-3 py-1 rounded-xl text-xs font-black transition cursor-pointer flex items-center gap-1.5 shrink-0 ${
+                  streamFilter === "DIRECT_DONOR"
+                    ? "bg-teal-950 text-emerald-300 shadow-xs"
+                    : "bg-white text-teal-950 hover:bg-teal-50 border border-teal-900/20"
+                }`}
+              >
+                <span>🎂 2. ನೇರ ದಾನಿಗಳ ಶೀಟ್ (Direct Donors DOB)</span>
+                <span className="text-[10px] bg-emerald-500 text-white px-1.5 py-0.2 rounded-full font-black">
+                  {counts.donors} ಬಾಕಿ
+                </span>
+              </button>
+            </div>
+          </div>
+
           {/* Controls Bar: Filter Tabs + Date Sort Option */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-1">
-            {/* 5 Clean Filter Tabs */}
+            {/* Clean Filter Tabs */}
             <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar flex-1">
               {[
                 { id: "Pending", label: "⏳ ಕರೆ ಬಾಕಿ (To Call)", count: counts.pending, color: "text-amber-900 bg-amber-100" },
-                { id: "Today_Birthday", label: "🎂 ಇಂದು ಹುಟ್ಟುಹಬ್ಬ (Birthdays)", count: counts.birthdays, color: "text-purple-900 bg-purple-100" },
+                { id: "Tomorrow_Birthday", label: "🎂 ನಾಳೆ ಹುಟ್ಟುಹಬ್ಬ (Tomorrow)", count: counts.tomorrowBirthdays, color: "text-purple-900 bg-purple-100" },
+                { id: "Today_Birthday", label: "🎉 ಇಂದು ಹುಟ್ಟುಹಬ್ಬ (Today)", count: counts.birthdays, color: "text-pink-900 bg-pink-100" },
                 { id: "Reschedule", label: "📅 ಮತ್ತೆ ಕರೆ (Callbacks)", count: counts.reschedule, color: "text-blue-900 bg-blue-100" },
                 { id: "Attended", label: "✓ ಮುಗಿದಿದೆ (Completed)", count: counts.attended, color: "text-emerald-900 bg-emerald-100" },
                 { id: "ALL", label: "📋 ಎಲ್ಲವೂ (All)", count: counts.all, color: "text-teal-950/60 bg-white" },
@@ -1726,26 +1818,50 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
             ) : (
               (() => {
                 const now = new Date();
-                const isTodayBirthday = currentFocusLead.dobDay === now.getDate() && currentFocusLead.dobMonth === now.getMonth() + 1;
+                const curDay = now.getDate();
+                const curMonth = now.getMonth() + 1;
+                const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+                const tomorrowDay = tomorrow.getDate();
+                const tomorrowMonth = tomorrow.getMonth() + 1;
+                const isTodayBirthday = currentFocusLead.dobDay === curDay && currentFocusLead.dobMonth === curMonth;
+                const isTomorrowBirthday = currentFocusLead.dobDay === tomorrowDay && currentFocusLead.dobMonth === tomorrowMonth;
+                const isParentLead = currentFocusLead.stream === "PARENTS";
                 const phoneInfo = parseCustomerPhone(currentFocusLead.phone);
 
                 return (
                   <div
                     className={`rounded-3xl bg-white p-5 sm:p-7 border shadow-md space-y-5 transition ${
-                      isTodayBirthday
+                      isTomorrowBirthday || isTodayBirthday
                         ? "border-amber-400 ring-4 ring-amber-400/20 bg-gradient-to-b from-amber-50/30 to-white"
                         : "border-teal-900/15"
                     }`}
                   >
                     {/* Top Status & Queue Index Bar */}
                     <div className="flex flex-wrap items-center justify-between gap-2 border-b border-teal-900/10 pb-3">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-xs font-mono font-black bg-teal-950 text-gold px-2.5 py-1 rounded-xl shadow-xs">
                           LEAD {safeFocusIndex + 1} OF {filteredLeads.length}
                         </span>
+                        {isParentLead ? (
+                          <span className="rounded-full bg-indigo-950 text-amber-300 px-3 py-1 text-xs font-black uppercase shadow-xs flex items-center gap-1">
+                            <span>👶</span>
+                            <span>1. Parents Sheet (Child Birthday)</span>
+                          </span>
+                        ) : (
+                          <span className="rounded-full bg-teal-950 text-emerald-300 px-3 py-1 text-xs font-black uppercase shadow-xs flex items-center gap-1">
+                            <span>🎂</span>
+                            <span>2. Direct Donor Sheet</span>
+                          </span>
+                        )}
+                        {isTomorrowBirthday && (
+                          <span className="rounded-full bg-purple-600 text-white px-3 py-1 text-xs font-black uppercase shadow-xs animate-pulse flex items-center gap-1">
+                            <span>🎂</span>
+                            <span>Tomorrow&apos;s Birthday! (Advance Wish)</span>
+                          </span>
+                        )}
                         {isTodayBirthday && (
                           <span className="rounded-full bg-amber-500 text-teal-950 px-3 py-1 text-xs font-black uppercase shadow-xs animate-pulse flex items-center gap-1">
-                            <span>🎂</span>
+                            <span>🎉</span>
                             <span>Today&apos;s Birthday!</span>
                           </span>
                         )}
@@ -1833,34 +1949,64 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                     )}
 
                     {/* Donor Details Strip */}
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-sand/25 p-4 rounded-2xl border border-teal-900/10">
                       <div>
-                        <div className="flex items-center gap-2">
-                          <h2 className="font-display text-xl sm:text-2xl font-black text-teal-950">
-                            {currentFocusLead.name}
-                          </h2>
-                          <span className="text-xs font-mono text-teal-950/50">
-                            #{currentFocusLead.leadId}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-3 mt-1 text-xs text-teal-950/70 flex-wrap">
-                          <span className="font-mono text-sm font-bold text-teal-950 bg-sand/40 px-2 py-0.5 rounded-lg border border-teal-900/10">
-                            {phoneInfo.display}
-                          </span>
-                          {currentFocusLead.dobDay && currentFocusLead.dobMonth && (
-                            <span className="font-bold text-amber-900 bg-amber-100 px-2 py-0.5 rounded-lg">
-                              🎂 Birthday: {currentFocusLead.dobDay}/{currentFocusLead.dobMonth}
-                            </span>
-                          )}
-                          <span>Turahalli Outreach Queue</span>
-                        </div>
+                        {isParentLead ? (
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] font-black uppercase tracking-wider bg-indigo-950 text-amber-300 px-2.5 py-0.5 rounded-lg">
+                                👶 1. ಪೋಷಕರ ಶೀಟ್ (Parents / Child Birthday)
+                              </span>
+                              <span className="text-xs font-mono text-teal-950/50">#{currentFocusLead.leadId}</span>
+                            </div>
+                            <div className="flex items-baseline gap-2">
+                              <span className="text-xs font-bold text-teal-950/70">ಮಗುವಿನ ಹೆಸರು (Child):</span>
+                              <h2 className="font-display text-xl sm:text-2xl font-black text-indigo-950">
+                                {currentFocusLead.childName || currentFocusLead.name}
+                              </h2>
+                            </div>
+                            <div className="flex items-center gap-2.5 text-xs text-teal-950/80 flex-wrap pt-0.5">
+                              <span><strong>ಪೋಷಕರು (Parent):</strong> {currentFocusLead.parentName || "Parent"}</span>
+                              <span className="font-mono text-xs font-bold text-teal-950 bg-white px-2 py-0.5 rounded-lg border border-teal-900/15">
+                                📱 {phoneInfo.display}
+                              </span>
+                              {currentFocusLead.dobDay && currentFocusLead.dobMonth && (
+                                <span className="font-bold text-purple-900 bg-purple-100 px-2 py-0.5 rounded-lg">
+                                  🎂 ಮಗುವಿನ ಹುಟ್ಟುಹಬ್ಬ: {currentFocusLead.dobDay}/{currentFocusLead.dobMonth} {isTomorrowBirthday ? " (ನಾಳೆ / Tomorrow!)" : (isTodayBirthday ? " (ಇಂದು / Today!)" : "")}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] font-black uppercase tracking-wider bg-teal-950 text-emerald-300 px-2.5 py-0.5 rounded-lg">
+                                🎂 2. ನೇರ ದಾನಿಗಳ ಶೀಟ್ (Direct Donor Birthday)
+                              </span>
+                              <span className="text-xs font-mono text-teal-950/50">#{currentFocusLead.leadId}</span>
+                            </div>
+                            <h2 className="font-display text-xl sm:text-2xl font-black text-teal-950">
+                              {currentFocusLead.name}
+                            </h2>
+                            <div className="flex items-center gap-2.5 text-xs text-teal-950/70 flex-wrap pt-0.5">
+                              <span className="font-mono text-sm font-bold text-teal-950 bg-white px-2 py-0.5 rounded-lg border border-teal-900/15">
+                                📱 {phoneInfo.display}
+                              </span>
+                              {currentFocusLead.dobDay && currentFocusLead.dobMonth && (
+                                <span className="font-bold text-amber-900 bg-amber-100 px-2 py-0.5 rounded-lg">
+                                  🎂 ದಾನಿಗಳ ಹುಟ್ಟುಹಬ್ಬ: {currentFocusLead.dobDay}/{currentFocusLead.dobMonth} {isTomorrowBirthday ? " (ನಾಳೆ / Tomorrow!)" : (isTodayBirthday ? " (ಇಂದು / Today!)" : "")}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        )}
                       </div>
 
                       {/* Suggested Seva Amount Tag */}
                       <div className="text-right shrink-0">
                         <span className="text-[10px] font-bold text-teal-950/60 uppercase block">Suggested Seva:</span>
                         <span className="text-sm sm:text-base font-black text-emerald-800">
-                          {isTodayBirthday ? "₹2,500 (Birthday Feast)" : "₹1,500 (Breakfast / Cow Milk)"}
+                          {isTomorrowBirthday || isTodayBirthday ? "₹2,500 (Birthday Feast)" : "₹1,500 (Breakfast / Cow Milk)"}
                         </span>
                       </div>
                     </div>
@@ -1909,7 +2055,9 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                       >
                         <span className="text-2xl">📞</span>
                         <div className="text-left">
-                          <span className="block leading-tight font-black text-gold">ಕರೆ ಮಾಡಿ (Call Donor)</span>
+                          <span className="block leading-tight font-black text-gold">
+                            {isParentLead ? "ಪೋಷಕರಿಗೆ ಕರೆ ಮಾಡಿ (Call Parent)" : "ದಾನಿಗಳಿಗೆ ಕರೆ ಮಾಡಿ (Call Donor)"}
+                          </span>
                           <span className="block text-[11px] font-mono text-white/80">{phoneInfo.display}</span>
                         </div>
                       </button>
@@ -1922,7 +2070,9 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                       >
                         <span className="text-2xl">💬</span>
                         <div className="text-left">
-                          <span className="block leading-tight font-black">WhatsApp ಸಂದೇಶ (₹{formatINR(selectedSevaAmount)})</span>
+                          <span className="block leading-tight font-black">
+                            {isParentLead ? `ಮಗುವಿನ ಶುಭಾಶಯ ಸಂದೇಶ (₹${formatINR(selectedSevaAmount)})` : `WhatsApp ಸಂದೇಶ (₹${formatINR(selectedSevaAmount)})`}
+                          </span>
                           <span className="block text-[11px] text-white/90">Send Seva Details &amp; Pay Link</span>
                         </div>
                       </button>
@@ -2021,19 +2171,37 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                       {isScriptExpanded && (
                         <div className="p-3 rounded-xl bg-white border border-teal-900/10 text-teal-950 leading-relaxed text-[11px] font-medium shadow-2xs animate-fadeIn">
                           {quickPitchLang === "kanglish" && (
-                            <p>
-                              <strong className="text-teal-900 font-bold">&quot;Namaskara {currentFocusLead.name} Sir/Madam!</strong> Naanu Janaseva Ashrama (Turahalli, Bengaluru) inda maathadthiddeve. {isTodayBirthday ? `Namma 25 makkala tharaphinda nimage Janmadinada Shubhashayagalu! 🎂 ` : ""}Namma Ashrama dalli 25 anatha baalakarige nithya satvik oota needthiddivi. Namma samsthe Karnataka JJ Act (KA18CH0242) nalli registered aagide, mattu 80G tax receipt siguththe. <strong>Naanu iga nimma WhatsApp ge makkala photo mattu namma official Axis Bank payment scanner kalisthini Sir/Madam.</strong> Dayavittu nodi nimma shakti anukoola chikka sahaya maadi.&quot;
-                            </p>
+                            isParentLead ? (
+                              <p>
+                                <strong className="text-teal-900 font-bold">&quot;Namaskara {currentFocusLead.parentName || "Sir/Madam"}!</strong> Naanu Janaseva Ashrama (Turahalli, Bengaluru) inda maathadthiddeve. Namma 25 ashrama makkala tharaphinda nimma muddu magu <strong>{currentFocusLead.childName || "maguvige"}</strong> Janmadinada munjaneya advance Shubhashayagalu! 🎂 Namma Ashrama dalli 25 anatha baalakarige nithya satvik oota needthiddivi. Nimma magu {currentFocusLead.childName || ""} hesarinalli anatha baalakarige nithya satvik oota/annadana prayojisi ashervada thagoli. Namma samsthe Karnataka JJ Act (KA18CH0242) nalli registered aagide, mattu 80G tax receipt siguththe. <strong>Naanu iga nimma WhatsApp ge makkala photo mattu namma official Axis Bank payment scanner kalisthini Sir/Madam.</strong> Dayavittu nodi nimma shakti anukoola chikka sahaya maadi.&quot;
+                              </p>
+                            ) : (
+                              <p>
+                                <strong className="text-teal-900 font-bold">&quot;Namaskara {currentFocusLead.name} Sir/Madam!</strong> Naanu Janaseva Ashrama (Turahalli, Bengaluru) inda maathadthiddeve. {isTomorrowBirthday ? `Namma 25 makkala tharaphinda nimage Janmadinada munjaneya advance Shubhashayagalu! 🎂 ` : (isTodayBirthday ? `Namma 25 makkala tharaphinda nimage Janmadinada Shubhashayagalu! 🎂 ` : "")}Namma Ashrama dalli 25 anatha baalakarige nithya satvik oota needthiddivi. Namma samsthe Karnataka JJ Act (KA18CH0242) nalli registered aagide, mattu 80G tax receipt siguththe. <strong>Naanu iga nimma WhatsApp ge makkala photo mattu namma official Axis Bank payment scanner kalisthini Sir/Madam.</strong> Dayavittu nodi nimma shakti anukoola chikka sahaya maadi.&quot;
+                              </p>
+                            )
                           )}
                           {quickPitchLang === "kn" && (
-                            <p>
-                              <strong className="text-teal-900 font-bold">&quot;ನಮಸ್ಕಾರ {currentFocusLead.name} ಅವರೇ!</strong> ನಾನು ತುರಹಳ್ಳಿಯ ಜನಸೇವಾ ಆಶ್ರಮದಿಂದ (ಬೆಂಗಳೂರು) ಕರೆ ಮಾಡುತ್ತಿದ್ದೇನೆ. {isTodayBirthday ? `ನಮ್ಮ 25 ಮಕ್ಕಳ ಪರವಾಗಿ ತಮಗೆ ಹುಟ್ಟುಹಬ್ಬದ ಹಾರ್ದಿಕ ಶುಭಾಶಯಗಳು! 🎂 ` : ""}ನಮ್ಮಲ್ಲಿರುವ 25 ಬಾಲಕರ ನಿತ್ಯ ಅನ್ನದಾನ ಸೇವೆಗೆ ತಮ್ಮ ಸಹಕಾರ ಕೋರುತ್ತಿದ್ದೇವೆ. ನಮ್ಮದು ಸರ್ಕಾರದ ಅಧಿಕೃತ ಬಾಲನ್ಯಾಯ ಕಾಯ್ದೆಯಡಿ (JJ Act KA18CH0242) ನೋಂದಾಯಿತ ಆಶ್ರಮವಾಗಿದ್ದು, 80G ತೆರಿಗೆ ವಿನಾಯಿತಿ ಲಭ್ಯವಿದೆ. <strong>ನಾನು ಈಗ ತಮ್ಮ WhatsApp ಗೆ ಮಕ್ಕಳ ಊಟದ ಫೋಟೋ ಹಾಗೂ ಅಧಿಕೃತ ಆಕ್ಸಿಸ್ ಬ್ಯಾಂಕ್ ಪೇಮೆಂಟ್ ಸ್ಕ್ಯಾನರ್ ಕಳುಹಿಸುತ್ತೇನೆ.</strong> ದಯವಿಟ್ಟು ಪರಿಶೀಲಿಸಿ ಸಹಾಯ ಮಾಡಿ.&quot;
-                            </p>
+                            isParentLead ? (
+                              <p>
+                                <strong className="text-teal-900 font-bold">&quot;ನಮಸ್ಕಾರ {currentFocusLead.parentName || "ಅವರೇ"}!</strong> ನಾನು ತುರಹಳ್ಳಿಯ ಜನಸೇವಾ ಆಶ್ರಮದಿಂದ (ಬೆಂಗಳೂರು) ಕರೆ ಮಾಡುತ್ತಿದ್ದೇನೆ. ನಮ್ಮ 25 ಮಕ್ಕಳ ಪರವಾಗಿ ನಿಮ್ಮ ಮುದ್ದು ಕಂದ <strong>{currentFocusLead.childName || "ಮಗುವಿಗೆ"}</strong> ಮುಂಚಿತ ಹುಟ್ಟುಹಬ್ಬದ ಹಾರ್ದಿಕ ಶುಭಾಶಯಗಳು! 🎂 ನಮ್ಮಲ್ಲಿರುವ 25 ಬಾಲಕರ ನಿತ್ಯ ಅನ್ನದಾನ ಸೇವೆಗೆ ನಿಮ್ಮ ಮಗುವಿನ ಹೆಸರಿನಲ್ಲಿ ಸಹಕಾರ ನೀಡಿ ಮಕ್ಕಳ ಮುಗ್ಧ ಆಶೀರ್ವಾದ ಪಡೆಯಿರಿ. ನಮ್ಮದು ಸರ್ಕಾರದ ಅಧಿಕೃತ ಬಾಲನ್ಯಾಯ ಕಾಯ್ದೆಯಡಿ (JJ Act KA18CH0242) ನೋಂದಾಯಿತ ಆಶ್ರಮವಾಗಿದ್ದು, 80G ತೆರಿಗೆ ವಿನಾಯಿತಿ ಲಭ್ಯವಿದೆ. <strong>ನಾನು ಈಗ ತಮ್ಮ WhatsApp ಗೆ ಮಕ್ಕಳ ಊಟದ ಫೋಟೋ ಹಾಗೂ ಅಧಿಕೃತ ಆಕ್ಸಿಸ್ ಬ್ಯಾಂಕ್ ಪೇಮೆಂಟ್ ಸ್ಕ್ಯಾನರ್ ಕಳುಹಿಸುತ್ತೇನೆ.</strong> ದಯವಿಟ್ಟು ಪರಿಶೀಲಿಸಿ ಸಹಾಯ ಮಾಡಿ.&quot;
+                              </p>
+                            ) : (
+                              <p>
+                                <strong className="text-teal-900 font-bold">&quot;ನಮಸ್ಕಾರ {currentFocusLead.name} ಅವರೇ!</strong> ನಾನು ತುರಹಳ್ಳಿಯ ಜನಸೇವಾ ಆಶ್ರಮದಿಂದ (ಬೆಂಗಳೂರು) ಕರೆ ಮಾಡುತ್ತಿದ್ದೇನೆ. {isTomorrowBirthday ? `ನಮ್ಮ 25 ಮಕ್ಕಳ ಪರವಾಗಿ ತಮಗೆ ಮುಂಚಿತ ಹುಟ್ಟುಹಬ್ಬದ ಹಾರ್ದಿಕ ಶುಭಾಶಯಗಳು! 🎂 ` : (isTodayBirthday ? `ನಮ್ಮ 25 ಮಕ್ಕಳ ಪರವಾಗಿ ತಮಗೆ ಹುಟ್ಟುಹಬ್ಬದ ಹಾರ್ದಿಕ ಶುಭಾಶಯಗಳು! 🎂 ` : "")}ನಮ್ಮಲ್ಲಿರುವ 25 ಬಾಲಕರ ನಿತ್ಯ ಅನ್ನದಾನ ಸೇವೆಗೆ ತಮ್ಮ ಸಹಕಾರ ಕೋರುತ್ತಿದ್ದೇವೆ. ನಮ್ಮದು ಸರ್ಕಾರದ ಅಧಿಕೃತ ಬಾಲನ್ಯಾಯ ಕಾಯ್ದೆಯಡಿ (JJ Act KA18CH0242) ನೋಂದಾಯಿತ ಆಶ್ರಮವಾಗಿದ್ದು, 80G ತೆರಿಗೆ ವಿನಾಯಿತಿ ಲಭ್ಯವಿದೆ. <strong>ನಾನು ಈಗ ತಮ್ಮ WhatsApp ಗೆ ಮಕ್ಕಳ ಊಟದ ಫೋಟೋ ಹಾಗೂ ಅಧಿಕೃತ ಆಕ್ಸಿಸ್ ಬ್ಯಾಂಕ್ ಪೇಮೆಂಟ್ ಸ್ಕ್ಯಾನರ್ ಕಳುಹಿಸುತ್ತೇನೆ.</strong> ದಯವಿಟ್ಟು ಪರಿಶೀಲಿಸಿ ಸಹಾಯ ಮಾಡಿ.&quot;
+                              </p>
+                            )
                           )}
                           {quickPitchLang === "en" && (
-                            <p>
-                              <strong className="text-teal-900 font-bold">&quot;Hello {currentFocusLead.name} Ji!</strong> Warm greetings from Janaseva Ashrama, Bengaluru. {isTodayBirthday ? `Heartfelt Birthday Wishes from all our 25 resident boys! 🎂 ` : ""}We care for 25 orphaned boys at our Turahalli home providing wholesome meals, shelter, and schooling. We are Govt-licensed under JJ Act KA18CH0242 with 80G tax exemption. <strong>I am sharing our children&apos;s meal photo and official Axis Bank UPI Payment QR Scanner directly to your WhatsApp right now.</strong> Kindly review and support our resident children with whatever amount is comfortable for you.&quot;
-                            </p>
+                            isParentLead ? (
+                              <p>
+                                <strong className="text-teal-900 font-bold">&quot;Hello {currentFocusLead.parentName || "Ji"}!</strong> Warm greetings from Janaseva Ashrama, Bengaluru. Heartfelt advance Birthday Wishes to your precious child <strong>{currentFocusLead.childName || "your child"}</strong> from all our 25 resident boys! 🎂 We care for 25 orphaned boys at our Turahalli home providing wholesome meals, shelter, and schooling under JJ Act KA18CH0242. To mark {currentFocusLead.childName || "your child"}&apos;s birthday tomorrow, we invite you to sponsor wholesome meals in your child&apos;s honor. <strong>I am sharing our children&apos;s meal photo and official Axis Bank UPI Payment QR Scanner directly to your WhatsApp right now.</strong> Kindly review and support our resident children with whatever amount is comfortable for you.&quot;
+                              </p>
+                            ) : (
+                              <p>
+                                <strong className="text-teal-900 font-bold">&quot;Hello {currentFocusLead.name} Ji!</strong> Warm greetings from Janaseva Ashrama, Bengaluru. {isTomorrowBirthday ? `Heartfelt advance Birthday Wishes from all our 25 resident boys! 🎂 ` : (isTodayBirthday ? `Heartfelt Birthday Wishes from all our 25 resident boys! 🎂 ` : "")}We care for 25 orphaned boys at our Turahalli home providing wholesome meals, shelter, and schooling. We are Govt-licensed under JJ Act KA18CH0242 with 80G tax exemption. <strong>I am sharing our children&apos;s meal photo and official Axis Bank UPI Payment QR Scanner directly to your WhatsApp right now.</strong> Kindly review and support our resident children with whatever amount is comfortable for you.&quot;
+                              </p>
+                            )
                           )}
                         </div>
                       )}

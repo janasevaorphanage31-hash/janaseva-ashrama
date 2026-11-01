@@ -542,13 +542,19 @@ export const agLeads = pgTable(
   "ag_leads",
   {
     leadId: serial("lead_id").primaryKey(),
-    name: text("name").notNull(),
+    stream: text("stream").notNull().default("DIRECT_DONOR"), // "PARENTS" | "DIRECT_DONOR"
+    name: text("name").notNull(), // Celebrant or Donor name
+    parentName: text("parent_name"), // For PARENTS stream
+    childName: text("child_name"), // For PARENTS stream
     phone: text("phone").notNull(),
     email: text("email"),
     dobDay: integer("dob_day").notNull(), // 1 - 31
     dobMonth: integer("dob_month").notNull(), // 1 - 12 (leap-year agnostic)
     assignedCallerId: text("assigned_caller_id").references(() => agTelecallers.callerId, { onDelete: "set null" }),
     status: text("status").notNull().default("Pending"), // Pending | Interested | Rejected | Reschedule | Donated
+    validationStatus: text("validation_status").notNull().default("UNVERIFIED"), // UNVERIFIED | VALID_INTERESTED | VALID_DONATED | VALID_CALLBACK | SOFT_REJECT | JUNK_INVALID
+    lastDonationYear: integer("last_donation_year"),
+    lifetimeDonations: integer("lifetime_donations").notNull().default(0),
     rescheduleDate: timestamp("reschedule_date"),
     lastContactedAt: timestamp("last_contacted_at"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -558,6 +564,8 @@ export const agLeads = pgTable(
     index("ag_leads_dob_idx").on(t.dobMonth, t.dobDay),
     index("ag_leads_assigned_idx").on(t.assignedCallerId, t.status),
     index("ag_leads_phone_idx").on(t.phone),
+    index("ag_leads_stream_dob_idx").on(t.stream, t.dobMonth, t.dobDay, t.status),
+    index("ag_leads_validation_idx").on(t.validationStatus),
   ],
 );
 

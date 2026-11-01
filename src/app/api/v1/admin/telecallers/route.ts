@@ -57,7 +57,7 @@ export async function POST(req: Request) {
     const action = body.action;
     const ip = clientIp(req);
 
-    if (action === "trigger_routing") {
+    if (action === "trigger_routing" || action === "distribute_tomorrow_mix") {
       const result = await distributeBirthdayLeads();
       await writeAudit({
         actorAdminUserId: session.user.id ?? null,
@@ -70,7 +70,8 @@ export async function POST(req: Request) {
       const updatedLeaderboard = await getAdminLeaderboard();
       return NextResponse.json({
         success: true,
-        message: `Distributed ${result.distributed} birthday leads across ${result.callersCount} active telecallers.`,
+        message: `Distributed ${result.distributed} tomorrow's advance leads (${result.parentsDistributed || 0} Parents + ${result.donorsDistributed || 0} Donors) across ${result.callersCount} active telecallers.`,
+        distributionResult: result,
         ...updatedLeaderboard,
       });
     }
