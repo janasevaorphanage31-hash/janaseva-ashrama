@@ -347,7 +347,30 @@ export function MetaAdsDonateComponent() {
     }
     return "DIRECT";
   });
-  const [leadId] = useState<string>(() => searchParams.get("lead_id") || "");
+  const [leadId] = useState<string>(() => {
+    const urlLeadId = searchParams.get("lead_id");
+    if (urlLeadId) {
+      const cleanLead = urlLeadId.trim();
+      if (typeof window !== "undefined") {
+        try {
+          sessionStorage.setItem("antigravity_lead_id", cleanLead);
+          localStorage.setItem("antigravity_lead_id", cleanLead);
+          document.cookie = `antigravity_lead_id=${cleanLead}; path=/; max-age=2592000; SameSite=Lax`;
+        } catch {}
+      }
+      return cleanLead;
+    }
+    if (typeof window !== "undefined") {
+      try {
+        return (
+          sessionStorage.getItem("antigravity_lead_id") ||
+          localStorage.getItem("antigravity_lead_id") ||
+          ""
+        );
+      } catch {}
+    }
+    return "";
+  });
 
   // Giving frequency (One-Time Seva vs Daily / Weekly / Monthly / Yearly Autopay)
   const [frequency, setFrequency] = useState<DonationFrequency>(() => {

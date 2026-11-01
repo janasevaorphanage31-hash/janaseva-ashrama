@@ -1,6 +1,6 @@
 import { db, ensureDbSchema } from "@/db";
 import { agTelecallers, agLeads, agCallLogs, agDonations, contentEntries, influencerProfiles, donations } from "@/db/schema";
-import { eq, and, or, sql, desc, inArray, isNull } from "drizzle-orm";
+import { eq, and, or, sql, desc, inArray, isNull, like } from "drizzle-orm";
 import { hashPassword } from "@/lib/admin-auth";
 import { parseCustomerPhone } from "@/lib/whatsapp-phone";
 import { signCallerToken } from "@/lib/caller-auth";
@@ -571,6 +571,45 @@ export async function recordPaymentAttribution(data: {
   const cleanRef = data.callerRefId ? data.callerRefId.trim().toUpperCase() : null;
   const roundedAmount = Math.max(1, Math.round(data.amount));
 
+  // Determine effective leadId: if leadId is missing, attempt smart phone matching against caller's assigned leads
+  let effectiveLeadId: number | null = data.leadId ? Number(data.leadId) : null;
+  const cleanPhoneDigits = (data.donorPhone || "").replace(/\D/g, "").slice(-10);
+
+  if (!effectiveLeadId && cleanPhoneDigits.length === 10) {
+    try {
+      // 1. Prioritize matching a lead assigned to this specific caller with this phone number
+      const callerMatched = cleanRef
+        ? await db
+            .select({ leadId: agLeads.leadId })
+            .from(agLeads)
+            .where(
+              and(
+                eq(agLeads.assignedCallerId, cleanRef),
+                like(agLeads.phone, `%${cleanPhoneDigits}`)
+              )
+            )
+            .limit(1)
+        : [];
+
+      if (callerMatched.length > 0) {
+        effectiveLeadId = callerMatched[0].leadId;
+      } else {
+        // 2. Fallback: match any lead in agLeads with this 10-digit phone number
+        const anyMatched = await db
+          .select({ leadId: agLeads.leadId })
+          .from(agLeads)
+          .where(like(agLeads.phone, `%${cleanPhoneDigits}`))
+          .limit(1);
+
+        if (anyMatched.length > 0) {
+          effectiveLeadId = anyMatched[0].leadId;
+        }
+      }
+    } catch (matchErr) {
+      console.warn("Lead phone lookup warning in recordPaymentAttribution:", matchErr);
+    }
+  }
+
   // 1. Insert into agDonations (influencer/telecaller ledger)
   await db
     .insert(agDonations)
@@ -581,7 +620,7 @@ export async function recordPaymentAttribution(data: {
       currency: "INR",
       paymentStatus: "captured",
       callerRefId: cleanRef,
-      leadId: data.leadId || null,
+      leadId: effectiveLeadId,
       donorName: data.donorName || null,
       donorPhone: data.donorPhone || null,
       donorEmail: data.donorEmail || null,
@@ -589,8 +628,8 @@ export async function recordPaymentAttribution(data: {
     })
     .onConflictDoNothing({ target: agDonations.txnId });
 
-  // 2. If lead is linked, mark lead as Donated in real-time and increment lifetime donation
-  if (data.leadId) {
+  // 2. If lead is linked (or matched by phone), mark lead as Donated in real-time and increment lifetime donation
+  if (effectiveLeadId) {
     const curYear = new Date().getFullYear();
     await db
       .update(agLeads)
@@ -601,7 +640,7 @@ export async function recordPaymentAttribution(data: {
         lifetimeDonations: sql`${agLeads.lifetimeDonations} + ${roundedAmount}`,
         updatedAt: new Date(),
       })
-      .where(eq(agLeads.leadId, data.leadId));
+      .where(eq(agLeads.leadId, effectiveLeadId));
   }
 
   // 3. Financial year helper for official 80G receipt number (e.g. JSA/26-27/000123)

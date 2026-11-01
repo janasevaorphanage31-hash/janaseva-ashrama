@@ -183,27 +183,22 @@ export async function markPaid(donationId: number, paymentId: string): Promise<b
           .limit(1);
 
         if (updatedDonation) {
-          // Sync to CRM ledger (agDonations)
+          // Sync to CRM ledger (agDonations) and update lead status in real-time
           try {
             const callerRef = (updatedDonation.meta as any)?.callerRefId || (updatedDonation.meta as any)?.caller_ref_id || null;
             const leadId = (updatedDonation.meta as any)?.leadId || (updatedDonation.meta as any)?.lead_id || null;
-            const { agDonations } = await import("@/db/schema");
-            await db
-              .insert(agDonations)
-              .values({
-                txnId: paymentId,
-                gatewayOrderId: updatedDonation.razorpayOrderId || `order_${Date.now()}`,
-                amount: updatedDonation.amount,
-                currency: "INR",
-                paymentStatus: "captured",
-                callerRefId: callerRef ? String(callerRef).toUpperCase() : null,
-                leadId: leadId ? Number(leadId) : null,
-                donorName: updatedDonation.donorName,
-                donorPhone: updatedDonation.donorPhone,
-                donorEmail: updatedDonation.donorEmail,
-                metadata: updatedDonation.meta,
-              })
-              .onConflictDoNothing({ target: agDonations.txnId });
+            const { recordPaymentAttribution } = await import("./antigravity-crm");
+            await recordPaymentAttribution({
+              txnId: paymentId,
+              gatewayOrderId: updatedDonation.razorpayOrderId || `order_${Date.now()}`,
+              amount: updatedDonation.amount,
+              callerRefId: callerRef ? String(callerRef).toUpperCase() : null,
+              leadId: leadId ? Number(leadId) : null,
+              donorName: updatedDonation.donorName,
+              donorPhone: updatedDonation.donorPhone,
+              donorEmail: updatedDonation.donorEmail,
+              metadata: updatedDonation.meta,
+            });
           } catch (crmErr) {
             console.warn("agDonations sync warning in markPaid:", crmErr);
           }

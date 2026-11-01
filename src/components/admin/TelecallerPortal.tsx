@@ -27,7 +27,10 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
   const [showPassword, setShowPassword] = useState(false);
   const [loginSubmitting, setLoginSubmitting] = useState(false);
   const [loginError, setLoginError] = useState("");
-  const [isScriptExpanded, setIsScriptExpanded] = useState(false);
+  const [isScriptExpanded, setIsScriptExpanded] = useState(true);
+  const [isFaqExpanded, setIsFaqExpanded] = useState(false);
+  const [cardNoteInput, setCardNoteInput] = useState("");
+  const [savingCardNote, setSavingCardNote] = useState(false);
   const [isMobileStatsExpanded, setIsMobileStatsExpanded] = useState(false);
 
   // Change Password Modal state
@@ -731,12 +734,18 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
   };
 
   // Quick Preset Callback Date-Time Setter
-  const handleApplyPresetCallback = (type: "+2h" | "today6pm" | "tom10am" | "tom4pm") => {
+  const handleApplyPresetCallback = (type: "+1h" | "+2h" | "today6pm" | "today8pm" | "tom10am" | "tom4pm") => {
     const d = new Date();
-    if (type === "+2h") {
+    if (type === "+1h") {
+      d.setHours(d.getHours() + 1);
+    } else if (type === "+2h") {
       d.setHours(d.getHours() + 2);
     } else if (type === "today6pm") {
       d.setHours(18, 0, 0, 0);
+      if (d.getTime() <= Date.now()) d.setDate(d.getDate() + 1);
+    } else if (type === "today8pm") {
+      d.setHours(20, 0, 0, 0);
+      if (d.getTime() <= Date.now()) d.setDate(d.getDate() + 1);
     } else if (type === "tom10am") {
       d.setDate(d.getDate() + 1);
       d.setHours(10, 0, 0, 0);
@@ -747,6 +756,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
     const pad = (n: number) => String(n).padStart(2, "0");
     const formatted = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
     setCallbackDateTime(formatted);
+    return formatted;
   };
 
   // Focus Mode Safe Navigation Handlers (Lead ID Anchored)
@@ -953,8 +963,8 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
     let donors = 0;
 
     leads.forEach((l) => {
-      const isAttended = (l.status && l.status !== "Pending") || sessionContactedIds.has(l.leadId);
-      if (!isAttended) {
+      const isDone = l.status && l.status !== "Pending";
+      if (!isDone) {
         pending++;
         if (l.stream === "PARENTS") parents++;
         else donors++;
@@ -1009,14 +1019,16 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
 
       let matchesFilter = true;
       if (filter === "Tomorrow_Birthday") {
-        matchesFilter = l.dobDay === tomorrowDay && l.dobMonth === tomorrowMonth && (!l.status || l.status === "Pending") && !sessionContactedIds.has(l.leadId);
+        matchesFilter = l.dobDay === tomorrowDay && l.dobMonth === tomorrowMonth;
       } else if (filter === "Today_Birthday") {
         matchesFilter = l.dobDay === curDay && l.dobMonth === curMonth;
       } else if (filter === "Pending") {
-        // Pending leads: status is pending AND NOT dialed/contacted in today's active session!
-        matchesFilter = (!l.status || l.status === "Pending") && !sessionContactedIds.has(l.leadId);
+        // Pending leads: status is pending or unassigned (stays firmly anchored when dialed)
+        matchesFilter = !l.status || l.status === "Pending";
       } else if (filter === "Attended") {
         matchesFilter = (l.status && l.status !== "Pending") || sessionContactedIds.has(l.leadId);
+      } else if (filter === "Reschedule") {
+        matchesFilter = l.status === "Reschedule";
       } else if (filter !== "ALL") {
         matchesFilter = l.status === filter;
       }
@@ -1734,13 +1746,14 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
           </div>
         </div>
 
-        {/* View Mode Switcher */}
+        {/* View Mode Switcher on Mobile, Master-Detail Status on Desktop */}
         <div className="flex items-center justify-between gap-3 p-1.5 rounded-2xl bg-sand/40 border border-teal-900/15">
-          <div className="flex items-center gap-1.5">
+          {/* Mobile Switcher (Queue vs Calling Card) */}
+          <div className="flex lg:hidden items-center gap-1.5 w-full">
             <button
               type="button"
               onClick={() => setViewMode("focus")}
-              className={`rounded-xl px-3.5 py-2 text-xs font-black transition cursor-pointer flex items-center gap-1.5 shadow-xs ${
+              className={`flex-1 rounded-xl px-3.5 py-2 text-xs font-black transition cursor-pointer flex items-center justify-center gap-1.5 shadow-xs ${
                 viewMode === "focus"
                   ? "bg-teal-950 text-gold shadow-sm"
                   : "bg-white text-teal-950 hover:bg-cream"
@@ -1752,27 +1765,257 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
             <button
               type="button"
               onClick={() => setViewMode("queue")}
-              className={`rounded-xl px-3.5 py-2 text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+              className={`flex-1 rounded-xl px-3.5 py-2 text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 ${
                 viewMode === "queue"
                   ? "bg-teal-950 text-white shadow-sm"
                   : "bg-white text-teal-950 hover:bg-cream"
               }`}
             >
               <span>📋</span>
-              <span>All Leads List ({filteredLeads.length})</span>
+              <span>All Leads ({filteredLeads.length})</span>
             </button>
           </div>
 
-          <span className="text-[11px] text-teal-950/70 font-semibold hidden sm:inline">
-            {viewMode === "focus"
-              ? "🎯 Focused dialer mode"
-              : "Click any lead to open in Calling Card"}
-          </span>
+          {/* Desktop Cockpit Status Info */}
+          <div className="hidden lg:flex items-center justify-between w-full px-2 text-xs font-bold text-teal-950">
+            <div className="flex items-center gap-2">
+              <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span>🖥️ Master-Detail Split Cockpit: Queue on Left, Calling Card on Right</span>
+              <span className="text-[10px] font-mono bg-cream px-2 py-0.5 rounded-full border border-teal-900/15 font-black text-emerald-900">
+                Zero Vanishing Active
+              </span>
+            </div>
+            <span className="text-[11px] text-teal-950/70 font-semibold">
+              Click any lead on the left to load into Calling Card · Live In-Call FAQ &amp; Quick Notes below
+            </span>
+          </div>
         </div>
 
-        {/* ── 1. CONTINUOUS FOCUS DIALER VIEW (EXPERT MODE) ── */}
-        {viewMode === "focus" && (
-          <div className="space-y-4 animate-fadeIn">
+        {/* ── MASTER-DETAIL SPLIT COCKPIT (Desktop 2-Column Split / Mobile Tabbed Cockpit) ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start pt-1">
+          {/* ── LEFT PANE: CALLING QUEUE (Always visible on desktop; on mobile shown when viewMode === 'queue') ── */}
+          <div className={`space-y-3 lg:col-span-5 xl:col-span-4 ${viewMode === "queue" ? "block" : "hidden lg:block"}`}>
+            {/* Queue Header & Filter Summary */}
+            <div className="flex items-center justify-between bg-sand/50 p-2.5 rounded-2xl border border-teal-900/10">
+              <div className="flex items-center gap-2">
+                <span className="text-base">📋</span>
+                <span className="font-display font-black text-xs sm:text-sm text-teal-950">
+                  Calling Queue
+                </span>
+                <span className="text-xs font-mono font-bold bg-white px-2 py-0.5 rounded-full border border-teal-900/15 text-teal-950">
+                  {filteredLeads.length}
+                </span>
+              </div>
+              <span className="text-[11px] font-mono font-black text-amber-950 bg-amber-100 px-2 py-0.5 rounded-lg border border-amber-300">
+                {counts.pending} to call
+              </span>
+            </div>
+
+            {/* Leads List */}
+            {loadingLeads ? (
+              <div className="p-8 text-center text-teal-950/60 text-xs bg-cream/30 rounded-2xl border border-teal-900/10">
+                Loading assigned leads...
+              </div>
+            ) : filteredLeads.length === 0 ? (
+              <div className="p-8 text-center text-teal-950/60 text-xs bg-cream/30 rounded-2xl border border-teal-900/10 space-y-2">
+                <p className="font-bold text-teal-950">No leads found matching current filter.</p>
+                <button
+                  type="button"
+                  onClick={() => setFilter("ALL")}
+                  className="rounded-xl bg-teal-950 text-white px-3 py-1.5 text-xs font-bold shadow-xs hover:bg-teal-900 cursor-pointer"
+                >
+                  Show All ({leads.length})
+                </button>
+              </div>
+            ) : (
+              <div className="max-h-[820px] overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+                {paginatedLeads.map((lead, localIdx) => {
+                  const idx = (portalPage - 1) * portalPageSize + localIdx;
+                  const now = new Date();
+                  const curDay = now.getDate();
+                  const curMonth = now.getMonth() + 1;
+                  const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+                  const tomorrowDay = tomorrow.getDate();
+                  const tomorrowMonth = tomorrow.getMonth() + 1;
+                  const isTodayBirthday = lead.dobDay === curDay && lead.dobMonth === curMonth;
+                  const isTomorrowBirthday = lead.dobDay === tomorrowDay && lead.dobMonth === tomorrowMonth;
+                  const isSelected = lead.leadId === activeFocusLeadId;
+                  const isDialing = lead.leadId === currentlyDialedLeadId;
+                  const isDialed = sessionContactedIds.has(lead.leadId);
+                  const isAttended = lead.status && lead.status !== "Pending";
+                  const phoneInfo = parseCustomerPhone(lead.phone);
+                  const isParent = lead.stream === "PARENTS";
+
+                  return (
+                    <div
+                      key={lead.leadId}
+                      onClick={() => {
+                        setActiveFocusLeadId(lead.leadId);
+                        const overallIdx = filteredLeads.findIndex((fl) => fl.leadId === lead.leadId);
+                        if (overallIdx !== -1) setFocusIndex(overallIdx);
+                        setViewMode("focus");
+                      }}
+                      className={`rounded-2xl p-3 border transition shadow-xs cursor-pointer select-none ${
+                        isSelected
+                          ? "border-amber-500 ring-2 ring-amber-400/50 bg-amber-50/60 shadow-sm"
+                          : isTodayBirthday || isTomorrowBirthday
+                          ? "border-purple-300 bg-purple-50/30 hover:border-purple-400"
+                          : isAttended
+                          ? "border-emerald-500/25 bg-white/80 hover:border-emerald-500/40"
+                          : "border-teal-900/10 bg-white hover:border-teal-900/30"
+                      }`}
+                    >
+                      {/* Top Row: Stream, Name & Status */}
+                      <div className="flex items-center justify-between gap-1.5">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span className={`text-[10px] font-mono font-bold px-1.5 py-0.2 rounded-md ${
+                            isSelected ? "bg-amber-500 text-teal-950 font-black" : "bg-teal-950/10 text-teal-950/70"
+                          }`}>
+                            #{idx + 1}
+                          </span>
+                          <span className="font-display font-black text-xs sm:text-sm text-teal-950 truncate">
+                            {lead.name}
+                          </span>
+                        </div>
+
+                        {/* Status Badge */}
+                        <div className="shrink-0">
+                          {lead.status === "Donated" ? (
+                            <span className="rounded-full bg-emerald-600 text-white px-2 py-0.5 text-[9px] font-black shadow-2xs">
+                              🎉 Donated
+                            </span>
+                          ) : lead.status === "Interested" ? (
+                            <span className="rounded-full bg-amber-500 text-teal-950 px-2 py-0.5 text-[9px] font-black">
+                              👍 Interested
+                            </span>
+                          ) : lead.status === "Reschedule" ? (
+                            <span className="rounded-full bg-blue-600 text-white px-2 py-0.5 text-[9px] font-black">
+                              📅 Callback
+                            </span>
+                          ) : isDialing ? (
+                            <span className="rounded-full bg-emerald-500 text-white px-2 py-0.5 text-[9px] font-black animate-pulse">
+                              📞 Dialing...
+                            </span>
+                          ) : isDialed ? (
+                            <span className="rounded-full bg-slate-600 text-white px-2 py-0.5 text-[9px] font-bold">
+                              ✓ Dialed
+                            </span>
+                          ) : (
+                            <span className="rounded-full bg-amber-100 text-amber-900 px-2 py-0.5 text-[9px] font-bold border border-amber-300">
+                              ⏳ To Call
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Middle Row: Stream pill, Birthday info & Phone */}
+                      <div className="flex items-center gap-2 mt-1.5 text-[11px] text-teal-950/70 flex-wrap">
+                        {isParent ? (
+                          <span className="text-[9px] font-bold bg-indigo-100 text-indigo-900 px-1.5 py-0.2 rounded">
+                            👶 {lead.parentName || "Parent"}
+                          </span>
+                        ) : (
+                          <span className="text-[9px] font-bold bg-teal-100 text-teal-900 px-1.5 py-0.2 rounded">
+                            🎂 Direct Donor
+                          </span>
+                        )}
+
+                        {lead.dobDay && lead.dobMonth && (
+                          <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${
+                            isTomorrowBirthday
+                              ? "bg-purple-100 text-purple-900 font-black animate-pulse"
+                              : isTodayBirthday
+                              ? "bg-amber-100 text-amber-900 font-black"
+                              : "text-teal-950/60"
+                          }`}>
+                            🎂 {lead.dobDay}/{lead.dobMonth} {isTomorrowBirthday ? "(Tomorrow)" : (isTodayBirthday ? "(Today)" : "")}
+                          </span>
+                        )}
+
+                        <span className="font-mono text-[11px] font-bold text-teal-950 ml-auto">
+                          {phoneInfo.display}
+                        </span>
+                      </div>
+
+                      {/* Bottom Note Preview if present */}
+                      {lead.notes && (
+                        <p className="mt-1 text-[10px] text-teal-950/60 italic truncate border-t border-teal-900/5 pt-0.5">
+                          📝 &quot;{lead.notes}&quot;
+                        </p>
+                      )}
+
+                      {/* Action buttons inside queue card for fast access */}
+                      <div className="flex items-center justify-end gap-1.5 mt-2 pt-1 border-t border-teal-900/5">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleCallLead(lead);
+                          }}
+                          className="px-2 py-1 rounded-lg bg-teal-950 text-white text-[10px] font-bold hover:bg-teal-900 active:scale-95 shadow-2xs"
+                        >
+                          📞 Call
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDirectWhatsAppChat(lead, selectedSevaAmount);
+                          }}
+                          className="px-2 py-1 rounded-lg bg-[#25D366] text-white text-[10px] font-bold hover:brightness-105 active:scale-95 shadow-2xs"
+                        >
+                          💬 WhatsApp
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Pagination Controls */}
+            {totalPortalPages > 1 && (
+              <div className="flex items-center justify-between bg-sand/30 p-2 rounded-xl border border-teal-900/10 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setPortalPage((p) => Math.max(1, p - 1))}
+                  disabled={portalPage === 1}
+                  className="rounded-lg px-2.5 py-1 bg-white hover:bg-sand disabled:opacity-40 text-teal-950 font-bold transition cursor-pointer border border-teal-900/10 text-[11px]"
+                >
+                  ◀ Prev
+                </button>
+                <span className="font-mono font-bold text-teal-950 text-[11px]">
+                  Page {portalPage} of {totalPortalPages}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setPortalPage((p) => Math.min(totalPortalPages, p + 1))}
+                  disabled={portalPage === totalPortalPages}
+                  className="rounded-lg px-2.5 py-1 bg-white hover:bg-sand disabled:opacity-40 text-teal-950 font-bold transition cursor-pointer border border-teal-900/10 text-[11px]"
+                >
+                  Next ▶
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* ── RIGHT PANE: ACTIVE CALLING CARD WORKSPACE (Always visible on desktop; on mobile shown when viewMode === 'focus') ── */}
+          <div className={`space-y-4 lg:col-span-7 xl:col-span-8 ${viewMode === "focus" ? "block" : "hidden lg:block"}`}>
+            {/* Mobile Back-To-Queue Header */}
+            <div className="lg:hidden flex items-center justify-between bg-sand/60 border border-teal-900/15 p-2 rounded-xl mb-1">
+              <button
+                type="button"
+                onClick={() => setViewMode("queue")}
+                className="text-xs font-black text-teal-950 flex items-center gap-1.5 cursor-pointer py-1.5 px-3 rounded-xl bg-white border border-teal-900/15 shadow-2xs active:scale-95"
+              >
+                <span>◀</span>
+                <span>ಎಲ್ಲಾ ಲೀಡ್‌ಗಳು (Queue: {filteredLeads.length})</span>
+              </button>
+              <span className="text-xs font-mono font-bold text-teal-950 bg-cream px-2 py-1 rounded-lg border border-teal-900/10">
+                #{safeFocusIndex + 1} of {filteredLeads.length}
+              </span>
+            </div>
+
             {!currentFocusLead ? (
               <div className="rounded-3xl p-8 sm:p-12 bg-gradient-to-b from-amber-50/50 via-white to-cream/30 text-center border border-teal-900/15 shadow-sm space-y-4">
                 <div className="h-16 w-16 mx-auto rounded-2xl bg-amber-500/10 flex items-center justify-center text-3xl">
@@ -2100,7 +2343,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                           className="font-bold text-teal-900 hover:underline cursor-pointer flex items-center gap-1"
                         >
                           <span>📝</span>
-                          <span>Add Note</span>
+                          <span>Add Detailed Note</span>
                         </button>
                         <span>·</span>
                         <button
@@ -2207,6 +2450,131 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                       )}
                     </div>
 
+                    {/* ── FEATURE 4: LIVE IN-CALL FAQ & OBJECTION CHEAT SHEET (COLLAPSIBLE) ── */}
+                    <div className="rounded-2xl border border-teal-900/15 bg-white p-3 space-y-2 text-xs shadow-2xs">
+                      <button
+                        type="button"
+                        onClick={() => setIsFaqExpanded((prev) => !prev)}
+                        className="w-full flex items-center justify-between font-black text-teal-950 text-[11px] cursor-pointer"
+                      >
+                        <span className="flex items-center gap-1.5">
+                          <span>💡</span>
+                          <span>ದಾನಿಗಳ ಪ್ರಶ್ನೆಗಳಿಗೆ ತಕ್ಷಣದ ಉತ್ತರ (Live In-Call Cheat Sheet &amp; FAQs)</span>
+                        </span>
+                        <span className="text-[10px] bg-teal-950/10 rounded px-2 py-0.5 font-bold">
+                          {isFaqExpanded ? "ಮುಚ್ಚಿ ▲" : "ನೋಡಿ (Open Cheat Sheet) ▼"}
+                        </span>
+                      </button>
+
+                      {isFaqExpanded && (
+                        <div className="space-y-2 pt-1 animate-fadeIn">
+                          {[
+                            {
+                              q: "📍 ಆಶ್ರಮ ಎಲ್ಲಿದೆ? ನಾವು ಖುದ್ದಾಗಿ ಬರಬಹುದೇ? (Where is the ashrama? Can we visit?)",
+                              a: "ಜನಸೇವಾ ಆಶ್ರಮವು ಬೆಂಗಳೂರಿನ ಮಾಗಡಿ ಮುಖ್ಯರಸ್ತೆಯಲ್ಲಿದೆ (ತಾವರೆಕೆರೆ / ಗೊಲ್ಲರಹಟ್ಟಿ ಬಳಿ). ಪೋಷಕರು ಖುದ್ದಾಗಿ ಬಂದು ತಮ್ಮ ಮಗುವಿನ ಜನ್ಮದಿನದಂದು 25 ಬಾಲಕರಿಗೆ ಸ್ವಹಸ್ತದಿಂದ ಊಟ ಬಡಿಸಬಹುದು! ಸಮಯ: ಬೆಳಿಗ್ಗೆ 8:30 ರಿಂದ ರಾತ್ರಿ 8:30 ವರೆಗೆ (ವರ್ಷದ 365 ದಿನಗಳೂ ತೆರೆದಿರುತ್ತದೆ).",
+                            },
+                            {
+                              q: "📜 80G ತೆರಿಗೆ ವಿನಾಯಿತಿ ರಶೀದಿ ಸಿಗುತ್ತದೆಯೇ? (Is 80G tax receipt provided?)",
+                              a: "ಹೌದು, 100%! ಜನಸೇವಾ ಟ್ರಸ್ಟ್ ಆದಾಯ ತೆರಿಗೆ ಕಾಯ್ದೆಯಡಿ Section 80G Form 10AC ಅಧಿಕೃತ ಮಾನ್ಯತೆ ಹೊಂದಿದೆ. ನೀವು UPI ಅಥವಾ ಆನ್‌ಲೈನ್ ಮೂಲಕ ದೇಣಿಗೆ ನೀಡಿದ ತಕ್ಷಣ ಅಧಿಕೃತ ಡಿಜಿಟಲ್ 80G ರಶೀದಿಯು ನಿಮ್ಮ WhatsApp ಹಾಗೂ ಇಮೇಲ್‌ಗೆ ಸ್ವಯಂಚಾಲಿತವಾಗಿ ಬರುತ್ತದೆ.",
+                            },
+                            {
+                              q: "👦 ಆಶ್ರಮದಲ್ಲಿ ಎಷ್ಟು ಮಕ್ಕಳಿದ್ದಾರೆ? (How many children live in ashrama?)",
+                              a: "ನಮ್ಮ ಆಶ್ರಮದಲ್ಲಿ 6 ರಿಂದ 16 ವರ್ಷ ವಯಸ್ಸಿನ 25 ಅನಾಥ ಮತ್ತು ಬಡ ಬಾಲಕರು ನೆಲೆಸಿದ್ದಾರೆ. ಮಕ್ಕಳಿಗೆ 100% ಉಚಿತ ಸಾತ್ವಿಕ ಊಟ, ವಸತಿ, ಆಂಗ್ಲ ಮಾಧ್ಯಮ ಶಾಲಾ ಶಿಕ್ಷಣ, ಸಮವಸ್ತ್ರ, ಪುಸ್ತಕ ಹಾಗೂ ವೈದ್ಯಕೀಯ ಸೌಲಭ್ಯವನ್ನು ಜನಸೇವಾ ಟ್ರಸ್ಟ್ ನೀಡುತ್ತಿದೆ (ಕರ್ನಾಟಕ ಸರ್ಕಾರ JJ Act KA18CH0242).",
+                            },
+                            {
+                              q: "💰 ನಾವು ನೀಡಬಹುದಾದ ದೇಣಿಗೆಯ ಮೊತ್ತ ಎಷ್ಟು? (What are the Seva amounts?)",
+                              a: "ಪ್ರತಿಯೊಂದು ರೂಪಾಯಿಯೂ ಮಕ್ಕಳ ಸೇವೆಗೆ ಪವಿತ್ರವಾಗಿದೆ! ₹501 (ಬೆಳಗಿನ ಶುದ್ಧ ಹಸುವಿನ ಹಾಲು & ಹಣ್ಣುಗಳು), ₹1,500 (25 ಮಕ್ಕಳಿಗೆ ಪೂರ್ಣ ಬೆಳಗಿನ ಉಪಹಾರ), ₹2,500 (ಜನ್ಮದಿನದ ವಿಶೇಷ ಸಿಹಿ ಊಟದ ಅನ್ನದಾನ - ಪಾಯಸ/ಪಲಾವ್), ₹5,000 (ಪೂರ್ಣ ದಿನದ 3 ಹೊತ್ತಿನ ಅನ್ನದಾನ).",
+                            },
+                          ].map((faq, idx) => (
+                            <div key={idx} className="rounded-xl bg-sand/30 p-2.5 border border-teal-900/10 space-y-1">
+                              <p className="font-bold text-teal-950 text-[11px] flex items-start gap-1">
+                                <span className="text-amber-600 font-black">Q:</span>
+                                <span>{faq.q}</span>
+                              </p>
+                              <p className="text-[11px] text-teal-950/80 leading-relaxed pl-4">
+                                <strong className="text-emerald-900">A:</strong> {faq.a}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* ── FEATURE 2: 1-TAP QUICK NOTE CHIPS & INLINE NOTES ── */}
+                    <div className="rounded-2xl border border-teal-900/15 bg-sand/20 p-3 space-y-2 text-xs">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-black uppercase text-teal-950 tracking-wider flex items-center gap-1.5">
+                          <span>⚡</span>
+                          <span>1-Tap Quick Note Chips:</span>
+                        </span>
+                        <span className="text-[10px] text-teal-950/60 font-semibold">
+                          Tap chip to add to notes
+                        </span>
+                      </div>
+
+                      <div className="flex flex-wrap gap-1.5">
+                        {[
+                          isParentLead ? "👶 ತಂದೆ ಮಾತನಾಡಿದ್ದಾರೆ (Father answered)" : "👤 ದಾನಿ ಮಾತನಾಡಿದ್ದಾರೆ (Donor answered)",
+                          isParentLead ? "👩 ತಾಯಿ ಮಾತನಾಡಿದ್ದಾರೆ (Mother answered)" : "🤝 ಒಪ್ಪಿದ್ದಾರೆ (Agreed to donate)",
+                          `🎂 ₹${formatINR(selectedSevaAmount)} ಅನ್ನದಾನಕ್ಕೆ ಒಪ್ಪಿದ್ದಾರೆ`,
+                          "📲 WhatsApp QR ಕಳುಹಿಸಲಾಗಿದೆ",
+                          "🏛️ ಆಶ್ರಮಕ್ಕೆ ಭೇಟಿ ನೀಡುತ್ತಾರೆ",
+                          "📜 80G ರಶೀದಿ ಕೇಳಿದ್ದಾರೆ",
+                          "🗣️ ಕನ್ನಡದಲ್ಲಿ ಮಾತ್ರ",
+                          "⏳ ಸಂಜೆ ಕರೆ (Call evening)",
+                          "📵 ಕರೆ ಸ್ವೀಕರಿಸಿಲ್ಲ (RNR)",
+                          "❌ ನಂಬರ್ ಬದಲಾಗಿದೆ",
+                        ].map((chip) => (
+                          <button
+                            key={chip}
+                            type="button"
+                            onClick={() => {
+                              const cleanCurrent = (cardNoteInput || currentFocusLead.notes || "").trim();
+                              const newNote = cleanCurrent ? `${cleanCurrent} · ${chip}` : chip;
+                              setCardNoteInput(newNote);
+                              showToast(`Added: ${chip}`);
+                            }}
+                            className="text-[10px] bg-white hover:bg-amber-100/80 border border-teal-900/15 text-teal-950 px-2 py-1 rounded-lg font-bold transition cursor-pointer shadow-2xs"
+                          >
+                            + {chip}
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Note Input Field with 1-Tap Save */}
+                      <div className="flex items-center gap-2 pt-1">
+                        <input
+                          type="text"
+                          value={cardNoteInput}
+                          onChange={(e) => setCardNoteInput(e.target.value)}
+                          placeholder={currentFocusLead.notes ? `Current: ${currentFocusLead.notes}` : "Type custom note or tap chips above..."}
+                          className="flex-1 rounded-xl border border-teal-900/20 px-3 py-1.5 text-xs text-teal-950 bg-white focus:ring-2 focus:ring-amber-400 outline-none"
+                        />
+                        <button
+                          type="button"
+                          disabled={savingCardNote || !cardNoteInput.trim()}
+                          onClick={async () => {
+                            if (!callerProfile || !cardNoteInput.trim()) return;
+                            setSavingCardNote(true);
+                            try {
+                              await handleUpdateDisposition(
+                                currentFocusLead.leadId,
+                                currentFocusLead.status || "Contacted",
+                                cardNoteInput.trim()
+                              );
+                              setCardNoteInput("");
+                              showToast("✓ Note saved to lead record!");
+                            } finally {
+                              setSavingCardNote(false);
+                            }
+                          }}
+                          className="rounded-xl bg-teal-950 text-gold hover:bg-teal-900 px-3 py-1.5 text-xs font-black shadow-xs cursor-pointer disabled:opacity-40 shrink-0"
+                        >
+                          {savingCardNote ? "Saving..." : "💾 Save Note"}
+                        </button>
+                      </div>
+                    </div>
+
                     {/* ── 1-TAP DISPOSITION & AUTO-ADVANCE STRIP ── */}
                     <div className="space-y-2 pt-2 border-t border-teal-900/10">
                       <div className="flex items-center justify-between">
@@ -2218,11 +2586,15 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                         </span>
                       </div>
 
-                      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                      <div className="grid grid-cols-2 sm:grid-cols-6 gap-2">
                         {/* WARM / INTERESTED */}
                         <button
                           type="button"
-                          onClick={() => handleFocusDisposition(currentFocusLead.leadId, "Interested")}
+                          onClick={() => {
+                            const note = cardNoteInput.trim() || undefined;
+                            void handleFocusDisposition(currentFocusLead.leadId, "Interested", note);
+                            setCardNoteInput("");
+                          }}
                           className="min-h-[54px] p-2 rounded-2xl bg-amber-500 hover:bg-amber-600 active:scale-95 text-teal-950 font-black shadow-xs transition flex flex-col items-center justify-center cursor-pointer text-center"
                         >
                           <span className="flex items-center gap-1 text-sm font-black">
@@ -2237,7 +2609,9 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                           type="button"
                           onClick={() => {
                             const twoHoursLater = new Date(Date.now() + 2 * 3600 * 1000).toISOString();
-                            void handleFocusDisposition(currentFocusLead.leadId, "No_Answer", "Auto-rescheduled +2 hours", twoHoursLater);
+                            const note = cardNoteInput.trim() || "Auto-rescheduled +2 hours";
+                            void handleFocusDisposition(currentFocusLead.leadId, "No_Answer", note, twoHoursLater);
+                            setCardNoteInput("");
                           }}
                           className="min-h-[54px] p-2 rounded-2xl bg-slate-700 hover:bg-slate-800 active:scale-95 text-white font-black shadow-xs transition flex flex-col items-center justify-center cursor-pointer text-center"
                         >
@@ -2245,7 +2619,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                             <span>⏳</span>
                             <span>ಬಿಜಿಯಿದ್ದಾರೆ</span>
                           </span>
-                          <span className="text-[10px] text-slate-300 font-bold uppercase tracking-wider">Busy / Call +2h</span>
+                          <span className="text-[10px] text-slate-300 font-bold uppercase tracking-wider">Busy / +2h</span>
                         </button>
 
                         {/* CALLBACK LATER */}
@@ -2253,7 +2627,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                           type="button"
                           onClick={() => {
                             setActiveNotesLead(currentFocusLead);
-                            setNotesText(currentFocusLead.notes || "");
+                            setNotesText(cardNoteInput.trim() || currentFocusLead.notes || "");
                             setCallbackDateTime("");
                           }}
                           className="min-h-[54px] p-2 rounded-2xl bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-black shadow-xs transition flex flex-col items-center justify-center cursor-pointer text-center"
@@ -2279,20 +2653,24 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                             <span>🎉</span>
                             <span>ಹಣ ನೀಡಿದ್ದಾರೆ</span>
                           </span>
-                          <span className="text-[10px] text-emerald-200 font-bold uppercase tracking-wider">Log Donation ₹</span>
+                          <span className="text-[10px] text-emerald-200 font-bold uppercase tracking-wider">Log Paid ₹</span>
                         </button>
 
                         {/* NOT INTERESTED */}
                         <button
                           type="button"
-                          onClick={() => handleFocusDisposition(currentFocusLead.leadId, "Rejected")}
+                          onClick={() => {
+                            const note = cardNoteInput.trim() || undefined;
+                            void handleFocusDisposition(currentFocusLead.leadId, "Rejected", note);
+                            setCardNoteInput("");
+                          }}
                           className="min-h-[54px] p-2 rounded-2xl bg-rose-50 hover:bg-rose-100 active:scale-95 text-rose-800 border border-rose-200 font-black transition flex flex-col items-center justify-center cursor-pointer text-center"
                         >
                           <span className="flex items-center gap-1 text-sm font-black">
                             <span>✕</span>
                             <span>ಆಸಕ್ತಿಯಿಲ್ಲ</span>
                           </span>
-                          <span className="text-[10px] text-rose-600 font-bold uppercase tracking-wider">Not Interested</span>
+                          <span className="text-[10px] text-rose-600 font-bold uppercase tracking-wider">Reject</span>
                         </button>
 
                         {/* SKIP LEAD */}
@@ -2314,7 +2692,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                     {/* Bottom Utility Strip */}
                     <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-teal-900/10 text-[11px] text-teal-950/60">
                       <span className="font-semibold text-emerald-800">
-                        ✓ Safe Mode: Auto-marks lead attended upon Call or WhatsApp
+                        ✓ Master-Detail Safe Mode: Leads stay firmly in queue when dialed
                       </span>
 
                       <div className="hidden sm:flex items-center gap-2 text-[10px] font-mono text-teal-950/50">
@@ -2326,190 +2704,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
               })()
             )}
           </div>
-        )}
-
-        {/* ── 2. ALL LEADS LIST VIEW (CLEAN, FAST, UNIFIED) ── */}
-        {viewMode === "queue" && (
-          <div className="space-y-2.5 animate-fadeIn">
-            {loadingLeads ? (
-              <div className="p-8 text-center text-teal-950/60 text-xs bg-cream/30 rounded-2xl border border-teal-900/10">
-                Loading assigned leads...
-              </div>
-            ) : filteredLeads.length === 0 ? (
-              <div className="p-8 text-center text-teal-950/60 text-xs bg-cream/30 rounded-2xl border border-teal-900/10 space-y-2">
-                <p className="font-bold text-teal-950">No leads found matching current filter.</p>
-                <button
-                  type="button"
-                  onClick={() => setFilter("ALL")}
-                  className="rounded-xl bg-teal-950 text-white px-3 py-1.5 text-xs font-bold shadow-xs hover:bg-teal-900 cursor-pointer"
-                >
-                  Show All ({leads.length})
-                </button>
-              </div>
-            ) : (
-              <>
-                {paginatedLeads.map((lead, localIdx) => {
-                  const idx = (portalPage - 1) * portalPageSize + localIdx;
-                  const now = new Date();
-                const isTodayBirthday = lead.dobDay === now.getDate() && lead.dobMonth === now.getMonth() + 1;
-                const isAttended = lead.status && lead.status !== "Pending";
-                const phoneInfo = parseCustomerPhone(lead.phone);
-
-                return (
-                  <div
-                    key={lead.leadId}
-                    className={`rounded-2xl p-3.5 sm:p-4 bg-white border transition shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
-                      isTodayBirthday
-                        ? "border-amber-400 ring-2 ring-amber-400/30 bg-amber-50/20"
-                        : isAttended
-                        ? "border-emerald-500/30 bg-white"
-                        : "border-teal-900/10 hover:border-teal-900/30"
-                    }`}
-                  >
-                    {/* Left: Lead details & 1-tap card launcher */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setActiveFocusLeadId(lead.leadId);
-                            const overallIdx = filteredLeads.findIndex((fl) => fl.leadId === lead.leadId);
-                            if (overallIdx !== -1) setFocusIndex(overallIdx);
-                            setViewMode("focus");
-                          }}
-                          className="font-display font-black text-sm sm:text-base text-teal-950 hover:text-amber-600 transition text-left cursor-pointer flex items-center gap-1.5"
-                          title="Click to open in Calling Card"
-                        >
-                          <span>{lead.name}</span>
-                          <span className="text-[10px] font-mono text-teal-950/40">#{lead.leadId}</span>
-                        </button>
-
-                        {isTodayBirthday && (
-                          <span className="rounded-full bg-amber-500 text-teal-950 px-2 py-0.5 text-[10px] font-black uppercase shadow-xs animate-pulse">
-                            🎂 Today!
-                          </span>
-                        )}
-
-                        {lead.status === "Donated" ? (
-                          <span className="rounded-full bg-emerald-600 text-white px-2 py-0.5 text-[10px] font-black shadow-xs">
-                            🎉 Donated
-                          </span>
-                        ) : lead.status === "Interested" ? (
-                          <span className="rounded-full bg-amber-500 text-teal-950 px-2 py-0.5 text-[10px] font-black">
-                            👍 Interested
-                          </span>
-                        ) : lead.status === "Reschedule" ? (
-                          <span className="rounded-full bg-blue-600 text-white px-2 py-0.5 text-[10px] font-black">
-                            📅 Callback
-                          </span>
-                        ) : isAttended ? (
-                          <span className="rounded-full bg-emerald-100 text-emerald-900 px-2 py-0.5 text-[10px] font-bold border border-emerald-300">
-                            ✓ {lead.status}
-                          </span>
-                        ) : (
-                          <span className="rounded-full bg-amber-100 text-amber-900 px-2 py-0.5 text-[10px] font-bold border border-amber-300">
-                            ⏳ To Call
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="flex items-center gap-3 mt-1 text-xs text-teal-950/70 flex-wrap">
-                        <span className="font-mono font-bold text-teal-950">
-                          {phoneInfo.display}
-                        </span>
-                        {lead.dobDay && lead.dobMonth && !isTodayBirthday && (
-                          <span>🎂 {lead.dobDay}/{lead.dobMonth}</span>
-                        )}
-                        {lead.notes && (
-                          <span className="truncate max-w-xs text-teal-950/60 italic">
-                            &quot;{lead.notes}&quot;
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Right: Quick Touch Actions */}
-                    <div className="flex items-center gap-2 shrink-0 flex-wrap sm:flex-nowrap">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setActiveFocusLeadId(lead.leadId);
-                          const overallIdx = filteredLeads.findIndex((fl) => fl.leadId === lead.leadId);
-                          if (overallIdx !== -1) setFocusIndex(overallIdx);
-                          setViewMode("focus");
-                        }}
-                        className="rounded-xl bg-sand/60 hover:bg-sand border border-teal-900/15 text-teal-950 px-2.5 py-2 text-xs font-bold transition flex items-center gap-1 cursor-pointer"
-                        title="Open full calling card"
-                      >
-                        <span>⚡ Card</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => handleCallLead(lead)}
-                        className="rounded-xl bg-teal-950 hover:bg-teal-900 active:scale-95 text-white px-3 py-2 text-xs font-bold transition flex items-center gap-1 cursor-pointer shadow-xs"
-                      >
-                        <span>📞 Call</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => handleDirectWhatsAppChat(lead, selectedSevaAmount)}
-                        className="rounded-xl bg-[#25D366] hover:brightness-105 active:scale-95 text-white px-3 py-2 text-xs font-bold transition flex items-center gap-1 cursor-pointer shadow-xs"
-                      >
-                        <span>💬 WhatsApp</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setActiveNotesLead(lead);
-                          setNotesText(lead.notes || "");
-                          setCallbackDateTime("");
-                        }}
-                        className="rounded-xl bg-white border border-teal-900/20 text-teal-950 hover:bg-cream p-2 text-xs transition cursor-pointer"
-                        title="Add Call Note / Callback"
-                      >
-                        <span>📝</span>
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-
-              {/* Queue Pagination Bar (Ensures 60 FPS smooth browsing on Android) */}
-              {totalPortalPages > 1 && (
-                <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-3.5 rounded-2xl border border-teal-900/10 text-xs shadow-xs mt-3">
-                  <span className="font-bold text-teal-950">
-                    Showing {(portalPage - 1) * portalPageSize + 1}–{Math.min(portalPage * portalPageSize, filteredLeads.length)} of {filteredLeads.length.toLocaleString()} leads
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setPortalPage((p) => Math.max(1, p - 1))}
-                      disabled={portalPage === 1}
-                      className="rounded-xl px-3 py-1.5 bg-sand hover:bg-amber-100 disabled:opacity-40 text-teal-950 font-bold transition cursor-pointer"
-                    >
-                      ◀ Prev
-                    </button>
-                    <span className="font-mono font-bold text-teal-950 px-2">
-                      Page {portalPage} of {totalPortalPages}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setPortalPage((p) => Math.min(totalPortalPages, p + 1))}
-                      disabled={portalPage === totalPortalPages}
-                      className="rounded-xl px-3 py-1.5 bg-sand hover:bg-amber-100 disabled:opacity-40 text-teal-950 font-bold transition cursor-pointer"
-                    >
-                      Next ▶
-                    </button>
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-          </div>
-        )}
+        </div>
       </div>
 
       {/* ── CHANGE PASSWORD MODAL ── */}
