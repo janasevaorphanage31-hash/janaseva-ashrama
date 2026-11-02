@@ -242,8 +242,21 @@ export async function ensureDbSchema(): Promise<void> {
             created_at TIMESTAMP NOT NULL DEFAULT NOW()
           );
 
-          ALTER TABLE ag_call_logs DROP CONSTRAINT IF EXISTS ag_call_logs_caller_id_fkey;
-          ALTER TABLE ag_call_logs DROP CONSTRAINT IF EXISTS ag_call_logs_caller_id_ag_telecallers_caller_id_fk;
+          -- Dynamically drop any foreign key constraint on caller_id in ag_call_logs
+          DO $$
+          DECLARE
+            r RECORD;
+          BEGIN
+            FOR r IN (
+              SELECT conname
+              FROM pg_constraint
+              WHERE conrelid = 'ag_call_logs'::regclass
+                AND contype = 'f'
+                AND conkey = ARRAY[(SELECT attnum FROM pg_attribute WHERE attrelid = 'ag_call_logs'::regclass AND attname = 'caller_id')]
+            ) LOOP
+              EXECUTE 'ALTER TABLE ag_call_logs DROP CONSTRAINT IF EXISTS ' || quote_ident(r.conname);
+            END LOOP;
+          END $$;
 
           INSERT INTO ag_telecallers (caller_id, name, whatsapp_number, email, password_hash, daily_quota, is_active)
           VALUES ('ADMIN', 'Ashrama Admin', '9980359595', 'admin@janasevaashrama.org', 'ADMIN', 100, true)

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { logCallDisposition, recordPaymentAttribution } from "@/lib/antigravity-crm";
 import { authenticateCallerOrAdmin } from "@/lib/caller-auth";
-import { db } from "@/db";
+import { db, ensureDbSchema } from "@/db";
 import { agLeads } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { clean } from "@/lib/server-utils";
@@ -18,6 +18,8 @@ export async function POST(
         { status: 401 },
       );
     }
+
+    await ensureDbSchema();
 
     const { id } = await context.params;
     const leadId = parseInt(id, 10);

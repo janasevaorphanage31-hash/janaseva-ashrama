@@ -14,6 +14,7 @@ import {
   uploadBulkLeads,
   distributeAllPendingLeads,
   distributeUnassignedLeads,
+  distributeDualStreamBalanced,
   generateAgencyCSVExport,
   resetTelecallerPassword,
   saveCrmWhatsAppSettings,
@@ -211,13 +212,16 @@ export async function POST(req: Request) {
       });
     }
 
-    if (action === "distribute_equally") {
-      const { mode } = body;
-      const res = await distributeAllPendingLeads(mode || "balanced");
+    if (action === "distribute_equally" || action === "distribute_dual_stream") {
+      const { mode, unassignedOnly } = body;
+      const res = await distributeDualStreamBalanced({
+        unassignedOnly: unassignedOnly === true,
+        mode: mode || "balanced",
+      });
 
       await writeAudit({
         actorAdminUserId: session.user.id ?? null,
-        action: "crm.distribute_pending_leads",
+        action: action === "distribute_dual_stream" ? "crm.distribute_dual_stream" : "crm.distribute_pending_leads",
         entity: "ag_leads",
         afterState: res,
         ipAddress: ip,
@@ -226,7 +230,7 @@ export async function POST(req: Request) {
       const updatedLeaderboard = await getAdminLeaderboard();
       return NextResponse.json({
         success: true,
-        message: `Equally distributed ${res.distributed} pending leads using ${mode || "balanced"} algorithm.`,
+        message: `Distributed ${res.distributed} leads (👶 ${res.parentsDistributed} Parents + 🎂 ${res.donorsDistributed} Donors) equally across ${res.callersCount} callers.`,
         distributionResult: res,
         ...updatedLeaderboard,
       });

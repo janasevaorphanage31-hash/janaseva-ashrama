@@ -410,7 +410,6 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
   const handleDispositionLoggedFromModal = async (leadId: number, disp: string) => {
     if (callerProfile) {
       persistContactedLead(callerProfile.callerId, leadId);
-      await handleUpdateDisposition(leadId, disp, "Logged from WhatsApp anti-ban modal");
     }
     const updatedList = leads.map((l) => (l.leadId === leadId ? { ...l, status: disp } : l));
     setLeads(updatedList);
@@ -1033,8 +1032,8 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
       } else if (filter === "Today_Birthday") {
         matchesFilter = l.dobDay === curDay && l.dobMonth === curMonth;
       } else if (filter === "Pending") {
-        // Pending leads: status is pending or unassigned (stays firmly anchored when dialed)
-        matchesFilter = !l.status || l.status === "Pending";
+        // Pending leads: Keep freshly contacted leads from the current session visible so cards never vanish under the caller!
+        matchesFilter = !l.status || l.status === "Pending" || sessionContactedIds.has(l.leadId);
       } else if (filter === "Attended") {
         matchesFilter = (l.status && l.status !== "Pending") || sessionContactedIds.has(l.leadId);
       } else if (filter === "Reschedule") {
@@ -1048,53 +1047,93 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
         !q ||
         (l.name && l.name.toLowerCase().includes(q)) ||
         (l.phone && l.phone.includes(q)) ||
+        (l.parentName && l.parentName.toLowerCase().includes(q)) ||
+        (l.childName && l.childName.toLowerCase().includes(q)) ||
         String(l.leadId).includes(q);
       return matchesFilter && matchesSearch;
     });
 
-    // Helper for upcoming birthday distance in days
+    // Helper for exact upcoming birthday distance in calendar days (100% leap-year & month rollover safe)
+    const thisYear = now.getFullYear();
+    const todayStart = new Date(thisYear, now.getMonth(), now.getDate()).getTime();
+
     const getBirthdayDistance = (m?: number, d?: number) => {
-      if (!m || !d) return 9999;
-      let diff = (m - curMonth) * 31 + (d - curDay);
-      if (diff < 0) diff += 372; // rolls over into next calendar year
-      return diff;
+      if (!m || !d || m < 1 || m > 12 || d < 1 || d > 31) return 9999;
+      let bdate = new Date(thisYear, m - 1, d);
+      let diffDays = Math.round((bdate.getTime() - todayStart) / 86400000);
+      if (diffDays < 0) {
+        bdate = new Date(thisYear + 1, m - 1, d);
+        diffDays = Math.round((bdate.getTime() - todayStart) / 86400000);
+      }
+      return diffDays;
     };
 
+    const nowMs = Date.now();
+
     return [...base].sort((a, b) => {
-      // CRITICAL FIX: Uncontacted Pending leads ALWAYS sort ahead of attended leads
-      // so telecallers never see already-called numbers at the top of any queue
+      // 1. SPECIFIC SORT: Urgent Callbacks First
+      if (dateSortOrder === "callback_earliest") {
+        const aResched = a.status === "Reschedule";
+        const bResched = b.status === "Reschedule";
+        if (aResched && !bResched) return -1;
+        if (!aResched && bResched) return 1;
+        if (aResched && bResched) {
+          const tA = a.rescheduleDate ? new Date(a.rescheduleDate).getTime() : Infinity;
+          const tB = b.rescheduleDate ? new Date(b.rescheduleDate).getTime() : Infinity;
+          return tA - tB || a.leadId - b.leadId;
+        }
+        const aPending = !a.status || a.status === "Pending";
+        const bPending = !b.status || b.status === "Pending";
+        if (aPending && !bPending) return -1;
+        if (!aPending && bPending) return 1;
+        return a.leadId - b.leadId;
+      }
+
+      // 2. SPECIFIC SORT: Newest Leads Added First
+      if (dateSortOrder === "date_newest") {
+        const timeA = a.createdAt ? new Date(a.createdAt).getTime() : a.leadId;
+        const timeB = b.createdAt ? new Date(b.createdAt).getTime() : b.leadId;
+        return timeB - timeA || b.leadId - a.leadId;
+      }
+
+      // 3. SPECIFIC SORT: Oldest Leads Added First
+      if (dateSortOrder === "date_oldest") {
+        const timeA = a.createdAt ? new Date(a.createdAt).getTime() : a.leadId;
+        const timeB = b.createdAt ? new Date(b.createdAt).getTime() : b.leadId;
+        return timeA - timeB || a.leadId - b.leadId;
+      }
+
+      // 4. SPECIFIC SORT: Calendar Date Progression (Jan 1 -> Dec 31)
+      if (dateSortOrder === "birthday_calendar") {
+        const mA = a.dobMonth || 99;
+        const mB = b.dobMonth || 99;
+        if (mA !== mB) return mA - mB;
+        const dA = a.dobDay || 99;
+        const dB = b.dobDay || 99;
+        return dA - dB || a.leadId - b.leadId;
+      }
+
+      // 5. DEFAULT SORT: Upcoming Birthdays (Advance Calling Priority)
+      // Rank 1: Due Rescheduled Callbacks (due now or overdue)
+      const aDueCallback = a.status === "Reschedule" && a.rescheduleDate && new Date(a.rescheduleDate).getTime() <= nowMs;
+      const bDueCallback = b.status === "Reschedule" && b.rescheduleDate && new Date(b.rescheduleDate).getTime() <= nowMs;
+      if (aDueCallback && !bDueCallback) return -1;
+      if (!aDueCallback && bDueCallback) return 1;
+
+      // Rank 2: Pending/Uncontacted ahead of already completed leads
       const aPending = !a.status || a.status === "Pending";
       const bPending = !b.status || b.status === "Pending";
       if (aPending && !bPending) return -1;
       if (!aPending && bPending) return 1;
 
-      if (dateSortOrder === "birthday_upcoming") {
-        const distA = getBirthdayDistance(a.dobMonth, a.dobDay);
-        const distB = getBirthdayDistance(b.dobMonth, b.dobDay);
-        return distA - distB || (a.leadId - b.leadId);
-      }
-      if (dateSortOrder === "birthday_calendar") {
-        const monthDiff = (a.dobMonth || 0) - (b.dobMonth || 0);
-        if (monthDiff !== 0) return monthDiff;
-        return (a.dobDay || 0) - (b.dobDay || 0) || (a.leadId - b.leadId);
-      }
-      if (dateSortOrder === "date_newest") {
-        const timeA = a.createdAt ? new Date(a.createdAt).getTime() : a.leadId;
-        const timeB = b.createdAt ? new Date(b.createdAt).getTime() : b.leadId;
-        return timeB - timeA;
-      }
-      if (dateSortOrder === "date_oldest") {
-        const timeA = a.createdAt ? new Date(a.createdAt).getTime() : a.leadId;
-        const timeB = b.createdAt ? new Date(b.createdAt).getTime() : b.leadId;
-        return timeA - timeB;
-      }
-      if (dateSortOrder === "callback_earliest") {
-        if (!a.rescheduleDate && !b.rescheduleDate) return a.leadId - b.leadId;
-        if (!a.rescheduleDate) return 1;
-        if (!b.rescheduleDate) return -1;
-        return new Date(a.rescheduleDate).getTime() - new Date(b.rescheduleDate).getTime();
-      }
-      return 0;
+      // Rank 3: Tomorrow's Birthday (T+1 distance = 1) is the ultimate advance calling target
+      const distA = getBirthdayDistance(a.dobMonth, a.dobDay);
+      const distB = getBirthdayDistance(b.dobMonth, b.dobDay);
+      const rankA = distA === 1 ? -1 : distA;
+      const rankB = distB === 1 ? -1 : distB;
+      if (rankA !== rankB) return rankA - rankB;
+
+      return a.leadId - b.leadId;
     });
   }, [leads, filter, searchQuery, dateSortOrder, sessionContactedIds]);
 

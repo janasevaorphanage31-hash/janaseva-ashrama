@@ -1063,6 +1063,29 @@ export function AdminTelecallerCRM() {
     }
   };
 
+  // ── DISTRIBUTE UNASSIGNED LEADS ONLY (DUAL STREAM 50/50) ──
+  const handleDistributeUnassigned = async () => {
+    setActionLoading(true);
+    try {
+      const res = await fetch("/api/v1/admin/telecallers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "distribute_unassigned" }),
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error || "Distribution failed");
+
+      showToast(`✓ ${data.message}`);
+      setCallers(data.callers || []);
+      setTotalLeads(data.totalLeads || 0);
+      await loadLeadsForReassignment("TC01");
+    } catch (err: any) {
+      showToast("Distribution failed: " + err.message);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   // ── TRIGGER CRON ROUTING ──
   const handleTriggerRouting = async () => {
     setActionLoading(true);
@@ -1692,8 +1715,19 @@ export function AdminTelecallerCRM() {
             onClick={() => handleDistributeEqually("balanced")}
             disabled={actionLoading}
             className="focus-ring tap-scale inline-flex items-center gap-1.5 rounded-xl bg-teal-950 hover:bg-teal-900 text-gold px-3.5 py-2 text-xs font-black shadow-xs transition cursor-pointer disabled:opacity-50"
+            title="Distribute and rebalance all pending leads (50% Parents + 50% Donors fair share) across active callers"
           >
-            <span>⚖️ Distribute &amp; Balance Workload</span>
+            <span>⚖️ Distribute &amp; Balance Workload (50/50 Mix)</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleDistributeUnassigned}
+            disabled={actionLoading}
+            className="focus-ring tap-scale inline-flex items-center gap-1.5 rounded-xl bg-indigo-900 hover:bg-indigo-800 text-amber-300 px-3.5 py-2 text-xs font-black shadow-xs transition cursor-pointer disabled:opacity-50"
+            title="Distribute newly uploaded unassigned leads (Parents & Donors 50/50 mix) across active callers"
+          >
+            <span>📥 Distribute Unassigned Leads</span>
           </button>
 
           <button

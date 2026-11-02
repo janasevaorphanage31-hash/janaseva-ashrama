@@ -344,6 +344,8 @@ export async function getAssignedLeads(callerId?: string | null, limit = 10000, 
   await ensureTelecallersAndSeedData();
   const cid = (callerId || "").trim().toUpperCase();
   const now = new Date();
+  const todayDay = now.getDate();
+  const todayMonth = now.getMonth() + 1;
   const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
   const targetDay = tomorrow.getDate();
   const targetMonth = tomorrow.getMonth() + 1;
@@ -352,21 +354,41 @@ export async function getAssignedLeads(callerId?: string | null, limit = 10000, 
     sql`case when ${agLeads.status} = 'Reschedule' and ${agLeads.rescheduleDate} <= ${now} then 0 else 1 end`,
     sql`case when ${agLeads.status} = 'Pending' or ${agLeads.status} is null then 0 else 1 end`,
     sql`case when ${agLeads.dobMonth} = ${targetMonth} and ${agLeads.dobDay} = ${targetDay} then 0 else 1 end`,
+    sql`case when ${agLeads.dobMonth} = ${todayMonth} and ${agLeads.dobDay} = ${todayDay} then 0 else 1 end`,
     agLeads.dobMonth,
     agLeads.dobDay,
     desc(agLeads.leadId),
   ];
 
+  const selectFields = {
+    leadId: agLeads.leadId,
+    stream: agLeads.stream,
+    name: agLeads.name,
+    parentName: agLeads.parentName,
+    childName: agLeads.childName,
+    phone: agLeads.phone,
+    email: agLeads.email,
+    dobDay: agLeads.dobDay,
+    dobMonth: agLeads.dobMonth,
+    assignedCallerId: agLeads.assignedCallerId,
+    status: agLeads.status,
+    validationStatus: agLeads.validationStatus,
+    rescheduleDate: agLeads.rescheduleDate,
+    lastContactedAt: agLeads.lastContactedAt,
+    createdAt: agLeads.createdAt,
+    updatedAt: agLeads.updatedAt,
+  };
+
   if (!cid || cid === "ALL") {
     return db
-      .select()
+      .select(selectFields)
       .from(agLeads)
       .orderBy(...orderClauses)
       .limit(limit)
       .offset(offset);
   }
   return db
-    .select()
+    .select(selectFields)
     .from(agLeads)
     .where(eq(agLeads.assignedCallerId, cid))
     .orderBy(...orderClauses)
@@ -430,6 +452,7 @@ export async function logCallDisposition(
   notes?: string,
   callbackTime?: string | null
 ) {
+  await ensureDbSchema();
   // Insert call history log safely without blocking lead status updates
   try {
     await db.insert(agCallLogs).values({
@@ -1193,7 +1216,7 @@ export async function uploadBulkLeads(
 
   let distributedSummary: Record<string, number> = {};
   if (autoDistribute && insertedLeadIds.length > 0) {
-    const res = await distributeSpecificLeads(insertedLeadIds, mode);
+    const res = await distributeDualStreamBalanced({ unassignedOnly: true, mode });
     distributedSummary = res.perCaller;
   }
 
@@ -1306,22 +1329,126 @@ export async function distributeSpecificLeads(
 }
 
 /**
- * 13b. Distribute Only Unassigned Leads (assignedCallerId IS NULL)
- * Used after chunked lead upload to assign newly ingested leads without altering existing callers' workloads.
+ * 13b. Full-Workload Dual-Stream 50/50 Balanced Distribution
+ * - Supports distributing either unassignedOnly leads (after bulk upload) or all pending leads.
+ * - Sorts both Pools (Parents and Direct Donors) by Tomorrow's Birthday (T+1 advance calling target) first,
+ *   then Today's birthdays, then calendar order.
+ * - Mathematically interleaves Pool A (Parents) and Pool B (Donors) 50/50: [P0, D0, P1, D1, P2, D2...].
+ * - Round-robin allocates across active callers so every caller receives an exact equal share,
+ *   fair share of advance targets, and balanced stream mix.
  */
-export async function distributeUnassignedLeads(mode: "balanced" | "round_robin" = "balanced") {
-  const unassigned = await db
-    .select({ leadId: agLeads.leadId })
-    .from(agLeads)
-    .where(isNull(agLeads.assignedCallerId))
-    .orderBy(agLeads.leadId);
+export async function distributeDualStreamBalanced(options?: {
+  unassignedOnly?: boolean;
+  mode?: "balanced" | "round_robin";
+}) {
+  await ensureTelecallersAndSeedData();
+  const unassignedOnly = options?.unassignedOnly ?? false;
 
-  if (unassigned.length === 0) {
-    return { distributed: 0, perCaller: {} };
+  const activeCallers = await db
+    .select({ callerId: agTelecallers.callerId })
+    .from(agTelecallers)
+    .where(eq(agTelecallers.isActive, true))
+    .orderBy(agTelecallers.callerId);
+
+  const K = activeCallers.length;
+  if (K === 0) {
+    throw new Error("Cannot distribute leads: No active telecallers found.");
   }
 
-  const ids = unassigned.map((l) => l.leadId);
-  return distributeSpecificLeads(ids, mode);
+  const now = new Date();
+  const todayDay = now.getDate();
+  const todayMonth = now.getMonth() + 1;
+  const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+  const tomDay = tomorrow.getDate();
+  const tomMonth = tomorrow.getMonth() + 1;
+
+  const orderClauses = [
+    sql`case when ${agLeads.dobMonth} = ${tomMonth} and ${agLeads.dobDay} = ${tomDay} then 0 else 1 end`,
+    sql`case when ${agLeads.dobMonth} = ${todayMonth} and ${agLeads.dobDay} = ${todayDay} then 0 else 1 end`,
+    agLeads.dobMonth,
+    agLeads.dobDay,
+    desc(agLeads.leadId),
+  ];
+
+  const baseCondition = unassignedOnly
+    ? isNull(agLeads.assignedCallerId)
+    : or(isNull(agLeads.assignedCallerId), eq(agLeads.status, "Pending"), isNull(agLeads.status));
+
+  // 1. Fetch Parents Pool
+  const parentsLeads = await db
+    .select({ leadId: agLeads.leadId })
+    .from(agLeads)
+    .where(and(eq(agLeads.stream, "PARENTS"), baseCondition))
+    .orderBy(...orderClauses);
+
+  // 2. Fetch Direct Donors Pool
+  const donorLeads = await db
+    .select({ leadId: agLeads.leadId })
+    .from(agLeads)
+    .where(and(or(eq(agLeads.stream, "DIRECT_DONOR"), isNull(agLeads.stream)), baseCondition))
+    .orderBy(...orderClauses);
+
+  // 3. Interleave Pool A and Pool B 50/50: [P0, D0, P1, D1, P2, D2...]
+  const interleavedLeadIds: number[] = [];
+  const maxLen = Math.max(parentsLeads.length, donorLeads.length);
+  for (let i = 0; i < maxLen; i++) {
+    if (i < parentsLeads.length) interleavedLeadIds.push(parentsLeads[i].leadId);
+    if (i < donorLeads.length) interleavedLeadIds.push(donorLeads[i].leadId);
+  }
+
+  const perCaller: Record<string, number> = {};
+  activeCallers.forEach((c) => {
+    perCaller[c.callerId] = 0;
+  });
+
+  if (interleavedLeadIds.length === 0) {
+    return {
+      distributed: 0,
+      parentsDistributed: 0,
+      donorsDistributed: 0,
+      callersCount: K,
+      perCaller,
+    };
+  }
+
+  // 4. Group assignments per caller
+  const assignmentBuckets = new Map<string, number[]>();
+  activeCallers.forEach((c) => assignmentBuckets.set(c.callerId, []));
+
+  interleavedLeadIds.forEach((leadId, idx) => {
+    const callerId = activeCallers[idx % K].callerId;
+    assignmentBuckets.get(callerId)!.push(leadId);
+    perCaller[callerId] = (perCaller[callerId] || 0) + 1;
+  });
+
+  // 5. Sequential batch updates (500 per chunk)
+  const BATCH_SIZE = 500;
+  for (const [callerId, ids] of assignmentBuckets.entries()) {
+    if (ids.length === 0) continue;
+    for (let i = 0; i < ids.length; i += BATCH_SIZE) {
+      const chunk = ids.slice(i, i + BATCH_SIZE);
+      await db
+        .update(agLeads)
+        .set({
+          assignedCallerId: callerId,
+          status: "Pending",
+          updatedAt: new Date(),
+        })
+        .where(inArray(agLeads.leadId, chunk));
+    }
+  }
+
+  return {
+    distributed: interleavedLeadIds.length,
+    parentsDistributed: parentsLeads.length,
+    donorsDistributed: donorLeads.length,
+    callersCount: K,
+    perCaller,
+  };
+}
+
+export async function distributeUnassignedLeads(mode: "balanced" | "round_robin" = "balanced") {
+  return distributeDualStreamBalanced({ unassignedOnly: true, mode });
 }
 
 /**
@@ -1333,28 +1460,7 @@ export async function distributeUnassignedLeads(mode: "balanced" | "round_robin"
  * Distributes evenly so each caller receives an exact equal share without double-counting.
  */
 export async function distributeAllPendingLeads(mode: "balanced" | "round_robin" = "balanced") {
-  const now = new Date();
-  const curDay = now.getDate();
-  const curMonth = now.getMonth() + 1;
-
-  const pendingLeads = await db
-    .select({ leadId: agLeads.leadId })
-    .from(agLeads)
-    .where(or(isNull(agLeads.assignedCallerId), eq(agLeads.status, "Pending")))
-    .orderBy(
-      sql`case when ${agLeads.dobMonth} = ${curMonth} and ${agLeads.dobDay} = ${curDay} then 0 else 1 end`,
-      sql`case when ${agLeads.dobMonth} = ${curMonth} and ${agLeads.dobDay} = ${curDay + 1} then 0 else 1 end`,
-      agLeads.dobMonth,
-      agLeads.dobDay,
-      desc(agLeads.leadId)
-    );
-
-  if (pendingLeads.length === 0) {
-    return { distributed: 0, perCaller: {} };
-  }
-
-  const ids = pendingLeads.map((l) => l.leadId);
-  return distributeSpecificLeads(ids, mode, true);
+  return distributeDualStreamBalanced({ unassignedOnly: false, mode });
 }
 
 /**
