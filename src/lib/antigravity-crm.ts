@@ -138,6 +138,7 @@ export async function ensureTelecallersAndSeedData(forceCheck = false) {
       { id: "TC13", name: "Aishwarya Shenoy", phone: "9845011013", email: "tc13@janaseva.org" },
       { id: "TC14", name: "Raghavendra Joshi", phone: "9845011014", email: "tc14@janaseva.org" },
       { id: "TC15", name: "Meenakshi Iyengar", phone: "9845011015", email: "tc15@janaseva.org" },
+      { id: "ADMIN", name: "Ashrama Admin / Supervisor", phone: "9980359595", email: "admin@janaseva.org" },
     ];
 
     for (const c of callersData) {
@@ -429,14 +430,19 @@ export async function logCallDisposition(
   notes?: string,
   callbackTime?: string | null
 ) {
-  // Insert call history log
-  await db.insert(agCallLogs).values({
-    leadId,
-    callerId,
-    disposition,
-    notes: notes || null,
-    callbackTime: callbackTime ? new Date(callbackTime) : null,
-  });
+  // Insert call history log safely without blocking lead status updates
+  try {
+    await db.insert(agCallLogs).values({
+      leadId,
+      callerId,
+      disposition,
+      notes: notes || null,
+      callbackTime: callbackTime ? new Date(callbackTime) : null,
+    });
+  } catch (logErr) {
+    console.error(`[CRM] Failed to insert agCallLogs for lead ${leadId}, caller ${callerId}:`, logErr);
+    // Continue: Lead update must always succeed
+  }
 
   let validationStatus = "UNVERIFIED";
   if (disposition === "Donated") {
@@ -502,7 +508,7 @@ export async function generateWhatsAppLink(
   const siteUrl = baseUrl || process.env.NEXT_PUBLIC_SITE_URL || "https://www.janasevaorphanage.org";
 
   const settings = await getCrmWhatsAppSettings();
-  const effectiveSenderMode = options?.senderMode || settings.senderMode || "central";
+  const effectiveSenderMode = options?.senderMode || "individual";
 
   const generated = generateAntiBanMessage({
     leadId: lead.leadId,
@@ -518,6 +524,8 @@ export async function generateWhatsAppLink(
     mediaId: options?.mediaId || "annadana_feast",
     amount: options?.amount,
     baseUrl: siteUrl,
+    mode: "concise",
+    senderMode: effectiveSenderMode,
   });
 
   const masterClean = settings.masterWhatsAppNumber.replace(/\D/g, "");

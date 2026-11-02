@@ -574,7 +574,7 @@ export const agCallLogs = pgTable(
   {
     logId: serial("log_id").primaryKey(),
     leadId: integer("lead_id").notNull().references(() => agLeads.leadId, { onDelete: "cascade" }),
-    callerId: text("caller_id").notNull().references(() => agTelecallers.callerId, { onDelete: "cascade" }),
+    callerId: text("caller_id").notNull(),
     disposition: text("disposition").notNull(), // Interested | Rejected | Reschedule | No_Answer | Wrong_Number
     callbackTime: timestamp("callback_time"),
     notes: text("notes"),

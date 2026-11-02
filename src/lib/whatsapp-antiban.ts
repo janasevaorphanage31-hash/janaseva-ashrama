@@ -222,7 +222,7 @@ export function generateAntiBanMessage(options: AntiBanGenerateOptions): AntiBan
     angle = "annadana",
     baseUrl = SITE.url,
     masterWhatsAppNumber = SITE.phoneIntl,
-    senderMode = "central",
+    senderMode = "individual",
   } = options;
 
   const cleanName = (options.leadName || options.donorName || "Noble Supporter").trim();

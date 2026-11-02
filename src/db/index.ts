@@ -235,12 +235,19 @@ export async function ensureDbSchema(): Promise<void> {
           CREATE TABLE IF NOT EXISTS ag_call_logs (
             log_id SERIAL PRIMARY KEY,
             lead_id INTEGER NOT NULL REFERENCES ag_leads(lead_id) ON DELETE CASCADE,
-            caller_id TEXT NOT NULL REFERENCES ag_telecallers(caller_id) ON DELETE CASCADE,
+            caller_id TEXT NOT NULL,
             disposition TEXT NOT NULL,
             callback_time TIMESTAMP,
             notes TEXT,
             created_at TIMESTAMP NOT NULL DEFAULT NOW()
           );
+
+          ALTER TABLE ag_call_logs DROP CONSTRAINT IF EXISTS ag_call_logs_caller_id_fkey;
+          ALTER TABLE ag_call_logs DROP CONSTRAINT IF EXISTS ag_call_logs_caller_id_ag_telecallers_caller_id_fk;
+
+          INSERT INTO ag_telecallers (caller_id, name, whatsapp_number, email, password_hash, daily_quota, is_active)
+          VALUES ('ADMIN', 'Ashrama Admin', '9980359595', 'admin@janasevaashrama.org', 'ADMIN', 100, true)
+          ON CONFLICT (caller_id) DO NOTHING;
 
           CREATE TABLE IF NOT EXISTS ag_donations (
             txn_id TEXT PRIMARY KEY,
