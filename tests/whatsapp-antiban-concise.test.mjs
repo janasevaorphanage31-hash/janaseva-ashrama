@@ -110,3 +110,33 @@ test("Anti-Ban Concise Engine: Direct Donor Stream generates concise message wit
   const urlMatches = result.text.match(/https?:\/\/[^\s]+/g) || [];
   assert.equal(urlMatches.length, 1, "Must contain exactly 1 tracked URL");
 });
+
+test("Anti-Ban Concise Engine: Pure Kannada (ಕನ್ನಡ) script generation for Parents Stream", () => {
+  const pName = "ರಾಮೇಶ್ವರ್ ಗೌಡ";
+  const cName = "ಆರವ್";
+  const portalUrl = "https://janasevaashrama.org/give?ref=TC-15&lead_id=55&amount=1500";
+
+  const lines = [
+    `ನಮಸ್ಕಾರ ${pName} ನವರೇ! 🙏`,
+    "",
+    `ಜನಸೇವಾ ಆಶ್ರಮದ (ತುರಹಳ್ಳಿ) 25 ಮುಗ್ಧ ಮಕ್ಕಳ ಪರವಾಗಿ ಮುದ್ದು ಕಂದ *${cName}* ಅವರಿಗೆ ಮುಂಚಿತ ಹುಟ್ಟುಹಬ್ಬದ ಹಾರ್ದಿಕ ಶುಭಾಶಯಗಳು! 🎂✨`,
+    "",
+    `ಮಗುವಿನ ಹುಟ್ಟುಹಬ್ಬದ ಸವಿ ನೆನಪಿನಲ್ಲಿ 25 ಬಾಲಕರಿಗೆ ಸಾತ್ವಿಕ ಅನ್ನದಾನ ಸೇವೆ ಮಾಡಿಸಿ ಮಕ್ಕಳ ಮುಗ್ಧ ಆಶೀರ್ವಾದ ಪಡೆಯಿರಿ. 🍲`,
+    "",
+    `👉 [ 📲 1-ಟ್ಯಾಪ್ ದೇಣಿಗೆ & 80G ರಸೀದಿ ]`,
+    portalUrl,
+    "",
+    `💳 Axis Bank UPI: MAB.037349050110044@axisbank`,
+    `🏛️ ಜನಸೇವಾ ಆಶ್ರಮ (JJ Act KA18CH0242 · 80G ಮಾನ್ಯತೆ)`,
+    "",
+    `ಶ್ರೀ ದೇವರು ಮುದ್ದು ಕಂದ ${cName} ಮತ್ತು ನಿಮ್ಮ ಕುಟುಂಬಕ್ಕೆ ಸಕಲ ಆಯುರಾರೋಗ್ಯ ಕರುಣಿಸಲಿ! 🙏✨`,
+  ];
+
+  const text = lines.join("\n");
+  assert.ok(text.length < 600, `Kannada message length ${text.length} exceeds 600 chars`);
+  assert.ok(text.includes("ರಾಮೇಶ್ವರ್ ಗೌಡ"));
+  assert.ok(text.includes("ಆರವ್"));
+  assert.ok(text.includes("ಹುಟ್ಟುಹಬ್ಬದ"));
+  assert.ok(text.includes("MAB.037349050110044@axisbank"));
+  assert.ok(text.includes(portalUrl));
+});

@@ -79,6 +79,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
   const [currentlyDialedLeadId, setCurrentlyDialedLeadId] = useState<number | null>(null);
   const [sessionContactedIds, setSessionContactedIds] = useState<Set<number>>(() => new Set());
   const [selectedSevaAmount, setSelectedSevaAmount] = useState<number>(1500);
+  const [preferredLanguage, setPreferredLanguage] = useState<"kanglish" | "kn" | "en">("kanglish");
 
   // Audio chime using Web Audio API (0 dependencies)
   const playCelebrationChime = () => {
@@ -624,7 +625,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
       phone: lead.phone,
       callerId: callerProfile.callerId,
       callerName: callerProfile.name,
-      language: "kanglish",
+      language: preferredLanguage,
       amount,
       mode: "concise",
       baseUrl: siteOrigin,
@@ -2263,6 +2264,51 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                       </div>
                     </div>
 
+                    {/* ── 1-TAP OUTREACH LANGUAGE SELECTOR (KANGLISH / KANNADA / ENGLISH) ── */}
+                    <div className="rounded-2xl bg-cream/70 border border-teal-900/15 p-2.5 flex items-center justify-between flex-wrap gap-2">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-sm">🌐</span>
+                        <span className="text-[11px] font-black uppercase text-teal-950 tracking-wider">
+                          ಸಂದೇಶ ಭಾಷೆ (Language):
+                        </span>
+                      </div>
+                      <div className="inline-flex rounded-xl bg-white p-0.5 border border-teal-900/15 shadow-2xs">
+                        <button
+                          type="button"
+                          onClick={() => setPreferredLanguage("kanglish")}
+                          className={`rounded-lg px-2.5 py-1 text-xs font-bold transition cursor-pointer ${
+                            preferredLanguage === "kanglish"
+                              ? "bg-teal-950 text-white shadow-2xs font-black ring-1 ring-teal-950"
+                              : "text-teal-950/70 hover:text-teal-950"
+                          }`}
+                        >
+                          🔤 Kanglish
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPreferredLanguage("kn")}
+                          className={`rounded-lg px-2.5 py-1 text-xs font-bold transition cursor-pointer ${
+                            preferredLanguage === "kn"
+                              ? "bg-teal-950 text-gold shadow-2xs font-black ring-2 ring-amber-400"
+                              : "text-teal-950/70 hover:text-teal-950"
+                          }`}
+                        >
+                          🇮🇳 ಕನ್ನಡ (Kannada)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPreferredLanguage("en")}
+                          className={`rounded-lg px-2.5 py-1 text-xs font-bold transition cursor-pointer ${
+                            preferredLanguage === "en"
+                              ? "bg-teal-950 text-white shadow-2xs font-black ring-1 ring-teal-950"
+                              : "text-teal-950/70 hover:text-teal-950"
+                          }`}
+                        >
+                          🇬🇧 English
+                        </button>
+                      </div>
+                    </div>
+
                     {/* ── 1-TAP SEVA TIER SELECTOR PILLS ── */}
                     <div className="rounded-2xl bg-sand/40 border border-teal-900/15 p-3 space-y-2">
                       <div className="flex items-center justify-between">
@@ -2797,6 +2843,8 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
           callerId={callerProfile.callerId}
           callerName={callerProfile.name}
           callerWhatsAppNumber={callerProfile.whatsappNumber}
+          initialSenderMode="individual"
+          initialLanguage={preferredLanguage}
           onDispositionLogged={(leadId, disp) => {
             handleDispositionLoggedFromModal(leadId, disp);
           }}
