@@ -15,6 +15,19 @@ interface CallerProfile {
   dailyQuota?: number;
 }
 
+export const cleanChildName = (lead: { childName?: string | null; name?: string | null }) => {
+  if (lead.childName && lead.childName.trim() && lead.childName.trim().toLowerCase() !== "child") {
+    return lead.childName.trim();
+  }
+  if (lead.name && lead.name.trim()) {
+    const stripped = lead.name.replace(/\s*\((Child|Parent|Student)\)$/i, "").trim();
+    if (stripped && stripped.toLowerCase() !== "child") {
+      return stripped;
+    }
+  }
+  return "Child";
+};
+
 export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string }) {
   // Session & Auth state
   const [authChecking, setAuthChecking] = useState(true);
@@ -614,13 +627,16 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
     const amount = customAmount || selectedSevaAmount || 1500;
     const siteOrigin = typeof window !== "undefined" ? window.location.origin : "https://janasevaashrama.org";
 
+    const isParent = lead.stream === "PARENTS" || Boolean(lead.parentName || lead.childName);
+    const resolvedChild = cleanChildName(lead);
+
     const antiBanResult = generateAntiBanMessage({
       leadId: lead.leadId,
-      leadName: lead.name,
-      donorName: lead.name,
+      leadName: isParent ? resolvedChild : lead.name,
+      donorName: isParent ? (lead.parentName || resolvedChild) : lead.name,
       parentName: lead.parentName || lead.name,
-      childName: lead.childName,
-      stream: lead.stream,
+      childName: isParent ? resolvedChild : undefined,
+      stream: isParent ? "PARENTS" : lead.stream,
       phone: lead.phone,
       callerId: callerProfile.callerId,
       callerName: callerProfile.name,
@@ -1900,7 +1916,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                   const isDialed = sessionContactedIds.has(lead.leadId);
                   const isAttended = lead.status && lead.status !== "Pending";
                   const phoneInfo = parseCustomerPhone(lead.phone);
-                  const isParent = lead.stream === "PARENTS";
+                  const isParent = lead.stream === "PARENTS" || Boolean(lead.parentName || lead.childName);
 
                   return (
                     <div
@@ -1930,7 +1946,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                             #{idx + 1}
                           </span>
                           <span className="font-display font-black text-xs sm:text-sm text-teal-950 truncate">
-                            {lead.name}
+                            {isParent ? `👶 ${cleanChildName(lead)}` : lead.name}
                           </span>
                         </div>
 
@@ -1967,8 +1983,10 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                       {/* Middle Row: Stream pill, Birthday info & Phone */}
                       <div className="flex items-center gap-2 mt-1.5 text-[11px] text-teal-950/70 flex-wrap">
                         {isParent ? (
-                          <span className="text-[9px] font-bold bg-indigo-100 text-indigo-900 px-1.5 py-0.2 rounded">
-                            👶 {lead.parentName || "Parent"}
+                          <span className="text-[9px] font-bold bg-indigo-100 text-indigo-900 px-1.5 py-0.2 rounded flex items-center gap-1">
+                            <span>👶</span>
+                            <span>ಮಗು: <strong>{cleanChildName(lead)}</strong></span>
+                            {lead.parentName && <span className="opacity-75 font-normal">({lead.parentName})</span>}
                           </span>
                         ) : (
                           <span className="text-[9px] font-bold bg-teal-100 text-teal-900 px-1.5 py-0.2 rounded">
@@ -2124,7 +2142,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                 const tomorrowMonth = tomorrow.getMonth() + 1;
                 const isTodayBirthday = currentFocusLead.dobDay === curDay && currentFocusLead.dobMonth === curMonth;
                 const isTomorrowBirthday = currentFocusLead.dobDay === tomorrowDay && currentFocusLead.dobMonth === tomorrowMonth;
-                const isParentLead = currentFocusLead.stream === "PARENTS";
+                const isParentLead = currentFocusLead.stream === "PARENTS" || Boolean(currentFocusLead.parentName || currentFocusLead.childName);
                 const phoneInfo = parseCustomerPhone(currentFocusLead.phone);
 
                 return (
@@ -2144,7 +2162,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                         {isParentLead ? (
                           <span className="rounded-full bg-indigo-950 text-amber-300 px-3 py-1 text-xs font-black uppercase shadow-xs flex items-center gap-1">
                             <span>👶</span>
-                            <span>1. Parents Sheet (Child Birthday)</span>
+                            <span>1. Parents Sheet (ಮಗು: {cleanChildName(currentFocusLead)})</span>
                           </span>
                         ) : (
                           <span className="rounded-full bg-teal-950 text-emerald-300 px-3 py-1 text-xs font-black uppercase shadow-xs flex items-center gap-1">
@@ -2259,9 +2277,9 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                               <span className="text-xs font-mono text-teal-950/50">#{currentFocusLead.leadId}</span>
                             </div>
                             <div className="flex items-baseline gap-2">
-                              <span className="text-xs font-bold text-teal-950/70">ಮಗುವಿನ ಹೆಸರು (Child):</span>
+                              <span className="text-xs font-bold text-teal-950/70">ಮಗುವಿನ ಹೆಸರು (Child / Student):</span>
                               <h2 className="font-display text-xl sm:text-2xl font-black text-indigo-950">
-                                {currentFocusLead.childName || currentFocusLead.name}
+                                {cleanChildName(currentFocusLead)}
                               </h2>
                             </div>
                             <div className="flex items-center gap-2.5 text-xs text-teal-950/80 flex-wrap pt-0.5">
@@ -2415,7 +2433,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                         <span className="text-2xl">💬</span>
                         <div className="text-left">
                           <span className="block leading-tight font-black">
-                            {isParentLead ? `ಮಗುವಿನ ಶುಭಾಶಯ ಸಂದೇಶ (₹${formatINR(selectedSevaAmount)})` : `WhatsApp ಸಂದೇಶ (₹${formatINR(selectedSevaAmount)})`}
+                            {isParentLead ? `👶 ಶುಭಾಶಯ ಸಂದೇಶ (${cleanChildName(currentFocusLead)})` : `WhatsApp ಸಂದೇಶ (₹${formatINR(selectedSevaAmount)})`}
                           </span>
                           <span className="block text-[11px] text-white/90">Send Seva Details &amp; Pay Link</span>
                         </div>

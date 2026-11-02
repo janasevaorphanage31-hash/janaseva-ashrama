@@ -269,7 +269,7 @@ export function generateAntiBanMessage(options: AntiBanGenerateOptions): AntiBan
     greeting = `${pick(timeGreetingKanglish)} ${cleanName} Sir/Madam! 🙏`;
 
     if (options.stream === "PARENTS" || options.childName) {
-      const cName = options.childName || "nimma muddu magu";
+      const cName = (options.childName && options.childName.trim().toLowerCase() !== "child") ? options.childName.trim() : "nimma muddu magu";
       intro = `Janaseva Ashrama (Turahalli, Bengaluru) da 25 makkala tharaphinda nimma muddu magu *${cName}* ge munjaneya Janmadinada Shubhashayagalu! 🎂✨ Makkalinda hrudayapurvaka prarthanegalu.`;
       if (angle === "birthday" || angle === "annadana") {
         body = `Nimma magu *${cName}* na janmadinada shubha sandarbhadalli namma 25 anatha baalakarige nithya satvik baale ele oota / annadana prayojisi ashervada thagoli. Nimma chikka sahaya namma makkala mukhagalalli nagemugulu moodisuththe.`;
@@ -331,7 +331,7 @@ export function generateAntiBanMessage(options: AntiBanGenerateOptions): AntiBan
     greeting = `${pick(timeGreetingKn)} ${cleanName} ನವರೇ! 🙏`;
 
     if (options.stream === "PARENTS" || options.childName) {
-      const cName = options.childName || "ನಿಮ್ಮ ಮುದ್ದು ಕಂದ";
+      const cName = (options.childName && options.childName.trim().toLowerCase() !== "child") ? options.childName.trim() : "ನಿಮ್ಮ ಮುದ್ದು ಕಂದ";
       intro = pick([
         `ಬೆಂಗಳೂರಿನ ಜನಸೇವಾ ಆಶ್ರಮದ (ತುರಹಳ್ಳಿ) 25 ಮುಗ್ಧ ಅನಾಥ ಮಕ್ಕಳ ಕಡೆಯಿಂದ ನಿಮ್ಮ ಮುದ್ದು ಕಂದ *${cName}* ಅವರಿಗೆ ಮುಂಚಿತ ಹುಟ್ಟುಹಬ್ಬದ ಹಾರ್ದಿಕ ಶುಭಾಶಯಗಳು! 🎂✨`,
         `ತುರಹಳ್ಳಿಯ ಜನಸೇವಾ ಆಶ್ರಮದ 25 ಬಾಲಕರ ಕಡೆಯಿಂದ ಮುದ್ದು ಕಂದ *${cName}* ರವರ ಜನ್ಮದಿನಕ್ಕೆ ಪ್ರೀತಿಯ ಮುಂಚಿತ ಶುಭಾಶಯಗಳು! 🎂🌸`,
@@ -400,7 +400,7 @@ export function generateAntiBanMessage(options: AntiBanGenerateOptions): AntiBan
     greeting = `${pick(timeGreetingEn)} ${cleanName} Ji! 🙏`;
 
     if (options.stream === "PARENTS" || options.childName) {
-      const cName = options.childName || "your child";
+      const cName = (options.childName && options.childName.trim().toLowerCase() !== "child") ? options.childName.trim() : "your child";
       intro = `Heartfelt Advance Birthday Wishes to your precious child *${cName}* from all 25 young resident boys at Janaseva Ashrama, Bangalore! 👦🎂✨`;
       if (angle === "birthday" || angle === "annadana") {
         body = `Celebrate *${cName}*'s milestone birthday in the most sacred manner—by sponsoring a fresh festive feast for 25 orphaned boys in your child's honor. The children will offer special prayers for ${cName}'s bright future, health, and happiness.`;
@@ -527,7 +527,8 @@ export function generateAntiBanMessage(options: AntiBanGenerateOptions): AntiBan
   // Concise 1-on-1 human lines (Under 380 chars, 1 URL, eliminates Report & Block triggers)
   let conciseLines: string[] = [];
   const isParent = options.stream === "PARENTS" || Boolean(options.childName);
-  const cName = (options.childName || (language === "kn" ? "ನಿಮ್ಮ ಮುದ್ದು ಕಂದ" : "nimma muddu magu")).trim();
+  const cleanChildInput = (options.childName && options.childName.trim().toLowerCase() !== "child") ? options.childName.trim() : "";
+  const cName = (cleanChildInput || (language === "kn" ? "ನಿಮ್ಮ ಮುದ್ದು ಕಂದ" : "nimma muddu magu")).trim();
 
   if (language === "kn") {
     if (isParent) {

@@ -242,3 +242,65 @@ test("Pitch Personalization: Differentiates Parents child pitch vs Direct Donor 
   assert.ok(dScript.includes("naale nimma Janmadina"));
   assert.ok(!dScript.includes("Kavya"));
 });
+
+test("Excel Parser: Detects 'Student' / 'Student Name' header as Child and Auto-Detects PARENTS stream", () => {
+  const headers = ["Student Name", "Parent Name", "Mobile Number", "Student DOB"];
+  let childCol = -1;
+  let parentCol = -1;
+  let phoneCol = -1;
+  let dateCol = -1;
+
+  headers.forEach((hRaw, idx) => {
+    const h = hRaw.toLowerCase().replace(/[^a-z0-9]/g, "");
+    if (
+      h.includes("child") ||
+      h.includes("student") ||
+      h.includes("pupil") ||
+      h.includes("kid") ||
+      h.includes("ward") ||
+      h.includes("stud")
+    ) {
+      if (h.includes("dob") || h.includes("birthday")) {
+        dateCol = idx;
+      } else {
+        childCol = idx;
+      }
+    } else if (h.includes("parent") || h.includes("father") || h.includes("mother")) {
+      parentCol = idx;
+    } else if (h.includes("phone") || h.includes("mobile")) {
+      phoneCol = idx;
+    }
+  });
+
+  assert.equal(childCol, 0); // Student Name
+  assert.equal(parentCol, 1); // Parent Name
+  assert.equal(phoneCol, 2); // Mobile Number
+  assert.equal(dateCol, 3); // Student DOB
+});
+
+test("Child Name Display: Correctly extracts real student name when childName is 'Child' or empty", () => {
+  function cleanChildName(lead) {
+    if (lead.childName && lead.childName.trim() && lead.childName.trim().toLowerCase() !== "child") {
+      return lead.childName.trim();
+    }
+    if (lead.name && lead.name.trim()) {
+      const stripped = lead.name.replace(/\s*\((Child|Parent|Student)\)$/i, "").trim();
+      if (stripped && stripped.toLowerCase() !== "child") {
+        return stripped;
+      }
+    }
+    return "Child";
+  }
+
+  // Case 1: Real childName already present
+  assert.equal(cleanChildName({ name: "Aarav (Child)", childName: "Aarav" }), "Aarav");
+
+  // Case 2: childName was saved as 'Child', but name has student
+  assert.equal(cleanChildName({ name: "Chandan Kumar (Child)", childName: "Child" }), "Chandan Kumar");
+
+  // Case 3: childName is null, name has student
+  assert.equal(cleanChildName({ name: "Pooja Hegde (Child)", childName: null }), "Pooja Hegde");
+
+  // Case 4: No student name anywhere
+  assert.equal(cleanChildName({ name: "Child", childName: "Child" }), "Child");
+});

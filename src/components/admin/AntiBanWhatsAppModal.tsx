@@ -217,13 +217,20 @@ export function AntiBanWhatsAppModal({
     const activeAmt = overrides?.amt !== undefined ? overrides.amt : suggestedAmount;
 
     // 1. INSTANT LOCAL GENERATION (0ms guarantee, zero blank messages)
+    const isParent = lead.stream === "PARENTS" || Boolean(lead.parentName || lead.childName);
+    const effectiveChild = (
+      lead.childName && lead.childName.trim().toLowerCase() !== "child"
+        ? lead.childName.trim()
+        : lead.name.replace(/\s*\((Child|Parent|Student)\)$/i, "").trim() || "Child"
+    );
+
     const local = generateAntiBanMessage({
       leadId: lead.leadId,
-      leadName: lead.stream === "PARENTS" ? (lead.parentName || lead.name) : lead.name,
-      donorName: lead.stream === "PARENTS" ? (lead.parentName || lead.name) : lead.name,
+      leadName: isParent ? effectiveChild : lead.name,
+      donorName: isParent ? (lead.parentName || effectiveChild) : lead.name,
       parentName: lead.parentName || lead.name,
-      childName: lead.childName || undefined,
-      stream: (lead.stream as any) || undefined,
+      childName: isParent ? effectiveChild : undefined,
+      stream: isParent ? "PARENTS" : ((lead.stream as any) || undefined),
       callerId,
       callerName: callerName || "Janaseva Ashrama Volunteer",
       language: activeLang,
@@ -293,7 +300,7 @@ export function AntiBanWhatsAppModal({
     if (isOpen && lead) {
       // Smart Auto-Select Template
       let defaultTmplId = "birthday_wishes";
-      if (lead.stream === "PARENTS" || lead.childName) {
+      if (lead.stream === "PARENTS" || lead.childName || lead.parentName) {
         defaultTmplId = "child_blessing";
       } else if (lead.dobDay && lead.dobMonth) {
         defaultTmplId = "birthday_wishes";
@@ -723,6 +730,12 @@ export function AntiBanWhatsAppModal({
   const displayPhone = phoneInfo.display;
   const mediaList = Object.values(CURATED_OUTREACH_MEDIA);
 
+  const isParentLead = lead.stream === "PARENTS" || Boolean(lead.parentName || lead.childName);
+  const effectiveChildName =
+    lead.childName && lead.childName.trim().toLowerCase() !== "child"
+      ? lead.childName.trim()
+      : lead.name.replace(/\s*\((Child|Parent|Student)\)$/i, "").trim() || "Child";
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/75 backdrop-blur-xs overflow-y-auto"
@@ -769,7 +782,9 @@ export function AntiBanWhatsAppModal({
               {lead.name[0]?.toUpperCase() || "L"}
             </div>
             <div className="min-w-0 flex items-center gap-1.5 flex-wrap">
-              <span className="font-bold text-teal-950 text-xs sm:text-sm truncate">{lead.name}</span>
+              <span className="font-bold text-teal-950 text-xs sm:text-sm truncate">
+                {isParentLead ? `👶 ${effectiveChildName}` : lead.name}
+              </span>
               <span className="font-mono text-teal-950/70 bg-white px-1.5 py-0.2 rounded border border-teal-900/10 text-[11px]">
                 {displayPhone}
               </span>
@@ -778,16 +793,22 @@ export function AntiBanWhatsAppModal({
                   🎂 {lead.dobDay} {MONTH_NAMES[lead.dobMonth - 1]}
                 </span>
               )}
-              {lead.childName && (
-                <span className="rounded-full bg-teal-100 text-teal-900 px-2 py-0.2 font-bold text-[10px] shrink-0">
-                  👶 Child: {lead.childName}
+              {isParentLead && (
+                <span className="rounded-full bg-indigo-100 text-indigo-900 px-2 py-0.2 font-bold text-[10px] shrink-0 flex items-center gap-1">
+                  <span>👶 ಮಗು:</span>
+                  <strong>{effectiveChildName}</strong>
+                </span>
+              )}
+              {isParentLead && lead.parentName && (
+                <span className="rounded-full bg-purple-100 text-purple-900 px-2 py-0.2 font-bold text-[10px] shrink-0">
+                  👨‍👩‍👧 ಪೋಷಕರು: {lead.parentName}
                 </span>
               )}
               {lead.stream && (
                 <span className={`rounded-full px-2 py-0.2 font-bold text-[10px] shrink-0 ${
-                  lead.stream === "PARENTS" ? "bg-indigo-100 text-indigo-900" : "bg-blue-100 text-blue-900"
+                  isParentLead ? "bg-indigo-950 text-amber-300" : "bg-blue-100 text-blue-900"
                 }`}>
-                  {lead.stream === "PARENTS" ? "Parents Stream" : "Direct Donor"}
+                  {isParentLead ? "Parents Sheet" : "Direct Donor"}
                 </span>
               )}
               {lead.status && lead.status !== "Pending" ? (

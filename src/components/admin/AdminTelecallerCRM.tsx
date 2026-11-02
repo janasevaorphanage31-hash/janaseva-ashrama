@@ -526,9 +526,29 @@ export function AdminTelecallerCRM() {
         const raw = String(cellVal || "").toLowerCase().trim();
         const h = raw.replace(/[^a-z0-9]/g, "");
 
-        if (h.includes("child") || h.includes("kid") || h.includes("baby") || h.includes("son") || h.includes("daughter")) {
+        if (
+          h.includes("child") ||
+          h.includes("student") ||
+          h.includes("pupil") ||
+          h.includes("kid") ||
+          h.includes("baby") ||
+          h.includes("son") ||
+          h.includes("daughter") ||
+          h.includes("ward") ||
+          h.includes("makkal") ||
+          h.includes("magu") ||
+          h.includes("vidyarth") ||
+          h.includes("studname") ||
+          h.includes("stdname")
+        ) {
           tempChildCol = colIdx;
-        } else if (h.includes("parent") || h.includes("father") || h.includes("mother") || h.includes("guardian")) {
+        } else if (
+          h.includes("parent") ||
+          h.includes("father") ||
+          h.includes("mother") ||
+          h.includes("guardian") ||
+          h.includes("poshak")
+        ) {
           tempParentCol = colIdx;
         } else if (h.includes("name") || h.includes("donor") || h.includes("person") || h.includes("contactname") || h.includes("leadname")) {
           if (!h.includes("id")) tempNameCol = colIdx;
@@ -686,12 +706,37 @@ export function AdminTelecallerCRM() {
         }
       }
 
-      const activeStream = streamOverride || uploadStream;
-      const isParentsStream = activeStream === "PARENTS";
-      const finalParentName = isParentsStream ? (leadParentName || leadName || "Parent") : undefined;
-      const finalChildName = isParentsStream ? (leadChildName || "Child") : undefined;
+      // Auto-detect parents stream if child/student or parent column is found, or if uploadStream is PARENTS
+      const hasParentOrChildCol = childCol !== -1 || parentCol !== -1;
+      const isParentsStream = streamOverride === "PARENTS" || uploadStream === "PARENTS" || hasParentOrChildCol;
+      const activeStream: "PARENTS" | "DIRECT_DONOR" = isParentsStream ? "PARENTS" : "DIRECT_DONOR";
+
+      // Smart resolution of student/child name and parent name
+      let resolvedChild = leadChildName ? leadChildName.replace(/\s*\((Child|Parent|Student)\)$/i, "").trim() : "";
+      let resolvedParent = leadParentName ? leadParentName.replace(/\s*\((Child|Parent|Student)\)$/i, "").trim() : "";
+
+      if (isParentsStream) {
+        if (!resolvedChild && leadName && leadParentName) {
+          // If we have leadName and a distinct leadParentName, leadName is the student/child!
+          resolvedChild = leadName.replace(/\s*\((Child|Parent|Student)\)$/i, "").trim();
+        } else if (!resolvedChild && leadName && !leadParentName) {
+          // If only leadName is present in parents stream, it represents the student/child!
+          resolvedChild = leadName.replace(/\s*\((Child|Parent|Student)\)$/i, "").trim();
+          resolvedParent = "Parent";
+        } else if (resolvedChild && !resolvedParent && leadName && leadName !== resolvedChild) {
+          resolvedParent = leadName;
+        }
+      }
+
+      const finalChildName = isParentsStream
+        ? (resolvedChild && resolvedChild.toLowerCase() !== "child" ? resolvedChild : (leadName ? leadName.replace(/\s*\((Child|Parent|Student)\)$/i, "").trim() : undefined))
+        : undefined;
+      const finalParentName = isParentsStream
+        ? (resolvedParent && resolvedParent.toLowerCase() !== "parent" ? resolvedParent : (leadName && leadName !== finalChildName ? leadName : "Parent"))
+        : undefined;
+
       const finalDisplayName = isParentsStream
-        ? (finalChildName ? `${finalChildName} (Child)` : "Child")
+        ? (finalChildName ? `${finalChildName} (Child)` : (leadName || "Child"))
         : (leadName || `Well-wisher (${leadPhone.slice(-4)})`);
 
       if (leadPhone.length === 10) {
@@ -2400,11 +2445,19 @@ export function AdminTelecallerCRM() {
                         </span>
                       </td>
                       <td className="p-3 font-bold text-teal-950">
-                        <div>{lead.stream === "PARENTS" && lead.parentName ? lead.parentName : lead.name}</div>
-                        {lead.stream === "PARENTS" && lead.childName && (
-                          <div className="text-[10px] font-normal text-teal-950/65">
-                            Child: <span className="font-semibold text-teal-900">{lead.childName}</span>
+                        {lead.stream === "PARENTS" ? (
+                          <div>
+                            <div className="text-sm font-black text-indigo-950 flex items-center gap-1">
+                              <span>👶</span>
+                              <span>{lead.childName && lead.childName !== "Child" ? lead.childName : lead.name.replace(/\s*\(Child\)$/i, "")}</span>
+                              <span className="text-[10px] font-normal text-indigo-700 bg-indigo-50 px-1.5 py-0.2 rounded border border-indigo-200">Child</span>
+                            </div>
+                            <div className="text-[11px] font-normal text-teal-950/70 mt-0.5">
+                              Parent: <strong>{lead.parentName || "Parent"}</strong>
+                            </div>
                           </div>
+                        ) : (
+                          <div>{lead.name}</div>
                         )}
                         {lead.lifetimeDonations && lead.lifetimeDonations > 0 ? (
                           <div className="text-[10px] font-black text-emerald-700">
@@ -2506,13 +2559,20 @@ export function AdminTelecallerCRM() {
                             </span>
                           ) : null}
                         </div>
-                        <h4 className="font-bold text-teal-950 text-sm truncate">
-                          {lead.stream === "PARENTS" && lead.parentName ? lead.parentName : lead.name}
-                        </h4>
-                        {lead.stream === "PARENTS" && lead.childName && (
-                          <p className="text-[10px] text-teal-950/65 font-medium truncate">
-                            Child: <span className="font-bold text-teal-900">{lead.childName}</span>
-                          </p>
+                        {lead.stream === "PARENTS" ? (
+                          <div>
+                            <h4 className="font-black text-indigo-950 text-sm truncate flex items-center gap-1">
+                              <span>👶</span>
+                              <span>{lead.childName && lead.childName !== "Child" ? lead.childName : lead.name.replace(/\s*\(Child\)$/i, "")}</span>
+                            </h4>
+                            <p className="text-[11px] text-teal-950/70 font-medium truncate">
+                              Parent: <strong>{lead.parentName || "Parent"}</strong>
+                            </p>
+                          </div>
+                        ) : (
+                          <h4 className="font-bold text-teal-950 text-sm truncate">
+                            {lead.name}
+                          </h4>
                         )}
                         <div className="flex items-center gap-2 text-xs mt-0.5">
                           <span className="font-mono text-teal-950/70">{lead.phone}</span>

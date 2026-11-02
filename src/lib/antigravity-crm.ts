@@ -379,21 +379,41 @@ export async function getAssignedLeads(callerId?: string | null, limit = 10000, 
     updatedAt: agLeads.updatedAt,
   };
 
-  if (!cid || cid === "ALL") {
-    return db
-      .select(selectFields)
-      .from(agLeads)
-      .orderBy(...orderClauses)
-      .limit(limit)
-      .offset(offset);
-  }
-  return db
-    .select(selectFields)
-    .from(agLeads)
-    .where(eq(agLeads.assignedCallerId, cid))
-    .orderBy(...orderClauses)
-    .limit(limit)
-    .offset(offset);
+  const rawLeads = (!cid || cid === "ALL")
+    ? await db
+        .select(selectFields)
+        .from(agLeads)
+        .orderBy(...orderClauses)
+        .limit(limit)
+        .offset(offset)
+    : await db
+        .select(selectFields)
+        .from(agLeads)
+        .where(eq(agLeads.assignedCallerId, cid))
+        .orderBy(...orderClauses)
+        .limit(limit)
+        .offset(offset);
+
+  // Auto-resolve childName and stream for existing leads where child_name was saved as 'Child' or NULL
+  return rawLeads.map((l) => {
+    const isParent = l.stream === "PARENTS" || Boolean(l.parentName || l.childName);
+    let childName = l.childName?.trim() || null;
+
+    if (isParent) {
+      if (!childName || childName.toLowerCase() === "child") {
+        const rawName = (l.name || "").replace(/\s*\((Child|Parent|Student)\)$/i, "").trim();
+        if (rawName && rawName.toLowerCase() !== "child") {
+          childName = rawName;
+        }
+      }
+    }
+
+    return {
+      ...l,
+      stream: isParent ? "PARENTS" : l.stream,
+      childName,
+    };
+  });
 }
 
 /**
@@ -1174,8 +1194,28 @@ export async function uploadBulkLeads(
 
     const isParent = item.stream === "PARENTS" || Boolean(item.parentName || item.childName);
     const stream = isParent ? "PARENTS" : "DIRECT_DONOR";
-    const parentName = isParent ? (item.parentName?.trim() || item.name?.trim() || "Parent") : null;
-    const childName = isParent ? (item.childName?.trim() || "Child") : null;
+
+    let childCandidate = (item.childName || "").trim().replace(/\s*\((Child|Parent|Student)\)$/i, "");
+    let parentCandidate = (item.parentName || "").trim().replace(/\s*\((Child|Parent|Student)\)$/i, "");
+    const nameCandidate = (item.name || "").trim().replace(/\s*\((Child|Parent|Student)\)$/i, "");
+
+    if (isParent) {
+      if (!childCandidate || childCandidate.toLowerCase() === "child") {
+        if (nameCandidate && nameCandidate.toLowerCase() !== "child" && nameCandidate !== parentCandidate) {
+          childCandidate = nameCandidate;
+        }
+      }
+      if (!parentCandidate || parentCandidate.toLowerCase() === "parent") {
+        if (item.parentName) {
+          parentCandidate = item.parentName.trim();
+        } else {
+          parentCandidate = "Parent";
+        }
+      }
+    }
+
+    const childName = isParent ? (childCandidate || "Child") : null;
+    const parentName = isParent ? (parentCandidate || "Parent") : null;
     const displayName = isParent
       ? (childName ? `${childName} (Child)` : "Child")
       : (item.name?.trim() || "Well-wisher");
