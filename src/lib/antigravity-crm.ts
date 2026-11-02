@@ -455,12 +455,17 @@ export async function logCallDisposition(
   await ensureDbSchema();
   // Insert call history log safely without blocking lead status updates
   try {
+    const validCallbackDate =
+      callbackTime && !isNaN(new Date(callbackTime).getTime())
+        ? new Date(callbackTime)
+        : null;
+
     await db.insert(agCallLogs).values({
       leadId,
       callerId,
       disposition,
-      notes: notes || null,
-      callbackTime: callbackTime ? new Date(callbackTime) : null,
+      notes: notes?.trim() || null,
+      callbackTime: validCallbackDate,
     });
   } catch (logErr) {
     console.error(`[CRM] Failed to insert agCallLogs for lead ${leadId}, caller ${callerId}:`, logErr);

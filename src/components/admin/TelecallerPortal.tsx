@@ -975,7 +975,8 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
       const isDone = l.status && l.status !== "Pending";
       if (!isDone) {
         pending++;
-        if (l.stream === "PARENTS") parents++;
+        const isParent = l.stream === "PARENTS" || Boolean(l.parentName || l.childName);
+        if (isParent) parents++;
         else donors++;
       } else {
         attended++;
@@ -1011,20 +1012,21 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
     const tomorrowDay = tomorrow.getDate();
     const tomorrowMonth = tomorrow.getMonth() + 1;
 
-    // Strict phone number deduplication across cards to eliminate repetition
+    // Strict phone number deduplication across cards to eliminate repetition within the filtered stream
     const seenPhones = new Set<string>();
 
     const base = leads.filter((l) => {
-      // 1. Strict deduplication by normalized 10-digit mobile number
+      // 1. Stream filter (Parents vs Direct Donors)
+      const isParent = l.stream === "PARENTS" || Boolean(l.parentName || l.childName);
+      if (streamFilter === "PARENTS" && !isParent) return false;
+      if (streamFilter === "DIRECT_DONOR" && isParent) return false;
+
+      // 2. Strict deduplication by normalized 10-digit mobile number
       const cleanPhone = (l.phone || "").replace(/\D/g, "").slice(-10);
       if (cleanPhone) {
         if (seenPhones.has(cleanPhone)) return false;
         seenPhones.add(cleanPhone);
       }
-
-      // 2. Stream filter (Parents vs Direct Donors)
-      if (streamFilter === "PARENTS" && l.stream !== "PARENTS") return false;
-      if (streamFilter === "DIRECT_DONOR" && l.stream === "PARENTS") return false;
 
       let matchesFilter = true;
       if (filter === "Tomorrow_Birthday") {
@@ -1135,12 +1137,14 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
 
       return a.leadId - b.leadId;
     });
-  }, [leads, filter, searchQuery, dateSortOrder, sessionContactedIds]);
+  }, [leads, filter, searchQuery, dateSortOrder, streamFilter, sessionContactedIds]);
 
-  // Reset pagination when filter, search, or date sort changes
+  // Reset pagination and active focus lead when filter, search, date sort, or stream changes
   useEffect(() => {
     setPortalPage(1);
-  }, [filter, searchQuery, dateSortOrder]);
+    setFocusIndex(0);
+    setActiveFocusLeadId(null);
+  }, [filter, searchQuery, dateSortOrder, streamFilter]);
 
   const totalPortalPages = Math.max(1, Math.ceil(filteredLeads.length / portalPageSize));
   const paginatedLeads = useMemo(() => {
@@ -1687,6 +1691,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                 onClick={() => {
                   setStreamFilter("ALL");
                   setFocusIndex(0);
+                  setActiveFocusLeadId(null);
                 }}
                 className={`px-3 py-1 rounded-xl text-xs font-black transition cursor-pointer flex items-center gap-1.5 shrink-0 ${
                   streamFilter === "ALL"
@@ -1701,6 +1706,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                 onClick={() => {
                   setStreamFilter("PARENTS");
                   setFocusIndex(0);
+                  setActiveFocusLeadId(null);
                 }}
                 className={`px-3 py-1 rounded-xl text-xs font-black transition cursor-pointer flex items-center gap-1.5 shrink-0 ${
                   streamFilter === "PARENTS"
@@ -1718,6 +1724,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                 onClick={() => {
                   setStreamFilter("DIRECT_DONOR");
                   setFocusIndex(0);
+                  setActiveFocusLeadId(null);
                 }}
                 className={`px-3 py-1 rounded-xl text-xs font-black transition cursor-pointer flex items-center gap-1.5 shrink-0 ${
                   streamFilter === "DIRECT_DONOR"
