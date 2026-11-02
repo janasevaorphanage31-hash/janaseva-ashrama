@@ -332,6 +332,47 @@ test("Child Name Display: Correctly extracts real student name and falls back po
   );
 });
 
+test("Parent Name Display: Extracts real parent name and never shows placeholder 'Parent'", () => {
+  const isPlaceholderValue = (val) => {
+    if (!val) return true;
+    const s = String(val).trim().toLowerCase();
+    return ["child", "student", "pupil", "kid", "unknown", "na", "n/a", "parent", "father", "mother", "guardian", "—", "-", ""].includes(s);
+  };
+
+  function cleanParentName(lead) {
+    const p = lead.parentName?.trim();
+    if (p && !isPlaceholderValue(p)) {
+      return p;
+    }
+    const n = lead.name?.trim() || "";
+    if (n) {
+      if (n.toLowerCase().startsWith("child (") && n.endsWith(")")) {
+        const inside = n.slice(7, -1).trim();
+        if (inside && !isPlaceholderValue(inside)) return inside;
+      }
+      if (n.toLowerCase().endsWith("(parent)")) {
+        const inside = n.slice(0, -8).trim();
+        if (inside && !isPlaceholderValue(inside)) return inside;
+      }
+      if (n.includes("(") && n.endsWith(")")) {
+        const inside = n.slice(n.indexOf("(") + 1, -1).trim();
+        if (inside && !isPlaceholderValue(inside)) return inside;
+      }
+    }
+    return "ಪೋಷಕರು (Parent)";
+  }
+
+  // Case 1: Direct parent name
+  assert.equal(cleanParentName({ parentName: "MARY T" }), "MARY T");
+
+  // Case 2: Parent extracted from lead.name
+  assert.equal(cleanParentName({ name: "Child (MAMATHA N)", parentName: null }), "MAMATHA N");
+  assert.equal(cleanParentName({ name: "Aarav (Suresh Gowda)", parentName: "Parent" }), "Suresh Gowda");
+
+  // Case 3: Absolute fallback
+  assert.equal(cleanParentName({ name: "Child", parentName: "Parent" }), "ಪೋಷಕರು (Parent)");
+});
+
 test("Excel Disambiguation: If 'Name' and 'Father Name' are present, 'Name' is auto-detected as Student", () => {
   const headers = ["Name", "Father Name", "Mobile Number", "DOB"];
   let childCol = -1;

@@ -15,7 +15,7 @@ interface CallerProfile {
   dailyQuota?: number;
 }
 
-const isPlaceholderChild = (val?: string | null) => {
+export const isPlaceholderValue = (val?: string | null) => {
   if (!val) return true;
   const s = val.trim().toLowerCase();
   return (
@@ -27,32 +27,59 @@ const isPlaceholderChild = (val?: string | null) => {
     s === "na" ||
     s === "n/a" ||
     s === "parent" ||
+    s === "father" ||
+    s === "mother" ||
+    s === "guardian" ||
     s === "—" ||
     s === "-" ||
     s === ""
   );
 };
 
-export const cleanChildName = (lead: { childName?: string | null; name?: string | null; parentName?: string | null }) => {
-  const c = lead.childName?.trim();
-  if (c && !isPlaceholderChild(c)) {
-    return c;
+export const cleanParentName = (lead: { childName?: string | null; name?: string | null; parentName?: string | null }) => {
+  const p = lead.parentName?.trim();
+  if (p && !isPlaceholderValue(p)) {
+    return p;
   }
   const n = lead.name?.trim() || "";
   if (n) {
     if (n.toLowerCase().startsWith("child (") && n.endsWith(")")) {
       const inside = n.slice(7, -1).trim();
-      if (inside && !isPlaceholderChild(inside)) {
-        return `${inside} ಅವರ ಮಗು`;
+      if (inside && !isPlaceholderValue(inside)) return inside;
+    }
+    if (n.toLowerCase().endsWith("(parent)")) {
+      const inside = n.slice(0, -8).trim();
+      if (inside && !isPlaceholderValue(inside)) return inside;
+    }
+    if (n.includes("(") && n.endsWith(")")) {
+      const inside = n.slice(n.indexOf("(") + 1, -1).trim();
+      if (inside && !isPlaceholderValue(inside)) return inside;
+    }
+  }
+  return "ಪೋಷಕರು (Parent)";
+};
+
+export const cleanChildName = (lead: { childName?: string | null; name?: string | null; parentName?: string | null }) => {
+  const c = lead.childName?.trim();
+  if (c && !isPlaceholderValue(c)) {
+    return c;
+  }
+  const n = lead.name?.trim() || "";
+  if (n) {
+    if (n.includes("(") && n.endsWith(")")) {
+      const beforeParen = n.slice(0, n.indexOf("(")).trim();
+      if (beforeParen && !isPlaceholderValue(beforeParen)) {
+        return beforeParen;
       }
     }
     const stripped = n.replace(/\s*\((Child|Parent|Student)\)$/i, "").trim();
-    if (stripped && !isPlaceholderChild(stripped)) {
+    if (stripped && !isPlaceholderValue(stripped)) {
       return stripped;
     }
   }
-  if (lead.parentName && !isPlaceholderChild(lead.parentName)) {
-    return `${lead.parentName.trim()} ಅವರ ಮಗು`;
+  const p = cleanParentName(lead);
+  if (p && p !== "ಪೋಷಕರು (Parent)") {
+    return `${p} ಅವರ ಮಗು`;
   }
   return "ವಿದ್ಯಾರ್ಥಿ / ಮಗು";
 };
@@ -658,12 +685,13 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
 
     const isParent = lead.stream === "PARENTS" || Boolean(lead.parentName || lead.childName);
     const resolvedChild = cleanChildName(lead);
+    const resolvedParent = cleanParentName(lead);
 
     const antiBanResult = generateAntiBanMessage({
       leadId: lead.leadId,
       leadName: isParent ? resolvedChild : lead.name,
-      donorName: isParent ? (lead.parentName || resolvedChild) : lead.name,
-      parentName: lead.parentName || lead.name,
+      donorName: isParent ? resolvedParent : lead.name,
+      parentName: resolvedParent,
       childName: isParent ? resolvedChild : undefined,
       stream: isParent ? "PARENTS" : lead.stream,
       phone: lead.phone,
@@ -1976,11 +2004,12 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                           </span>
                           <span className="font-display font-black text-xs sm:text-sm text-teal-950 truncate">
                             {isParent ? (
-                              lead.parentName && cleanChildName(lead) !== lead.parentName ? (
-                                <span>👶 {cleanChildName(lead)} <span className="text-teal-950/60 font-medium text-[11px]">({lead.parentName})</span></span>
-                              ) : (
-                                <span>👶 {cleanChildName(lead)}</span>
-                              )
+                              <span className="flex items-center gap-1.5 flex-wrap truncate">
+                                <span className="text-indigo-950 font-black">👶 {cleanChildName(lead)}</span>
+                                <span className="text-teal-900 font-bold bg-teal-50 px-1.5 py-0.2 rounded text-[11px] border border-teal-200/70">
+                                  👨‍👩‍👧 {cleanParentName(lead)}
+                                </span>
+                              </span>
                             ) : lead.name}
                           </span>
                         </div>
@@ -2018,10 +2047,10 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                       {/* Middle Row: Stream pill, Birthday info & Phone */}
                       <div className="flex items-center gap-2 mt-1.5 text-[11px] text-teal-950/70 flex-wrap">
                         {isParent ? (
-                          <span className="text-[9px] font-bold bg-indigo-100 text-indigo-900 px-1.5 py-0.2 rounded flex items-center gap-1">
-                            <span>👶</span>
-                            <span>ಮಗು (Student): <strong>{cleanChildName(lead)}</strong></span>
-                            {lead.parentName && <span className="opacity-75 font-normal">({lead.parentName})</span>}
+                          <span className="text-[10px] font-bold bg-indigo-50 text-indigo-950 px-2 py-0.5 rounded-md border border-indigo-200/60 flex items-center gap-1.5 flex-wrap">
+                            <span>🎓 ಮಗು: <strong>{cleanChildName(lead)}</strong></span>
+                            <span className="text-indigo-400">•</span>
+                            <span>👨‍👩‍👧 ಪೋಷಕರು: <strong>{cleanParentName(lead)}</strong></span>
                           </span>
                         ) : (
                           <span className="text-[9px] font-bold bg-teal-100 text-teal-900 px-1.5 py-0.2 rounded">
@@ -2195,9 +2224,12 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                           LEAD {safeFocusIndex + 1} OF {filteredLeads.length}
                         </span>
                         {isParentLead ? (
-                          <span className="rounded-full bg-indigo-950 text-amber-300 px-3 py-1 text-xs font-black uppercase shadow-xs flex items-center gap-1">
+                          <span className="rounded-full bg-indigo-950 text-amber-300 px-3 py-1 text-xs font-black uppercase shadow-xs flex items-center gap-1.5 flex-wrap">
                             <span>👶</span>
-                            <span>1. Parents Sheet (ಮಗು: {cleanChildName(currentFocusLead)})</span>
+                            <span>1. Parents Sheet:</span>
+                            <span className="text-white">🎓 ಮಗು: <strong>{cleanChildName(currentFocusLead)}</strong></span>
+                            <span className="text-amber-400/80">•</span>
+                            <span className="text-white">👨‍👩‍👧 ಪೋಷಕರು: <strong>{cleanParentName(currentFocusLead)}</strong></span>
                           </span>
                         ) : (
                           <span className="rounded-full bg-teal-950 text-emerald-300 px-3 py-1 text-xs font-black uppercase shadow-xs flex items-center gap-1">
@@ -2304,21 +2336,40 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-sand/25 p-4 rounded-2xl border border-teal-900/10">
                       <div>
                         {isParentLead ? (
-                          <div className="space-y-1">
+                          <div className="space-y-2.5">
                             <div className="flex items-center gap-2">
                               <span className="text-[10px] font-black uppercase tracking-wider bg-indigo-950 text-amber-300 px-2.5 py-0.5 rounded-lg">
                                 👶 1. ಪೋಷಕರ ಶೀಟ್ (Parents / Child Birthday)
                               </span>
                               <span className="text-xs font-mono text-teal-950/50">#{currentFocusLead.leadId}</span>
                             </div>
-                            <div className="flex items-baseline gap-2">
-                              <span className="text-xs font-bold text-teal-950/70">ಮಗುವಿನ ಹೆಸರು (Child / Student):</span>
-                              <h2 className="font-display text-xl sm:text-2xl font-black text-indigo-950">
-                                {cleanChildName(currentFocusLead)}
-                              </h2>
+
+                            {/* Prominent Dual Box: Both Child Name AND Parent Name */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-0.5">
+                              {/* 1. Student / Child Block */}
+                              <div className="bg-white/95 p-3 rounded-xl border border-indigo-200/90 shadow-2xs">
+                                <span className="text-[11px] font-extrabold text-indigo-900 flex items-center gap-1 uppercase tracking-wide">
+                                  <span>🎓</span>
+                                  <span>ಮಗುವಿನ ಹೆಸರು (Child / Student):</span>
+                                </span>
+                                <h2 className="font-display text-xl sm:text-2xl font-black text-indigo-950 mt-0.5 leading-tight">
+                                  {cleanChildName(currentFocusLead)}
+                                </h2>
+                              </div>
+
+                              {/* 2. Parent Block */}
+                              <div className="bg-white/95 p-3 rounded-xl border border-teal-200/90 shadow-2xs">
+                                <span className="text-[11px] font-extrabold text-teal-900 flex items-center gap-1 uppercase tracking-wide">
+                                  <span>👨‍👩‍👧</span>
+                                  <span>ಪೋಷಕರ ಹೆಸರು (Parent Name):</span>
+                                </span>
+                                <h3 className="font-display text-xl sm:text-2xl font-black text-teal-950 mt-0.5 leading-tight">
+                                  {cleanParentName(currentFocusLead)}
+                                </h3>
+                              </div>
                             </div>
+
                             <div className="flex items-center gap-2.5 text-xs text-teal-950/80 flex-wrap pt-0.5">
-                              <span><strong>ಪೋಷಕರು (Parent):</strong> {currentFocusLead.parentName || "Parent"}</span>
                               <span className="font-mono text-xs font-bold text-teal-950 bg-white px-2 py-0.5 rounded-lg border border-teal-900/15">
                                 📱 {phoneInfo.display}
                               </span>
@@ -2480,7 +2531,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                         <span className="text-2xl">💬</span>
                         <div className="text-left">
                           <span className="block leading-tight font-black">
-                            {isParentLead ? `👶 ಶುಭಾಶಯ ಸಂದೇಶ (${cleanChildName(currentFocusLead)})` : `WhatsApp ಸಂದೇಶ (₹${formatINR(selectedSevaAmount)})`}
+                            {isParentLead ? `👶 ಶುಭಾಶಯ ಸಂದೇಶ (${cleanChildName(currentFocusLead)} & ${cleanParentName(currentFocusLead)})` : `WhatsApp ಸಂದೇಶ (₹${formatINR(selectedSevaAmount)})`}
                           </span>
                           <span className="block text-[11px] text-white/90">Send Seva Details &amp; Pay Link</span>
                         </div>

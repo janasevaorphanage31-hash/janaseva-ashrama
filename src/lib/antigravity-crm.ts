@@ -109,6 +109,7 @@ export interface TelecallerStats {
 }
 
 let telecallersSeeded = false;
+let legacyNamesRepaired = false;
 
 /**
  * 1. Seeds 15 telecallers (TC01 to TC15) and realistic birthday leads if tables are fresh.
@@ -116,6 +117,16 @@ let telecallersSeeded = false;
 export async function ensureTelecallersAndSeedData(forceCheck = false) {
   if (telecallersSeeded && !forceCheck) return;
   await ensureDbSchema();
+
+  // One-time auto-repair of legacy records where child_name was stored as 'Child'
+  if (!legacyNamesRepaired) {
+    legacyNamesRepaired = true;
+    try {
+      await repairStudentNamesInDb();
+    } catch (e) {
+      console.error("[CRM] Auto-repair student names notice:", e);
+    }
+  }
   const existing = await db.select({ count: sql<number>`count(*)` }).from(agTelecallers);
   const count = Number(existing[0]?.count || 0);
 
@@ -394,33 +405,59 @@ export async function getAssignedLeads(callerId?: string | null, limit = 10000, 
         .limit(limit)
         .offset(offset);
 
-  // Auto-resolve childName and stream for existing leads where child_name was saved as 'Child' or NULL
+  // Auto-resolve childName, parentName, and stream for existing leads
   return rawLeads.map((l) => {
     const isParent = l.stream === "PARENTS" || Boolean(l.parentName || l.childName);
     let childName = l.childName?.trim() || null;
+    let parentName = l.parentName?.trim() || null;
 
     if (isParent) {
-      if (!childName || childName.toLowerCase() === "child") {
+      // 1. Resolve Parent Name
+      if (!parentName || ["parent", "father", "mother", "guardian"].includes(parentName.toLowerCase())) {
         const rawName = (l.name || "").trim();
-        // Check if rawName is e.g. "Child (MARY T)"
         if (rawName.toLowerCase().startsWith("child (") && rawName.endsWith(")")) {
-          const parentInside = rawName.slice(7, -1).trim();
-          childName = `${parentInside} ಅವರ ಮಗು`;
-        } else {
-          const stripped = rawName.replace(/\s*\((Child|Parent|Student)\)$/i, "").trim();
-          if (stripped && stripped.toLowerCase() !== "child") {
-            childName = stripped;
-          } else if (l.parentName && l.parentName.trim() && l.parentName.trim().toLowerCase() !== "parent") {
-            childName = `${l.parentName.trim()} ಅವರ ಮಗು`;
+          parentName = rawName.slice(7, -1).trim();
+        } else if (rawName.toLowerCase().endsWith("(parent)")) {
+          parentName = rawName.slice(0, -8).trim();
+        } else if (rawName.includes("(") && rawName.endsWith(")")) {
+          const inside = rawName.slice(rawName.indexOf("(") + 1, -1).trim();
+          if (inside && !["child", "student", "parent"].includes(inside.toLowerCase())) {
+            parentName = inside;
           }
         }
       }
+
+      // 2. Resolve Child / Student Name
+      const isChildPlaceholder = !childName || ["child", "student", "pupil", "kid", "unknown"].includes(childName.toLowerCase());
+      if (isChildPlaceholder) {
+        const rawName = (l.name || "").trim();
+        if (rawName.includes("(") && rawName.endsWith(")")) {
+          const beforeParen = rawName.slice(0, rawName.indexOf("(")).trim();
+          if (beforeParen && !["child", "student", "parent", "unknown"].includes(beforeParen.toLowerCase())) {
+            childName = beforeParen;
+          }
+        } else {
+          const stripped = rawName.replace(/\s*\((Child|Parent|Student)\)$/i, "").trim();
+          if (stripped && !["child", "student", "unknown"].includes(stripped.toLowerCase()) && stripped !== parentName) {
+            childName = stripped;
+          }
+        }
+      }
+
+      const effectiveParent = parentName && parentName.toLowerCase() !== "parent" ? parentName : "ಪೋಷಕರು";
+      const effectiveChild = childName && !["child", "student", "unknown"].includes(childName.toLowerCase())
+        ? childName
+        : (effectiveParent !== "ಪೋಷಕರು" ? `${effectiveParent} ಅವರ ಮಗು` : "ವಿದ್ಯಾರ್ಥಿ / ಮಗು");
+
+      childName = effectiveChild;
+      parentName = effectiveParent;
     }
 
     return {
       ...l,
       stream: isParent ? "PARENTS" : l.stream,
-      childName: childName || (l.parentName ? `${l.parentName} ಅವರ ಮಗು` : "ವಿದ್ಯಾರ್ಥಿ / ಮಗು"),
+      childName: isParent ? childName : l.childName,
+      parentName: isParent ? parentName : l.parentName,
     };
   });
 }
@@ -1233,33 +1270,41 @@ export async function uploadBulkLeads(
       }
     }
 
-    // Check if already in database: smart update / enrich if existing lead has missing child name
+    const isPlaceholderStr = (s?: string | null) => {
+      if (!s) return true;
+      return ["child", "student", "pupil", "kid", "unknown", "na", "n/a", "parent", "—", "-", ""].includes(s.trim().toLowerCase());
+    };
+
+    const incomingHasRealChild = Boolean(childCandidate && !isPlaceholderStr(childCandidate));
+    const incomingHasRealParent = Boolean(parentCandidate && !isPlaceholderStr(parentCandidate));
+
+    // Check if already in database: smart update / enrich if existing lead needs real names
     if (existingLeadMap.has(phone10)) {
       const existing = existingLeadMap.get(phone10)!;
-      const incomingHasRealChild = Boolean(childCandidate && childCandidate.toLowerCase() !== "child");
-      const existingNeedsChild =
-        !existing.childName ||
-        existing.childName.trim().toLowerCase() === "child" ||
-        (existing.name && existing.name.toLowerCase().startsWith("child"));
+      const existingNeedsChild = isPlaceholderStr(existing.childName) || (existing.name && existing.name.toLowerCase().startsWith("child"));
+      const existingNeedsParent = isPlaceholderStr(existing.parentName);
 
-      if (isParent && (incomingHasRealChild || existingNeedsChild)) {
+      if (isParent && (incomingHasRealChild || incomingHasRealParent || existingNeedsChild || existingNeedsParent)) {
         const effectiveChild = incomingHasRealChild
           ? childCandidate
-          : (existing.childName && existing.childName.toLowerCase() !== "child" ? existing.childName : undefined);
-        const effectiveParent =
-          parentCandidate && parentCandidate.toLowerCase() !== "parent"
-            ? parentCandidate
-            : (existing.parentName && existing.parentName.toLowerCase() !== "parent" ? existing.parentName : "Parent");
-        const effectiveDisplayName = effectiveChild
-          ? (effectiveParent && effectiveParent !== "Parent" ? `${effectiveChild} (${effectiveParent})` : `${effectiveChild} (Child)`)
-          : (effectiveParent && effectiveParent !== "Parent" ? `Parent (${effectiveParent})` : existing.name);
+          : (!isPlaceholderStr(existing.childName)
+              ? existing.childName!
+              : (incomingHasRealParent ? `${parentCandidate} ಅವರ ಮಗು` : (!isPlaceholderStr(existing.parentName) ? `${existing.parentName} ಅವರ ಮಗು` : "ವಿದ್ಯಾರ್ಥಿ / ಮಗು")));
+
+        const effectiveParent = incomingHasRealParent
+          ? parentCandidate
+          : (!isPlaceholderStr(existing.parentName) ? existing.parentName! : "ಪೋಷಕರು");
+
+        const effectiveDisplayName = incomingHasRealChild
+          ? `${effectiveChild} (${effectiveParent})`
+          : (effectiveParent !== "ಪೋಷಕರು" ? `${effectiveParent} ಅವರ ಮಗು (${effectiveParent})` : "ವಿದ್ಯಾರ್ಥಿ / ಮಗು");
 
         await db
           .update(agLeads)
           .set({
             stream: "PARENTS",
-            childName: effectiveChild || existing.childName,
-            parentName: effectiveParent || existing.parentName,
+            childName: effectiveChild,
+            parentName: effectiveParent,
             name: effectiveDisplayName,
             dobDay: day,
             dobMonth: month,
@@ -1275,12 +1320,17 @@ export async function uploadBulkLeads(
       continue;
     }
 
-    const childName = isParent ? (childCandidate || "Child") : null;
-    const parentName = isParent ? (parentCandidate || "Parent") : null;
+    const cleanChild = incomingHasRealChild
+      ? childCandidate
+      : (incomingHasRealParent ? `${parentCandidate} ಅವರ ಮಗು` : "ವಿದ್ಯಾರ್ಥಿ / ಮಗು");
+    const cleanParent = incomingHasRealParent ? parentCandidate : "ಪೋಷಕರು";
+
+    const childName = isParent ? cleanChild : null;
+    const parentName = isParent ? cleanParent : null;
     const displayName = isParent
-      ? (childName && childName.toLowerCase() !== "child"
-          ? (parentName && parentName.toLowerCase() !== "parent" ? `${childName} (${parentName})` : `${childName} (Child)`)
-          : (parentName && parentName.toLowerCase() !== "parent" ? `Parent (${parentName})` : "Child"))
+      ? (incomingHasRealChild
+          ? `${cleanChild} (${cleanParent})`
+          : (cleanParent !== "ಪೋಷಕರು" ? `${cleanParent} ಅವರ ಮಗು (${cleanParent})` : "ವಿದ್ಯಾರ್ಥಿ / ಮಗು"))
       : (item.name?.trim() || "Well-wisher");
 
     validLeads.push({
