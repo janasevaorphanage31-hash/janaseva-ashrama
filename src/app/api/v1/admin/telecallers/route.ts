@@ -23,6 +23,8 @@ import {
   deleteAllLeads,
   resetDailyQuotaLeads,
   repairStudentNamesInDb,
+  deduplicateDatabaseLeads,
+  equalizePendingWorkload,
 } from "@/lib/antigravity-crm";
 
 export async function GET(req: Request) {
@@ -208,6 +210,44 @@ export async function POST(req: Request) {
       return NextResponse.json({
         success: true,
         message: res.message,
+        ...updatedLeaderboard,
+      });
+    }
+
+    if (action === "deduplicate_database") {
+      const res = await deduplicateDatabaseLeads();
+      await writeAudit({
+        actorAdminUserId: session.user.id ?? null,
+        action: "crm.deduplicate_database",
+        entity: "ag_leads",
+        afterState: res,
+        ipAddress: ip,
+      });
+
+      const updatedLeaderboard = await getAdminLeaderboard();
+      return NextResponse.json({
+        success: true,
+        message: res.message,
+        dedupResult: res,
+        ...updatedLeaderboard,
+      });
+    }
+
+    if (action === "equalize_pending_workload") {
+      const res = await equalizePendingWorkload();
+      await writeAudit({
+        actorAdminUserId: session.user.id ?? null,
+        action: "crm.equalize_pending_workload",
+        entity: "ag_leads",
+        afterState: res,
+        ipAddress: ip,
+      });
+
+      const updatedLeaderboard = await getAdminLeaderboard();
+      return NextResponse.json({
+        success: true,
+        message: res.message,
+        equalizeResult: res,
         ...updatedLeaderboard,
       });
     }

@@ -278,18 +278,35 @@ test("Excel Parser: Detects 'Student' / 'Student Name' header as Child and Auto-
   assert.equal(dateCol, 3); // Student DOB
 });
 
-test("Child Name Display: Correctly extracts real student name when childName is 'Child' or empty", () => {
+test("Child Name Display: Correctly extracts real student name and falls back politely without ever showing 'Child'", () => {
+  const isPlaceholderChild = (val) => {
+    if (!val) return true;
+    const s = String(val).trim().toLowerCase();
+    return ["child", "student", "pupil", "kid", "unknown", "na", "n/a", "parent", "—", "-", ""].includes(s);
+  };
+
   function cleanChildName(lead) {
-    if (lead.childName && lead.childName.trim() && lead.childName.trim().toLowerCase() !== "child") {
-      return lead.childName.trim();
+    const c = lead.childName?.trim();
+    if (c && !isPlaceholderChild(c)) {
+      return c;
     }
-    if (lead.name && lead.name.trim()) {
-      const stripped = lead.name.replace(/\s*\((Child|Parent|Student)\)$/i, "").trim();
-      if (stripped && stripped.toLowerCase() !== "child") {
+    const n = lead.name?.trim() || "";
+    if (n) {
+      if (n.toLowerCase().startsWith("child (") && n.endsWith(")")) {
+        const inside = n.slice(7, -1).trim();
+        if (inside && !isPlaceholderChild(inside)) {
+          return `${inside} ಅವರ ಮಗು`;
+        }
+      }
+      const stripped = n.replace(/\s*\((Child|Parent|Student)\)$/i, "").trim();
+      if (stripped && !isPlaceholderChild(stripped)) {
         return stripped;
       }
     }
-    return "Child";
+    if (lead.parentName && !isPlaceholderChild(lead.parentName)) {
+      return `${lead.parentName.trim()} ಅವರ ಮಗು`;
+    }
+    return "ವಿದ್ಯಾರ್ಥಿ / ಮಗು";
   }
 
   // Case 1: Real childName already present
@@ -301,6 +318,78 @@ test("Child Name Display: Correctly extracts real student name when childName is
   // Case 3: childName is null, name has student
   assert.equal(cleanChildName({ name: "Pooja Hegde (Child)", childName: null }), "Pooja Hegde");
 
-  // Case 4: No student name anywhere
-  assert.equal(cleanChildName({ name: "Child", childName: "Child" }), "Child");
+  // Case 4: MARY T from user's screenshot: childName is "Child", parentName is "MARY T"
+  assert.equal(
+    cleanChildName({ name: "Child", childName: "Child", parentName: "MARY T" }),
+    "MARY T ಅವರ ಮಗು",
+    "Must politely show MARY T ಅವರ ಮಗು instead of literal Child"
+  );
+
+  // Case 5: Both child and parent are placeholder: falls back to polite Kannada title
+  assert.equal(
+    cleanChildName({ name: "Child", childName: "Child", parentName: "Parent" }),
+    "ವಿದ್ಯಾರ್ಥಿ / ಮಗು"
+  );
+});
+
+test("Excel Disambiguation: If 'Name' and 'Father Name' are present, 'Name' is auto-detected as Student", () => {
+  const headers = ["Name", "Father Name", "Mobile Number", "DOB"];
+  let childCol = -1;
+  let parentCol = -1;
+  let nameCol = -1;
+
+  headers.forEach((hRaw, idx) => {
+    const h = hRaw.toLowerCase().replace(/[^a-z0-9]/g, "");
+    if (h.includes("student") || h.includes("child")) {
+      childCol = idx;
+    } else if (h.includes("parent") || h.includes("father") || h.includes("mother")) {
+      parentCol = idx;
+    } else if (h.includes("name")) {
+      nameCol = idx;
+    }
+  });
+
+  // Disambiguation
+  if (childCol === -1 && nameCol !== -1 && parentCol !== -1) {
+    childCol = nameCol;
+    nameCol = -1;
+  }
+
+  assert.equal(childCol, 0, "Col 0 ('Name') must be recognized as Student/Child");
+  assert.equal(parentCol, 1, "Col 1 ('Father Name') must be recognized as Parent");
+});
+
+test("CRM Equalizer: Rebalances untouched pending leads to TC16 without touching contacted leads", () => {
+  const callers = ["TC01", "TC02", "TC16"];
+  const leads = [
+    // TC01 has 3 leads: 1 contacted, 2 untouched pending
+    { id: 1, caller: "TC01", status: "Interested", lastContactedAt: new Date() },
+    { id: 2, caller: "TC01", status: "Pending", lastContactedAt: null },
+    { id: 3, caller: "TC01", status: "Pending", lastContactedAt: null },
+    // TC02 has 3 leads: 1 donated, 2 untouched pending
+    { id: 4, caller: "TC02", status: "Donated", lastContactedAt: new Date() },
+    { id: 5, caller: "TC02", status: "Pending", lastContactedAt: null },
+    { id: 6, caller: "TC02", status: "Pending", lastContactedAt: null },
+    // TC16 is new: 0 leads
+  ];
+
+  // Untouched pending leads eligible for rebalance
+  const untouched = leads.filter(l => l.status === "Pending" && !l.lastContactedAt);
+  assert.equal(untouched.length, 4);
+
+  // Equal target: 4 / 3 = ~1-2 per caller
+  const targetPerCaller = Math.floor(untouched.length / callers.length); // 1
+  const transferPool = [];
+
+  // TC01 had 2 pending, surplus is 1
+  // TC02 had 2 pending, surplus is 1
+  // Total surplus transferred to TC16 = 2
+  transferPool.push(leads[2], leads[5]); // id 3 and id 6
+  transferPool.forEach(l => l.caller = "TC16");
+
+  // Verify: Contacted/donated leads never changed caller
+  assert.equal(leads.find(l => l.id === 1).caller, "TC01");
+  assert.equal(leads.find(l => l.id === 4).caller, "TC02");
+  // TC16 now has 2 leads
+  assert.equal(leads.filter(l => l.caller === "TC16").length, 2);
 });

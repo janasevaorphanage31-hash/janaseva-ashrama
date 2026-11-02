@@ -86,6 +86,7 @@ export function AdminTelecallerCRM() {
     statusMessage: string;
     insertedTotal: number;
     duplicatesTotal: number;
+    enrichedTotal?: number;
   } | null>(null);
 
   // 4. Export Menu State
@@ -539,7 +540,10 @@ export function AdminTelecallerCRM() {
           h.includes("magu") ||
           h.includes("vidyarth") ||
           h.includes("studname") ||
-          h.includes("stdname")
+          h.includes("stdname") ||
+          h.includes("candidate") ||
+          h.includes("scholar") ||
+          h.includes("applicant")
         ) {
           tempChildCol = colIdx;
         } else if (
@@ -590,6 +594,20 @@ export function AdminTelecallerCRM() {
           tempDateCol = colIdx;
         }
       });
+
+      // Smart Column Disambiguation:
+      // If there is a parent column (e.g. Father Name) and a generic name column, the generic name column IS the student!
+      if (tempChildCol === -1 && tempNameCol !== -1 && tempParentCol !== -1) {
+        tempChildCol = tempNameCol;
+        tempNameCol = -1;
+      } else if (
+        (uploadStream === "PARENTS" || streamOverride === "PARENTS") &&
+        tempChildCol === -1 &&
+        tempNameCol !== -1 &&
+        tempParentCol === -1
+      ) {
+        tempChildCol = tempNameCol;
+      }
 
       if (tempPhoneCol !== -1 || (tempNameCol !== -1 && tempDateCol !== -1)) {
         headerRowIdx = r;
@@ -955,12 +973,69 @@ export function AdminTelecallerCRM() {
     }
   };
 
+  const handleDeduplicateDatabase = async () => {
+    const confirmed = window.confirm(
+      "🔍 Scan & Merge Database Duplicates: This will scan all leads by 10-digit phone, merge call history & donations into the primary lead, and safely purge duplicate rows. Proceed?"
+    );
+    if (!confirmed) return;
+
+    setActionLoading(true);
+    try {
+      const res = await fetch("/api/v1/admin/telecallers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "deduplicate_database" }),
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error || "Failed to deduplicate database");
+      showToast(`✓ ${data.message}`);
+      await loadAdminData();
+      await loadLeadsForReassignment(selectedCallerForLeads || "ALL");
+    } catch (err: any) {
+      showToast("Error deduplicating database: " + err.message);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleEqualizeWorkload = async () => {
+    const confirmed = window.confirm(
+      "⚖️ Equalize Pending Workload: This will evenly balance UNTOUCHED pending leads across all active telecallers (including newly added callers). Contacted, interested, and callback leads are 100% frozen. Proceed?"
+    );
+    if (!confirmed) return;
+
+    setActionLoading(true);
+    try {
+      const res = await fetch("/api/v1/admin/telecallers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "equalize_pending_workload" }),
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error || "Failed to equalize workload");
+      showToast(`✓ ${data.message}`);
+      await loadAdminData();
+      await loadLeadsForReassignment(selectedCallerForLeads || "ALL");
+    } catch (err: any) {
+      showToast("Error equalizing workload: " + err.message);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const handleExecuteLeadUpload = async () => {
     if (parsedLeads.length === 0) {
       return alert("No valid leads detected. Please paste or upload data containing Name and Phone.");
     }
 
     setActionLoading(true);
+    const beforeUnloadHandler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "Lead upload is currently in progress. Navigating away will pause the upload.";
+      return e.returnValue;
+    };
+    window.addEventListener("beforeunload", beforeUnloadHandler);
+
     const totalLeadsCount = parsedLeads.length;
     // Chunk size 1,000 ensures each JSON payload is ~80KB, completely avoiding HTTP 413 "Request Entity Too Large"
     const CHUNK_SIZE = 1000;
@@ -981,10 +1056,12 @@ export function AdminTelecallerCRM() {
       statusMessage: `Preparing chunked upload of ${totalLeadsCount.toLocaleString()} leads in ${totalChunks} chunks...`,
       insertedTotal: 0,
       duplicatesTotal: 0,
+      enrichedTotal: 0,
     });
 
     let cumInserted = 0;
     let cumDuplicates = 0;
+    let cumEnriched = 0;
 
     try {
       for (let i = 0; i < totalChunks; i++) {
@@ -1003,6 +1080,7 @@ export function AdminTelecallerCRM() {
           statusMessage: `Processing chunk ${chunkNum} of ${totalChunks} (${processedSoFar.toLocaleString()} / ${totalLeadsCount.toLocaleString()} leads)...`,
           insertedTotal: cumInserted,
           duplicatesTotal: cumDuplicates,
+          enrichedTotal: cumEnriched,
         });
 
         let attempts = 0;
@@ -1044,6 +1122,7 @@ export function AdminTelecallerCRM() {
               cumDuplicates +=
                 Number(data.uploadResult.alreadyInDbSkipped || 0) +
                 Number(data.uploadResult.internalDuplicatesSkipped || 0);
+              cumEnriched += Number(data.uploadResult.enrichedUpdatedCount || 0);
             }
             success = true;
           } catch (err: any) {
@@ -1067,13 +1146,15 @@ export function AdminTelecallerCRM() {
         totalLeads: totalLeadsCount,
         percent: 100,
         stage: "done",
-        statusMessage: `✓ Import complete! ${cumInserted.toLocaleString()} unique leads added & distributed (${cumDuplicates.toLocaleString()} duplicates filtered).`,
+        statusMessage: `✓ Import complete! ${cumInserted.toLocaleString()} unique leads added (${cumEnriched} updated with Student Names, ${cumDuplicates.toLocaleString()} duplicates filtered).`,
         insertedTotal: cumInserted,
         duplicatesTotal: cumDuplicates,
+        enrichedTotal: cumEnriched,
       });
 
+      const enrichNote = cumEnriched > 0 ? `, ${cumEnriched} existing student names updated` : "";
       showToast(
-        `✓ Successfully imported ${cumInserted.toLocaleString()} leads! (${cumDuplicates.toLocaleString()} duplicates filtered out). Distributed across callers.`
+        `✓ Successfully imported ${cumInserted.toLocaleString()} leads! (${cumDuplicates.toLocaleString()} duplicates filtered out${enrichNote}). Distributed across callers.`
       );
 
       // Refresh admin data and lead view
@@ -1097,12 +1178,14 @@ export function AdminTelecallerCRM() {
         totalLeads: totalLeadsCount,
         percent: prev?.percent || 0,
         stage: "error",
-        statusMessage: `Upload error: ${err.message}`,
+        statusMessage: `Upload paused/interrupted: ${err.message}. You can re-upload anytime; existing records are safe and will not be duplicated.`,
         insertedTotal: cumInserted,
         duplicatesTotal: cumDuplicates,
+        enrichedTotal: cumEnriched,
       }));
-      alert("Error importing leads: " + err.message);
+      alert("Upload notice: " + err.message + "\n\nAny leads already processed in earlier chunks are safely saved in the database without duplicates.");
     } finally {
+      window.removeEventListener("beforeunload", beforeUnloadHandler);
       setActionLoading(false);
     }
   };
@@ -1565,6 +1648,28 @@ export function AdminTelecallerCRM() {
               title="Replace placeholder 'Child' with student/parent indicators in database"
             >
               <span>🔄 Repair Student Names</span>
+            </button>
+
+            {/* Deduplicate Database Button */}
+            <button
+              type="button"
+              onClick={handleDeduplicateDatabase}
+              disabled={actionLoading}
+              className="focus-ring tap-scale inline-flex items-center gap-1.5 rounded-xl bg-purple-900/60 hover:bg-purple-900 text-purple-200 border border-purple-700/60 px-3 py-2.5 text-xs font-bold shadow-xs transition cursor-pointer"
+              title="Scan and merge duplicate phone numbers in the database"
+            >
+              <span>🔍 Merge Duplicates</span>
+            </button>
+
+            {/* Equalize Pending Workload Button */}
+            <button
+              type="button"
+              onClick={handleEqualizeWorkload}
+              disabled={actionLoading}
+              className="focus-ring tap-scale inline-flex items-center gap-1.5 rounded-xl bg-indigo-900/60 hover:bg-indigo-900 text-indigo-200 border border-indigo-700/60 px-3 py-2.5 text-xs font-bold shadow-xs transition cursor-pointer"
+              title="Evenly balance untouched pending leads across all active callers (safe for newly added callers)"
+            >
+              <span>⚖️ Equalize Workload</span>
             </button>
 
             {/* Export Dropdown */}
@@ -3684,6 +3789,9 @@ export function AdminTelecallerCRM() {
                     </span>
                     <div className="flex items-center gap-3">
                       <span className="text-emerald-300 font-bold">✓ {uploadProgress.insertedTotal.toLocaleString()} unique added</span>
+                      {uploadProgress.enrichedTotal != null && uploadProgress.enrichedTotal > 0 && (
+                        <span className="text-blue-300 font-bold">🎓 {uploadProgress.enrichedTotal.toLocaleString()} student names updated</span>
+                      )}
                       <span className="text-amber-300">⚡ {uploadProgress.duplicatesTotal.toLocaleString()} duplicates filtered</span>
                     </div>
                   </div>

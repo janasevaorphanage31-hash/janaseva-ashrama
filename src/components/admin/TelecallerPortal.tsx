@@ -15,25 +15,43 @@ interface CallerProfile {
   dailyQuota?: number;
 }
 
+const isPlaceholderChild = (val?: string | null) => {
+  if (!val) return true;
+  const s = val.trim().toLowerCase();
+  return (
+    s === "child" ||
+    s === "student" ||
+    s === "pupil" ||
+    s === "kid" ||
+    s === "unknown" ||
+    s === "na" ||
+    s === "n/a" ||
+    s === "parent" ||
+    s === "—" ||
+    s === "-" ||
+    s === ""
+  );
+};
+
 export const cleanChildName = (lead: { childName?: string | null; name?: string | null; parentName?: string | null }) => {
   const c = lead.childName?.trim();
-  if (c && c.toLowerCase() !== "child") {
+  if (c && !isPlaceholderChild(c)) {
     return c;
   }
   const n = lead.name?.trim() || "";
   if (n) {
     if (n.toLowerCase().startsWith("child (") && n.endsWith(")")) {
       const inside = n.slice(7, -1).trim();
-      if (inside && inside.toLowerCase() !== "child" && inside.toLowerCase() !== "parent") {
+      if (inside && !isPlaceholderChild(inside)) {
         return `${inside} ಅವರ ಮಗು`;
       }
     }
     const stripped = n.replace(/\s*\((Child|Parent|Student)\)$/i, "").trim();
-    if (stripped && stripped.toLowerCase() !== "child") {
+    if (stripped && !isPlaceholderChild(stripped)) {
       return stripped;
     }
   }
-  if (lead.parentName && lead.parentName.trim() && lead.parentName.trim().toLowerCase() !== "parent") {
+  if (lead.parentName && !isPlaceholderChild(lead.parentName)) {
     return `${lead.parentName.trim()} ಅವರ ಮಗು`;
   }
   return "ವಿದ್ಯಾರ್ಥಿ / ಮಗು";
@@ -2304,6 +2322,12 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                               <span className="font-mono text-xs font-bold text-teal-950 bg-white px-2 py-0.5 rounded-lg border border-teal-900/15">
                                 📱 {phoneInfo.display}
                               </span>
+                              {currentFocusLead.lastContactedAt && (Date.now() - new Date(currentFocusLead.lastContactedAt).getTime()) < 4 * 60 * 60 * 1000 && (
+                                <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-lg border border-amber-300 flex items-center gap-1">
+                                  <span>⚠️</span>
+                                  <span>Already dialed today — Avoid repeated call</span>
+                                </span>
+                              )}
                               {currentFocusLead.dobDay && currentFocusLead.dobMonth && (
                                 <span className="font-bold text-purple-900 bg-purple-100 px-2 py-0.5 rounded-lg">
                                   🎂 ಮಗುವಿನ ಹುಟ್ಟುಹಬ್ಬ: {currentFocusLead.dobDay}/{currentFocusLead.dobMonth} {isTomorrowBirthday ? " (ನಾಳೆ / Tomorrow!)" : (isTodayBirthday ? " (ಇಂದು / Today!)" : "")}
@@ -2326,6 +2350,12 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                               <span className="font-mono text-sm font-bold text-teal-950 bg-white px-2 py-0.5 rounded-lg border border-teal-900/15">
                                 📱 {phoneInfo.display}
                               </span>
+                              {currentFocusLead.lastContactedAt && (Date.now() - new Date(currentFocusLead.lastContactedAt).getTime()) < 4 * 60 * 60 * 1000 && (
+                                <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-lg border border-amber-300 flex items-center gap-1">
+                                  <span>⚠️</span>
+                                  <span>Already dialed today — Avoid repeated call</span>
+                                </span>
+                              )}
                               {currentFocusLead.dobDay && currentFocusLead.dobMonth && (
                                 <span className="font-bold text-amber-900 bg-amber-100 px-2 py-0.5 rounded-lg">
                                   🎂 ದಾನಿಗಳ ಹುಟ್ಟುಹಬ್ಬ: {currentFocusLead.dobDay}/{currentFocusLead.dobMonth} {isTomorrowBirthday ? " (ನಾಳೆ / Tomorrow!)" : (isTodayBirthday ? " (ಇಂದು / Today!)" : "")}
