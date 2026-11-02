@@ -15,17 +15,28 @@ interface CallerProfile {
   dailyQuota?: number;
 }
 
-export const cleanChildName = (lead: { childName?: string | null; name?: string | null }) => {
-  if (lead.childName && lead.childName.trim() && lead.childName.trim().toLowerCase() !== "child") {
-    return lead.childName.trim();
+export const cleanChildName = (lead: { childName?: string | null; name?: string | null; parentName?: string | null }) => {
+  const c = lead.childName?.trim();
+  if (c && c.toLowerCase() !== "child") {
+    return c;
   }
-  if (lead.name && lead.name.trim()) {
-    const stripped = lead.name.replace(/\s*\((Child|Parent|Student)\)$/i, "").trim();
+  const n = lead.name?.trim() || "";
+  if (n) {
+    if (n.toLowerCase().startsWith("child (") && n.endsWith(")")) {
+      const inside = n.slice(7, -1).trim();
+      if (inside && inside.toLowerCase() !== "child" && inside.toLowerCase() !== "parent") {
+        return `${inside} ಅವರ ಮಗು`;
+      }
+    }
+    const stripped = n.replace(/\s*\((Child|Parent|Student)\)$/i, "").trim();
     if (stripped && stripped.toLowerCase() !== "child") {
       return stripped;
     }
   }
-  return "Child";
+  if (lead.parentName && lead.parentName.trim() && lead.parentName.trim().toLowerCase() !== "parent") {
+    return `${lead.parentName.trim()} ಅವರ ಮಗು`;
+  }
+  return "ವಿದ್ಯಾರ್ಥಿ / ಮಗು";
 };
 
 export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string }) {
@@ -1946,7 +1957,13 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                             #{idx + 1}
                           </span>
                           <span className="font-display font-black text-xs sm:text-sm text-teal-950 truncate">
-                            {isParent ? `👶 ${cleanChildName(lead)}` : lead.name}
+                            {isParent ? (
+                              lead.parentName && cleanChildName(lead) !== lead.parentName ? (
+                                <span>👶 {cleanChildName(lead)} <span className="text-teal-950/60 font-medium text-[11px]">({lead.parentName})</span></span>
+                              ) : (
+                                <span>👶 {cleanChildName(lead)}</span>
+                              )
+                            ) : lead.name}
                           </span>
                         </div>
 
@@ -1985,7 +2002,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                         {isParent ? (
                           <span className="text-[9px] font-bold bg-indigo-100 text-indigo-900 px-1.5 py-0.2 rounded flex items-center gap-1">
                             <span>👶</span>
-                            <span>ಮಗು: <strong>{cleanChildName(lead)}</strong></span>
+                            <span>ಮಗು (Student): <strong>{cleanChildName(lead)}</strong></span>
                             {lead.parentName && <span className="opacity-75 font-normal">({lead.parentName})</span>}
                           </span>
                         ) : (

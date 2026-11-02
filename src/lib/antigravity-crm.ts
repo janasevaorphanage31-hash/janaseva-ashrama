@@ -401,9 +401,18 @@ export async function getAssignedLeads(callerId?: string | null, limit = 10000, 
 
     if (isParent) {
       if (!childName || childName.toLowerCase() === "child") {
-        const rawName = (l.name || "").replace(/\s*\((Child|Parent|Student)\)$/i, "").trim();
-        if (rawName && rawName.toLowerCase() !== "child") {
-          childName = rawName;
+        const rawName = (l.name || "").trim();
+        // Check if rawName is e.g. "Child (MARY T)"
+        if (rawName.toLowerCase().startsWith("child (") && rawName.endsWith(")")) {
+          const parentInside = rawName.slice(7, -1).trim();
+          childName = `${parentInside} ಅವರ ಮಗು`;
+        } else {
+          const stripped = rawName.replace(/\s*\((Child|Parent|Student)\)$/i, "").trim();
+          if (stripped && stripped.toLowerCase() !== "child") {
+            childName = stripped;
+          } else if (l.parentName && l.parentName.trim() && l.parentName.trim().toLowerCase() !== "parent") {
+            childName = `${l.parentName.trim()} ಅವರ ಮಗು`;
+          }
         }
       }
     }
@@ -411,7 +420,7 @@ export async function getAssignedLeads(callerId?: string | null, limit = 10000, 
     return {
       ...l,
       stream: isParent ? "PARENTS" : l.stream,
-      childName,
+      childName: childName || (l.parentName ? `${l.parentName} ಅವರ ಮಗು` : "ವಿದ್ಯಾರ್ಥಿ / ಮಗು"),
     };
   });
 }
@@ -1142,7 +1151,15 @@ export async function uploadBulkLeads(
   }
 
   // 2. Fast indexed database check ONLY for candidate numbers in this batch (uses ag_leads_phone_idx)
-  const existingPhonesSet = new Set<string>();
+  const existingLeadMap = new Map<string, {
+    leadId: number;
+    phone: string;
+    name: string;
+    parentName: string | null;
+    childName: string | null;
+    stream: string;
+  }>();
+
   if (candidatePhones.size > 0) {
     const candidateArray = Array.from(candidatePhones);
     const BATCH_LOOKUP = 500;
@@ -1151,13 +1168,20 @@ export async function uploadBulkLeads(
       // Check exact 10-digit candidate plus all common stored database variants (+91, 91, 0)
       const lookupVariants = slice.flatMap((p) => [p, `+91${p}`, `91${p}`, `0${p}`, `+91 ${p}`]);
       const existingRows = await db
-        .select({ phone: agLeads.phone })
+        .select({
+          leadId: agLeads.leadId,
+          phone: agLeads.phone,
+          name: agLeads.name,
+          parentName: agLeads.parentName,
+          childName: agLeads.childName,
+          stream: agLeads.stream,
+        })
         .from(agLeads)
         .where(inArray(agLeads.phone, lookupVariants));
       for (const r of existingRows) {
         if (r.phone) {
           const digits = r.phone.replace(/\D/g, "").slice(-10);
-          if (digits.length === 10) existingPhonesSet.add(digits);
+          if (digits.length === 10) existingLeadMap.set(digits, r);
         }
       }
     }
@@ -1167,6 +1191,7 @@ export async function uploadBulkLeads(
   const seenInUpload = new Set<string>();
   let internalDuplicatesSkipped = 0;
   let alreadyInDbSkipped = 0;
+  let enrichedUpdatedCount = 0;
 
   for (const item of rawLeads) {
     const rawDigits = (item.phone || "").replace(/\D/g, "");
@@ -1179,12 +1204,6 @@ export async function uploadBulkLeads(
       continue;
     }
     seenInUpload.add(phone10);
-
-    // Skip if already in database (prevents duplicate calls across callers)
-    if (existingPhonesSet.has(phone10)) {
-      alreadyInDbSkipped++;
-      continue;
-    }
 
     let day = parseInt(String(item.dobDay || currentDay), 10);
     if (isNaN(day) || day < 1 || day > 31) day = currentDay;
@@ -1214,10 +1233,54 @@ export async function uploadBulkLeads(
       }
     }
 
+    // Check if already in database: smart update / enrich if existing lead has missing child name
+    if (existingLeadMap.has(phone10)) {
+      const existing = existingLeadMap.get(phone10)!;
+      const incomingHasRealChild = Boolean(childCandidate && childCandidate.toLowerCase() !== "child");
+      const existingNeedsChild =
+        !existing.childName ||
+        existing.childName.trim().toLowerCase() === "child" ||
+        (existing.name && existing.name.toLowerCase().startsWith("child"));
+
+      if (isParent && (incomingHasRealChild || existingNeedsChild)) {
+        const effectiveChild = incomingHasRealChild
+          ? childCandidate
+          : (existing.childName && existing.childName.toLowerCase() !== "child" ? existing.childName : undefined);
+        const effectiveParent =
+          parentCandidate && parentCandidate.toLowerCase() !== "parent"
+            ? parentCandidate
+            : (existing.parentName && existing.parentName.toLowerCase() !== "parent" ? existing.parentName : "Parent");
+        const effectiveDisplayName = effectiveChild
+          ? (effectiveParent && effectiveParent !== "Parent" ? `${effectiveChild} (${effectiveParent})` : `${effectiveChild} (Child)`)
+          : (effectiveParent && effectiveParent !== "Parent" ? `Parent (${effectiveParent})` : existing.name);
+
+        await db
+          .update(agLeads)
+          .set({
+            stream: "PARENTS",
+            childName: effectiveChild || existing.childName,
+            parentName: effectiveParent || existing.parentName,
+            name: effectiveDisplayName,
+            dobDay: day,
+            dobMonth: month,
+            updatedAt: new Date(),
+          })
+          .where(eq(agLeads.leadId, existing.leadId));
+
+        enrichedUpdatedCount++;
+        continue;
+      }
+
+      alreadyInDbSkipped++;
+      continue;
+    }
+
     const childName = isParent ? (childCandidate || "Child") : null;
     const parentName = isParent ? (parentCandidate || "Parent") : null;
     const displayName = isParent
-      ? (childName ? `${childName} (Child)` : "Child")
+      ? (childName && childName.toLowerCase() !== "child"
+          ? (parentName && parentName.toLowerCase() !== "parent" ? `${childName} (${parentName})` : `${childName} (Child)`)
+          : (parentName && parentName.toLowerCase() !== "parent" ? `Parent (${parentName})` : "Child"))
       : (item.name?.trim() || "Well-wisher");
 
     validLeads.push({
@@ -1242,11 +1305,14 @@ export async function uploadBulkLeads(
       validParsed: seenInUpload.size,
       internalDuplicatesSkipped,
       alreadyInDbSkipped,
+      enrichedUpdatedCount,
       validInserted: 0,
       distributed: 0,
       perCaller: {},
       insertedLeadIds: [] as number[],
-      message: `No new leads to import. ${alreadyInDbSkipped} numbers already exist in database, and ${internalDuplicatesSkipped} duplicates were skipped.`,
+      message: enrichedUpdatedCount > 0
+        ? `Successfully enriched and updated ${enrichedUpdatedCount} existing leads with Student Names & Details! (${alreadyInDbSkipped} unchanged duplicates skipped).`
+        : `No new leads to import. ${alreadyInDbSkipped} numbers already exist in database, and ${internalDuplicatesSkipped} duplicates were skipped.`,
     };
   }
 
@@ -1275,7 +1341,63 @@ export async function uploadBulkLeads(
     distributed: autoDistribute ? insertedLeadIds.length : 0,
     perCaller: distributedSummary,
     insertedLeadIds: autoDistribute ? [] : insertedLeadIds,
-    message: `Successfully uploaded ${validLeads.length} unique leads (${alreadyInDbSkipped} already in database skipped, ${internalDuplicatesSkipped} file duplicates skipped).`,
+    message: enrichedUpdatedCount > 0
+      ? `Successfully uploaded ${validLeads.length} leads and updated ${enrichedUpdatedCount} existing leads with Student Names!`
+      : `Successfully uploaded ${validLeads.length} unique leads (${alreadyInDbSkipped} already in database skipped, ${internalDuplicatesSkipped} file duplicates skipped).`,
+    enrichedUpdatedCount,
+  };
+}
+
+/**
+ * 12b. Repair & Normalize Student Names for Existing Database Leads
+ * Replaces placeholder 'Child' with actual parent/student relationship or extracts parent from 'Child (NAME)'
+ */
+export async function repairStudentNamesInDb() {
+  await ensureDbSchema();
+  const leadsToFix = await db
+    .select({
+      leadId: agLeads.leadId,
+      name: agLeads.name,
+      parentName: agLeads.parentName,
+      childName: agLeads.childName,
+    })
+    .from(agLeads)
+    .where(
+      and(
+        eq(agLeads.stream, "PARENTS"),
+        or(
+          isNull(agLeads.childName),
+          eq(agLeads.childName, "Child"),
+          like(agLeads.name, "Child (%")
+        )
+      )
+    );
+
+  let updatedCount = 0;
+  for (const lead of leadsToFix) {
+    let pName = lead.parentName?.trim() || "";
+    if (!pName && lead.name && lead.name.toLowerCase().startsWith("child (") && lead.name.endsWith(")")) {
+      pName = lead.name.slice(7, -1).trim();
+    }
+    const safeChild = pName ? `${pName} ಅವರ ಮಗು` : "ವಿದ್ಯಾರ್ಥಿ / ಮಗು";
+    const safeDisplay = pName ? `${safeChild} (${pName})` : "ವಿದ್ಯಾರ್ಥಿ / ಮಗು (Student)";
+
+    await db
+      .update(agLeads)
+      .set({
+        parentName: pName || lead.parentName || "Parent",
+        childName: safeChild,
+        name: safeDisplay,
+        updatedAt: new Date(),
+      })
+      .where(eq(agLeads.leadId, lead.leadId));
+    updatedCount++;
+  }
+
+  return {
+    success: true,
+    message: `Repaired ${updatedCount} leads in database. Placeholder 'Child' replaced with polite student/parent indicators.`,
+    updatedCount,
   };
 }
 

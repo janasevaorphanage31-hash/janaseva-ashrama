@@ -73,23 +73,43 @@ export async function POST(
       );
     }
 
-    await logCallDisposition(leadId, auth.callerId, rawDisposition, notes, callbackTime);
+    try {
+      await logCallDisposition(leadId, auth.callerId, rawDisposition, notes, callbackTime);
+    } catch (logErr: any) {
+      console.error(`[CRM] logCallDisposition non-fatal fallback for lead ${leadId}:`, logErr);
+      try {
+        await db
+          .update(agLeads)
+          .set({
+            status: rawDisposition,
+            lastContactedAt: new Date(),
+            updatedAt: new Date(),
+          })
+          .where(eq(agLeads.leadId, leadId));
+      } catch (leadUpdateErr) {
+        console.error(`[CRM] Fallback lead status update error for lead ${leadId}:`, leadUpdateErr);
+      }
+    }
 
     // If marked Donated with an amount, record payment attribution in real-time
     if (rawDisposition === "Donated" && body.amount) {
-      const amt = Number(body.amount);
-      if (amt > 0) {
-        const txnId = body.utr ? `utr_${clean(body.utr, 50)}` : `offline_${Date.now()}_${leadId}`;
-        await recordPaymentAttribution({
-          txnId,
-          gatewayOrderId: `order_direct_${Date.now()}`,
-          amount: amt,
-          callerRefId: auth.callerId,
-          leadId,
-          donorName: lead.name || null,
-          donorPhone: lead.phone || null,
-          metadata: { utr: body.utr ? clean(body.utr, 50) : null, loggedBy: auth.callerId, notes },
-        });
+      try {
+        const amt = Number(body.amount);
+        if (amt > 0) {
+          const txnId = body.utr ? `utr_${clean(body.utr, 50)}` : `offline_${Date.now()}_${leadId}`;
+          await recordPaymentAttribution({
+            txnId,
+            gatewayOrderId: `order_direct_${Date.now()}`,
+            amount: amt,
+            callerRefId: auth.callerId,
+            leadId,
+            donorName: lead.name || null,
+            donorPhone: lead.phone || null,
+            metadata: { utr: body.utr ? clean(body.utr, 50) : null, loggedBy: auth.callerId, notes },
+          });
+        }
+      } catch (attErr) {
+        console.error(`[CRM] Non-fatal payment attribution error for lead ${leadId}:`, attErr);
       }
     }
 

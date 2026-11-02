@@ -731,10 +731,28 @@ export function AntiBanWhatsAppModal({
   const mediaList = Object.values(CURATED_OUTREACH_MEDIA);
 
   const isParentLead = lead.stream === "PARENTS" || Boolean(lead.parentName || lead.childName);
-  const effectiveChildName =
-    lead.childName && lead.childName.trim().toLowerCase() !== "child"
-      ? lead.childName.trim()
-      : lead.name.replace(/\s*\((Child|Parent|Student)\)$/i, "").trim() || "Child";
+  const rawChild = lead.childName?.trim();
+  const rawName = lead.name?.trim() || "";
+  let effectiveChildName = "";
+  if (rawChild && rawChild.toLowerCase() !== "child") {
+    effectiveChildName = rawChild;
+  } else if (rawName.toLowerCase().startsWith("child (") && rawName.endsWith(")")) {
+    const inside = rawName.slice(7, -1).trim();
+    if (inside && inside.toLowerCase() !== "child" && inside.toLowerCase() !== "parent") {
+      effectiveChildName = `${inside} ಅವರ ಮಗು`;
+    }
+  } else {
+    const stripped = rawName.replace(/\s*\((Child|Parent|Student)\)$/i, "").trim();
+    if (stripped && stripped.toLowerCase() !== "child") {
+      effectiveChildName = stripped;
+    }
+  }
+  if (!effectiveChildName && lead.parentName && lead.parentName.trim() && lead.parentName.trim().toLowerCase() !== "parent") {
+    effectiveChildName = `${lead.parentName.trim()} ಅವರ ಮಗು`;
+  }
+  if (!effectiveChildName) {
+    effectiveChildName = "ವಿದ್ಯಾರ್ಥಿ / ಮಗು";
+  }
 
   return (
     <div

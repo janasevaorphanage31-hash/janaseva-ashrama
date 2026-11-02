@@ -242,7 +242,9 @@ export async function ensureDbSchema(): Promise<void> {
             created_at TIMESTAMP NOT NULL DEFAULT NOW()
           );
 
-          -- Dynamically drop any foreign key constraint on caller_id in ag_call_logs
+          -- Dynamically and explicitly drop any foreign key constraint on caller_id in ag_call_logs
+          ALTER TABLE ag_call_logs DROP CONSTRAINT IF EXISTS ag_call_logs_caller_id_ag_telecallers_caller_id_fk;
+          ALTER TABLE ag_call_logs DROP CONSTRAINT IF EXISTS ag_call_logs_caller_id_fkey;
           DO $$
           DECLARE
             r RECORD;
@@ -252,15 +254,27 @@ export async function ensureDbSchema(): Promise<void> {
               FROM pg_constraint
               WHERE conrelid = 'ag_call_logs'::regclass
                 AND contype = 'f'
-                AND conkey = ARRAY[(SELECT attnum FROM pg_attribute WHERE attrelid = 'ag_call_logs'::regclass AND attname = 'caller_id')]
+                AND conkey = ARRAY[(SELECT attnum FROM pg_attribute WHERE attrelid = 'ag_call_logs'::regclass AND attname = 'caller_id')]::smallint[]
             ) LOOP
               EXECUTE 'ALTER TABLE ag_call_logs DROP CONSTRAINT IF EXISTS ' || quote_ident(r.conname);
             END LOOP;
+          EXCEPTION WHEN OTHERS THEN
+            NULL;
           END $$;
 
           INSERT INTO ag_telecallers (caller_id, name, whatsapp_number, email, password_hash, daily_quota, is_active)
           VALUES ('ADMIN', 'Ashrama Admin', '9980359595', 'admin@janasevaashrama.org', 'ADMIN', 100, true)
-          ON CONFLICT (caller_id) DO NOTHING;
+          ON CONFLICT (caller_id) DO UPDATE SET is_active = true;
+
+          -- Safe 1-time auto-repair for existing leads with placeholder 'Child' name
+          UPDATE ag_leads
+          SET child_name = parent_name || ' ಅವರ ಮಗು',
+              name = parent_name || ' ಅವರ ಮಗು (' || parent_name || ')'
+          WHERE stream = 'PARENTS'
+            AND (child_name = 'Child' OR child_name IS NULL)
+            AND parent_name IS NOT NULL
+            AND parent_name != ''
+            AND parent_name != 'Parent';
 
           CREATE TABLE IF NOT EXISTS ag_donations (
             txn_id TEXT PRIMARY KEY,

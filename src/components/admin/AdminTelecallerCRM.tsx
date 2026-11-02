@@ -736,7 +736,9 @@ export function AdminTelecallerCRM() {
         : undefined;
 
       const finalDisplayName = isParentsStream
-        ? (finalChildName ? `${finalChildName} (Child)` : (leadName || "Child"))
+        ? (finalChildName
+            ? (finalParentName && finalParentName !== "Parent" ? `${finalChildName} (${finalParentName})` : `${finalChildName} (Child)`)
+            : (finalParentName && finalParentName !== "Parent" ? `Parent (${finalParentName})` : (leadName || "Child")))
         : (leadName || `Well-wisher (${leadPhone.slice(-4)})`);
 
       if (leadPhone.length === 10) {
@@ -928,6 +930,26 @@ export function AdminTelecallerCRM() {
       await loadLeadsForReassignment(selectedCallerForLeads || "ALL");
     } catch (err: any) {
       showToast("Error resetting daily queue: " + err.message);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleRepairStudentNames = async () => {
+    setActionLoading(true);
+    try {
+      const res = await fetch("/api/v1/admin/telecallers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "repair_student_names" }),
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error || "Failed to repair student names");
+      showToast(`✓ ${data.message}`);
+      await loadAdminData();
+      await loadLeadsForReassignment(selectedCallerForLeads || "ALL");
+    } catch (err: any) {
+      showToast("Error repairing student names: " + err.message);
     } finally {
       setActionLoading(false);
     }
@@ -1532,6 +1554,17 @@ export function AdminTelecallerCRM() {
               title="Remove sample and dummy test leads from the database"
             >
               <span>🧹 Clean Demo Leads</span>
+            </button>
+
+            {/* Repair Student Names Button */}
+            <button
+              type="button"
+              onClick={handleRepairStudentNames}
+              disabled={actionLoading}
+              className="focus-ring tap-scale inline-flex items-center gap-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-400/40 px-3 py-2.5 text-xs font-bold shadow-xs transition cursor-pointer"
+              title="Replace placeholder 'Child' with student/parent indicators in database"
+            >
+              <span>🔄 Repair Student Names</span>
             </button>
 
             {/* Export Dropdown */}
@@ -3290,6 +3323,17 @@ export function AdminTelecallerCRM() {
             </div>
 
             <div className="overflow-y-auto py-4 space-y-4">
+              {/* Auto-Enrichment Notice */}
+              <div className="bg-emerald-50 border border-emerald-300 rounded-2xl p-3 text-xs text-emerald-950 flex items-start gap-2.5">
+                <span className="text-base shrink-0">✨</span>
+                <div>
+                  <p className="font-bold">Student Name Auto-Enrichment Enabled</p>
+                  <p className="text-[11px] text-emerald-800 leading-snug">
+                    Re-uploading your Excel sheet with the <strong>Student</strong> or <strong>Student Name</strong> column immediately enriches existing leads with their real student names. Zero duplicate calls created!
+                  </p>
+                </div>
+              </div>
+
               {/* Dual-Stream Category Selector */}
               <div className="rounded-2xl bg-teal-950/5 p-3.5 border border-teal-900/10 space-y-2.5">
                 <div className="flex items-center justify-between">

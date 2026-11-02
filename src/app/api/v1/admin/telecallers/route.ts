@@ -22,6 +22,7 @@ import {
   clearDemoLeads,
   deleteAllLeads,
   resetDailyQuotaLeads,
+  repairStudentNamesInDb,
 } from "@/lib/antigravity-crm";
 
 export async function GET(req: Request) {
@@ -175,18 +176,38 @@ export async function POST(req: Request) {
 
       // For chunked ingestion, return fast response without recalculating entire admin leaderboard
       if (action === "upload_chunk") {
+        const enrichNote = (res as any).enrichedUpdatedCount > 0 ? `, ${(res as any).enrichedUpdatedCount} existing leads updated with Student Names` : "";
         return NextResponse.json({
           success: true,
-          message: `Chunk processed: ${res.validInserted} inserted, ${res.distributed} distributed, ${res.alreadyInDbSkipped} duplicates skipped.`,
+          message: `Chunk processed: ${res.validInserted} inserted, ${res.distributed} distributed${enrichNote}, ${res.alreadyInDbSkipped} duplicates skipped.`,
           uploadResult: res,
         });
       }
 
       const updatedLeaderboard = await getAdminLeaderboard();
+      const enrichMsg = (res as any).enrichedUpdatedCount > 0 ? ` (${(res as any).enrichedUpdatedCount} existing leads updated with Student Names)` : "";
       return NextResponse.json({
         success: true,
-        message: `Uploaded ${res.validInserted} leads successfully. ${res.distributed} leads distributed equally among active telecallers.`,
+        message: `Uploaded ${res.validInserted} leads successfully${enrichMsg}. ${res.distributed} leads distributed equally among active telecallers.`,
         uploadResult: res,
+        ...updatedLeaderboard,
+      });
+    }
+
+    if (action === "repair_student_names") {
+      const res = await repairStudentNamesInDb();
+      await writeAudit({
+        actorAdminUserId: session.user.id ?? null,
+        action: "crm.repair_student_names",
+        entity: "ag_leads",
+        afterState: { updatedCount: res.updatedCount },
+        ipAddress: ip,
+      });
+
+      const updatedLeaderboard = await getAdminLeaderboard();
+      return NextResponse.json({
+        success: true,
+        message: res.message,
         ...updatedLeaderboard,
       });
     }
