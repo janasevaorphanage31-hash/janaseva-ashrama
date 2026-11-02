@@ -179,6 +179,7 @@ export interface AntiBanGenerateOptions {
   baseUrl?: string;
   masterWhatsAppNumber?: string;
   senderMode?: "central" | "individual";
+  mode?: "concise" | "full";
 }
 
 export interface AntiBanActionButton {
@@ -514,6 +515,117 @@ export function generateAntiBanMessage(options: AntiBanGenerateOptions): AntiBan
     }
   }
 
+  const mode = options.mode || "concise";
+
+  // Concise 1-on-1 human lines (Under 380 chars, 1 URL, eliminates Report & Block triggers)
+  let conciseLines: string[] = [];
+  const isParent = options.stream === "PARENTS" || Boolean(options.childName);
+  const cName = (options.childName || (language === "kn" ? "ನಿಮ್ಮ ಮುದ್ದು ಕಂದ" : "nimma muddu magu")).trim();
+
+  if (language === "kn") {
+    conciseLines = isParent
+      ? [
+          greeting,
+          "",
+          `ಜನಸೇವಾ ಆಶ್ರಮದ (ತುರಹಳ್ಳಿ) 25 ಮಕ್ಕಳ ಪರವಾಗಿ ಮುದ್ದು ಕಂದ *${cName}* ಅವರಿಗೆ ಮುಂಚಿತ ಹುಟ್ಟುಹಬ್ಬದ ಶುಭಾಶಯಗಳು! 🎂✨`,
+          "",
+          `ಮಗುವಿನ ಹುಟ್ಟುಹಬ್ಬದಂದು 25 ಬಾಲಕರಿಗೆ ಸಾತ್ವಿಕ ಅನ್ನದಾನ ಸೇವೆ ಮಾಡಿಸಿ ಮಕ್ಕಳ ಮುಗ್ಧ ಆಶೀರ್ವಾದ ಪಡೆಯಿರಿ. 🍲`,
+          "",
+          `👉 [ 📲 1-ಟ್ಯಾಪ್ ದೇಣಿಗೆ & 80G ರಸೀದಿ ]`,
+          portalUrl,
+          "",
+          `💳 Axis Bank UPI: MAB.037349050110044@axisbank`,
+          `🏛️ ಜನಸೇವಾ ಆಶ್ರಮ (JJ Act KA18CH0242 · 80G ಮಾನ್ಯತೆ)`,
+          "",
+          `ಶ್ರೀ ದೇವರು ನಿಮ್ಮ ಕುಟುಂಬಕ್ಕೆ ಸಕಲ ಆಯುರಾರೋಗ್ಯ ಕರುಣಿಸಲಿ! 🙏✨`,
+          saltLine,
+        ]
+      : [
+          greeting,
+          "",
+          `ಜನಸೇವಾ ಆಶ್ರಮದ (ತುರಹಳ್ಳಿ) 25 ಅನಾಥ ಮಕ್ಕಳ ಪರವಾಗಿ ತಮಗೆ ಮುಂಚಿತ ಹುಟ್ಟುಹಬ್ಬದ ಹಾರ್ದಿಕ ಶುಭಾಶಯಗಳು! 🎂✨`,
+          "",
+          `ತಮ್ಮ ಶುಭದಿನದಂದು 25 ಬಾಲಕರಿಗೆ ಸಾತ್ವಿಕ ಅನ್ನದಾನ ಸೇವೆ ಮಾಡಿಸಿ ಮಕ್ಕಳ ಮುಗ್ಧ ಆಶೀರ್ವಾದ ಪಡೆಯಿರಿ. 🍲`,
+          "",
+          `👉 [ 📲 1-ಟ್ಯಾಪ್ ದೇಣಿಗೆ & 80G ರಸೀದಿ ]`,
+          portalUrl,
+          "",
+          `💳 Axis Bank UPI: MAB.037349050110044@axisbank`,
+          `🏛️ ಜನಸೇವಾ ಆಶ್ರಮ (JJ Act KA18CH0242 · 80G ಮಾನ್ಯತೆ)`,
+          "",
+          `ಮಕ್ಕಳ ಮುಗ್ಧ ಪ್ರಾರ್ಥನೆ ತಮಗೆ ಸದಾ ಇರಲಿ. ಧನ್ಯವಾದಗಳು! 🙏✨`,
+          saltLine,
+        ];
+  } else if (language === "kanglish" || language === "mixed") {
+    conciseLines = isParent
+      ? [
+          greeting,
+          "",
+          `Janaseva Ashrama (Turahalli) da 25 makkala kadeyinda nimma muddu magu *${cName}* ge munjaneya Janmadinada Shubhashayagalu! 🎂✨`,
+          "",
+          `Nimma maguvina janmadinadandu namma 25 anatha baalakarige satvik baale ele oota sponsor maadi aashirvada thagoli. 🍲`,
+          "",
+          `👉 [ 📲 1-Tap Pay & 80G Tax Receipt ]`,
+          portalUrl,
+          "",
+          `💳 Axis Bank UPI: MAB.037349050110044@axisbank`,
+          `🏛️ Janaseva Ashrama (JJ Act KA18CH0242 · 80G Exempt)`,
+          "",
+          `Shree Devaru nimma kutumbakke aayu-aarogya karunisali! 🙏✨`,
+          saltLine,
+        ]
+      : [
+          greeting,
+          "",
+          `Janaseva Ashrama (Turahalli) da 25 makkala kadeyinda nimage Janmadinada munjaneya advance Shubhashayagalu! 🎂✨`,
+          "",
+          `Nimma janmadinadandu namma 25 anatha baalakarige satvik baale ele oota sponsor maadi ashervada thagoli. 🍲`,
+          "",
+          `👉 [ 📲 1-Tap Pay & 80G Tax Receipt ]`,
+          portalUrl,
+          "",
+          `💳 Axis Bank UPI: MAB.037349050110044@axisbank`,
+          `🏛️ Janaseva Ashrama (JJ Act KA18CH0242 · 80G Exempt)`,
+          "",
+          `Makkala nirmala prarthane nimage sada irali. Dhanyavadagalu! 🙏✨`,
+          saltLine,
+        ];
+  } else {
+    conciseLines = isParent
+      ? [
+          greeting,
+          "",
+          `Heartfelt Advance Birthday Wishes to *${cName}* from all 25 resident boys at Janaseva Ashrama, Bangalore! 🎂✨`,
+          "",
+          `Sponsor a wholesome fresh meal for our 25 orphaned boys in your child's honor and receive their pure blessings. 🍲`,
+          "",
+          `👉 [ 📲 1-Tap Donate & 80G Receipt ]`,
+          portalUrl,
+          "",
+          `💳 Axis Bank UPI: MAB.037349050110044@axisbank`,
+          `🏛️ Janaseva Ashrama (JJ Act KA18CH0242 · 80G Exempt)`,
+          "",
+          `May the Almighty bless you and your family with radiant peace and health! 🙏✨`,
+          saltLine,
+        ]
+      : [
+          greeting,
+          "",
+          `Heartfelt Advance Birthday Greetings from all 25 resident boys at Janaseva Ashrama, Bangalore! 🎂✨`,
+          "",
+          `Celebrate your special day by sponsoring a wholesome meal feast for 25 orphaned boys. 🍲`,
+          "",
+          `👉 [ 📲 1-Tap Donate & 80G Receipt ]`,
+          portalUrl,
+          "",
+          `💳 Axis Bank UPI: MAB.037349050110044@axisbank`,
+          `🏛️ Janaseva Ashrama (JJ Act KA18CH0242 · 80G Exempt)`,
+          "",
+          `Wishing you radiant health, peace, and abundance! 🙏✨`,
+          saltLine,
+        ];
+  }
+
   // Assembled lines for FULL text message (used in wa.me fallback)
   const assembledLines = [
     greeting,
@@ -555,8 +667,8 @@ export function generateAntiBanMessage(options: AntiBanGenerateOptions): AntiBan
     saltLine,
   ].filter((line) => line !== "");
 
-  const rawFullText = assembledLines.join("\n");
-  const rawCaptionText = captionLines.join("\n");
+  const rawFullText = mode === "concise" ? conciseLines.filter(Boolean).join("\n") : assembledLines.join("\n");
+  const rawCaptionText = mode === "concise" ? conciseLines.filter(Boolean).join("\n") : captionLines.join("\n");
 
   // Scatter invisible zero-width unicode characters to guarantee a 100% unique SHA-256 fingerprint
   const fullText = injectZeroWidthSalt(rawFullText);

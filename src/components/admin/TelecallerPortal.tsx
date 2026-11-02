@@ -5,6 +5,7 @@ import { formatINR } from "@/lib/site";
 import { LogoMark } from "@/components/Logo";
 import { AntiBanWhatsAppModal } from "@/components/admin/AntiBanWhatsAppModal";
 import { parseCustomerPhone } from "@/lib/whatsapp-phone";
+import { generateAntiBanMessage } from "@/lib/whatsapp-antiban";
 
 interface CallerProfile {
   callerId: string;
@@ -27,8 +28,6 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
   const [showPassword, setShowPassword] = useState(false);
   const [loginSubmitting, setLoginSubmitting] = useState(false);
   const [loginError, setLoginError] = useState("");
-  const [isScriptExpanded, setIsScriptExpanded] = useState(true);
-  const [isFaqExpanded, setIsFaqExpanded] = useState(false);
   const [cardNoteInput, setCardNoteInput] = useState("");
   const [savingCardNote, setSavingCardNote] = useState(false);
   const [isMobileStatsExpanded, setIsMobileStatsExpanded] = useState(false);
@@ -79,7 +78,6 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
   const [activeFocusLeadId, setActiveFocusLeadId] = useState<number | null>(null);
   const [currentlyDialedLeadId, setCurrentlyDialedLeadId] = useState<number | null>(null);
   const [sessionContactedIds, setSessionContactedIds] = useState<Set<number>>(() => new Set());
-  const [quickPitchLang, setQuickPitchLang] = useState<"kanglish" | "kn" | "en">("kanglish");
   const [selectedSevaAmount, setSelectedSevaAmount] = useState<number>(1500);
 
   // Audio chime using Web Audio API (0 dependencies)
@@ -606,7 +604,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
     showToast(`✓ Opened WhatsApp to ${phoneInfo.display}! Axis Bank QR copied to clipboard.`);
   };
 
-  // 1-Tap Direct WhatsApp Chat Launch
+  // 1-Tap Direct WhatsApp Chat Launch (Concise Anti-Ban Engine)
   const handleDirectWhatsAppChat = (lead: any, customAmount?: number) => {
     if (!lead || !callerProfile) return;
     setActiveFocusLeadId(lead.leadId);
@@ -615,20 +613,31 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
     const phoneInfo = parseCustomerPhone(lead.phone);
     const amount = customAmount || selectedSevaAmount || 1500;
     const siteOrigin = typeof window !== "undefined" ? window.location.origin : "https://janasevaashrama.org";
-    const donationUrl = `${siteOrigin}/give?ref=${callerProfile.callerId}&lead_id=${lead.leadId}&amount=${amount}`;
-    const upiLink = `upi://pay?pa=MAB.037349050110044@axisbank&pn=Janaseva%20Ashrama&am=${amount}&cu=INR&tn=Annadana%20Seva%20${callerProfile.callerId}`;
-    
-    const isParent = lead.stream === "PARENTS";
-    const parentName = lead.parentName || lead.name || "Parent";
-    const childName = lead.childName || "muddu magu";
 
-    const greetingText = isParent
-      ? `🙏 Namaskara ${parentName} Sir/Madam!\n\nNamma 25 ashrama makkala tharaphinda nimma muddu magu *${childName}* ge munjaneya Janmadinada Shubhashayagalu! 🎂✨ Makkalinda hrudayapurvaka prarthanegalu.\n\nNimma magu *${childName}* na janmadinada shubha sandarbhadalli namma 25 anatha baalakarige nithya satvik baale ele oota / annadana prayojisi ashervada thagoli.`
-      : `🙏 Namaskara ${lead.name} Sir/Madam!\n\nJanaseva Ashrama (Turahalli, Bengaluru) nalli ashrataraagiruva 25 anatha makkala kadeyinda ee vishēsha prarthane mattu namaskara! 👦✨\n\nNamma 25 makkala nitya baale ele ootakke mattu vidyabhyasakke sahaya bedi nimage ee sandēsha kalsuthiddivi.`;
+    const antiBanResult = generateAntiBanMessage({
+      leadId: lead.leadId,
+      leadName: lead.name,
+      donorName: lead.name,
+      parentName: lead.parentName || lead.name,
+      childName: lead.childName,
+      stream: lead.stream,
+      phone: lead.phone,
+      callerId: callerProfile.callerId,
+      callerName: callerProfile.name,
+      language: "kanglish",
+      amount,
+      mode: "concise",
+      baseUrl: siteOrigin,
+    });
 
-    const text = `${greetingText}\n\n🍲 Pavitra Annadana Seva Tiers:\n• ₹501 — 3 Dinada Cow Milk & Pediatric Care\n• ₹1,500 — 25 Makkalige Bisi Breakfast Feast\n• ₹2,500 — Wholesome Festive Lunch Feast (Payasa + Sweets)\n• ₹4,500 — Full Day 4-Meal Annadana (All 25 Boys)\n\n━━━━━━━━━━━━━━━━━━━━━━━━━\n👉 [ 📲 1-TAP PAY ₹${formatINR(amount)} (GPay / PhonePe / 80G Tax Receipt) ]\n${donationUrl}\n\n⚡ 1-Tap GPay / PhonePe App Link:\n${upiLink}\n\n💳 Direct UPI ID (GPay / PhonePe / BHIM):\nMAB.037349050110044@axisbank\n🏛️ Registered Account: JANASEVA SAMRUDDI EDUCATI\n📜 Karnataka Govt JJ Act Reg: KA18CH0242 · 100% 80G Tax Exemption (Form 10AC: AABTJ7431MF20231)\n\n👉 [ 📍 GOOGLE MAPS ASHRAMA PIN ]\nhttps://maps.app.goo.gl/uPjN24rP1i1YkX6t7\n\n👉 [ 📞 DIRECT CALL ASHRAMA ]\n+91 99803 59595\n━━━━━━━━━━━━━━━━━━━━━━━━━\nShree Devaru nimage mattu nimma kutumbakke aayu, aarogya, aishwarya thumbalendu namma 25 makkalu prathidina 6:30 AM satsang nalli prarthane maduthare! 🙏✨`;
+    // Auto-copy Axis Bank UPI QR info to clipboard for instant attachment
+    if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(
+        `Axis Bank UPI ID: MAB.037349050110044@axisbank (Janaseva Ashrama) - ₹${formatINR(amount)}`
+      ).catch(() => {});
+    }
 
-    const targetUrl = `https://wa.me/${phoneInfo.waNumber}?text=${encodeURIComponent(text)}`;
+    const targetUrl = `https://wa.me/${phoneInfo.waNumber}?text=${encodeURIComponent(antiBanResult.text)}`;
     if (typeof navigator !== "undefined" && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
       window.location.href = targetUrl;
     } else {
@@ -2357,149 +2366,6 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                       </div>
                     </div>
 
-                    {/* ── INTEGRATED 30-SECOND TRUST SCRIPT BOX (Collapsible) ── */}
-                    <div className="rounded-2xl border border-teal-900/15 bg-sand/30 p-2.5 sm:p-3.5 space-y-2 text-xs">
-                      <div className="flex items-center justify-between">
-                        <button
-                          type="button"
-                          onClick={() => setIsScriptExpanded((prev) => !prev)}
-                          className="flex items-center gap-1.5 font-black text-teal-950 text-[11px] cursor-pointer"
-                        >
-                          <span>🗣️</span>
-                          <span>ಮಾತನಾಡುವ ವಿಧಾನ (30s Pitch Script)</span>
-                          <span className="text-[10px] bg-teal-950/10 rounded px-1.5 py-0.5 font-bold">
-                            {isScriptExpanded ? "ಮುಚ್ಚಿ ▲" : "ಓದಿ (Open) ▼"}
-                          </span>
-                        </button>
-                        <div className="flex items-center gap-1 bg-white p-0.5 rounded-lg border border-teal-900/15 text-[10px]">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setQuickPitchLang("kanglish");
-                              setIsScriptExpanded(true);
-                            }}
-                            className={`px-2 py-0.5 rounded font-bold transition cursor-pointer ${
-                              quickPitchLang === "kanglish" ? "bg-teal-950 text-white" : "text-teal-950/70"
-                            }`}
-                          >
-                            Kanglish
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setQuickPitchLang("kn");
-                              setIsScriptExpanded(true);
-                            }}
-                            className={`px-2 py-0.5 rounded font-bold transition cursor-pointer ${
-                              quickPitchLang === "kn" ? "bg-teal-950 text-white" : "text-teal-950/70"
-                            }`}
-                          >
-                            ಕನ್ನಡ
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setQuickPitchLang("en");
-                              setIsScriptExpanded(true);
-                            }}
-                            className={`px-2 py-0.5 rounded font-bold transition cursor-pointer ${
-                              quickPitchLang === "en" ? "bg-teal-950 text-white" : "text-teal-950/70"
-                            }`}
-                          >
-                            English
-                          </button>
-                        </div>
-                      </div>
-
-                      {isScriptExpanded && (
-                        <div className="p-3 rounded-xl bg-white border border-teal-900/10 text-teal-950 leading-relaxed text-[11px] font-medium shadow-2xs animate-fadeIn">
-                          {quickPitchLang === "kanglish" && (
-                            isParentLead ? (
-                              <p>
-                                <strong className="text-teal-900 font-bold">&quot;Namaskara {currentFocusLead.parentName || "Sir/Madam"}!</strong> Naanu Janaseva Ashrama (Turahalli, Bengaluru) inda maathadthiddeve. Namma 25 ashrama makkala tharaphinda nimma muddu magu <strong>{currentFocusLead.childName || "maguvige"}</strong> Janmadinada munjaneya advance Shubhashayagalu! 🎂 Namma Ashrama dalli 25 anatha baalakarige nithya satvik oota needthiddivi. Nimma magu {currentFocusLead.childName || ""} hesarinalli anatha baalakarige nithya satvik oota/annadana prayojisi ashervada thagoli. Namma samsthe Karnataka JJ Act (KA18CH0242) nalli registered aagide, mattu 80G tax receipt siguththe. <strong>Naanu iga nimma WhatsApp ge makkala photo mattu namma official Axis Bank payment scanner kalisthini Sir/Madam.</strong> Dayavittu nodi nimma shakti anukoola chikka sahaya maadi.&quot;
-                              </p>
-                            ) : (
-                              <p>
-                                <strong className="text-teal-900 font-bold">&quot;Namaskara {currentFocusLead.name} Sir/Madam!</strong> Naanu Janaseva Ashrama (Turahalli, Bengaluru) inda maathadthiddeve. {isTomorrowBirthday ? `Namma 25 makkala tharaphinda nimage Janmadinada munjaneya advance Shubhashayagalu! 🎂 ` : (isTodayBirthday ? `Namma 25 makkala tharaphinda nimage Janmadinada Shubhashayagalu! 🎂 ` : "")}Namma Ashrama dalli 25 anatha baalakarige nithya satvik oota needthiddivi. Namma samsthe Karnataka JJ Act (KA18CH0242) nalli registered aagide, mattu 80G tax receipt siguththe. <strong>Naanu iga nimma WhatsApp ge makkala photo mattu namma official Axis Bank payment scanner kalisthini Sir/Madam.</strong> Dayavittu nodi nimma shakti anukoola chikka sahaya maadi.&quot;
-                              </p>
-                            )
-                          )}
-                          {quickPitchLang === "kn" && (
-                            isParentLead ? (
-                              <p>
-                                <strong className="text-teal-900 font-bold">&quot;ನಮಸ್ಕಾರ {currentFocusLead.parentName || "ಅವರೇ"}!</strong> ನಾನು ತುರಹಳ್ಳಿಯ ಜನಸೇವಾ ಆಶ್ರಮದಿಂದ (ಬೆಂಗಳೂರು) ಕರೆ ಮಾಡುತ್ತಿದ್ದೇನೆ. ನಮ್ಮ 25 ಮಕ್ಕಳ ಪರವಾಗಿ ನಿಮ್ಮ ಮುದ್ದು ಕಂದ <strong>{currentFocusLead.childName || "ಮಗುವಿಗೆ"}</strong> ಮುಂಚಿತ ಹುಟ್ಟುಹಬ್ಬದ ಹಾರ್ದಿಕ ಶುಭಾಶಯಗಳು! 🎂 ನಮ್ಮಲ್ಲಿರುವ 25 ಬಾಲಕರ ನಿತ್ಯ ಅನ್ನದಾನ ಸೇವೆಗೆ ನಿಮ್ಮ ಮಗುವಿನ ಹೆಸರಿನಲ್ಲಿ ಸಹಕಾರ ನೀಡಿ ಮಕ್ಕಳ ಮುಗ್ಧ ಆಶೀರ್ವಾದ ಪಡೆಯಿರಿ. ನಮ್ಮದು ಸರ್ಕಾರದ ಅಧಿಕೃತ ಬಾಲನ್ಯಾಯ ಕಾಯ್ದೆಯಡಿ (JJ Act KA18CH0242) ನೋಂದಾಯಿತ ಆಶ್ರಮವಾಗಿದ್ದು, 80G ತೆರಿಗೆ ವಿನಾಯಿತಿ ಲಭ್ಯವಿದೆ. <strong>ನಾನು ಈಗ ತಮ್ಮ WhatsApp ಗೆ ಮಕ್ಕಳ ಊಟದ ಫೋಟೋ ಹಾಗೂ ಅಧಿಕೃತ ಆಕ್ಸಿಸ್ ಬ್ಯಾಂಕ್ ಪೇಮೆಂಟ್ ಸ್ಕ್ಯಾನರ್ ಕಳುಹಿಸುತ್ತೇನೆ.</strong> ದಯವಿಟ್ಟು ಪರಿಶೀಲಿಸಿ ಸಹಾಯ ಮಾಡಿ.&quot;
-                              </p>
-                            ) : (
-                              <p>
-                                <strong className="text-teal-900 font-bold">&quot;ನಮಸ್ಕಾರ {currentFocusLead.name} ಅವರೇ!</strong> ನಾನು ತುರಹಳ್ಳಿಯ ಜನಸೇವಾ ಆಶ್ರಮದಿಂದ (ಬೆಂಗಳೂರು) ಕರೆ ಮಾಡುತ್ತಿದ್ದೇನೆ. {isTomorrowBirthday ? `ನಮ್ಮ 25 ಮಕ್ಕಳ ಪರವಾಗಿ ತಮಗೆ ಮುಂಚಿತ ಹುಟ್ಟುಹಬ್ಬದ ಹಾರ್ದಿಕ ಶುಭಾಶಯಗಳು! 🎂 ` : (isTodayBirthday ? `ನಮ್ಮ 25 ಮಕ್ಕಳ ಪರವಾಗಿ ತಮಗೆ ಹುಟ್ಟುಹಬ್ಬದ ಹಾರ್ದಿಕ ಶುಭಾಶಯಗಳು! 🎂 ` : "")}ನಮ್ಮಲ್ಲಿರುವ 25 ಬಾಲಕರ ನಿತ್ಯ ಅನ್ನದಾನ ಸೇವೆಗೆ ತಮ್ಮ ಸಹಕಾರ ಕೋರುತ್ತಿದ್ದೇವೆ. ನಮ್ಮದು ಸರ್ಕಾರದ ಅಧಿಕೃತ ಬಾಲನ್ಯಾಯ ಕಾಯ್ದೆಯಡಿ (JJ Act KA18CH0242) ನೋಂದಾಯಿತ ಆಶ್ರಮವಾಗಿದ್ದು, 80G ತೆರಿಗೆ ವಿನಾಯಿತಿ ಲಭ್ಯವಿದೆ. <strong>ನಾನು ಈಗ ತಮ್ಮ WhatsApp ಗೆ ಮಕ್ಕಳ ಊಟದ ಫೋಟೋ ಹಾಗೂ ಅಧಿಕೃತ ಆಕ್ಸಿಸ್ ಬ್ಯಾಂಕ್ ಪೇಮೆಂಟ್ ಸ್ಕ್ಯಾನರ್ ಕಳುಹಿಸುತ್ತೇನೆ.</strong> ದಯವಿಟ್ಟು ಪರಿಶೀಲಿಸಿ ಸಹಾಯ ಮಾಡಿ.&quot;
-                              </p>
-                            )
-                          )}
-                          {quickPitchLang === "en" && (
-                            isParentLead ? (
-                              <p>
-                                <strong className="text-teal-900 font-bold">&quot;Hello {currentFocusLead.parentName || "Ji"}!</strong> Warm greetings from Janaseva Ashrama, Bengaluru. Heartfelt advance Birthday Wishes to your precious child <strong>{currentFocusLead.childName || "your child"}</strong> from all our 25 resident boys! 🎂 We care for 25 orphaned boys at our Turahalli home providing wholesome meals, shelter, and schooling under JJ Act KA18CH0242. To mark {currentFocusLead.childName || "your child"}&apos;s birthday tomorrow, we invite you to sponsor wholesome meals in your child&apos;s honor. <strong>I am sharing our children&apos;s meal photo and official Axis Bank UPI Payment QR Scanner directly to your WhatsApp right now.</strong> Kindly review and support our resident children with whatever amount is comfortable for you.&quot;
-                              </p>
-                            ) : (
-                              <p>
-                                <strong className="text-teal-900 font-bold">&quot;Hello {currentFocusLead.name} Ji!</strong> Warm greetings from Janaseva Ashrama, Bengaluru. {isTomorrowBirthday ? `Heartfelt advance Birthday Wishes from all our 25 resident boys! 🎂 ` : (isTodayBirthday ? `Heartfelt Birthday Wishes from all our 25 resident boys! 🎂 ` : "")}We care for 25 orphaned boys at our Turahalli home providing wholesome meals, shelter, and schooling. We are Govt-licensed under JJ Act KA18CH0242 with 80G tax exemption. <strong>I am sharing our children&apos;s meal photo and official Axis Bank UPI Payment QR Scanner directly to your WhatsApp right now.</strong> Kindly review and support our resident children with whatever amount is comfortable for you.&quot;
-                              </p>
-                            )
-                          )}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* ── FEATURE 4: LIVE IN-CALL FAQ & OBJECTION CHEAT SHEET (COLLAPSIBLE) ── */}
-                    <div className="rounded-2xl border border-teal-900/15 bg-white p-3 space-y-2 text-xs shadow-2xs">
-                      <button
-                        type="button"
-                        onClick={() => setIsFaqExpanded((prev) => !prev)}
-                        className="w-full flex items-center justify-between font-black text-teal-950 text-[11px] cursor-pointer"
-                      >
-                        <span className="flex items-center gap-1.5">
-                          <span>💡</span>
-                          <span>ದಾನಿಗಳ ಪ್ರಶ್ನೆಗಳಿಗೆ ತಕ್ಷಣದ ಉತ್ತರ (Live In-Call Cheat Sheet &amp; FAQs)</span>
-                        </span>
-                        <span className="text-[10px] bg-teal-950/10 rounded px-2 py-0.5 font-bold">
-                          {isFaqExpanded ? "ಮುಚ್ಚಿ ▲" : "ನೋಡಿ (Open Cheat Sheet) ▼"}
-                        </span>
-                      </button>
-
-                      {isFaqExpanded && (
-                        <div className="space-y-2 pt-1 animate-fadeIn">
-                          {[
-                            {
-                              q: "📍 ಆಶ್ರಮ ಎಲ್ಲಿದೆ? ನಾವು ಖುದ್ದಾಗಿ ಬರಬಹುದೇ? (Where is the ashrama? Can we visit?)",
-                              a: "ಜನಸೇವಾ ಆಶ್ರಮವು ಬೆಂಗಳೂರಿನ ಮಾಗಡಿ ಮುಖ್ಯರಸ್ತೆಯಲ್ಲಿದೆ (ತಾವರೆಕೆರೆ / ಗೊಲ್ಲರಹಟ್ಟಿ ಬಳಿ). ಪೋಷಕರು ಖುದ್ದಾಗಿ ಬಂದು ತಮ್ಮ ಮಗುವಿನ ಜನ್ಮದಿನದಂದು 25 ಬಾಲಕರಿಗೆ ಸ್ವಹಸ್ತದಿಂದ ಊಟ ಬಡಿಸಬಹುದು! ಸಮಯ: ಬೆಳಿಗ್ಗೆ 8:30 ರಿಂದ ರಾತ್ರಿ 8:30 ವರೆಗೆ (ವರ್ಷದ 365 ದಿನಗಳೂ ತೆರೆದಿರುತ್ತದೆ).",
-                            },
-                            {
-                              q: "📜 80G ತೆರಿಗೆ ವಿನಾಯಿತಿ ರಶೀದಿ ಸಿಗುತ್ತದೆಯೇ? (Is 80G tax receipt provided?)",
-                              a: "ಹೌದು, 100%! ಜನಸೇವಾ ಟ್ರಸ್ಟ್ ಆದಾಯ ತೆರಿಗೆ ಕಾಯ್ದೆಯಡಿ Section 80G Form 10AC ಅಧಿಕೃತ ಮಾನ್ಯತೆ ಹೊಂದಿದೆ. ನೀವು UPI ಅಥವಾ ಆನ್‌ಲೈನ್ ಮೂಲಕ ದೇಣಿಗೆ ನೀಡಿದ ತಕ್ಷಣ ಅಧಿಕೃತ ಡಿಜಿಟಲ್ 80G ರಶೀದಿಯು ನಿಮ್ಮ WhatsApp ಹಾಗೂ ಇಮೇಲ್‌ಗೆ ಸ್ವಯಂಚಾಲಿತವಾಗಿ ಬರುತ್ತದೆ.",
-                            },
-                            {
-                              q: "👦 ಆಶ್ರಮದಲ್ಲಿ ಎಷ್ಟು ಮಕ್ಕಳಿದ್ದಾರೆ? (How many children live in ashrama?)",
-                              a: "ನಮ್ಮ ಆಶ್ರಮದಲ್ಲಿ 6 ರಿಂದ 16 ವರ್ಷ ವಯಸ್ಸಿನ 25 ಅನಾಥ ಮತ್ತು ಬಡ ಬಾಲಕರು ನೆಲೆಸಿದ್ದಾರೆ. ಮಕ್ಕಳಿಗೆ 100% ಉಚಿತ ಸಾತ್ವಿಕ ಊಟ, ವಸತಿ, ಆಂಗ್ಲ ಮಾಧ್ಯಮ ಶಾಲಾ ಶಿಕ್ಷಣ, ಸಮವಸ್ತ್ರ, ಪುಸ್ತಕ ಹಾಗೂ ವೈದ್ಯಕೀಯ ಸೌಲಭ್ಯವನ್ನು ಜನಸೇವಾ ಟ್ರಸ್ಟ್ ನೀಡುತ್ತಿದೆ (ಕರ್ನಾಟಕ ಸರ್ಕಾರ JJ Act KA18CH0242).",
-                            },
-                            {
-                              q: "💰 ನಾವು ನೀಡಬಹುದಾದ ದೇಣಿಗೆಯ ಮೊತ್ತ ಎಷ್ಟು? (What are the Seva amounts?)",
-                              a: "ಪ್ರತಿಯೊಂದು ರೂಪಾಯಿಯೂ ಮಕ್ಕಳ ಸೇವೆಗೆ ಪವಿತ್ರವಾಗಿದೆ! ₹501 (ಬೆಳಗಿನ ಶುದ್ಧ ಹಸುವಿನ ಹಾಲು & ಹಣ್ಣುಗಳು), ₹1,500 (25 ಮಕ್ಕಳಿಗೆ ಪೂರ್ಣ ಬೆಳಗಿನ ಉಪಹಾರ), ₹2,500 (ಜನ್ಮದಿನದ ವಿಶೇಷ ಸಿಹಿ ಊಟದ ಅನ್ನದಾನ - ಪಾಯಸ/ಪಲಾವ್), ₹5,000 (ಪೂರ್ಣ ದಿನದ 3 ಹೊತ್ತಿನ ಅನ್ನದಾನ).",
-                            },
-                          ].map((faq, idx) => (
-                            <div key={idx} className="rounded-xl bg-sand/30 p-2.5 border border-teal-900/10 space-y-1">
-                              <p className="font-bold text-teal-950 text-[11px] flex items-start gap-1">
-                                <span className="text-amber-600 font-black">Q:</span>
-                                <span>{faq.q}</span>
-                              </p>
-                              <p className="text-[11px] text-teal-950/80 leading-relaxed pl-4">
-                                <strong className="text-emerald-900">A:</strong> {faq.a}
-                              </p>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
                     {/* ── FEATURE 2: 1-TAP QUICK NOTE CHIPS & INLINE NOTES ── */}
                     <div className="rounded-2xl border border-teal-900/15 bg-sand/20 p-3 space-y-2 text-xs">
                       <div className="flex items-center justify-between">
@@ -3039,13 +2905,14 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
 
       {/* ── MOBILE STICKY BOTTOM THUMB ACTION COCKPIT ── */}
       {viewMode === "focus" && currentFocusLead && (
-        <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-teal-900/15 p-2 shadow-2xl space-y-1.5 animate-fadeIn">
-          {/* Row 1: 1-Tap Fast Disposition Auto-Advance */}
-          <div className="grid grid-cols-4 gap-1 text-[11px] font-black">
+        <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-teal-900/15 p-2 pb-3 shadow-2xl space-y-1.5 animate-fadeIn">
+          {/* Row 1: 1-Tap Fast Disposition Auto-Advance (5 Columns for 5 Action Buttons) */}
+          <div className="grid grid-cols-5 gap-1 text-[11px] font-black">
             <button
               type="button"
               onClick={() => handleFocusDisposition(currentFocusLead.leadId, "Interested")}
-              className="py-1 px-1 rounded-lg bg-amber-500 hover:bg-amber-600 active:scale-95 text-teal-950 text-center truncate shadow-2xs cursor-pointer"
+              className="py-1.5 px-0.5 rounded-lg bg-amber-500 hover:bg-amber-600 active:scale-95 text-teal-950 text-center truncate shadow-2xs cursor-pointer"
+              title="Interested"
             >
               👍 ಒಪ್ಪಿದ್ದಾರೆ
             </button>
@@ -3055,9 +2922,10 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                 const twoHoursLater = new Date(Date.now() + 2 * 3600 * 1000).toISOString();
                 void handleFocusDisposition(currentFocusLead.leadId, "No_Answer", "Auto-rescheduled +2 hours", twoHoursLater);
               }}
-              className="py-1 px-1 rounded-lg bg-slate-700 hover:bg-slate-800 active:scale-95 text-white text-center truncate shadow-2xs cursor-pointer"
+              className="py-1.5 px-0.5 rounded-lg bg-slate-700 hover:bg-slate-800 active:scale-95 text-white text-center truncate shadow-2xs cursor-pointer"
+              title="Busy / Call later"
             >
-              ⏳ ಬಿಜಿ (+2h)
+              ⏳ ಬಿಜಿ
             </button>
             <button
               type="button"
@@ -3066,21 +2934,24 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                 setNotesText(currentFocusLead.notes || "");
                 setCallbackDateTime("");
               }}
-              className="py-1 px-1 rounded-lg bg-blue-600 hover:bg-blue-700 active:scale-95 text-white text-center truncate shadow-2xs cursor-pointer"
+              className="py-1.5 px-0.5 rounded-lg bg-blue-600 hover:bg-blue-700 active:scale-95 text-white text-center truncate shadow-2xs cursor-pointer"
+              title="Callback Schedule"
             >
-              📅 ನಂತರ ಕರೆ
+              📅 ನಂತರ
             </button>
             <button
               type="button"
               onClick={() => handleFocusDisposition(currentFocusLead.leadId, "Rejected")}
-              className="py-1 px-1 rounded-lg bg-rose-100 hover:bg-rose-200 active:scale-95 text-rose-800 border border-rose-200 text-center truncate shadow-2xs cursor-pointer"
+              className="py-1.5 px-0.5 rounded-lg bg-rose-100 hover:bg-rose-200 active:scale-95 text-rose-800 border border-rose-200 text-center truncate shadow-2xs cursor-pointer"
+              title="Rejected"
             >
               ✕ ಬೇಡ
             </button>
             <button
               type="button"
               onClick={() => handleSkipFocusLead(currentFocusLead)}
-              className="py-1 px-1 rounded-lg bg-amber-100 hover:bg-amber-200 active:scale-95 text-amber-900 border border-amber-300 text-center truncate shadow-2xs cursor-pointer"
+              className="py-1.5 px-0.5 rounded-lg bg-amber-100 hover:bg-amber-200 active:scale-95 text-amber-900 border border-amber-300 text-center truncate shadow-2xs cursor-pointer"
+              title="Skip Lead"
             >
               ⏭️ ದಾಟಿಸಿ
             </button>
@@ -3091,7 +2962,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
             <button
               type="button"
               onClick={() => handleCallLead(currentFocusLead)}
-              className="flex-1 py-2.5 px-1 rounded-xl bg-teal-950 text-white font-black text-xs flex flex-col items-center justify-center active:scale-95 shadow-xs cursor-pointer"
+              className="flex-1 py-2 px-1 rounded-xl bg-teal-950 text-white font-black text-xs flex flex-col items-center justify-center active:scale-95 shadow-xs cursor-pointer min-h-[46px]"
             >
               <span className="text-sm">📞</span>
               <span className="text-[10px] leading-tight">ಕರೆ</span>
@@ -3099,7 +2970,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
             <button
               type="button"
               onClick={() => handleDirectWhatsAppChat(currentFocusLead, selectedSevaAmount)}
-              className="flex-1 py-2.5 px-1 rounded-xl bg-[#25D366] text-white font-black text-xs flex flex-col items-center justify-center active:scale-95 shadow-xs cursor-pointer"
+              className="flex-1 py-2 px-1 rounded-xl bg-[#25D366] text-white font-black text-xs flex flex-col items-center justify-center active:scale-95 shadow-xs cursor-pointer min-h-[46px]"
             >
               <span className="text-sm">💬</span>
               <span className="text-[10px] leading-tight">WhatsApp</span>
@@ -3107,7 +2978,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
             <button
               type="button"
               onClick={() => handleDirectSharePaymentQr(currentFocusLead, selectedSevaAmount)}
-              className="flex-1 py-2.5 px-1 rounded-xl bg-amber-600 text-white font-black text-xs flex flex-col items-center justify-center active:scale-95 shadow-xs cursor-pointer"
+              className="flex-1 py-2 px-1 rounded-xl bg-amber-600 text-white font-black text-xs flex flex-col items-center justify-center active:scale-95 shadow-xs cursor-pointer min-h-[46px]"
             >
               <span className="text-sm">📷</span>
               <span className="text-[10px] leading-tight">QR ಸ್ಕ್ಯಾನ್</span>
@@ -3119,7 +2990,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                 setLoggedDonationAmount(selectedSevaAmount || 1500);
                 setLoggedDonationUtr("");
               }}
-              className="flex-1 py-2.5 px-1 rounded-xl bg-emerald-600 text-white font-black text-xs flex flex-col items-center justify-center active:scale-95 shadow-xs cursor-pointer"
+              className="flex-1 py-2 px-1 rounded-xl bg-emerald-600 text-white font-black text-xs flex flex-col items-center justify-center active:scale-95 shadow-xs cursor-pointer min-h-[46px]"
             >
               <span className="text-sm">🎉</span>
               <span className="text-[10px] leading-tight">ಪಾವತಿ</span>
@@ -3128,7 +2999,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
               type="button"
               onClick={handleNextFocusLead}
               disabled={safeFocusIndex >= filteredLeads.length - 1}
-              className="py-2.5 px-2.5 rounded-xl bg-sand border border-teal-900/20 text-teal-950 font-black text-xs flex flex-col items-center justify-center active:scale-95 disabled:opacity-40 cursor-pointer"
+              className="py-2 px-2.5 rounded-xl bg-sand border border-teal-900/20 text-teal-950 font-black text-xs flex flex-col items-center justify-center active:scale-95 disabled:opacity-40 cursor-pointer min-h-[46px]"
               title="Next Lead"
             >
               <span className="text-sm">▶</span>
