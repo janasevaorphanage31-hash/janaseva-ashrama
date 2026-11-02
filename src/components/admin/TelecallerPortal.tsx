@@ -180,6 +180,25 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
   const [loggedDonationUtr, setLoggedDonationUtr] = useState<string>("");
   const [loggingDonation, setLoggingDonation] = useState<boolean>(false);
 
+  // Shift Activity & Edit Modal state
+  const [dailyLogs, setDailyLogs] = useState<any[]>([]);
+  const [loadingDailyLogs, setLoadingDailyLogs] = useState(false);
+  const [showShiftDrawer, setShowShiftDrawer] = useState(false);
+  const [editingLog, setEditingLog] = useState<any | null>(null);
+  const [editDisposition, setEditDisposition] = useState("Interested");
+  const [editAmount, setEditAmount] = useState<number | "">("");
+  const [editUtr, setEditUtr] = useState("");
+  const [editNotes, setEditNotes] = useState("");
+  const [editPaymentMode, setEditPaymentMode] = useState("UPI");
+  const [savingEdit, setSavingEdit] = useState(false);
+
+  // End of Day (EOD) Submission state
+  const [eodStatus, setEodStatus] = useState<{ isSubmitted: boolean; status: string; totalCallsToday: number } | null>(null);
+  const [showEodModal, setShowEodModal] = useState(false);
+  const [submittingEod, setSubmittingEod] = useState(false);
+  const [eodDeclaration, setEodDeclaration] = useState(false);
+  const [eodNotes, setEodNotes] = useState("");
+
   const showToast = (msg: string) => {
     setToastMsg(msg);
     setTimeout(() => setToastMsg(""), 4500);
@@ -254,11 +273,109 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
             }
           } catch {}
         }
+        void loadDailyLogs();
+        void loadEodStatus();
       }
     } catch (err: any) {
       showToast("Error loading leads: " + err.message);
     } finally {
       setLoadingLeads(false);
+    }
+  };
+
+  const loadDailyLogs = async () => {
+    setLoadingDailyLogs(true);
+    try {
+      const res = await fetch("/api/v1/telecaller/daily-logs");
+      const data = await res.json();
+      if (data.success) {
+        setDailyLogs(data.logs || []);
+      }
+    } catch (e) {
+      console.error("Failed to load daily logs:", e);
+    } finally {
+      setLoadingDailyLogs(false);
+    }
+  };
+
+  const loadEodStatus = async () => {
+    try {
+      const res = await fetch("/api/v1/telecaller/eod-submit");
+      const data = await res.json();
+      if (data.success) {
+        setEodStatus({
+          isSubmitted: data.isSubmitted,
+          status: data.status,
+          totalCallsToday: data.totalCallsToday || 0,
+        });
+      }
+    } catch (e) {
+      console.error("Failed to load EOD status:", e);
+    }
+  };
+
+  const handleOpenEdit = (log: any) => {
+    setEditingLog(log);
+    setEditDisposition(log.disposition || "Interested");
+    setEditAmount(log.effectiveAmount || log.amount || "");
+    setEditUtr(log.utr || "");
+    setEditNotes(log.notes || "");
+    setEditPaymentMode(log.paymentMode || "UPI");
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingLog) return;
+    setSavingEdit(true);
+    try {
+      const res = await fetch(`/api/v1/leads/${editingLog.leadId}/log`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          disposition: editDisposition,
+          amount: editAmount ? Number(editAmount) : null,
+          utr: editUtr,
+          notes: editNotes,
+          paymentMode: editPaymentMode,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to update log");
+      showToast("✓ Entry updated successfully!");
+      setEditingLog(null);
+      // Update local leads list
+      setLeads((prev) =>
+        prev.map((l) => (l.leadId === editingLog.leadId ? { ...l, status: editDisposition } : l))
+      );
+      void loadDailyLogs();
+      void loadEodStatus();
+      if (callerProfile) {
+        void loadCallerLeads(callerProfile.callerId);
+      }
+    } catch (e: any) {
+      alert("Error updating entry: " + e.message);
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  const handleSubmitEOD = async () => {
+    setSubmittingEod(true);
+    try {
+      const res = await fetch("/api/v1/telecaller/eod-submit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ submissionType: "MANUAL", notes: eodNotes }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to submit EOD report");
+      showToast("🎉 Shift submitted to Supervisor successfully!");
+      setShowEodModal(false);
+      void loadEodStatus();
+      void loadDailyLogs();
+    } catch (e: any) {
+      alert("Error submitting shift: " + e.message);
+    } finally {
+      setSubmittingEod(false);
     }
   };
 
@@ -1025,7 +1142,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
     showToast("✓ Referral link copied: " + refLink);
   };
 
-  // Dynamic filter counter computation
+  // Dynamic filter counter computation (stream-aware for zero count mismatch)
   const counts = useMemo(() => {
     const now = new Date();
     const curDay = now.getDate();
@@ -1045,12 +1162,17 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
     let donors = 0;
 
     leads.forEach((l) => {
+      const isParent = l.stream === "PARENTS" || Boolean(l.parentName || l.childName);
+      if (isParent) parents++;
+      else donors++;
+
+      // When streamFilter is active, respect stream filter for the tab status counts
+      if (streamFilter === "PARENTS" && !isParent) return;
+      if (streamFilter === "DIRECT_DONOR" && isParent) return;
+
       const isDone = l.status && l.status !== "Pending";
       if (!isDone) {
         pending++;
-        const isParent = l.stream === "PARENTS" || Boolean(l.parentName || l.childName);
-        if (isParent) parents++;
-        else donors++;
       } else {
         attended++;
       }
@@ -1062,8 +1184,15 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
       if (l.status === "Donated") donated++;
     });
 
+    const activeStreamTotal =
+      streamFilter === "PARENTS"
+        ? parents
+        : streamFilter === "DIRECT_DONOR"
+        ? donors
+        : leads.length;
+
     return {
-      all: leads.length,
+      all: activeStreamTotal,
       pending,
       attended,
       birthdays,
@@ -1073,8 +1202,9 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
       donated,
       parents,
       donors,
+      globalTotal: leads.length,
     };
-  }, [leads, sessionContactedIds]);
+  }, [leads, streamFilter, sessionContactedIds]);
 
   // Filter & Search Leads with Date Sorting
   const filteredLeads = useMemo(() => {
@@ -1211,6 +1341,10 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
       return a.leadId - b.leadId;
     });
   }, [leads, filter, searchQuery, dateSortOrder, streamFilter, sessionContactedIds]);
+
+  const filteredPendingCount = useMemo(() => {
+    return filteredLeads.filter((l) => !l.status || l.status === "Pending").length;
+  }, [filteredLeads]);
 
   // Reset pagination and active focus lead when filter, search, date sort, or stream changes
   useEffect(() => {
@@ -1601,13 +1735,46 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
               <span>📥 CSV</span>
             </button>
 
+            {/* Shift Activity & Edit Typo Drawer */}
+            <button
+              type="button"
+              onClick={() => {
+                setShowShiftDrawer(true);
+                void loadDailyLogs();
+              }}
+              title="View today's calls and edit any incorrect entries or amounts"
+              className="focus-ring tap-scale inline-flex items-center gap-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-950 px-3 py-2 text-xs font-black transition cursor-pointer shadow-2xs"
+            >
+              <span>📝</span>
+              <span>Today&apos;s Logs ({dailyLogs.length})</span>
+            </button>
+
+            {/* End of Day (EOD) Submit Trigger */}
+            <button
+              type="button"
+              onClick={() => {
+                setShowEodModal(true);
+                void loadDailyLogs();
+                void loadEodStatus();
+              }}
+              title="Submit daily shift report to supervisor for payment verification"
+              className={`focus-ring tap-scale inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-black transition cursor-pointer shadow-2xs ${
+                eodStatus?.isSubmitted
+                  ? "bg-emerald-100 border-emerald-400 text-emerald-950"
+                  : "bg-teal-950 hover:bg-teal-900 border-teal-800 text-gold"
+              }`}
+            >
+              <span>{eodStatus?.isSubmitted ? "✅" : "📤"}</span>
+              <span>{eodStatus?.isSubmitted ? "Shift Submitted" : "Submit Shift"}</span>
+            </button>
+
             <button
               type="button"
               onClick={handleSendDailySupervisorReport}
               title="Send End-of-Day calling report to supervisor on WhatsApp"
               className="focus-ring tap-scale inline-flex items-center gap-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-950 px-3 py-2 text-xs font-bold transition cursor-pointer shadow-2xs"
             >
-              <span>📊 Daily Report</span>
+              <span>📊 Daily WhatsApp</span>
             </button>
 
             <button
@@ -1877,31 +2044,60 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
 
         {/* View Mode Switcher on Mobile, Master-Detail Status on Desktop */}
         <div className="flex items-center justify-between gap-3 p-1.5 rounded-2xl bg-sand/40 border border-teal-900/15">
-          {/* Mobile Switcher (Queue vs Calling Card) */}
-          <div className="flex lg:hidden items-center gap-1.5 w-full">
+          {/* Mobile Switcher (Queue vs Calling Card + Shift Activity & EOD Submit) */}
+          <div className="flex lg:hidden items-center gap-1.5 w-full flex-wrap">
             <button
               type="button"
               onClick={() => setViewMode("focus")}
-              className={`flex-1 rounded-xl px-3.5 py-2 text-xs font-black transition cursor-pointer flex items-center justify-center gap-1.5 shadow-xs ${
+              className={`flex-1 rounded-xl px-2.5 py-2 text-xs font-black transition cursor-pointer flex items-center justify-center gap-1 shadow-xs ${
                 viewMode === "focus"
                   ? "bg-teal-950 text-gold shadow-sm"
                   : "bg-white text-teal-950 hover:bg-cream"
               }`}
             >
               <span>⚡</span>
-              <span>Calling Card</span>
+              <span>Card</span>
             </button>
             <button
               type="button"
               onClick={() => setViewMode("queue")}
-              className={`flex-1 rounded-xl px-3.5 py-2 text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5 ${
+              className={`flex-1 rounded-xl px-2.5 py-2 text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1 ${
                 viewMode === "queue"
                   ? "bg-teal-950 text-white shadow-sm"
                   : "bg-white text-teal-950 hover:bg-cream"
               }`}
             >
               <span>📋</span>
-              <span>All Leads ({filteredLeads.length})</span>
+              <span>Queue ({filteredLeads.length})</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setShowShiftDrawer(true);
+                void loadDailyLogs();
+              }}
+              className="rounded-xl px-2.5 py-2 text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1 bg-amber-100 text-amber-950 border border-amber-300"
+              title="Today's calls"
+            >
+              <span>📝</span>
+              <span>Logs ({dailyLogs.length})</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setShowEodModal(true);
+                void loadDailyLogs();
+                void loadEodStatus();
+              }}
+              className={`rounded-xl px-2.5 py-2 text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1 ${
+                eodStatus?.isSubmitted
+                  ? "bg-emerald-100 text-emerald-950 border border-emerald-300"
+                  : "bg-teal-950 text-amber-300"
+              }`}
+              title="Submit Shift"
+            >
+              <span>{eodStatus?.isSubmitted ? "✅" : "📤"}</span>
+              <span>{eodStatus?.isSubmitted ? "Done" : "EOD"}</span>
             </button>
           </div>
 
@@ -1935,9 +2131,16 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                   {filteredLeads.length}
                 </span>
               </div>
-              <span className="text-[11px] font-mono font-black text-amber-950 bg-amber-100 px-2 py-0.5 rounded-lg border border-amber-300">
-                {counts.pending} to call
-              </span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] font-mono font-black text-amber-950 bg-amber-100 px-2 py-0.5 rounded-lg border border-amber-300">
+                  {filteredPendingCount} to call in queue
+                </span>
+                {stats.totalAssigned > filteredLeads.length && (
+                  <span className="hidden sm:inline-block text-[10px] text-teal-950/60 font-semibold" title="Total leads assigned across all streams">
+                    ({stats.totalAssigned.toLocaleString()} total assigned)
+                  </span>
+                )}
+              </div>
             </div>
 
             {/* Leads List */}
@@ -3107,6 +3310,460 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                 className="py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-black text-xs shadow-md transition cursor-pointer disabled:opacity-50"
               >
                 {loggingDonation ? "Saving..." : `Confirm ₹${formatINR(loggedDonationAmount)} Paid`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── TODAY'S SHIFT ACTIVITY & SELF-CORRECTION (EDIT) DRAWER ── */}
+      {showShiftDrawer && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-end bg-black/60 backdrop-blur-xs"
+          onClick={() => setShowShiftDrawer(false)}
+        >
+          <div
+            className="relative w-full max-w-2xl h-full bg-white shadow-2xl p-4 sm:p-6 overflow-y-auto space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Drawer Header */}
+            <div className="flex items-center justify-between border-b border-teal-900/10 pb-3">
+              <div>
+                <h3 className="font-display font-black text-lg text-teal-950 flex items-center gap-2">
+                  <span>📝 Today&apos;s Shift Activity</span>
+                  <span className="text-xs font-mono font-bold bg-amber-100 text-amber-950 px-2 py-0.5 rounded-full border border-amber-300">
+                    {dailyLogs.length} calls
+                  </span>
+                </h3>
+                <p className="text-xs text-teal-950/60 mt-0.5">
+                  Review today&apos;s logged dispositions, correct typos, and verify donation claims.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowShiftDrawer(false)}
+                className="text-teal-950/60 hover:text-teal-950 text-xl font-bold p-1 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Quick Summary Pill Bar */}
+            <div className="grid grid-cols-4 gap-2 bg-sand/30 p-2.5 rounded-2xl border border-teal-900/10 text-center text-xs">
+              <div>
+                <span className="block text-[10px] text-teal-950/60 font-bold uppercase">Total Calls</span>
+                <span className="font-display font-black text-base text-teal-950">{dailyLogs.length}</span>
+              </div>
+              <div>
+                <span className="block text-[10px] text-amber-900 font-bold uppercase">Interested</span>
+                <span className="font-display font-black text-base text-amber-900">
+                  {dailyLogs.filter((l) => l.disposition === "Interested").length}
+                </span>
+              </div>
+              <div>
+                <span className="block text-[10px] text-emerald-900 font-bold uppercase">Donated</span>
+                <span className="font-display font-black text-base text-emerald-900">
+                  {dailyLogs.filter((l) => l.disposition === "Donated").length}
+                </span>
+              </div>
+              <div>
+                <span className="block text-[10px] text-blue-900 font-bold uppercase">Callbacks</span>
+                <span className="font-display font-black text-base text-blue-900">
+                  {dailyLogs.filter((l) => l.disposition === "Reschedule").length}
+                </span>
+              </div>
+            </div>
+
+            {/* Shift Submission Status Banner */}
+            {eodStatus?.isSubmitted ? (
+              <div className="bg-emerald-50 border border-emerald-300 rounded-2xl p-3 text-xs text-emerald-950 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">✅</span>
+                  <div>
+                    <p className="font-bold">Today&apos;s Shift Submitted to Supervisor</p>
+                    <p className="text-[11px] text-emerald-800">Calls are finalized and locked for daily audit.</p>
+                  </div>
+                </div>
+                <span className="font-mono text-[11px] font-bold bg-white px-2 py-0.5 rounded-lg border border-emerald-300">
+                  Locked
+                </span>
+              </div>
+            ) : (
+              <div className="bg-amber-50 border border-amber-300 rounded-2xl p-3 text-xs text-amber-950 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">⏳</span>
+                  <div>
+                    <p className="font-bold">Shift in Progress (Editable)</p>
+                    <p className="text-[11px] text-amber-800">You can correct any typos before end-of-day submission.</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowShiftDrawer(false);
+                    setShowEodModal(true);
+                  }}
+                  className="rounded-xl bg-teal-950 text-gold px-3 py-1.5 font-bold text-xs shadow-xs hover:bg-teal-900 cursor-pointer"
+                >
+                  Submit Shift →
+                </button>
+              </div>
+            )}
+
+            {/* List of Today's Calls */}
+            {loadingDailyLogs ? (
+              <div className="p-8 text-center text-xs text-teal-950/60 bg-cream/40 rounded-2xl">
+                Loading today&apos;s shift records...
+              </div>
+            ) : dailyLogs.length === 0 ? (
+              <div className="p-8 text-center text-xs text-teal-950/60 bg-cream/40 rounded-2xl">
+                No calls logged yet today. Dial numbers from your Calling Card to get started!
+              </div>
+            ) : (
+              <div className="space-y-2.5">
+                {dailyLogs.map((log: any) => {
+                  const logTime = new Date(log.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+                  const isParent = log.stream === "PARENTS" || Boolean(log.parentName || log.childName);
+                  const childDisp = cleanChildName(log);
+                  const parentDisp = cleanParentName(log);
+
+                  return (
+                    <div
+                      key={log.logId}
+                      className="rounded-2xl border border-teal-900/10 bg-white p-3.5 shadow-xs space-y-2 hover:border-teal-900/20 transition"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="font-black text-xs text-teal-950">
+                              {isParent ? `${childDisp} (${parentDisp})` : log.leadName}
+                            </span>
+                            <span className="text-[10px] font-mono text-teal-950/60 bg-sand/60 px-1.5 py-0.2 rounded">
+                              {log.phone}
+                            </span>
+                          </div>
+                          <span className="text-[10px] text-teal-950/50 block mt-0.5">
+                            Logged at {logTime} {log.isEdited && <span className="text-amber-800 font-bold">· ✏️ Edited</span>}
+                          </span>
+                        </div>
+
+                        {/* Disposition Pill */}
+                        <div className="flex items-center gap-1.5">
+                          <span
+                            className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                              log.disposition === "Donated"
+                                ? "bg-emerald-100 text-emerald-950 border border-emerald-300"
+                                : log.disposition === "Interested"
+                                ? "bg-amber-100 text-amber-950 border border-amber-300"
+                                : log.disposition === "Reschedule"
+                                ? "bg-blue-100 text-blue-950 border border-blue-300"
+                                : "bg-rose-100 text-rose-950 border border-rose-300"
+                            }`}
+                          >
+                            {log.disposition}
+                          </span>
+
+                          {!eodStatus?.isSubmitted && (
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEdit(log)}
+                              className="text-xs font-bold text-teal-950 bg-sand/60 hover:bg-sand border border-teal-900/15 px-2 py-0.5 rounded-lg cursor-pointer"
+                              title="Edit this entry"
+                            >
+                              ✏️ Edit
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Donation Info if Donated */}
+                      {log.disposition === "Donated" && (
+                        <div className="bg-emerald-50/80 border border-emerald-200 rounded-xl p-2 text-xs flex items-center justify-between">
+                          <div>
+                            <span className="font-bold text-emerald-950">
+                              Claimed: ₹{formatINR(log.effectiveAmount)}
+                            </span>
+                            {log.utr && (
+                              <span className="font-mono text-[10px] text-emerald-900/70 block">
+                                UTR: {log.utr}
+                              </span>
+                            )}
+                          </div>
+                          <div>
+                            {log.verificationStatus === "VERIFIED" ? (
+                              <span className="text-[10px] font-bold bg-emerald-600 text-white px-2 py-0.5 rounded-full">
+                                ✓ Verified: ₹{formatINR(log.verifiedAmount || log.effectiveAmount)}
+                              </span>
+                            ) : log.verificationStatus === "REJECTED" ? (
+                              <span className="text-[10px] font-bold bg-rose-600 text-white px-2 py-0.5 rounded-full">
+                                ✕ Rejected by Admin
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-bold bg-amber-400 text-teal-950 px-2 py-0.5 rounded-full">
+                                ⏳ Pending Admin Check
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Notes / Callback info */}
+                      {log.notes && (
+                        <p className="text-[11px] text-teal-950/70 bg-cream/30 p-2 rounded-lg italic">
+                          &ldquo;{log.notes}&rdquo;
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── EDIT LOG MODAL ── */}
+      {editingLog && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
+          onClick={() => setEditingLog(null)}
+        >
+          <div
+            className="relative w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl border border-teal-900/15 text-teal-950 space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-teal-900/10 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">✏️</span>
+                <div>
+                  <h3 className="font-display font-black text-base text-teal-950">
+                    Edit Log: {editingLog.leadName}
+                  </h3>
+                  <p className="text-[11px] text-teal-950/60 font-mono">
+                    {editingLog.phone}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingLog(null)}
+                className="text-teal-950/60 hover:text-teal-950 text-sm font-bold p-1 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Disposition Dropdown */}
+            <div>
+              <label className="block text-xs font-bold text-teal-950 mb-1">
+                Call Disposition:
+              </label>
+              <select
+                value={editDisposition}
+                onChange={(e) => setEditDisposition(e.target.value)}
+                className="w-full rounded-xl border border-teal-900/20 px-3 py-2 text-xs font-bold text-teal-950 bg-white focus:ring-2 focus:ring-amber-400 outline-none"
+              >
+                <option value="Interested">Interested (ಒಪ್ಪಿದ್ದಾರೆ)</option>
+                <option value="Donated">Donated (ದಾನ ಮಾಡಿದ್ದಾರೆ / ಪಾವತಿ)</option>
+                <option value="Reschedule">Reschedule / Callback (ಮತ್ತೆ ಕರೆ)</option>
+                <option value="No_Answer">No Answer / Busy (ಬಿಜಿ / ಕರೆ ಸ್ವೀಕರಿಸಿಲ್ಲ)</option>
+                <option value="Rejected">Rejected (ನಿರಾಕರಿಸಿದ್ದಾರೆ)</option>
+                <option value="Wrong_Number">Wrong / Invalid Number (ತಪ್ಪು ಸಂಖ್ಯೆ)</option>
+                <option value="Pending">Pending (ಮತ್ತೆ ಕ್ಯೂಗೆ ಸೇರಿಸಿ)</option>
+              </select>
+            </div>
+
+            {/* If Donated: Amount, Mode, UTR */}
+            {editDisposition === "Donated" && (
+              <div className="space-y-3 bg-emerald-50/50 p-3 rounded-2xl border border-emerald-200">
+                <div>
+                  <label className="block text-xs font-bold text-emerald-950 mb-1">
+                    Correct Donation Amount (₹):
+                  </label>
+                  <input
+                    type="number"
+                    value={editAmount}
+                    onChange={(e) => setEditAmount(e.target.value === "" ? "" : Number(e.target.value))}
+                    placeholder="Enter corrected amount in INR"
+                    className="w-full rounded-xl border border-emerald-300 px-3 py-2 text-xs font-bold text-teal-950 bg-white outline-none"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[10px] font-bold text-emerald-950 mb-1">
+                      Payment Mode:
+                    </label>
+                    <select
+                      value={editPaymentMode}
+                      onChange={(e) => setEditPaymentMode(e.target.value)}
+                      className="w-full rounded-xl border border-emerald-300 px-2 py-1.5 text-xs text-teal-950 bg-white outline-none"
+                    >
+                      <option value="UPI">UPI / GPay / PhonePe</option>
+                      <option value="Bank_Transfer">Bank NEFT / IMPS</option>
+                      <option value="QR">QR Scan</option>
+                      <option value="Cash">Cash / In-Person</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-emerald-950 mb-1">
+                      UTR / Ref No:
+                    </label>
+                    <input
+                      type="text"
+                      value={editUtr}
+                      onChange={(e) => setEditUtr(e.target.value)}
+                      placeholder="e.g. 4289..."
+                      className="w-full rounded-xl border border-emerald-300 px-2 py-1.5 text-xs font-mono text-teal-950 bg-white outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Notes */}
+            <div>
+              <label className="block text-xs font-bold text-teal-950 mb-1">
+                Call Notes / Reason for Change:
+              </label>
+              <textarea
+                value={editNotes}
+                onChange={(e) => setEditNotes(e.target.value)}
+                placeholder="Enter notes or correction explanation..."
+                rows={3}
+                className="w-full rounded-xl border border-teal-900/20 p-2.5 text-xs text-teal-950 bg-white focus:ring-2 focus:ring-amber-400 outline-none"
+              />
+            </div>
+
+            {/* Action Buttons */}
+            <div className="grid grid-cols-2 gap-2 pt-2 border-t border-teal-900/10">
+              <button
+                type="button"
+                onClick={() => setEditingLog(null)}
+                className="py-2.5 px-3 rounded-xl border border-teal-900/20 text-xs font-bold text-teal-950 hover:bg-cream transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveEdit}
+                disabled={savingEdit}
+                className="py-2.5 px-3 rounded-xl bg-teal-950 hover:bg-teal-900 active:scale-95 text-gold font-black text-xs shadow-md transition cursor-pointer disabled:opacity-50"
+              >
+                {savingEdit ? "Saving..." : "Save Corrections"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── END OF DAY (EOD) SHIFT SUBMISSION MODAL ── */}
+      {showEodModal && callerProfile && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
+          onClick={() => setShowEodModal(false)}
+        >
+          <div
+            className="relative w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl border border-teal-900/15 text-teal-950 space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-teal-900/10 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-2xl">📋</span>
+                <div>
+                  <h3 className="font-display font-black text-base text-teal-950">
+                    End-of-Day Shift Submission
+                  </h3>
+                  <p className="text-[11px] text-teal-950/60 font-mono">
+                    {callerProfile.name} ({callerProfile.callerId})
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowEodModal(false)}
+                className="text-teal-950/60 hover:text-teal-950 text-sm font-bold p-1 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Shift Metrics Review */}
+            <div className="space-y-2 bg-sand/30 p-3.5 rounded-2xl border border-teal-900/10 text-xs">
+              <p className="font-bold text-teal-950 mb-2">Today&apos;s Outreach Summary:</p>
+              <div className="flex justify-between py-1 border-b border-teal-900/10">
+                <span className="text-teal-950/70">Total Calls Logged Today:</span>
+                <span className="font-black text-teal-950">{dailyLogs.length}</span>
+              </div>
+              <div className="flex justify-between py-1 border-b border-teal-900/10">
+                <span className="text-teal-950/70">Interested Donors:</span>
+                <span className="font-black text-amber-900">
+                  {dailyLogs.filter((l) => l.disposition === "Interested").length}
+                </span>
+              </div>
+              <div className="flex justify-between py-1 border-b border-teal-900/10">
+                <span className="text-teal-950/70">Donations Claimed:</span>
+                <span className="font-black text-emerald-900">
+                  {dailyLogs.filter((l) => l.disposition === "Donated").length} donors (₹
+                  {formatINR(
+                    dailyLogs
+                      .filter((l) => l.disposition === "Donated")
+                      .reduce((sum, l) => sum + (l.effectiveAmount || 0), 0)
+                  )}
+                  )
+                </span>
+              </div>
+              <div className="flex justify-between py-1">
+                <span className="text-teal-950/70">Callbacks Scheduled:</span>
+                <span className="font-black text-blue-900">
+                  {dailyLogs.filter((l) => l.disposition === "Reschedule").length}
+                </span>
+              </div>
+            </div>
+
+            {/* Optional Shift Notes */}
+            <div>
+              <label className="block text-xs font-bold text-teal-950 mb-1">
+                Shift Notes for Supervisor (Optional):
+              </label>
+              <textarea
+                value={eodNotes}
+                onChange={(e) => setEodNotes(e.target.value)}
+                placeholder="E.g. Completed today's target; 4 donors requested follow-up tomorrow..."
+                rows={2}
+                className="w-full rounded-xl border border-teal-900/20 p-2 text-xs text-teal-950 bg-white outline-none focus:ring-2 focus:ring-amber-400"
+              />
+            </div>
+
+            {/* Declaration Checkbox */}
+            <label className="flex items-start gap-2 text-xs text-teal-950 select-none cursor-pointer">
+              <input
+                type="checkbox"
+                checked={eodDeclaration}
+                onChange={(e) => setEodDeclaration(e.target.checked)}
+                className="mt-0.5 rounded border-teal-900/30 text-teal-950 focus:ring-teal-950"
+              />
+              <span>
+                I confirm that all call dispositions and donation amounts entered today are accurate and ready for supervisor review.
+              </span>
+            </label>
+
+            {/* Action Buttons */}
+            <div className="grid grid-cols-2 gap-2 pt-2 border-t border-teal-900/10">
+              <button
+                type="button"
+                onClick={() => setShowEodModal(false)}
+                className="py-2.5 px-3 rounded-xl border border-teal-900/20 text-xs font-bold text-teal-950 hover:bg-cream transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSubmitEOD}
+                disabled={submittingEod || !eodDeclaration}
+                className="py-2.5 px-3 rounded-xl bg-teal-950 hover:bg-teal-900 active:scale-95 text-gold font-black text-xs shadow-md transition cursor-pointer disabled:opacity-50"
+              >
+                {submittingEod ? "Submitting..." : "Confirm & Submit Shift"}
               </button>
             </div>
           </div>

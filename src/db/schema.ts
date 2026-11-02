@@ -575,21 +575,29 @@ export const agCallLogs = pgTable(
     logId: serial("log_id").primaryKey(),
     leadId: integer("lead_id").notNull().references(() => agLeads.leadId, { onDelete: "cascade" }),
     callerId: text("caller_id").notNull(),
-    disposition: text("disposition").notNull(), // Interested | Rejected | Reschedule | No_Answer | Wrong_Number
+    disposition: text("disposition").notNull(), // Interested | Rejected | Reschedule | No_Answer | Wrong_Number | Donated
     callbackTime: timestamp("callback_time"),
     notes: text("notes"),
+    amount: integer("amount"), // Optional donation amount in INR
+    utr: text("utr"), // Optional UTR / transaction ID
+    isEdited: boolean("is_edited").notNull().default(false), // True if telecaller edited this log
+    editedAt: timestamp("edited_at"),
+    originalDisposition: text("original_disposition"),
+    originalAmount: integer("original_amount"),
+    eodSubmitted: boolean("eod_submitted").notNull().default(false), // Shift submitted to admin
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (t) => [
     index("ag_call_logs_lead_idx").on(t.leadId),
     index("ag_call_logs_caller_idx").on(t.callerId, t.createdAt),
+    index("ag_call_logs_eod_idx").on(t.callerId, t.eodSubmitted),
   ],
 );
 
 export const agDonations = pgTable(
   "ag_donations",
   {
-    txnId: text("txn_id").primaryKey(), // Gateway payment_id e.g. 'pay_Plq982...'
+    txnId: text("txn_id").primaryKey(), // Gateway payment_id e.g. 'pay_Plq982...' or 'utr_...'
     gatewayOrderId: text("gateway_order_id").notNull(),
     amount: integer("amount").notNull(), // Amount in INR whole rupees
     currency: text("currency").notNull().default("INR"),
@@ -600,11 +608,43 @@ export const agDonations = pgTable(
     donorPhone: text("donor_phone"),
     donorEmail: text("donor_email"),
     metadata: jsonb("metadata"),
+    verificationStatus: text("verification_status").notNull().default("PENDING_APPROVAL"), // PENDING_APPROVAL | VERIFIED | REJECTED
+    verifiedAmount: integer("verified_amount"), // Amount confirmed by Admin against bank account
+    verifiedBy: text("verified_by"), // Admin user ID e.g. 'ADMIN'
+    verifiedAt: timestamp("verified_at"),
+    rejectionReason: text("rejection_reason"),
+    adminNotes: text("admin_notes"),
+    paymentMode: text("payment_mode").notNull().default("UPI"), // UPI | Bank_Transfer | QR | Cash | Gateway
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (t) => [
     index("ag_donations_caller_idx").on(t.callerRefId, t.createdAt),
     index("ag_donations_order_idx").on(t.gatewayOrderId),
+    index("ag_donations_verif_idx").on(t.verificationStatus, t.createdAt),
+  ],
+);
+
+export const agDailySubmissions = pgTable(
+  "ag_daily_submissions",
+  {
+    submissionId: serial("submission_id").primaryKey(),
+    callerId: text("caller_id").notNull(),
+    submissionDate: text("submission_date").notNull(), // YYYY-MM-DD
+    totalCalls: integer("total_calls").notNull().default(0),
+    totalInterested: integer("total_interested").notNull().default(0),
+    totalDonated: integer("total_donated").notNull().default(0),
+    claimedAmount: integer("claimed_amount").notNull().default(0),
+    verifiedAmount: integer("verified_amount").notNull().default(0),
+    submissionType: text("submission_type").notNull().default("MANUAL"), // MANUAL | AUTO_EOD
+    status: text("status").notNull().default("SUBMITTED"), // SUBMITTED | REVIEWED | UNLOCKED
+    submittedAt: timestamp("submitted_at").notNull().defaultNow(),
+    reviewedBy: text("reviewed_by"),
+    reviewedAt: timestamp("reviewed_at"),
+    notes: text("notes"),
+  },
+  (t) => [
+    index("ag_daily_sub_caller_date_idx").on(t.callerId, t.submissionDate),
+    index("ag_daily_sub_status_idx").on(t.status),
   ],
 );
 

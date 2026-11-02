@@ -1,6 +1,6 @@
 import { db, ensureDbSchema } from "@/db";
-import { agTelecallers, agLeads, agCallLogs, agDonations, contentEntries, influencerProfiles, donations } from "@/db/schema";
-import { eq, and, or, sql, desc, inArray, isNull, like } from "drizzle-orm";
+import { agTelecallers, agLeads, agCallLogs, agDonations, contentEntries, influencerProfiles, donations, agDailySubmissions } from "@/db/schema";
+import { eq, and, or, sql, desc, inArray, isNull, like, gte, lte } from "drizzle-orm";
 import { hashPassword } from "@/lib/admin-auth";
 import { parseCustomerPhone } from "@/lib/whatsapp-phone";
 import { signCallerToken } from "@/lib/caller-auth";
@@ -516,7 +516,9 @@ export async function logCallDisposition(
   callerId: string,
   disposition: string,
   notes?: string,
-  callbackTime?: string | null
+  callbackTime?: string | null,
+  amount?: number | null,
+  utr?: string | null
 ) {
   await ensureDbSchema();
   // Insert call history log safely without blocking lead status updates
@@ -532,6 +534,8 @@ export async function logCallDisposition(
       disposition,
       notes: notes?.trim() || null,
       callbackTime: validCallbackDate,
+      amount: amount ? Math.round(Number(amount)) : null,
+      utr: utr?.trim() || null,
     });
   } catch (logErr) {
     console.error(`[CRM] Failed to insert agCallLogs for lead ${leadId}, caller ${callerId}:`, logErr);
@@ -712,6 +716,12 @@ export async function recordPaymentAttribution(data: {
     }
   }
 
+  const isOnlineGateway = Boolean(data.txnId && data.txnId.startsWith("pay_"));
+  const initialVerifStatus = isOnlineGateway ? "VERIFIED" : "PENDING_APPROVAL";
+  const verifiedAmt = isOnlineGateway ? roundedAmount : null;
+  const verifiedBy = isOnlineGateway ? "RAZORPAY_WEBHOOK" : null;
+  const verifiedAt = isOnlineGateway ? new Date() : null;
+
   // 1. Insert into agDonations (influencer/telecaller ledger)
   await db
     .insert(agDonations)
@@ -727,6 +737,11 @@ export async function recordPaymentAttribution(data: {
       donorPhone: data.donorPhone || null,
       donorEmail: data.donorEmail || null,
       metadata: data.metadata || null,
+      verificationStatus: initialVerifStatus,
+      verifiedAmount: verifiedAmt,
+      verifiedBy: verifiedBy,
+      verifiedAt: verifiedAt,
+      paymentMode: data.metadata?.paymentMode || (isOnlineGateway ? "Gateway" : "UPI"),
     })
     .onConflictDoNothing({ target: agDonations.txnId });
 
@@ -2753,6 +2768,726 @@ export async function exportInfluencerDonationsCsv(influencerCode?: string | nul
   return {
     filename: `janaseva_all_influencers_summary_${new Date().toISOString().slice(0, 10)}.csv`,
     csv: rows.map((r) => r.join(",")).join("\n"),
+  };
+}
+
+/**
+ * ==============================================================================
+ * FINANCIAL CRM, TELECALLER SHIFT CORRECTION, EOD SUBMISSION & ADMIN APPROVALS
+ * ==============================================================================
+ */
+
+export function getISTDateBounds(d = new Date()) {
+  const istOffset = 5.5 * 60 * 60 * 1000;
+  const istTime = d.getTime() + istOffset;
+  const istDate = new Date(istTime);
+  const y = istDate.getUTCFullYear();
+  const m = istDate.getUTCMonth(); // 0-11
+  const day = istDate.getUTCDate();
+
+  const todayStart = new Date(Date.UTC(y, m, day) - istOffset);
+  const todayEnd = new Date(Date.UTC(y, m, day, 23, 59, 59, 999) - istOffset);
+  const monthStart = new Date(Date.UTC(y, m, 1) - istOffset);
+  const dateStr = `${y}-${String(m + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+
+  return { todayStart, todayEnd, monthStart, dateStr, year: y, month: m + 1, day };
+}
+
+/**
+ * Allows a telecaller to correct an entry made during their shift before EOD submission.
+ */
+export async function editCallDispositionLog(params: {
+  leadId: number;
+  callerId: string;
+  disposition: string;
+  notes?: string | null;
+  amount?: number | null;
+  utr?: string | null;
+  callbackTime?: string | null;
+  paymentMode?: string | null;
+}) {
+  await ensureDbSchema();
+
+  // Find the most recent log for this lead by this caller
+  const recentLogs = await db
+    .select()
+    .from(agCallLogs)
+    .where(
+      and(
+        eq(agCallLogs.leadId, params.leadId),
+        eq(agCallLogs.callerId, params.callerId)
+      )
+    )
+    .orderBy(desc(agCallLogs.createdAt))
+    .limit(1);
+
+  if (recentLogs.length === 0) {
+    throw new Error("No previous call log found to edit for this lead.");
+  }
+
+  const existingLog = recentLogs[0];
+  if (existingLog.eodSubmitted) {
+    throw new Error("This call log has already been submitted in your End-of-Day report and is locked. Please request Admin to unlock your shift.");
+  }
+
+  const validCallbackDate =
+    params.callbackTime && !isNaN(new Date(params.callbackTime).getTime())
+      ? new Date(params.callbackTime)
+      : null;
+
+  const originalDisp = existingLog.originalDisposition || existingLog.disposition;
+  const originalAmt = existingLog.originalAmount ?? existingLog.amount ?? null;
+  const newAmount = params.amount ? Math.round(Number(params.amount)) : null;
+
+  // 1. Update the call log with audit trail
+  await db
+    .update(agCallLogs)
+    .set({
+      disposition: params.disposition,
+      notes: params.notes?.trim() || null,
+      callbackTime: validCallbackDate,
+      amount: newAmount,
+      utr: params.utr?.trim() || null,
+      isEdited: true,
+      editedAt: new Date(),
+      originalDisposition: originalDisp,
+      originalAmount: originalAmt,
+    })
+    .where(eq(agCallLogs.logId, existingLog.logId));
+
+  // 2. Update lead status & validation
+  let validationStatus = "UNVERIFIED";
+  if (params.disposition === "Donated") validationStatus = "VALID_DONATED";
+  else if (params.disposition === "Interested") validationStatus = "VALID_INTERESTED";
+  else if (params.disposition === "Reschedule") validationStatus = "VALID_CALLBACK";
+  else if (params.disposition === "Rejected") validationStatus = "SOFT_REJECT";
+  else if (params.disposition === "Wrong_Number") validationStatus = "JUNK_INVALID";
+
+  await db
+    .update(agLeads)
+    .set({
+      status: params.disposition,
+      validationStatus,
+      rescheduleDate: validCallbackDate,
+      updatedAt: new Date(),
+    })
+    .where(eq(agLeads.leadId, params.leadId));
+
+  // 3. Update or manage donation record
+  if (params.disposition === "Donated" && newAmount && newAmount > 0) {
+    // Check if donation already recorded
+    const existingDonation = await db
+      .select()
+      .from(agDonations)
+      .where(
+        and(
+          eq(agDonations.leadId, params.leadId),
+          eq(agDonations.callerRefId, params.callerId)
+        )
+      )
+      .orderBy(desc(agDonations.createdAt))
+      .limit(1);
+
+    if (existingDonation.length > 0) {
+      // Update existing donation with corrected amount and UTR
+      await db
+        .update(agDonations)
+        .set({
+          amount: newAmount,
+          verificationStatus: "PENDING_APPROVAL", // Re-queue for admin approval
+          verifiedAmount: null,
+          verifiedBy: null,
+          verifiedAt: null,
+          paymentMode: params.paymentMode || existingDonation[0].paymentMode || "UPI",
+          metadata: {
+            ...((existingDonation[0].metadata as any) || {}),
+            utr: params.utr?.trim() || null,
+            editedByCallerAt: new Date().toISOString(),
+            previousAmount: existingDonation[0].amount,
+          },
+        })
+        .where(eq(agDonations.txnId, existingDonation[0].txnId));
+    } else {
+      // Create new donation record
+      const txnId = params.utr?.trim() ? `utr_${params.utr.trim()}` : `offline_${Date.now()}_${params.leadId}`;
+      const [leadData] = await db.select().from(agLeads).where(eq(agLeads.leadId, params.leadId)).limit(1);
+      await db.insert(agDonations).values({
+        txnId,
+        gatewayOrderId: `order_edit_${Date.now()}`,
+        amount: newAmount,
+        currency: "INR",
+        paymentStatus: "captured",
+        callerRefId: params.callerId,
+        leadId: params.leadId,
+        donorName: leadData?.name || null,
+        donorPhone: leadData?.phone || null,
+        paymentMode: params.paymentMode || "UPI",
+        verificationStatus: "PENDING_APPROVAL",
+        metadata: { utr: params.utr?.trim() || null, createdViaEdit: true },
+      });
+    }
+  } else if (params.disposition !== "Donated") {
+    // If was previously Donated but changed, mark donation as cancelled/rejected
+    await db
+      .update(agDonations)
+      .set({
+        paymentStatus: "cancelled",
+        verificationStatus: "REJECTED",
+        rejectionReason: `Telecaller corrected disposition from Donated to ${params.disposition}`,
+      })
+      .where(
+        and(
+          eq(agDonations.leadId, params.leadId),
+          eq(agDonations.callerRefId, params.callerId)
+        )
+      );
+  }
+
+  return { success: true, message: "Call log updated successfully." };
+}
+
+/**
+ * Get all calls logged by a telecaller today (for shift review and editing).
+ */
+export async function getCallerDailyLogs(callerId: string) {
+  await ensureDbSchema();
+  const { todayStart, todayEnd } = getISTDateBounds();
+
+  // Fetch call logs with lead information
+  const logs = await db
+    .select({
+      logId: agCallLogs.logId,
+      leadId: agCallLogs.leadId,
+      callerId: agCallLogs.callerId,
+      disposition: agCallLogs.disposition,
+      notes: agCallLogs.notes,
+      amount: agCallLogs.amount,
+      utr: agCallLogs.utr,
+      callbackTime: agCallLogs.callbackTime,
+      isEdited: agCallLogs.isEdited,
+      editedAt: agCallLogs.editedAt,
+      originalDisposition: agCallLogs.originalDisposition,
+      originalAmount: agCallLogs.originalAmount,
+      eodSubmitted: agCallLogs.eodSubmitted,
+      createdAt: agCallLogs.createdAt,
+      leadName: agLeads.name,
+      parentName: agLeads.parentName,
+      childName: agLeads.childName,
+      phone: agLeads.phone,
+      stream: agLeads.stream,
+    })
+    .from(agCallLogs)
+    .innerJoin(agLeads, eq(agCallLogs.leadId, agLeads.leadId))
+    .where(
+      and(
+        eq(agCallLogs.callerId, callerId),
+        gte(agCallLogs.createdAt, todayStart),
+        lte(agCallLogs.createdAt, todayEnd)
+      )
+    )
+    .orderBy(desc(agCallLogs.createdAt));
+
+  // Also query any donations logged today by this caller to link verification status
+  const callerDonations = await db
+    .select({
+      txnId: agDonations.txnId,
+      leadId: agDonations.leadId,
+      amount: agDonations.amount,
+      verificationStatus: agDonations.verificationStatus,
+      verifiedAmount: agDonations.verifiedAmount,
+      paymentMode: agDonations.paymentMode,
+      metadata: agDonations.metadata,
+    })
+    .from(agDonations)
+    .where(
+      and(
+        eq(agDonations.callerRefId, callerId),
+        gte(agDonations.createdAt, todayStart),
+        lte(agDonations.createdAt, todayEnd)
+      )
+    );
+
+  const donMap = new Map<number, any>();
+  callerDonations.forEach((d) => {
+    if (d.leadId) donMap.set(d.leadId, d);
+  });
+
+  return logs.map((log) => {
+    const linkedDonation = donMap.get(log.leadId);
+    return {
+      ...log,
+      verificationStatus: linkedDonation?.verificationStatus || (log.disposition === "Donated" ? "PENDING_APPROVAL" : null),
+      verifiedAmount: linkedDonation?.verifiedAmount || null,
+      effectiveAmount: linkedDonation?.amount || log.amount || 0,
+      paymentMode: linkedDonation?.paymentMode || "UPI",
+    };
+  });
+}
+
+/**
+ * End-of-Day (EOD) Shift Submission for a telecaller.
+ */
+export async function submitCallerEODShift(
+  callerId: string,
+  submissionType = "MANUAL",
+  notes?: string
+) {
+  await ensureDbSchema();
+  const { todayStart, todayEnd, dateStr } = getISTDateBounds();
+
+  // 1. Calculate today's stats for this telecaller
+  const todayLogs = await db
+    .select({
+      logId: agCallLogs.logId,
+      disposition: agCallLogs.disposition,
+      amount: agCallLogs.amount,
+    })
+    .from(agCallLogs)
+    .where(
+      and(
+        eq(agCallLogs.callerId, callerId),
+        gte(agCallLogs.createdAt, todayStart),
+        lte(agCallLogs.createdAt, todayEnd)
+      )
+    );
+
+  const totalCalls = todayLogs.length;
+  let totalInterested = 0;
+  let totalDonated = 0;
+  let claimedAmount = 0;
+
+  todayLogs.forEach((l) => {
+    if (l.disposition === "Interested") totalInterested++;
+    if (l.disposition === "Donated") {
+      totalDonated++;
+      if (l.amount && l.amount > 0) claimedAmount += l.amount;
+    }
+  });
+
+  // Calculate verified amount today (if admin already verified some)
+  const verifiedSums = await db
+    .select({ sum: sql<number>`COALESCE(SUM(${agDonations.verifiedAmount}), 0)` })
+    .from(agDonations)
+    .where(
+      and(
+        eq(agDonations.callerRefId, callerId),
+        eq(agDonations.verificationStatus, "VERIFIED"),
+        gte(agDonations.createdAt, todayStart),
+        lte(agDonations.createdAt, todayEnd)
+      )
+    );
+  const verifiedAmount = Number(verifiedSums[0]?.sum || 0);
+
+  // 2. Lock today's logs for this caller
+  await db
+    .update(agCallLogs)
+    .set({ eodSubmitted: true })
+    .where(
+      and(
+        eq(agCallLogs.callerId, callerId),
+        gte(agCallLogs.createdAt, todayStart),
+        lte(agCallLogs.createdAt, todayEnd)
+      )
+    );
+
+  // 3. Upsert into agDailySubmissions
+  const existingSub = await db
+    .select()
+    .from(agDailySubmissions)
+    .where(
+      and(
+        eq(agDailySubmissions.callerId, callerId),
+        eq(agDailySubmissions.submissionDate, dateStr)
+      )
+    )
+    .limit(1);
+
+  let submissionId: number;
+  if (existingSub.length > 0) {
+    submissionId = existingSub[0].submissionId;
+    await db
+      .update(agDailySubmissions)
+      .set({
+        totalCalls,
+        totalInterested,
+        totalDonated,
+        claimedAmount,
+        verifiedAmount,
+        submissionType,
+        status: "SUBMITTED",
+        submittedAt: new Date(),
+        notes: notes || existingSub[0].notes,
+      })
+      .where(eq(agDailySubmissions.submissionId, submissionId));
+  } else {
+    const [inserted] = await db
+      .insert(agDailySubmissions)
+      .values({
+        callerId,
+        submissionDate: dateStr,
+        totalCalls,
+        totalInterested,
+        totalDonated,
+        claimedAmount,
+        verifiedAmount,
+        submissionType,
+        status: "SUBMITTED",
+        notes: notes || null,
+      })
+      .returning({ submissionId: agDailySubmissions.submissionId });
+    submissionId = inserted.submissionId;
+  }
+
+  return {
+    success: true,
+    submissionId,
+    dateStr,
+    totalCalls,
+    totalInterested,
+    totalDonated,
+    claimedAmount,
+    verifiedAmount,
+    status: "SUBMITTED",
+  };
+}
+
+/**
+ * Checks the EOD Shift status for a telecaller today.
+ */
+export async function getEODShiftStatus(callerId: string, targetDate?: string) {
+  await ensureDbSchema();
+  const { dateStr, todayStart, todayEnd } = getISTDateBounds();
+  const queryDate = targetDate || dateStr;
+
+  const sub = await db
+    .select()
+    .from(agDailySubmissions)
+    .where(
+      and(
+        eq(agDailySubmissions.callerId, callerId),
+        eq(agDailySubmissions.submissionDate, queryDate)
+      )
+    )
+    .limit(1);
+
+  const callCount = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(agCallLogs)
+    .where(
+      and(
+        eq(agCallLogs.callerId, callerId),
+        gte(agCallLogs.createdAt, todayStart),
+        lte(agCallLogs.createdAt, todayEnd)
+      )
+    );
+
+  const totalCallsToday = Number(callCount[0]?.count || 0);
+
+  return {
+    isSubmitted: sub.length > 0 && sub[0].status === "SUBMITTED",
+    status: sub[0]?.status || "NOT_SUBMITTED",
+    submission: sub[0] || null,
+    totalCallsToday,
+  };
+}
+
+/**
+ * Admin unlocks a telecaller's shift for corrections.
+ */
+export async function unlockCallerShift(callerId: string, targetDate?: string) {
+  await ensureDbSchema();
+  const { dateStr, todayStart, todayEnd } = getISTDateBounds();
+  const queryDate = targetDate || dateStr;
+
+  await db
+    .update(agDailySubmissions)
+    .set({ status: "UNLOCKED" })
+    .where(
+      and(
+        eq(agDailySubmissions.callerId, callerId),
+        eq(agDailySubmissions.submissionDate, queryDate)
+      )
+    );
+
+  await db
+    .update(agCallLogs)
+    .set({ eodSubmitted: false })
+    .where(
+      and(
+        eq(agCallLogs.callerId, callerId),
+        gte(agCallLogs.createdAt, todayStart),
+        lte(agCallLogs.createdAt, todayEnd)
+      )
+    );
+
+  return { success: true, message: `Shift unlocked for caller ${callerId}.` };
+}
+
+/**
+ * Admin verifies, adjusts, or rejects a claimed donation.
+ */
+export async function verifyDonation(
+  txnId: string,
+  action: "APPROVE" | "ADJUST" | "REJECT",
+  params?: {
+    verifiedAmount?: number;
+    rejectionReason?: string;
+    adminNotes?: string;
+    verifiedBy?: string;
+  }
+) {
+  await ensureDbSchema();
+
+  const [don] = await db
+    .select()
+    .from(agDonations)
+    .where(eq(agDonations.txnId, txnId))
+    .limit(1);
+
+  if (!don) {
+    throw new Error(`Donation with transaction ID ${txnId} not found.`);
+  }
+
+  const verifier = params?.verifiedBy || "ADMIN";
+  const now = new Date();
+
+  let verificationStatus = "PENDING_APPROVAL";
+  let finalVerifiedAmount: number | null = null;
+  let rejReason = null;
+
+  if (action === "APPROVE") {
+    verificationStatus = "VERIFIED";
+    finalVerifiedAmount = params?.verifiedAmount != null ? Math.round(Number(params.verifiedAmount)) : don.amount;
+  } else if (action === "ADJUST") {
+    verificationStatus = "VERIFIED";
+    if (params?.verifiedAmount == null || isNaN(Number(params.verifiedAmount))) {
+      throw new Error("Adjusted amount must be provided.");
+    }
+    finalVerifiedAmount = Math.max(0, Math.round(Number(params.verifiedAmount)));
+  } else if (action === "REJECT") {
+    verificationStatus = "REJECTED";
+    finalVerifiedAmount = 0;
+    rejReason = params?.rejectionReason || "Payment not received or invalid UTR.";
+  }
+
+  await db
+    .update(agDonations)
+    .set({
+      verificationStatus,
+      verifiedAmount: finalVerifiedAmount,
+      verifiedBy: verifier,
+      verifiedAt: now,
+      rejectionReason: rejReason,
+      adminNotes: params?.adminNotes?.trim() || null,
+    })
+    .where(eq(agDonations.txnId, txnId));
+
+  return {
+    success: true,
+    txnId,
+    verificationStatus,
+    verifiedAmount: finalVerifiedAmount,
+    rejectionReason: rejReason,
+  };
+}
+
+/**
+ * Real-Time Financial CRM Metrics (Daily, Monthly, Individual Telecaller Financial CRM)
+ */
+export async function getFinancialCRMStats() {
+  await ensureDbSchema();
+  const { todayStart, todayEnd, monthStart, dateStr } = getISTDateBounds();
+
+  // 1. Today's Donations Aggregation
+  const todayDons = await db
+    .select({
+      txnId: agDonations.txnId,
+      amount: agDonations.amount,
+      verificationStatus: agDonations.verificationStatus,
+      verifiedAmount: agDonations.verifiedAmount,
+      callerRefId: agDonations.callerRefId,
+      createdAt: agDonations.createdAt,
+    })
+    .from(agDonations)
+    .where(
+      and(
+        gte(agDonations.createdAt, todayStart),
+        lte(agDonations.createdAt, todayEnd)
+      )
+    );
+
+  let todayClaimed = 0;
+  let todayVerified = 0;
+  let todayPending = 0;
+  let todayRejected = 0;
+
+  todayDons.forEach((d) => {
+    todayClaimed += d.amount || 0;
+    if (d.verificationStatus === "VERIFIED") {
+      todayVerified += d.verifiedAmount != null ? d.verifiedAmount : d.amount;
+    } else if (d.verificationStatus === "PENDING_APPROVAL") {
+      todayPending += d.amount || 0;
+    } else if (d.verificationStatus === "REJECTED") {
+      todayRejected += d.amount || 0;
+    }
+  });
+
+  // 2. Month-to-Date (MTD) Aggregation
+  const mtdVerifiedSum = await db
+    .select({
+      sum: sql<number>`COALESCE(SUM(CASE WHEN ${agDonations.verificationStatus} = 'VERIFIED' THEN COALESCE(${agDonations.verifiedAmount}, ${agDonations.amount}) ELSE 0 END), 0)`,
+      count: sql<number>`COUNT(CASE WHEN ${agDonations.verificationStatus} = 'VERIFIED' THEN 1 ELSE NULL END)`,
+    })
+    .from(agDonations)
+    .where(gte(agDonations.createdAt, monthStart));
+
+  const monthVerifiedTotal = Number(mtdVerifiedSum[0]?.sum || 0);
+  const monthVerifiedDonorsCount = Number(mtdVerifiedSum[0]?.count || 0);
+  const monthlyTarget = 500000; // Ashrama monthly target (₹5,00,000)
+  const targetAchievedPercent = Math.min(100, Math.round((monthVerifiedTotal / monthlyTarget) * 100));
+
+  // 3. Telecaller Roster Financial CRM (All callers)
+  const callers = await db.select().from(agTelecallers).where(eq(agTelecallers.isActive, true));
+
+  // Today's calls by caller
+  const todayCallsByCaller = await db
+    .select({
+      callerId: agCallLogs.callerId,
+      count: sql<number>`count(*)`,
+    })
+    .from(agCallLogs)
+    .where(
+      and(
+        gte(agCallLogs.createdAt, todayStart),
+        lte(agCallLogs.createdAt, todayEnd)
+      )
+    )
+    .groupBy(agCallLogs.callerId);
+
+  const callsMap = new Map<string, number>();
+  todayCallsByCaller.forEach((c) => callsMap.set(c.callerId, Number(c.count)));
+
+  // Today's EOD submissions
+  const todaySubs = await db
+    .select()
+    .from(agDailySubmissions)
+    .where(eq(agDailySubmissions.submissionDate, dateStr));
+  const subMap = new Map<string, string>();
+  todaySubs.forEach((s) => subMap.set(s.callerId, s.status));
+
+  // MTD Collections by Caller
+  const mtdCallerCollections = await db
+    .select({
+      callerRefId: agDonations.callerRefId,
+      claimedSum: sql<number>`COALESCE(SUM(${agDonations.amount}), 0)`,
+      verifiedSum: sql<number>`COALESCE(SUM(CASE WHEN ${agDonations.verificationStatus} = 'VERIFIED' THEN COALESCE(${agDonations.verifiedAmount}, ${agDonations.amount}) ELSE 0 END), 0)`,
+      donorsCount: sql<number>`COUNT(CASE WHEN ${agDonations.verificationStatus} = 'VERIFIED' THEN 1 ELSE NULL END)`,
+    })
+    .from(agDonations)
+    .where(
+      and(
+        gte(agDonations.createdAt, monthStart),
+        sql`${agDonations.callerRefId} IS NOT NULL`
+      )
+    )
+    .groupBy(agDonations.callerRefId);
+
+  const mtdMap = new Map<string, { claimed: number; verified: number; donors: number }>();
+  mtdCallerCollections.forEach((c) => {
+    if (c.callerRefId) {
+      mtdMap.set(c.callerRefId, {
+        claimed: Number(c.claimedSum),
+        verified: Number(c.verifiedSum),
+        donors: Number(c.donorsCount),
+      });
+    }
+  });
+
+  // Today's caller collections
+  const todayCallerMap = new Map<string, { claimed: number; verified: number; pending: number }>();
+  todayDons.forEach((d) => {
+    if (!d.callerRefId) return;
+    const cur = todayCallerMap.get(d.callerRefId) || { claimed: 0, verified: 0, pending: 0 };
+    cur.claimed += d.amount || 0;
+    if (d.verificationStatus === "VERIFIED") cur.verified += (d.verifiedAmount != null ? d.verifiedAmount : d.amount);
+    if (d.verificationStatus === "PENDING_APPROVAL") cur.pending += d.amount || 0;
+    todayCallerMap.set(d.callerRefId, cur);
+  });
+
+  const callerFinancials = callers
+    .filter((c) => c.callerId !== "ADMIN")
+    .map((c) => {
+      const todayFin = todayCallerMap.get(c.callerId) || { claimed: 0, verified: 0, pending: 0 };
+      const mtd = mtdMap.get(c.callerId) || { claimed: 0, verified: 0, donors: 0 };
+      const todayCalls = callsMap.get(c.callerId) || 0;
+      const shiftStatus = subMap.get(c.callerId) || "NOT_SUBMITTED";
+      const approvalRate = mtd.claimed > 0 ? Math.round((mtd.verified / mtd.claimed) * 100) : 100;
+
+      return {
+        callerId: c.callerId,
+        name: c.name,
+        whatsappNumber: c.whatsappNumber,
+        todayCalls,
+        todayClaimedAmount: todayFin.claimed,
+        todayVerifiedAmount: todayFin.verified,
+        todayPendingAmount: todayFin.pending,
+        monthVerifiedAmount: mtd.verified,
+        monthDonorsCount: mtd.donors,
+        approvalRate,
+        shiftStatus,
+      };
+    })
+    .sort((a, b) => b.monthVerifiedAmount - a.monthVerifiedAmount);
+
+  // 4. Pending Payment Approvals List
+  const pendingApprovals = await db
+    .select({
+      txnId: agDonations.txnId,
+      gatewayOrderId: agDonations.gatewayOrderId,
+      amount: agDonations.amount,
+      paymentMode: agDonations.paymentMode,
+      callerRefId: agDonations.callerRefId,
+      leadId: agDonations.leadId,
+      donorName: agDonations.donorName,
+      donorPhone: agDonations.donorPhone,
+      metadata: agDonations.metadata,
+      verificationStatus: agDonations.verificationStatus,
+      createdAt: agDonations.createdAt,
+    })
+    .from(agDonations)
+    .where(eq(agDonations.verificationStatus, "PENDING_APPROVAL"))
+    .orderBy(desc(agDonations.createdAt))
+    .limit(100);
+
+  // Fetch caller names for pending approvals
+  const callerNameMap = new Map<string, string>();
+  callers.forEach((c) => callerNameMap.set(c.callerId, c.name));
+
+  const enrichedPending = pendingApprovals.map((p) => ({
+    ...p,
+    callerName: (p.callerRefId && callerNameMap.get(p.callerRefId)) || p.callerRefId || "Online",
+    utr: (p.metadata as any)?.utr || null,
+    notes: (p.metadata as any)?.notes || null,
+  }));
+
+  return {
+    today: {
+      date: dateStr,
+      claimed: todayClaimed,
+      verified: todayVerified,
+      pending: todayPending,
+      rejected: todayRejected,
+      totalCalls: Array.from(callsMap.values()).reduce((a, b) => a + b, 0),
+    },
+    month: {
+      target: monthlyTarget,
+      verified: monthVerifiedTotal,
+      targetAchievedPercent,
+      donorsCount: monthVerifiedDonorsCount,
+      averageDonation: monthVerifiedDonorsCount > 0 ? Math.round(monthVerifiedTotal / monthVerifiedDonorsCount) : 0,
+    },
+    callers: callerFinancials,
+    pendingApprovals: enrichedPending,
   };
 }
 

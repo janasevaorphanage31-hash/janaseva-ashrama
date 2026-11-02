@@ -317,6 +317,47 @@ export async function ensureDbSchema(): Promise<void> {
             END IF;
           END $$;
 
+          -- Add new columns to ag_call_logs for edit tracking and EOD submission
+          ALTER TABLE ag_call_logs ADD COLUMN IF NOT EXISTS amount INTEGER;
+          ALTER TABLE ag_call_logs ADD COLUMN IF NOT EXISTS utr TEXT;
+          ALTER TABLE ag_call_logs ADD COLUMN IF NOT EXISTS is_edited BOOLEAN NOT NULL DEFAULT FALSE;
+          ALTER TABLE ag_call_logs ADD COLUMN IF NOT EXISTS edited_at TIMESTAMP;
+          ALTER TABLE ag_call_logs ADD COLUMN IF NOT EXISTS original_disposition TEXT;
+          ALTER TABLE ag_call_logs ADD COLUMN IF NOT EXISTS original_amount INTEGER;
+          ALTER TABLE ag_call_logs ADD COLUMN IF NOT EXISTS eod_submitted BOOLEAN NOT NULL DEFAULT FALSE;
+
+          -- Add new columns to ag_donations for Admin Payment Verification and Approvals
+          ALTER TABLE ag_donations ADD COLUMN IF NOT EXISTS verification_status TEXT NOT NULL DEFAULT 'PENDING_APPROVAL';
+          ALTER TABLE ag_donations ADD COLUMN IF NOT EXISTS verified_amount INTEGER;
+          ALTER TABLE ag_donations ADD COLUMN IF NOT EXISTS verified_by TEXT;
+          ALTER TABLE ag_donations ADD COLUMN IF NOT EXISTS verified_at TIMESTAMP;
+          ALTER TABLE ag_donations ADD COLUMN IF NOT EXISTS rejection_reason TEXT;
+          ALTER TABLE ag_donations ADD COLUMN IF NOT EXISTS admin_notes TEXT;
+          ALTER TABLE ag_donations ADD COLUMN IF NOT EXISTS payment_mode TEXT NOT NULL DEFAULT 'UPI';
+
+          -- End of Day (EOD) Telecaller Daily Shift Submissions Table
+          CREATE TABLE IF NOT EXISTS ag_daily_submissions (
+            submission_id SERIAL PRIMARY KEY,
+            caller_id TEXT NOT NULL,
+            submission_date TEXT NOT NULL,
+            total_calls INTEGER NOT NULL DEFAULT 0,
+            total_interested INTEGER NOT NULL DEFAULT 0,
+            total_donated INTEGER NOT NULL DEFAULT 0,
+            claimed_amount INTEGER NOT NULL DEFAULT 0,
+            verified_amount INTEGER NOT NULL DEFAULT 0,
+            submission_type TEXT NOT NULL DEFAULT 'MANUAL',
+            status TEXT NOT NULL DEFAULT 'SUBMITTED',
+            submitted_at TIMESTAMP NOT NULL DEFAULT NOW(),
+            reviewed_by TEXT,
+            reviewed_at TIMESTAMP,
+            notes TEXT
+          );
+
+          CREATE INDEX IF NOT EXISTS ag_donations_verif_idx ON ag_donations(verification_status, created_at);
+          CREATE INDEX IF NOT EXISTS ag_daily_sub_caller_date_idx ON ag_daily_submissions(caller_id, submission_date);
+          CREATE INDEX IF NOT EXISTS ag_daily_sub_status_idx ON ag_daily_submissions(status);
+          CREATE INDEX IF NOT EXISTS ag_call_logs_eod_idx ON ag_call_logs(caller_id, eod_submitted);
+
           CREATE INDEX IF NOT EXISTS ag_leads_dob_idx ON ag_leads(dob_month, dob_day);
           CREATE INDEX IF NOT EXISTS ag_leads_assigned_idx ON ag_leads(assigned_caller_id, status);
           CREATE INDEX IF NOT EXISTS ag_leads_phone_idx ON ag_leads(phone);

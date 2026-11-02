@@ -123,12 +123,25 @@ export function AdminTelecallerCRM() {
   const [isAntiBanModalOpen, setIsAntiBanModalOpen] = useState(false);
   const [selectedLeadForWhatsApp, setSelectedLeadForWhatsApp] = useState<any | null>(null);
 
-  // ── SUB-TABS: STAFF TELECALLERS vs INSTAGRAM INFLUENCERS ──
-  const [activeSubtab, setActiveSubtab] = useState<"callers" | "influencers">("callers");
+  // ── SUB-TABS: STAFF TELECALLERS vs FINANCIAL CRM vs INSTAGRAM INFLUENCERS ──
+  const [activeSubtab, setActiveSubtab] = useState<"callers" | "financials" | "influencers">("callers");
   const [influencers, setInfluencers] = useState<InfluencerStats[]>([]);
   const [totalInfluencerRaised, setTotalInfluencerRaised] = useState(0);
   const [totalInfluencerDonors, setTotalInfluencerDonors] = useState(0);
   const [loadingInfluencers, setLoadingInfluencers] = useState(false);
+
+  // Financial CRM & Approvals state
+  const [finStats, setFinStats] = useState<any | null>(null);
+  const [loadingFinancials, setLoadingFinancials] = useState(false);
+  const [adjustingDonation, setAdjustingDonation] = useState<any | null>(null);
+  const [adjustedAmountInput, setAdjustedAmountInput] = useState<number | "">("");
+  const [adjustNoteInput, setAdjustNoteInput] = useState("");
+  const [rejectingDonation, setRejectingDonation] = useState<any | null>(null);
+  const [rejectionReasonInput, setRejectionReasonInput] = useState("");
+  const [actionInProgress, setActionInProgress] = useState<string | null>(null);
+  const [selectedCallerForLedger, setSelectedCallerForLedger] = useState<any | null>(null);
+  const [callerLedgerLogs, setCallerLedgerLogs] = useState<any[]>([]);
+  const [loadingLedger, setLoadingLedger] = useState(false);
 
   // Add / Edit Influencer Modal State
   const [isInfluencerModalOpen, setIsInfluencerModalOpen] = useState(false);
@@ -278,10 +291,133 @@ export function AdminTelecallerCRM() {
       }
       await loadLeadsForReassignment("ALL");
       await loadInfluencers();
+      await loadFinancialData();
     } catch (err: any) {
       showToast("Error loading telecaller CRM data: " + err.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadFinancialData = async () => {
+    setLoadingFinancials(true);
+    try {
+      const res = await fetch("/api/v1/admin/financial-crm");
+      const data = await res.json();
+      if (data.success) {
+        setFinStats(data);
+      }
+    } catch (e: any) {
+      console.error("Failed to load financial CRM data:", e);
+    } finally {
+      setLoadingFinancials(false);
+    }
+  };
+
+  const handleApproveDonation = async (txnId: string) => {
+    setActionInProgress(txnId);
+    try {
+      const res = await fetch("/api/v1/admin/donations/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ txnId, action: "APPROVE" }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Approval failed");
+      showToast("✓ Donation approved and credited to verified collections!");
+      await loadFinancialData();
+      await loadAdminData();
+    } catch (e: any) {
+      alert("Error approving donation: " + e.message);
+    } finally {
+      setActionInProgress(null);
+    }
+  };
+
+  const handleConfirmAdjustDonation = async () => {
+    if (!adjustingDonation) return;
+    setActionInProgress(adjustingDonation.txnId);
+    try {
+      const res = await fetch("/api/v1/admin/donations/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          txnId: adjustingDonation.txnId,
+          action: "ADJUST",
+          verifiedAmount: Number(adjustedAmountInput),
+          adminNotes: adjustNoteInput || "Adjusted against bank statement",
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Adjustment failed");
+      showToast("✓ Donation adjusted & verified successfully!");
+      setAdjustingDonation(null);
+      await loadFinancialData();
+      await loadAdminData();
+    } catch (e: any) {
+      alert("Error adjusting donation: " + e.message);
+    } finally {
+      setActionInProgress(null);
+    }
+  };
+
+  const handleConfirmRejectDonation = async () => {
+    if (!rejectingDonation) return;
+    setActionInProgress(rejectingDonation.txnId);
+    try {
+      const res = await fetch("/api/v1/admin/donations/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          txnId: rejectingDonation.txnId,
+          action: "REJECT",
+          rejectionReason: rejectionReasonInput || "No payment received in bank statement",
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Rejection failed");
+      showToast("✓ Donation claim marked as rejected.");
+      setRejectingDonation(null);
+      await loadFinancialData();
+      await loadAdminData();
+    } catch (e: any) {
+      alert("Error rejecting donation: " + e.message);
+    } finally {
+      setActionInProgress(null);
+    }
+  };
+
+  const handleUnlockCallerShift = async (callerId: string) => {
+    const confirmed = window.confirm(`Unlock today's shift for ${callerId}? This will allow the telecaller to edit today's call logs again.`);
+    if (!confirmed) return;
+    try {
+      const res = await fetch("/api/v1/admin/shifts/unlock", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ callerId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Unlock failed");
+      showToast(`✓ Shift unlocked for ${callerId}`);
+      await loadFinancialData();
+    } catch (e: any) {
+      alert("Error unlocking shift: " + e.message);
+    }
+  };
+
+  const handleViewCallerLedger = async (caller: any) => {
+    setSelectedCallerForLedger(caller);
+    setLoadingLedger(true);
+    try {
+      const res = await fetch(`/api/v1/telecaller/daily-logs?callerId=${encodeURIComponent(caller.callerId)}`);
+      const data = await res.json();
+      if (data.success) {
+        setCallerLedgerLogs(data.logs || []);
+      }
+    } catch (e: any) {
+      console.error("Failed to load caller ledger:", e);
+    } finally {
+      setLoadingLedger(false);
     }
   };
 
@@ -1766,6 +1902,27 @@ export function AdminTelecallerCRM() {
         <button
           type="button"
           onClick={() => {
+            setActiveSubtab("financials");
+            void loadFinancialData();
+          }}
+          className={`px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-black transition cursor-pointer flex items-center gap-2 ${
+            activeSubtab === "financials"
+              ? "bg-teal-950 text-gold shadow-md"
+              : "bg-white text-teal-950 hover:bg-cream border border-teal-900/10"
+          }`}
+        >
+          <span>💰</span>
+          <span>Financial CRM &amp; Approvals</span>
+          {finStats?.pendingApprovals?.length > 0 && (
+            <span className="rounded-full bg-amber-500 text-teal-950 px-2 py-0.5 text-[10px] font-black animate-pulse">
+              {finStats.pendingApprovals.length} pending
+            </span>
+          )}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
             setActiveSubtab("influencers");
             void loadInfluencers();
           }}
@@ -2826,7 +2983,360 @@ export function AdminTelecallerCRM() {
       )}
 
       {/* ══════════════════════════════════════════════════════════════════
-          VIEW 2: INSTAGRAM INFLUENCERS & CREATORS REFERRAL HUB
+          VIEW 2: FINANCIAL CRM & PAYMENT APPROVALS COCKPIT
+      ══════════════════════════════════════════════════════════════════ */}
+      {activeSubtab === "financials" && (
+        <div className="space-y-6">
+          {/* 1. TODAY'S FINANCIAL SNAPSHOT (4 TILES) */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
+            <div className="rounded-2xl bg-emerald-50/80 p-4 shadow-sm border border-emerald-300">
+              <span className="text-[10px] font-black uppercase tracking-wider text-emerald-950 block">
+                Today&apos;s Verified Collections
+              </span>
+              <p className="font-display text-2xl sm:text-3xl font-black text-emerald-800 mt-1">
+                {loadingFinancials ? "..." : `₹${formatINR(finStats?.today?.verified || 0)}`}
+              </p>
+              <span className="text-[11px] text-emerald-900/70 font-semibold block mt-0.5">
+                Confirmed received in Ashram bank account
+              </span>
+            </div>
+
+            <div className="rounded-2xl bg-amber-50/80 p-4 shadow-sm border border-amber-300">
+              <span className="text-[10px] font-black uppercase tracking-wider text-amber-950 block">
+                Pending Admin Verification
+              </span>
+              <p className="font-display text-2xl sm:text-3xl font-black text-amber-800 mt-1">
+                {loadingFinancials ? "..." : `₹${formatINR(finStats?.today?.pending || 0)}`}
+              </p>
+              <span className="text-[11px] text-amber-900/70 font-semibold block mt-0.5">
+                {finStats?.pendingApprovals?.length || 0} claims waiting for bank statement match
+              </span>
+            </div>
+
+            <div className="rounded-2xl bg-white p-4 shadow-sm border border-teal-900/10">
+              <span className="text-[10px] font-black uppercase tracking-wider text-teal-950/60 block">
+                Today&apos;s Total Claimed
+              </span>
+              <p className="font-display text-2xl sm:text-3xl font-black text-teal-950 mt-1">
+                {loadingFinancials ? "..." : `₹${formatINR(finStats?.today?.claimed || 0)}`}
+              </p>
+              <span className="text-[11px] text-teal-950/60 font-semibold block mt-0.5">
+                {finStats?.today?.totalCalls || 0} total calls logged by telecallers today
+              </span>
+            </div>
+
+            <div className="rounded-2xl bg-rose-50/70 p-4 shadow-sm border border-rose-200">
+              <span className="text-[10px] font-black uppercase tracking-wider text-rose-900 block">
+                Rejected / Discrepancy
+              </span>
+              <p className="font-display text-2xl sm:text-3xl font-black text-rose-800 mt-1">
+                {loadingFinancials ? "..." : `₹${formatINR(finStats?.today?.rejected || 0)}`}
+              </p>
+              <span className="text-[11px] text-rose-800/70 font-semibold block mt-0.5">
+                Bounced, fake UTRs or unverified claims
+              </span>
+            </div>
+          </div>
+
+          {/* 2. MONTH-TO-DATE (MTD) ASHRAM TARGET & PERFORMANCE */}
+          <div className="rounded-3xl bg-sand/35 p-5 border border-teal-900/10 space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <h3 className="font-display font-black text-base text-teal-950 flex items-center gap-2">
+                  <span>🎯 Monthly Ashram Seva Progress</span>
+                  <span className="text-xs font-mono bg-teal-950 text-gold px-2.5 py-0.5 rounded-full font-bold">
+                    Target: ₹{formatINR(finStats?.month?.target || 500000)}
+                  </span>
+                </h3>
+                <p className="text-xs text-teal-950/70 mt-0.5">
+                  Month-to-date verified collections credited to official Janaseva Ashrama trust account.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-teal-950 bg-white px-3 py-1.5 rounded-xl border border-teal-900/15">
+                  🏆 MTD Verified: <strong>₹{formatINR(finStats?.month?.verified || 0)}</strong>
+                </span>
+                <span className="text-xs font-bold text-teal-950 bg-white px-3 py-1.5 rounded-xl border border-teal-900/15">
+                  👥 Donors: <strong>{finStats?.month?.donorsCount || 0}</strong>
+                </span>
+                <span className="text-xs font-bold text-teal-950 bg-white px-3 py-1.5 rounded-xl border border-teal-900/15">
+                  Avg Ticket: <strong>₹{formatINR(finStats?.month?.averageDonation || 0)}</strong>
+                </span>
+              </div>
+            </div>
+
+            {/* Visual Progress Bar */}
+            <div className="space-y-1">
+              <div className="flex justify-between text-xs font-bold text-teal-950">
+                <span>{finStats?.month?.targetAchievedPercent || 0}% Achieved</span>
+                <span>₹{formatINR(finStats?.month?.verified || 0)} / ₹{formatINR(finStats?.month?.target || 500000)}</span>
+              </div>
+              <div className="w-full bg-teal-950/10 rounded-full h-3 overflow-hidden border border-teal-900/10">
+                <div
+                  className="bg-gradient-to-r from-emerald-500 via-teal-700 to-amber-400 h-full rounded-full transition-all duration-500"
+                  style={{
+                    width: `${Math.min(100, Math.max(3, finStats?.month?.targetAchievedPercent || 0))}%`,
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* 3. PENDING PAYMENT APPROVALS COCKPIT */}
+          <div className="rounded-3xl bg-white p-5 shadow-sm border border-teal-900/10 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-teal-900/10 pb-3">
+              <div>
+                <h3 className="font-display font-black text-base text-teal-950 flex items-center gap-2">
+                  <span>💰 Pending Payment Approvals</span>
+                  <span className="text-xs font-mono font-bold bg-amber-100 text-amber-950 px-2 py-0.5 rounded-full border border-amber-300">
+                    {finStats?.pendingApprovals?.length || 0} pending
+                  </span>
+                </h3>
+                <p className="text-xs text-teal-950/60 mt-0.5">
+                  Verify claimed donations against Ashrama bank statements. Approving permanently credits verified revenue.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={loadFinancialData}
+                disabled={loadingFinancials}
+                className="px-3 py-1.5 rounded-xl bg-sand hover:bg-cream text-teal-950 text-xs font-bold border border-teal-900/15 cursor-pointer shadow-2xs"
+              >
+                🔄 Refresh Approvals
+              </button>
+            </div>
+
+            {loadingFinancials ? (
+              <div className="p-8 text-center text-xs text-teal-950/60 bg-cream/40 rounded-2xl">
+                Loading pending payment claims...
+              </div>
+            ) : !finStats?.pendingApprovals || finStats.pendingApprovals.length === 0 ? (
+              <div className="p-8 text-center text-xs text-teal-950/60 bg-emerald-50/60 border border-emerald-200 rounded-2xl">
+                🎉 All caught up! No pending payment claims waiting for verification.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs text-teal-950">
+                  <thead className="bg-sand/40 border-b border-teal-900/10 text-[11px] uppercase tracking-wider font-extrabold text-teal-950/70">
+                    <tr>
+                      <th className="py-2.5 px-3">Date &amp; Time</th>
+                      <th className="py-2.5 px-3">Telecaller</th>
+                      <th className="py-2.5 px-3">Donor Name &amp; Phone</th>
+                      <th className="py-2.5 px-3">Claimed Amount</th>
+                      <th className="py-2.5 px-3">Mode &amp; UTR</th>
+                      <th className="py-2.5 px-3">Notes</th>
+                      <th className="py-2.5 px-3 text-right">Verification Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-teal-900/5 font-medium">
+                    {finStats.pendingApprovals.map((p: any) => {
+                      const dateDisplay = new Date(p.createdAt).toLocaleDateString("en-IN", {
+                        day: "numeric",
+                        month: "short",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      });
+                      const isActing = actionInProgress === p.txnId;
+
+                      return (
+                        <tr key={p.txnId} className="hover:bg-amber-50/30 transition">
+                          <td className="py-3 px-3 text-[11px] text-teal-950/70 whitespace-nowrap">
+                            {dateDisplay}
+                          </td>
+                          <td className="py-3 px-3">
+                            <span className="font-bold text-teal-950 block">{p.callerName}</span>
+                            <span className="text-[10px] font-mono text-teal-950/60">{p.callerRefId}</span>
+                          </td>
+                          <td className="py-3 px-3">
+                            <span className="font-bold text-teal-950 block">{p.donorName || "Anonymous Donor"}</span>
+                            <span className="text-[10px] font-mono text-teal-950/60">{p.donorPhone}</span>
+                          </td>
+                          <td className="py-3 px-3">
+                            <span className="font-display font-black text-sm text-emerald-900 bg-emerald-100 px-2.5 py-0.5 rounded-lg border border-emerald-300">
+                              ₹{formatINR(p.amount)}
+                            </span>
+                          </td>
+                          <td className="py-3 px-3">
+                            <span className="font-bold text-[11px] block">{p.paymentMode || "UPI"}</span>
+                            {p.utr ? (
+                              <span className="font-mono text-[10px] text-teal-950/70 bg-sand/60 px-1 rounded">
+                                {p.utr}
+                              </span>
+                            ) : (
+                              <span className="text-[10px] text-amber-800 italic">No UTR provided</span>
+                            )}
+                          </td>
+                          <td className="py-3 px-3 max-w-[200px] truncate text-[11px] text-teal-950/70">
+                            {p.notes || "—"}
+                          </td>
+                          <td className="py-3 px-3 text-right">
+                            <div className="flex items-center justify-end gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => handleApproveDonation(p.txnId)}
+                                disabled={isActing}
+                                className="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs cursor-pointer disabled:opacity-50"
+                                title="Approve full claimed amount"
+                              >
+                                {isActing ? "..." : "✓ Approve"}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setAdjustingDonation(p);
+                                  setAdjustedAmountInput(p.amount);
+                                  setAdjustNoteInput("");
+                                }}
+                                disabled={isActing}
+                                className="px-2.5 py-1.5 rounded-lg bg-sand hover:bg-cream border border-teal-900/20 text-teal-950 font-bold text-xs cursor-pointer disabled:opacity-50"
+                                title="Correct amount and approve"
+                              >
+                                ✏️ Adjust
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setRejectingDonation(p);
+                                  setRejectionReasonInput("");
+                                }}
+                                disabled={isActing}
+                                className="px-2.5 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 border border-rose-300 text-rose-800 font-bold text-xs cursor-pointer disabled:opacity-50"
+                                title="Reject payment claim"
+                              >
+                                ✕ Reject
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* 4. INDIVIDUAL TELECALLER FINANCIAL CRM ROSTER */}
+          <div className="rounded-3xl bg-white p-5 shadow-sm border border-teal-900/10 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-teal-900/10 pb-3">
+              <div>
+                <h3 className="font-display font-black text-base text-teal-950 flex items-center gap-2">
+                  <span>👥 Individual Telecaller Financial CRM</span>
+                  <span className="text-xs font-mono font-bold bg-cream px-2 py-0.5 rounded-full border border-teal-900/15">
+                    {finStats?.callers?.length || 0} active callers
+                  </span>
+                </h3>
+                <p className="text-xs text-teal-950/60 mt-0.5">
+                  Ranked by verified collections. Telecaller accuracy rate measures verified amount vs claimed amount.
+                </p>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs text-teal-950">
+                <thead className="bg-sand/40 border-b border-teal-900/10 text-[11px] uppercase tracking-wider font-extrabold text-teal-950/70">
+                  <tr>
+                    <th className="py-2.5 px-3">Rank &amp; Caller</th>
+                    <th className="py-2.5 px-3">Today&apos;s Calls</th>
+                    <th className="py-2.5 px-3">Today Claimed</th>
+                    <th className="py-2.5 px-3">Today Verified</th>
+                    <th className="py-2.5 px-3">Today Pending</th>
+                    <th className="py-2.5 px-3">MTD Verified</th>
+                    <th className="py-2.5 px-3">Donors</th>
+                    <th className="py-2.5 px-3">Accuracy</th>
+                    <th className="py-2.5 px-3">Shift Status</th>
+                    <th className="py-2.5 px-3 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-teal-900/5 font-medium">
+                  {finStats?.callers?.map((c: any, idx: number) => {
+                    const isSubmitted = c.shiftStatus === "SUBMITTED";
+
+                    return (
+                      <tr key={c.callerId} className="hover:bg-cream/40 transition">
+                        <td className="py-3 px-3">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-xs font-black text-amber-900 bg-amber-100 rounded px-1.5 py-0.2 border border-amber-300">
+                              #{idx + 1}
+                            </span>
+                            <div>
+                              <span className="font-bold text-teal-950 block">{c.name}</span>
+                              <span className="text-[10px] font-mono text-teal-950/60">
+                                {c.callerId} · +91 {c.whatsappNumber}
+                              </span>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-3 px-3 font-mono font-bold">{c.todayCalls}</td>
+                        <td className="py-3 px-3 text-teal-950/70">₹{formatINR(c.todayClaimedAmount)}</td>
+                        <td className="py-3 px-3 font-black text-emerald-800">₹{formatINR(c.todayVerifiedAmount)}</td>
+                        <td className="py-3 px-3 font-bold text-amber-800">
+                          {c.todayPendingAmount > 0 ? `₹${formatINR(c.todayPendingAmount)}` : "—"}
+                        </td>
+                        <td className="py-3 px-3 font-display font-black text-sm text-teal-950">
+                          ₹{formatINR(c.monthVerifiedAmount)}
+                        </td>
+                        <td className="py-3 px-3 font-mono font-bold">{c.monthDonorsCount}</td>
+                        <td className="py-3 px-3">
+                          <span
+                            className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                              c.approvalRate >= 90
+                                ? "bg-emerald-100 text-emerald-950 border border-emerald-300"
+                                : c.approvalRate >= 70
+                                ? "bg-amber-100 text-amber-950 border border-amber-300"
+                                : "bg-rose-100 text-rose-950 border border-rose-300"
+                            }`}
+                          >
+                            {c.approvalRate}%
+                          </span>
+                        </td>
+                        <td className="py-3 px-3">
+                          {isSubmitted ? (
+                            <span className="rounded-full bg-emerald-100 text-emerald-950 border border-emerald-300 px-2 py-0.5 text-[10px] font-black">
+                              ✓ Submitted
+                            </span>
+                          ) : (
+                            <span className="rounded-full bg-amber-50 text-amber-900 border border-amber-200 px-2 py-0.5 text-[10px] font-bold">
+                              ⏳ Active / Unsubmitted
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-3 px-3 text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => handleViewCallerLedger(c)}
+                              className="px-2.5 py-1 rounded-lg bg-sand hover:bg-cream border border-teal-900/15 text-teal-950 text-xs font-bold cursor-pointer"
+                              title="View individual donor attribution ledger"
+                            >
+                              📋 Ledger
+                            </button>
+                            {isSubmitted && (
+                              <button
+                                type="button"
+                                onClick={() => handleUnlockCallerShift(c.callerId)}
+                                className="px-2.5 py-1 rounded-lg bg-purple-50 hover:bg-purple-100 border border-purple-300 text-purple-950 text-xs font-bold cursor-pointer"
+                                title="Unlock shift so telecaller can make corrections"
+                              >
+                                🔓 Unlock
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════════
+          VIEW 3: INSTAGRAM INFLUENCERS & CREATORS REFERRAL HUB
       ══════════════════════════════════════════════════════════════════ */}
       {activeSubtab === "influencers" && (
         <div className="space-y-6">
@@ -4259,6 +4769,262 @@ export function AdminTelecallerCRM() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL: ADJUST DONATION AMOUNT & APPROVE ── */}
+      {adjustingDonation && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-teal-950/60 backdrop-blur-xs animate-fadeIn"
+          onClick={() => setAdjustingDonation(null)}
+        >
+          <div
+            className="w-full max-w-md bg-white rounded-3xl p-6 shadow-2xl border border-teal-900/10 space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-teal-900/10 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">✏️</span>
+                <div>
+                  <h3 className="font-display font-black text-base text-teal-950">
+                    Adjust Donation Amount
+                  </h3>
+                  <p className="text-[11px] text-teal-950/60 font-mono">
+                    {adjustingDonation.donorName || "Donor"} · Claimed: ₹{formatINR(adjustingDonation.amount)}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setAdjustingDonation(null)}
+                className="text-teal-950/60 hover:text-teal-950 text-sm font-bold p-1 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-teal-950 mb-1">
+                Actual Verified Amount Received in Bank (₹) *
+              </label>
+              <input
+                type="number"
+                value={adjustedAmountInput}
+                onChange={(e) => setAdjustedAmountInput(e.target.value === "" ? "" : Number(e.target.value))}
+                placeholder="Enter exact bank amount in INR"
+                className="w-full rounded-xl border border-teal-900/20 px-3 py-2 text-sm font-bold text-teal-950 outline-none focus:ring-2 focus:ring-amber-400"
+              />
+              <p className="text-[10px] text-teal-950/60 mt-1">
+                Original amount claimed by {adjustingDonation.callerName}: ₹{formatINR(adjustingDonation.amount)}
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-teal-950 mb-1">
+                Adjustment Reason / Admin Note
+              </label>
+              <textarea
+                value={adjustNoteInput}
+                onChange={(e) => setAdjustNoteInput(e.target.value)}
+                placeholder="e.g. Bank statement received ₹1,500 via PhonePe on Nov 2..."
+                rows={2}
+                className="w-full rounded-xl border border-teal-900/20 p-2 text-xs text-teal-950 outline-none focus:ring-2 focus:ring-amber-400"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 pt-2 border-t border-teal-900/10">
+              <button
+                type="button"
+                onClick={() => setAdjustingDonation(null)}
+                className="py-2.5 px-3 rounded-xl border border-teal-900/20 text-xs font-bold text-teal-950 hover:bg-cream cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmAdjustDonation}
+                disabled={actionInProgress === adjustingDonation.txnId || !adjustedAmountInput}
+                className="py-2.5 px-3 rounded-xl bg-teal-950 hover:bg-teal-900 text-gold font-black text-xs shadow-md transition cursor-pointer disabled:opacity-50"
+              >
+                {actionInProgress === adjustingDonation.txnId ? "Verifying..." : "Confirm & Verify"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL: REJECT DONATION CLAIM ── */}
+      {rejectingDonation && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-teal-950/60 backdrop-blur-xs animate-fadeIn"
+          onClick={() => setRejectingDonation(null)}
+        >
+          <div
+            className="w-full max-w-md bg-white rounded-3xl p-6 shadow-2xl border border-teal-900/10 space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-teal-900/10 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">❌</span>
+                <div>
+                  <h3 className="font-display font-black text-base text-rose-950">
+                    Reject Donation Claim
+                  </h3>
+                  <p className="text-[11px] text-teal-950/60 font-mono">
+                    Claimed: ₹{formatINR(rejectingDonation.amount)} by {rejectingDonation.callerName}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setRejectingDonation(null)}
+                className="text-teal-950/60 hover:text-teal-950 text-sm font-bold p-1 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-teal-950 mb-1">
+                Rejection Reason *
+              </label>
+              <textarea
+                value={rejectionReasonInput}
+                onChange={(e) => setRejectionReasonInput(e.target.value)}
+                placeholder="e.g. UTR not found in bank statement, or transaction bounced..."
+                rows={3}
+                className="w-full rounded-xl border border-rose-300 p-2.5 text-xs text-teal-950 outline-none focus:ring-2 focus:ring-rose-400"
+              />
+              <p className="text-[10px] text-rose-800 mt-1">
+                This donation will be marked as REJECTED and ₹0 will be credited to {rejectingDonation.callerName}.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 pt-2 border-t border-teal-900/10">
+              <button
+                type="button"
+                onClick={() => setRejectingDonation(null)}
+                className="py-2.5 px-3 rounded-xl border border-teal-900/20 text-xs font-bold text-teal-950 hover:bg-cream cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmRejectDonation}
+                disabled={actionInProgress === rejectingDonation.txnId}
+                className="py-2.5 px-3 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-black text-xs shadow-md transition cursor-pointer disabled:opacity-50"
+              >
+                {actionInProgress === rejectingDonation.txnId ? "Rejecting..." : "Confirm Rejection"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL: TELECALLER DONATION AUDIT LEDGER ── */}
+      {selectedCallerForLedger && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-teal-950/60 backdrop-blur-xs animate-fadeIn"
+          onClick={() => setSelectedCallerForLedger(null)}
+        >
+          <div
+            className="w-full max-w-3xl max-h-[90vh] bg-white rounded-3xl p-6 shadow-2xl border border-teal-900/10 space-y-4 flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-teal-900/10 pb-3">
+              <div>
+                <h3 className="font-display font-black text-lg text-teal-950 flex items-center gap-2">
+                  <span>📋 Donation &amp; Call Ledger</span>
+                  <span className="text-xs font-mono font-bold bg-cream px-2 py-0.5 rounded-full border border-teal-900/15">
+                    {selectedCallerForLedger.name} ({selectedCallerForLedger.callerId})
+                  </span>
+                </h3>
+                <p className="text-xs text-teal-950/60 mt-0.5">
+                  Detailed shift activity and verification history for this telecaller.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedCallerForLedger(null)}
+                className="text-teal-950/60 hover:text-teal-950 text-xl font-bold p-1 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto space-y-2.5">
+              {loadingLedger ? (
+                <div className="p-8 text-center text-xs text-teal-950/60">
+                  Loading caller records...
+                </div>
+              ) : callerLedgerLogs.length === 0 ? (
+                <div className="p-8 text-center text-xs text-teal-950/60 bg-cream/30 rounded-2xl">
+                  No activity logged yet today for this telecaller.
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {callerLedgerLogs.map((log: any) => (
+                    <div
+                      key={log.logId}
+                      className="rounded-2xl border border-teal-900/10 p-3 bg-white text-xs space-y-1.5"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-teal-950">
+                          {log.leadName} ({log.phone})
+                        </span>
+                        <span className="font-mono text-[10px] text-teal-950/60">
+                          {new Date(log.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-sand border border-teal-900/15">
+                          {log.disposition}
+                        </span>
+                        {log.effectiveAmount > 0 && (
+                          <span className="font-mono font-bold text-emerald-900">
+                            Claimed: ₹{formatINR(log.effectiveAmount)}
+                          </span>
+                        )}
+                        {log.verificationStatus && (
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-[9px] font-black ${
+                              log.verificationStatus === "VERIFIED"
+                                ? "bg-emerald-600 text-white"
+                                : log.verificationStatus === "REJECTED"
+                                ? "bg-rose-600 text-white"
+                                : "bg-amber-400 text-teal-950"
+                            }`}
+                          >
+                            {log.verificationStatus}
+                          </span>
+                        )}
+                        {log.utr && (
+                          <span className="font-mono text-[10px] text-teal-950/70">
+                            UTR: {log.utr}
+                          </span>
+                        )}
+                      </div>
+                      {log.notes && (
+                        <p className="text-[11px] text-teal-950/70 italic bg-cream/40 p-1.5 rounded-lg">
+                          &ldquo;{log.notes}&rdquo;
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="pt-3 border-t border-teal-900/10 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setSelectedCallerForLedger(null)}
+                className="px-4 py-2 rounded-xl bg-teal-950 text-white text-xs font-bold cursor-pointer"
+              >
+                Close Ledger
+              </button>
+            </div>
           </div>
         </div>
       )}
