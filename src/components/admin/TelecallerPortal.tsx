@@ -66,6 +66,15 @@ export const cleanChildName = (lead: { childName?: string | null; name?: string 
   }
   const n = lead.name?.trim() || "";
   if (n) {
+    // If name is "Child (PARENT_NAME)", the parent is inside the parentheses, so child name is relative
+    if (n.toLowerCase().startsWith("child (") && n.endsWith(")")) {
+      const p = cleanParentName(lead);
+      if (p && p !== "ಪೋಷಕರು (Parent)") {
+        return `${p} ಅವರ ಮಗು`;
+      }
+      return "ವಿದ್ಯಾರ್ಥಿ / ಮಗು";
+    }
+
     if (n.includes("(") && n.endsWith(")")) {
       const beforeParen = n.slice(0, n.indexOf("(")).trim();
       if (beforeParen && !isPlaceholderValue(beforeParen)) {
@@ -73,7 +82,7 @@ export const cleanChildName = (lead: { childName?: string | null; name?: string 
       }
     }
     const stripped = n.replace(/\s*\((Child|Parent|Student)\)$/i, "").trim();
-    if (stripped && !isPlaceholderValue(stripped)) {
+    if (stripped && !isPlaceholderValue(stripped) && !stripped.toLowerCase().startsWith("child (")) {
       return stripped;
     }
   }
@@ -199,6 +208,34 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
   const [eodDeclaration, setEodDeclaration] = useState(false);
   const [eodNotes, setEodNotes] = useState("");
 
+  // Visual Update Stamp Alert & Database Confirmation state
+  const [updateStampAlert, setUpdateStampAlert] = useState<{
+    isOpen: boolean;
+    leadId: number;
+    name: string;
+    disposition: string;
+    stampedAt: string;
+    telecallerId: string;
+    note?: string;
+    amount?: number;
+  } | null>(null);
+
+  const showStampConfirmation = (info: {
+    leadId: number;
+    name: string;
+    disposition: string;
+    stampedAt: string;
+    telecallerId: string;
+    note?: string;
+    amount?: number;
+  }) => {
+    setUpdateStampAlert({ ...info, isOpen: true });
+    playCelebrationChime();
+    setTimeout(() => {
+      setUpdateStampAlert((prev) => (prev?.leadId === info.leadId ? null : prev));
+    }, 5500);
+  };
+
   const showToast = (msg: string) => {
     setToastMsg(msg);
     setTimeout(() => setToastMsg(""), 4500);
@@ -269,6 +306,8 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
               const num = Number(savedLastLead);
               if (num && leadItems.some((l: any) => l.leadId === num)) {
                 setActiveFocusLeadId(num);
+                const sIdx = leadItems.findIndex((l: any) => l.leadId === num);
+                if (sIdx !== -1) setFocusIndex(sIdx);
               }
             }
           } catch {}
@@ -631,10 +670,26 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
       });
       const data = await res.json();
       if (data.success) {
-        const updatedList = leads.map((l) => (l.leadId === leadId ? { ...l, status: disposition } : l));
+        const nowIso = new Date().toISOString();
+        const updatedList = leads.map((l) => (l.leadId === leadId ? { ...l, status: disposition, lastContactedAt: nowIso, notes: notes || l.notes } : l));
         setLeads(updatedList);
-        showToast(`✓ Status updated to ${disposition}`);
         computeStats(updatedList, callerProfile.callerId);
+
+        const currentLead = leads.find((l) => l.leadId === leadId);
+        const displayName = currentLead
+          ? (currentLead.stream === "PARENTS" || Boolean(currentLead.parentName || currentLead.childName)
+              ? `${cleanChildName(currentLead)} (${cleanParentName(currentLead)})`
+              : currentLead.name)
+          : `Lead #${leadId}`;
+
+        showStampConfirmation({
+          leadId,
+          name: displayName,
+          disposition,
+          stampedAt: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true }),
+          telecallerId: callerProfile.callerId,
+          note: notes,
+        });
       }
     } catch (err: any) {
       showToast("Error updating disposition: " + err.message);
@@ -1111,7 +1166,15 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
           convertedCount: prev.convertedCount + 1,
           totalRevenue: prev.totalRevenue + loggedDonationAmount,
         }));
-        showToast(`🎉 ₹${loggedDonationAmount} Donation logged for ${activeDonationLead.name}! Attributed to ${callerProfile.callerId}`);
+        showStampConfirmation({
+          leadId: currentLeadId,
+          name: activeDonationLead.name,
+          disposition: "Donated",
+          stampedAt: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true }),
+          telecallerId: callerProfile.callerId,
+          amount: loggedDonationAmount,
+          note: `Donation ₹${loggedDonationAmount} recorded · UTR: ${loggedDonationUtr.trim() || "Offline/Direct"}`,
+        });
         setActiveDonationLead(null);
         setLoggedDonationUtr("");
         setCurrentlyDialedLeadId(null);
@@ -1346,12 +1409,32 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
     return filteredLeads.filter((l) => !l.status || l.status === "Pending").length;
   }, [filteredLeads]);
 
-  // Reset pagination and active focus lead when filter, search, date sort, or stream changes
+  // Persistent Resume: retain activeFocusLeadId or restore from localStorage on filter, stream or sort changes
   useEffect(() => {
     setPortalPage(1);
+    if (activeFocusLeadId) {
+      const idx = filteredLeads.findIndex((l) => l.leadId === activeFocusLeadId);
+      if (idx !== -1) {
+        setFocusIndex(idx);
+        return;
+      }
+    }
+    if (callerProfile) {
+      try {
+        const saved = localStorage.getItem(`janaseva_last_lead_${callerProfile.callerId}`);
+        if (saved) {
+          const num = Number(saved);
+          const sIdx = filteredLeads.findIndex((l) => l.leadId === num);
+          if (sIdx !== -1) {
+            setActiveFocusLeadId(num);
+            setFocusIndex(sIdx);
+            return;
+          }
+        }
+      } catch {}
+    }
     setFocusIndex(0);
-    setActiveFocusLeadId(null);
-  }, [filter, searchQuery, dateSortOrder, streamFilter]);
+  }, [filter, searchQuery, dateSortOrder, streamFilter, filteredLeads, activeFocusLeadId, callerProfile]);
 
   const totalPortalPages = Math.max(1, Math.ceil(filteredLeads.length / portalPageSize));
   const paginatedLeads = useMemo(() => {
@@ -1371,12 +1454,19 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
 
   const currentFocusLead = filteredLeads[safeFocusIndex] || null;
 
-  // Keep activeFocusLeadId synced with the currently displayed lead
+  // Keep activeFocusLeadId synced with the currently displayed lead and persist in localStorage
   useEffect(() => {
-    if (currentFocusLead && currentFocusLead.leadId !== activeFocusLeadId) {
-      setActiveFocusLeadId(currentFocusLead.leadId);
+    if (currentFocusLead) {
+      if (currentFocusLead.leadId !== activeFocusLeadId) {
+        setActiveFocusLeadId(currentFocusLead.leadId);
+      }
+      if (callerProfile) {
+        try {
+          localStorage.setItem(`janaseva_last_lead_${callerProfile.callerId}`, String(currentFocusLead.leadId));
+        } catch {}
+      }
     }
-  }, [currentFocusLead, activeFocusLeadId]);
+  }, [currentFocusLead, activeFocusLeadId, callerProfile]);
 
   // Keyboard Shortcuts for Focus Power-Dialing Mode
   useEffect(() => {
@@ -2128,18 +2218,13 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                   Calling Queue
                 </span>
                 <span className="text-xs font-mono font-bold bg-white px-2 py-0.5 rounded-full border border-teal-900/15 text-teal-950">
-                  {filteredLeads.length}
+                  {filteredLeads.length} total
                 </span>
               </div>
               <div className="flex items-center gap-1.5">
                 <span className="text-[11px] font-mono font-black text-amber-950 bg-amber-100 px-2 py-0.5 rounded-lg border border-amber-300">
-                  {filteredPendingCount} to call in queue
+                  ⏳ {filteredPendingCount} pending to call
                 </span>
-                {stats.totalAssigned > filteredLeads.length && (
-                  <span className="hidden sm:inline-block text-[10px] text-teal-950/60 font-semibold" title="Total leads assigned across all streams">
-                    ({stats.totalAssigned.toLocaleString()} total assigned)
-                  </span>
-                )}
               </div>
             </div>
 
@@ -2185,6 +2270,11 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                         setActiveFocusLeadId(lead.leadId);
                         const overallIdx = filteredLeads.findIndex((fl) => fl.leadId === lead.leadId);
                         if (overallIdx !== -1) setFocusIndex(overallIdx);
+                        if (callerProfile) {
+                          try {
+                            localStorage.setItem(`janaseva_last_lead_${callerProfile.callerId}`, String(lead.leadId));
+                          } catch {}
+                        }
                         setViewMode("focus");
                       }}
                       className={`rounded-2xl p-3 border transition shadow-xs cursor-pointer select-none ${
@@ -2285,28 +2375,28 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                         </p>
                       )}
 
-                      {/* Action buttons inside queue card for fast access */}
-                      <div className="flex items-center justify-end gap-1.5 mt-2 pt-1 border-t border-teal-900/5">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleCallLead(lead);
-                          }}
-                          className="px-2 py-1 rounded-lg bg-teal-950 text-white text-[10px] font-bold hover:bg-teal-900 active:scale-95 shadow-2xs"
-                        >
-                          📞 Call
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDirectWhatsAppChat(lead, selectedSevaAmount);
-                          }}
-                          className="px-2 py-1 rounded-lg bg-[#25D366] text-white text-[10px] font-bold hover:brightness-105 active:scale-95 shadow-2xs"
-                        >
-                          💬 WhatsApp
-                        </button>
+                      {/* Queue Card Bottom Strip: Stamp & Open Card Action */}
+                      <div className="flex items-center justify-between gap-1.5 mt-2 pt-1.5 border-t border-teal-900/5 text-[10px]">
+                        {isAttended ? (
+                          <span className="font-mono font-bold text-emerald-950 bg-emerald-100/90 px-2 py-0.5 rounded-md border border-emerald-300 flex items-center gap-1">
+                            <span>🔖</span>
+                            <span>STAMP: {lead.status?.toUpperCase()}</span>
+                          </span>
+                        ) : isSelected ? (
+                          <span className="font-bold text-amber-950 bg-amber-200 px-2 py-0.5 rounded-md flex items-center gap-1 animate-pulse">
+                            <span>📍</span>
+                            <span>You are here</span>
+                          </span>
+                        ) : (
+                          <span className="text-teal-950/60 font-medium">
+                            Tap to open card &amp; call
+                          </span>
+                        )}
+
+                        <span className="font-bold text-teal-900 bg-sand/60 hover:bg-sand px-2 py-0.5 rounded-md flex items-center gap-1 ml-auto">
+                          <span>Open Card</span>
+                          <span>➔</span>
+                        </span>
                       </div>
                     </div>
                   );
@@ -2342,21 +2432,6 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
 
           {/* ── RIGHT PANE: ACTIVE CALLING CARD WORKSPACE (Always visible on desktop; on mobile shown when viewMode === 'focus') ── */}
           <div className={`space-y-4 lg:col-span-7 xl:col-span-8 ${viewMode === "focus" ? "block" : "hidden lg:block"}`}>
-            {/* Mobile Back-To-Queue Header */}
-            <div className="lg:hidden flex items-center justify-between bg-sand/60 border border-teal-900/15 p-2 rounded-xl mb-1">
-              <button
-                type="button"
-                onClick={() => setViewMode("queue")}
-                className="text-xs font-black text-teal-950 flex items-center gap-1.5 cursor-pointer py-1.5 px-3 rounded-xl bg-white border border-teal-900/15 shadow-2xs active:scale-95"
-              >
-                <span>◀</span>
-                <span>ಎಲ್ಲಾ ಲೀಡ್‌ಗಳು (Queue: {filteredLeads.length})</span>
-              </button>
-              <span className="text-xs font-mono font-bold text-teal-950 bg-cream px-2 py-1 rounded-lg border border-teal-900/10">
-                #{safeFocusIndex + 1} of {filteredLeads.length}
-              </span>
-            </div>
-
             {!currentFocusLead ? (
               <div className="rounded-3xl p-8 sm:p-12 bg-gradient-to-b from-amber-50/50 via-white to-cream/30 text-center border border-teal-900/15 shadow-sm space-y-4">
                 <div className="h-16 w-16 mx-auto rounded-2xl bg-amber-500/10 flex items-center justify-center text-3xl">
@@ -2423,6 +2498,15 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                     {/* Top Status & Queue Index Bar */}
                     <div className="flex flex-wrap items-center justify-between gap-2 border-b border-teal-900/10 pb-3">
                       <div className="flex items-center gap-2 flex-wrap">
+                        {/* 1-Tap Mobile Return to Queue button */}
+                        <button
+                          type="button"
+                          onClick={() => setViewMode("queue")}
+                          className="lg:hidden rounded-xl bg-sand/80 hover:bg-sand border border-teal-900/20 px-2.5 py-1 text-xs font-black text-teal-950 transition cursor-pointer flex items-center gap-1 shadow-2xs active:scale-95"
+                          title="Back to All Leads Queue"
+                        >
+                          <span>◀ Queue ({filteredLeads.length})</span>
+                        </button>
                         <span className="text-xs font-mono font-black bg-teal-950 text-gold px-2.5 py-1 rounded-xl shadow-xs">
                           LEAD {safeFocusIndex + 1} OF {filteredLeads.length}
                         </span>
@@ -2516,21 +2600,38 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                       </div>
                     )}
 
-                    {/* Already Attended Lead Warning Banner */}
+                    {/* ── OFFICIAL DATA UPDATE STAMP SEAL ── */}
                     {currentFocusLead.status && currentFocusLead.status !== "Pending" && (
-                      <div className="rounded-2xl bg-amber-50 border border-amber-300 p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-xs">
-                        <div className="flex items-center gap-2 text-xs font-bold text-amber-950">
-                          <span className="text-base">⚠️</span>
-                          <span>
-                            ಈ ನಂಬರ್‌ಗೆ ಈಗಾಗಲೇ ಕರೆ ಮಾಡಲಾಗಿದೆ (Already Contacted: <strong>{currentFocusLead.status}</strong>).
-                          </span>
+                      <div className="rounded-2xl border-2 border-dashed border-teal-900/40 bg-sand/40 p-3.5 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <div className="h-10 w-10 rounded-full border-2 border-teal-900/60 bg-white flex items-center justify-center text-teal-950 font-black text-[9px] shrink-0 shadow-2xs rotate-[-8deg] font-mono">
+                            SEAL
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-mono text-xs font-black uppercase tracking-wider bg-teal-950 text-gold px-2.5 py-0.5 rounded-lg shadow-2xs">
+                                🔖 STAMP: {currentFocusLead.status.toUpperCase()}
+                              </span>
+                              <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                                ✓ RECORDED IN DATABASE
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-teal-950/80 mt-1 font-medium">
+                              Logged by <strong>{callerProfile?.name || callerProfile?.callerId}</strong>
+                              {currentFocusLead.lastContactedAt && (
+                                <span> · {new Date(currentFocusLead.lastContactedAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true })}</span>
+                              )}
+                              {currentFocusLead.notes ? ` · "${currentFocusLead.notes}"` : ""}
+                            </p>
+                          </div>
                         </div>
+
                         <button
                           type="button"
                           onClick={handleJumpToNextPending}
-                          className="rounded-xl bg-teal-950 hover:bg-teal-900 text-gold px-3 py-1.5 text-xs font-black transition cursor-pointer shadow-xs flex items-center justify-center gap-1.5 self-start sm:self-auto"
+                          className="rounded-xl bg-teal-950 hover:bg-teal-900 text-gold px-3 py-1.5 text-xs font-black transition cursor-pointer shadow-xs flex items-center justify-center gap-1.5 self-start sm:self-auto shrink-0"
                         >
-                          <span>⏭️ ಮುಂದಿನ ಹೊಸ ನಂಬರ್ (Jump to Fresh Lead)</span>
+                          <span>⏭️ Jump to Fresh Lead</span>
                         </button>
                       </div>
                     )}
@@ -3770,108 +3871,67 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
         </div>
       )}
 
-      {/* ── MOBILE STICKY BOTTOM THUMB ACTION COCKPIT ── */}
-      {viewMode === "focus" && currentFocusLead && (
-        <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-teal-900/15 p-2 pb-3 shadow-2xl space-y-1.5 animate-fadeIn">
-          {/* Row 1: 1-Tap Fast Disposition Auto-Advance (5 Columns for 5 Action Buttons) */}
-          <div className="grid grid-cols-5 gap-1 text-[11px] font-black">
-            <button
-              type="button"
-              onClick={() => handleFocusDisposition(currentFocusLead.leadId, "Interested")}
-              className="py-1.5 px-0.5 rounded-lg bg-amber-500 hover:bg-amber-600 active:scale-95 text-teal-950 text-center truncate shadow-2xs cursor-pointer"
-              title="Interested"
-            >
-              👍 ಒಪ್ಪಿದ್ದಾರೆ
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                const twoHoursLater = new Date(Date.now() + 2 * 3600 * 1000).toISOString();
-                void handleFocusDisposition(currentFocusLead.leadId, "No_Answer", "Auto-rescheduled +2 hours", twoHoursLater);
-              }}
-              className="py-1.5 px-0.5 rounded-lg bg-slate-700 hover:bg-slate-800 active:scale-95 text-white text-center truncate shadow-2xs cursor-pointer"
-              title="Busy / Call later"
-            >
-              ⏳ ಬಿಜಿ
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setActiveNotesLead(currentFocusLead);
-                setNotesText(currentFocusLead.notes || "");
-                setCallbackDateTime("");
-              }}
-              className="py-1.5 px-0.5 rounded-lg bg-blue-600 hover:bg-blue-700 active:scale-95 text-white text-center truncate shadow-2xs cursor-pointer"
-              title="Callback Schedule"
-            >
-              📅 ನಂತರ
-            </button>
-            <button
-              type="button"
-              onClick={() => handleFocusDisposition(currentFocusLead.leadId, "Rejected")}
-              className="py-1.5 px-0.5 rounded-lg bg-rose-100 hover:bg-rose-200 active:scale-95 text-rose-800 border border-rose-200 text-center truncate shadow-2xs cursor-pointer"
-              title="Rejected"
-            >
-              ✕ ಬೇಡ
-            </button>
-            <button
-              type="button"
-              onClick={() => handleSkipFocusLead(currentFocusLead)}
-              className="py-1.5 px-0.5 rounded-lg bg-amber-100 hover:bg-amber-200 active:scale-95 text-amber-900 border border-amber-300 text-center truncate shadow-2xs cursor-pointer"
-              title="Skip Lead"
-            >
-              ⏭️ ದಾಟಿಸಿ
-            </button>
-          </div>
+      {/* ── UPDATE CONFIRMATION & DATABASE STAMP ALERT BANNER ── */}
+      {updateStampAlert && updateStampAlert.isOpen && (
+        <div className="fixed top-4 right-4 left-4 sm:left-auto sm:w-96 z-50 animate-fadeIn">
+          <div className="rounded-2xl bg-teal-950 text-white p-4 shadow-2xl border-2 border-amber-400 flex flex-col gap-2.5">
+            <div className="flex items-center justify-between border-b border-white/10 pb-2">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">💮</span>
+                <div>
+                  <h4 className="text-xs font-black text-amber-300 tracking-wide uppercase">
+                    Data Stamped &amp; Saved in Database!
+                  </h4>
+                  <p className="text-[10px] text-white/70">
+                    Committed to Server · {updateStampAlert.stampedAt}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setUpdateStampAlert(null)}
+                className="text-white/60 hover:text-white text-xs font-bold p-1 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
 
-          {/* Row 2: Dial & Outreach Actions */}
-          <div className="flex items-center justify-between gap-1">
-            <button
-              type="button"
-              onClick={() => handleCallLead(currentFocusLead)}
-              className="flex-1 py-2 px-1 rounded-xl bg-teal-950 text-white font-black text-xs flex flex-col items-center justify-center active:scale-95 shadow-xs cursor-pointer min-h-[46px]"
-            >
-              <span className="text-sm">📞</span>
-              <span className="text-[10px] leading-tight">ಕರೆ</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => handleDirectWhatsAppChat(currentFocusLead, selectedSevaAmount)}
-              className="flex-1 py-2 px-1 rounded-xl bg-[#25D366] text-white font-black text-xs flex flex-col items-center justify-center active:scale-95 shadow-xs cursor-pointer min-h-[46px]"
-            >
-              <span className="text-sm">💬</span>
-              <span className="text-[10px] leading-tight">WhatsApp</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => handleDirectSharePaymentQr(currentFocusLead, selectedSevaAmount)}
-              className="flex-1 py-2 px-1 rounded-xl bg-amber-600 text-white font-black text-xs flex flex-col items-center justify-center active:scale-95 shadow-xs cursor-pointer min-h-[46px]"
-            >
-              <span className="text-sm">📷</span>
-              <span className="text-[10px] leading-tight">QR ಸ್ಕ್ಯಾನ್</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setActiveDonationLead(currentFocusLead);
-                setLoggedDonationAmount(selectedSevaAmount || 1500);
-                setLoggedDonationUtr("");
-              }}
-              className="flex-1 py-2 px-1 rounded-xl bg-emerald-600 text-white font-black text-xs flex flex-col items-center justify-center active:scale-95 shadow-xs cursor-pointer min-h-[46px]"
-            >
-              <span className="text-sm">🎉</span>
-              <span className="text-[10px] leading-tight">ಪಾವತಿ</span>
-            </button>
-            <button
-              type="button"
-              onClick={handleNextFocusLead}
-              disabled={safeFocusIndex >= filteredLeads.length - 1}
-              className="py-2 px-2.5 rounded-xl bg-sand border border-teal-900/20 text-teal-950 font-black text-xs flex flex-col items-center justify-center active:scale-95 disabled:opacity-40 cursor-pointer min-h-[46px]"
-              title="Next Lead"
-            >
-              <span className="text-sm">▶</span>
-              <span className="text-[10px] leading-tight">ಮುಂದಕ್ಕೆ</span>
-            </button>
+            <div className="text-xs space-y-1">
+              <p className="font-bold text-white truncate">
+                Lead #{updateStampAlert.leadId}: {updateStampAlert.name}
+              </p>
+              <div className="flex items-center gap-2 flex-wrap text-[11px]">
+                <span className="font-bold bg-amber-400 text-teal-950 px-2 py-0.5 rounded-md font-mono">
+                  {updateStampAlert.disposition}
+                </span>
+                {updateStampAlert.amount && (
+                  <span className="font-bold bg-emerald-500 text-white px-2 py-0.5 rounded-md font-mono">
+                    ₹{formatINR(updateStampAlert.amount)}
+                  </span>
+                )}
+                <span className="text-white/70 text-[10px]">
+                  Attributed to: <strong>{updateStampAlert.telecallerId}</strong>
+                </span>
+              </div>
+              {updateStampAlert.note && (
+                <p className="text-[10px] text-white/80 italic bg-white/10 p-1.5 rounded-lg truncate">
+                  &quot;{updateStampAlert.note}&quot;
+                </p>
+              )}
+            </div>
+
+            <div className="flex items-center justify-between pt-1">
+              <span className="text-[10px] text-emerald-300 font-semibold flex items-center gap-1">
+                <span>✓</span> Auto-saved to shift log
+              </span>
+              <button
+                type="button"
+                onClick={() => setUpdateStampAlert(null)}
+                className="text-[11px] font-black bg-amber-400 hover:bg-amber-300 text-teal-950 px-2.5 py-1 rounded-lg cursor-pointer transition shadow-2xs"
+              >
+                OK / Continue ▶
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -452,19 +452,51 @@ export function generateAntiBanMessage(options: AntiBanGenerateOptions): AntiBan
   // ──────────────────────────────────────────────────────────────────────────
   // PHYSICAL CALLING LOCATION & EXACT VERIFIED GOOGLE MAPS LINK FROM SITE
   // ──────────────────────────────────────────────────────────────────────────
+  const websiteUrl = SITE.url || "https://www.janasevaashrama.org";
+  const mapsLocationUrl = SITE.mapsUrl || "https://maps.app.goo.gl/FMaM6eLKk3nNJmth8";
+  const officialWaNumber = "+91 99803 59595";
+  const officialWaLink = "https://wa.me/919980359595";
+  const officialCallingNumber = "+91 99803 59595 / 080 2853 5555";
+
   let locationBlock = "";
+  let mandatoryContactFooter = "";
+
   if (language === "kn") {
-    locationBlock = `📍 ಆಶ್ರಮದ ವಿಳಾಸ: ${SITE.address}\n🗺️ ಗೂಗಲ್ ಮ್ಯಾಪ್ಸ್: ${SITE.mapsUrl}\n📞 ನೇರ ದೂರವಾಣಿ: ${SITE.phoneIntl}`;
+    locationBlock = `📍 ಆಶ್ರಮದ ವಿಳಾಸ: ${SITE.address}\n🗺️ ಗೂಗಲ್ ಮ್ಯಾಪ್ಸ್: ${mapsLocationUrl}\n📞 ನೇರ ದೂರವಾಣಿ: ${officialCallingNumber}\n🌐 ವೆಬ್‌ಸೈಟ್: ${websiteUrl}`;
+    mandatoryContactFooter = [
+      "━━━━━━━━━━━━━━━━━━━━━━━━━",
+      `🌐 ಅಧಿಕೃತ ವೆಬ್‌ಸೈಟ್: ${websiteUrl}`,
+      `📍 ಆಶ್ರಮದ ಲೊಕೇಶನ್ (Google Maps): ${mapsLocationUrl}`,
+      `💬 ಅಧಿಕೃತ WhatsApp: ${officialWaNumber} (${officialWaLink})`,
+      `📞 ಸಹಾಯವಾಣಿ ಕರೆ: ${officialCallingNumber}`,
+      "━━━━━━━━━━━━━━━━━━━━━━━━━",
+    ].join("\n");
   } else if (language === "kanglish" || language === "mixed") {
-    locationBlock = `📍 Ashrama Address: ${SITE.address}\n🗺️ Google Maps Pin: ${SITE.mapsUrl}\n📞 Helpline: ${SITE.phoneIntl}`;
+    locationBlock = `📍 Ashrama Address: ${SITE.address}\n🗺️ Google Maps Pin: ${mapsLocationUrl}\n📞 Helpline: ${officialCallingNumber}\n🌐 Website: ${websiteUrl}`;
+    mandatoryContactFooter = [
+      "━━━━━━━━━━━━━━━━━━━━━━━━━",
+      `🌐 Official Website: ${websiteUrl}`,
+      `📍 Ashrama Pin (Google Maps): ${mapsLocationUrl}`,
+      `💬 Official WhatsApp: ${officialWaNumber} (${officialWaLink})`,
+      `📞 Calling Helpline: ${officialCallingNumber}`,
+      "━━━━━━━━━━━━━━━━━━━━━━━━━",
+    ].join("\n");
   } else {
-    locationBlock = `📍 Calling From: ${SITE.address}\n🗺️ Google Maps Pin: ${SITE.mapsUrl}\n📞 Ashrama Helpline: ${SITE.phoneIntl}`;
+    locationBlock = `📍 Calling From: ${SITE.address}\n🗺️ Google Maps Pin: ${mapsLocationUrl}\n📞 Ashrama Helpline: ${officialCallingNumber}\n🌐 Website: ${websiteUrl}`;
+    mandatoryContactFooter = [
+      "━━━━━━━━━━━━━━━━━━━━━━━━━",
+      `🌐 Official Website: ${websiteUrl}`,
+      `📍 Ashrama Google Maps Pin: ${mapsLocationUrl}`,
+      `💬 Official WhatsApp: ${officialWaNumber} (${officialWaLink})`,
+      `📞 Ashrama Helpline: ${officialCallingNumber}`,
+      "━━━━━━━━━━━━━━━━━━━━━━━━━",
+    ].join("\n");
   }
 
   // ──────────────────────────────────────────────────────────────────────────
   // ACTION CALL BUTTONS (DONATE WEBSITE LINK & DIRECT CALL MAIN NUMBER)
   // ──────────────────────────────────────────────────────────────────────────
-  const cleanPhoneDigits = SITE.phoneIntl.replace(/\D/g, "");
+  const cleanPhoneDigits = officialWaNumber.replace(/\D/g, "");
   const actionButtonsBlock = [
     "━━━━━━━━━━━━━━━━━━━━━━━━━",
     `👉 [ 📲 1-TAP PAY VIA GPAY / PHONEPE / CARD (80G RECEIPT) ]`,
@@ -474,14 +506,17 @@ export function generateAntiBanMessage(options: AntiBanGenerateOptions): AntiBan
     `MAB.037349050110044@axisbank`,
     `🏛️ Trust: JANASEVA SAMRUDDI EDUCATI`,
     "",
+    `👉 [ 🌐 VISIT OFFICIAL ASHRAMA WEBSITE ]`,
+    websiteUrl,
+    "",
     `👉 [ 📞 DIRECT CALL ASHRAMA HELPLINE ]`,
-    `${SITE.phoneIntl}`,
+    officialCallingNumber,
     "",
     `👉 [ 💬 WHATSAPP CARETAKER ]`,
-    `https://wa.me/${cleanPhoneDigits}`,
+    officialWaLink,
     "",
     `👉 [ 📍 GOOGLE MAPS ASHRAMA LOCATION ]`,
-    SITE.mapsUrl,
+    mapsLocationUrl,
     "━━━━━━━━━━━━━━━━━━━━━━━━━",
   ].join("\n");
 
@@ -524,11 +559,27 @@ export function generateAntiBanMessage(options: AntiBanGenerateOptions): AntiBan
 
   const mode = options.mode || "concise";
 
-  // Concise 1-on-1 human lines (Under 380 chars, 1 URL, eliminates Report & Block triggers)
+  // Concise 1-on-1 human lines (with mandatory trust footer, 1 URL, eliminates Report & Block triggers)
   let conciseLines: string[] = [];
   const isParent = options.stream === "PARENTS" || Boolean(options.childName);
-  const cleanChildInput = (options.childName && options.childName.trim().toLowerCase() !== "child") ? options.childName.trim() : "";
-  const cName = (cleanChildInput || (language === "kn" ? "ನಿಮ್ಮ ಮುದ್ದು ಕಂದ" : "nimma muddu magu")).trim();
+
+  const rawChild = options.childName?.trim().toLowerCase() || "";
+  const isPlaceholderChild = !rawChild || [
+    "child", "student", "pupil", "kid", "unknown", "na", "n/a", "-", "—", "none"
+  ].includes(rawChild);
+
+  let cleanChildInput = !isPlaceholderChild ? options.childName!.trim() : "";
+  if (!cleanChildInput && (options.parentName || options.donorName)) {
+    const pName = (options.parentName || options.donorName)!.trim();
+    if (language === "kn") {
+      cleanChildInput = `${pName} ಅವರ ಮುದ್ದು ಕಂದ`;
+    } else if (language === "kanglish" || language === "mixed") {
+      cleanChildInput = `${pName} avara muddu kanda`;
+    } else {
+      cleanChildInput = `beloved child of ${pName}`;
+    }
+  }
+  const cName = (cleanChildInput || (language === "kn" ? "ನಿಮ್ಮ ಮುದ್ದು ಕಂದ" : (language === "en" ? "your beloved child" : "nimma muddu magu"))).trim();
 
   if (language === "kn") {
     if (isParent) {
@@ -564,6 +615,9 @@ export function generateAntiBanMessage(options: AntiBanGenerateOptions): AntiBan
         `🏛️ ಜನಸೇವಾ ಆಶ್ರಮ (JJ Act KA18CH0242 · 80G ಮಾನ್ಯತೆ)`,
         "",
         parentBlessingKn,
+        "",
+        mandatoryContactFooter,
+        "",
         saltLine,
       ];
     } else {
@@ -599,6 +653,9 @@ export function generateAntiBanMessage(options: AntiBanGenerateOptions): AntiBan
         `🏛️ ಜನಸೇವಾ ಆಶ್ರಮ (JJ Act KA18CH0242 · 80G ಮಾನ್ಯತೆ)`,
         "",
         donorBlessingKn,
+        "",
+        mandatoryContactFooter,
+        "",
         saltLine,
       ];
     }
@@ -618,6 +675,9 @@ export function generateAntiBanMessage(options: AntiBanGenerateOptions): AntiBan
           `🏛️ Janaseva Ashrama (JJ Act KA18CH0242 · 80G Exempt)`,
           "",
           `Shree Devaru nimma kutumbakke aayu-aarogya karunisali! 🙏✨`,
+          "",
+          mandatoryContactFooter,
+          "",
           saltLine,
         ]
       : [
@@ -634,6 +694,9 @@ export function generateAntiBanMessage(options: AntiBanGenerateOptions): AntiBan
           `🏛️ Janaseva Ashrama (JJ Act KA18CH0242 · 80G Exempt)`,
           "",
           `Makkala nirmala prarthane nimage sada irali. Dhanyavadagalu! 🙏✨`,
+          "",
+          mandatoryContactFooter,
+          "",
           saltLine,
         ];
   } else {
@@ -652,6 +715,9 @@ export function generateAntiBanMessage(options: AntiBanGenerateOptions): AntiBan
           `🏛️ Janaseva Ashrama (JJ Act KA18CH0242 · 80G Exempt)`,
           "",
           `May the Almighty bless you and your family with radiant peace and health! 🙏✨`,
+          "",
+          mandatoryContactFooter,
+          "",
           saltLine,
         ]
       : [
@@ -668,6 +734,9 @@ export function generateAntiBanMessage(options: AntiBanGenerateOptions): AntiBan
           `🏛️ Janaseva Ashrama (JJ Act KA18CH0242 · 80G Exempt)`,
           "",
           `Wishing you radiant health, peace, and abundance! 🙏✨`,
+          "",
+          mandatoryContactFooter,
+          "",
           saltLine,
         ];
   }
