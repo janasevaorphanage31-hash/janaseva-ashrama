@@ -17,7 +17,7 @@ import { SITE, FORM_10AC, JJ_ACT_REGISTRATION } from "./site";
 import { parseCustomerPhone } from "./whatsapp-phone";
 
 export type OutreachLanguage = "en" | "kn" | "kanglish" | "mixed";
-export type NarrativeAngle = "annadana" | "birthday" | "vidya" | "trust_80g";
+export type NarrativeAngle = "annadana" | "birthday" | "vidya" | "trust_80g" | "location_visit" | "provisions_inkind";
 export type MediaType = "none" | "image" | "video" | "pdf" | "link";
 
 // Backwards-compatible aliases
@@ -299,7 +299,19 @@ export function generateAntiBanMessage(options: AntiBanGenerateOptions): AntiBan
         `Janaseva Ashrama Karnataka Sarkarada Juvenile Justice Act (JJ Act KA18CH0242) nalli registered aagiruvudhu. 100% direct allocation for 25 boys. Neevu kodo prathi roopayigu Income Tax Act Section 80G (Form 10AC: ${FORM_10AC.urn}) nalli 50% tax exemption siguththe. Instant WhatsApp receipt barcode bandubiduththe.`,
         `Registered child care institution. Zero middlemen. 100% seva direct makkala thalupathe. Instant 80G tax receipt WhatsApp nalli siguththe.`,
       ]);
-      tierBreakdown = `📜 Govt Accreditations & 80G Tax Exemption:\n• Karnataka JJ Act Registration: ${JJ_ACT_REGISTRATION.registrationNumber}\n• Form 10AC 80G Approval URN: ${FORM_10AC.urn}\n• MCA CSR-1 Registration: CSR00078800`;
+      tierBreakdown = `📜 Govt Accreditations & 80G Tax Exemption:\n• Karnataka JJ Act Registration: ${JJ_ACT_REGISTRATION.registrationNumber}\n• Form 10AC 80G Approval URN: ${FORM_10AC.urn}\n• MCA CSR-1 Registration: CSR00078800\n• 50% Income Tax Deduction under Section 80G`;
+    } else if (angle === "location_visit") {
+      body = pick([
+        `Namma Turahalli Janaseva Ashrama ge neevu mattu nimma kutumba direct aagi visit maadbodu. Resident 25 makkala jothe time spend maadi, classroom, kitchen, dorms nodi, bisi satvik oota badisi celebrate maadi. Campus visiting hours: 10:00 AM inda 6:00 PM varege open iruththe.`,
+        `Janaseva Ashrama ge direct aagi banni. Location Kaggalipura / Turahalli forest road hattira ide. Namma makkalu nimmannu thumba preethi inda varadhisikolthaare.`,
+      ]);
+      tierBreakdown = `📍 Campus Visit & Video Tour Details:\n• Visiting Hours: 10:00 AM — 6:00 PM (All 7 Days)\n• Exact Google Maps Pin: https://maps.app.goo.gl/FMaM6eLKk3nNJmth8\n• Short Video Tour: ${baseUrl}/media/ashrama_video.mp4\n• Helpline / Gate Coordinator: ${SITE.phoneIntl}`;
+    } else if (angle === "provisions_inkind") {
+      body = pick([
+        `Namma 25 beliyuva makkalige cash donation badalage direct aagi daily essential groceries (dhaanya, akki, bele) send maadbodu athava swatha neevê thandukodbodu. Namma kitchen ge daily bekaada items list na ille share maadiddivi.`,
+        `Annadana kitchen ge provision seva mukhya. Sona Masoori akki, Toor dal athava cooking oil provide maadi 25 makkala ootakke sahayavaagi.`,
+      ]);
+      tierBreakdown = `🍚 Nithya Groceries & Provision Wishlist:\n• Sona Masoori Rice (ಅಕ್ಕಿ): 25kg / 50kg bag\n• Premium Toor Dal (ತೊಗರಿ ಬೇಳೆ): 10kg / 20kg\n• Pure Cooking Oil / Ghee (ಅಡುಗೆ ಎಣ್ಣೆ / ತುಪ್ಪ): 5L / 15L tin\n• Children Bath Soaps & Washing Powder\n• Long-size Ruled School Notebooks (192 pgs)`;
     } else {
       // Default Annadana
       body = pick([
@@ -368,7 +380,19 @@ export function generateAntiBanMessage(options: AntiBanGenerateOptions): AntiBan
         `ಜನಸೇವಾ ಆಶ್ರಮವು ಕರ್ನಾಟಕ ಸರ್ಕಾರದ ಬಾಲನ್ಯಾಯ ಕಾಯ್ದೆ (JJ Act KA18CH0242) ಅಡಿಯಲ್ಲಿ ನೋಂದಾಯಿತ ಅಧಿಕೃತ ಸಂಸ್ಥೆಯಾಗಿದೆ. ನೀವು ನೀಡುವ ಪ್ರತಿಯೊಂದು ರೂಪಾಯಿಯೂ ನೇರವಾಗಿ 25 ಮಕ್ಕಳ ಆಹಾರ, ವಸತಿ ಮತ್ತು ವೈದ್ಯಕೀಯ ವೆಚ್ಚಕ್ಕೆ ಬಳಕೆಯಾಗುತ್ತದೆ.`,
         `ಆದಾಯ ತೆರಿಗೆ ಕಾಯ್ದೆ 80G ಅಡಿಯಲ್ಲಿ 50% ತೆರಿಗೆ ವಿನಾಯಿತಿ ಮತ್ತು ತಕ್ಷಣದ ಡಿಜಿಟಲ್ ರಸೀದಿ WhatsApp ಮೂಲಕ ತಲುಪುತ್ತದೆ.`,
       ]);
-      tierBreakdown = `📜 ಸರ್ಕಾರದ ಅಧಿಕೃತ 80G ವಿನಾಯಿತಿ:\n• ಆದಾಯ ತೆರಿಗೆ ಕಾಯ್ದೆ 80G (Form 10AC: ${FORM_10AC.urn}) ಅಡಿಯಲ್ಲಿ 50% ತೆರಿಗೆ ವಿನಾಯಿತಿ ಲಭ್ಯ.\n• ತಕ್ಷಣದ ಡಿಜಿಟಲ್ ರಸೀದಿ WhatsApp ಮೂಲಕ ತಲುಪುತ್ತದೆ.`;
+      tierBreakdown = `📜 ಸರ್ಕಾರದ ಅಧಿಕೃತ 80G ವಿನಾಯಿತಿ:\n• ಆದಾಯ ತೆರಿಗೆ ಕಾಯ್ದೆ 80G (Form 10AC: ${FORM_10AC.urn}) ಅಡಿಯಲ್ಲಿ 50% ತೆರಿಗೆ ವಿನಾಯಿತಿ ಲಭ್ಯ.\n• ತಕ್ಷಣದ ಡಿಜಿಟಲ್ 80G ರಸೀದಿ WhatsApp ಮೂಲಕ ತಲುಪುತ್ತದೆ.\n• CSR-1 ನೋಂದಣಿ: CSR00078800`;
+    } else if (angle === "location_visit") {
+      body = pick([
+        `ನಮ್ಮ ತುರಹಳ್ಳಿಯ ಜನಸೇವಾ ಆಶ್ರಮಕ್ಕೆ ತಾವು ಹಾಗೂ ತಮ್ಮ ಕುಟುಂಬ ನೇರವಾಗಿ ಭೇಟಿ ನೀಡಬಹುದು. ನಮ್ಮಲ್ಲಿರುವ 25 ಮುಗ್ಧ ಮಕ್ಕಳ ಜೊತೆ ಸಮಯ ಕಳೆದು, ಅಡುಗೆ ಮನೆ ಹಾಗೂ ಕೊಠಡಿಗಳನ್ನು ವೀಕ್ಷಿಸಿ, ಮಕ್ಕಳಿಗೆ ಸಿಹಿ ಊಟ ಬಡಿಸಿ ಆಶೀರ್ವಾದ ಪಡೆಯಿರಿ. ಭೇಟಿಯ ಸಮಯ: ಬೆಳಗ್ಗೆ 10:00 ರಿಂದ ಸಂಜೆ 6:00 ರವರೆಗೆ.`,
+        `ಜನಸೇವಾ ಆಶ್ರಮಕ್ಕೆ ಪ್ರತ್ಯಕ್ಷ ಭೇಟಿ ನೀಡಿ ಮಕ್ಕಳ ಸಾತ್ವಿಕ ಜೀವನವನ್ನು ಕಣ್ತುಂಬಿಕೊಳ್ಳಿ. ಮಕ್ಕಳಿಗೆ ಕೇಕ್ ಕತ್ತರಿಸಿ, ಅನ್ನದಾನ ನೆರವೇರಿಸಿ ಸಾರ್ಥಕತೆ ಪಡೆಯಬಹುದು.`,
+      ]);
+      tierBreakdown = `📍 ಆಶ್ರಮ ಭೇಟಿ ಮತ್ತು ವಿಡಿಯೋ ವಿವರ:\n• ಭೇಟಿಯ ಸಮಯ: ಬೆಳಗ್ಗೆ 10:00 - ಸಂಜೆ 6:00 (ವಾರದ ಎಲ್ಲಾ ದಿನಗಳು)\n• ಗೂಗಲ್ ಮ್ಯಾಪ್ಸ್ ಲೊಕೇಶನ್: https://maps.app.goo.gl/FMaM6eLKk3nNJmth8\n• ಆಶ್ರಮದ ಕಿರು ವಿಡಿಯೋ: ${baseUrl}/media/ashrama_video.mp4\n• ಸ್ವಾಗತ ಸಹಾಯವಾಣಿ: ${SITE.phoneIntl}`;
+    } else if (angle === "provisions_inkind") {
+      body = pick([
+        `ನಮ್ಮ 25 ಅನಾಥ ಬಾಲಕರಿಗೆ ನಗದು ಬದಲಾಗಿ ದಿನಬಳಕೆಯ ದಿನಸಿ ಸಾಮಗ್ರಿಗಳನ್ನು (ಅಕ್ಕಿ, ಬೇಳೆ, ಎಣ್ಣೆ, ದಿನಸಿ) ನೇರವಾಗಿ ನೀಡಬಹುದು ಅಥವಾ ಆಶ್ರಮದ ವಿಳಾಸಕ್ಕೆ ಕಳುಹಿಸಬಹುದು. ನಮ್ಮ ಅಡುಗೆ ಮನೆಗೆ ತುರ್ತಾಗಿ ಬೇಕಾದ ಸಾಮಗ್ರಿಗಳ ಪಟ್ಟಿ ಇಲ್ಲಿದೆ.`,
+        `ಮಕ್ಕಳ ಪೌಷ್ಟಿಕ ಆಹಾರಕ್ಕಾಗಿ ನೇರ ದಿನಸಿ ದಾನವನ್ನು ಆಶ್ರಮವು ಅತ್ಯಂತ ಗೌರವದಿಂದ ಸ್ವೀಕರಿಸುತ್ತದೆ.`,
+      ]);
+      tierBreakdown = `🍚 ತುರ್ತು ದಿನಸಿ ಮತ್ತು ಅಗತ್ಯ ಸಾಮಗ್ರಿಗಳ ಪಟ್ಟಿ:\n• ಸೋನಾ ಮಸೂರಿ ಅಕ್ಕಿ: 25 ಕೆಜಿ / 50 ಕೆಜಿ ಮೂಟೆ\n• ತೊಗರಿ ಬೇಳೆ: 10 ಕೆಜಿ / 20 ಕೆಜಿ\n• ಅಡುಗೆ ಎಣ್ಣೆ ಮತ್ತು ಹಸುವಿನ ತುಪ್ಪ: 5 ಲೀ / 15 ಲೀ\n• ಬೆಲ್ಲ, ಅವಲಕ್ಕಿ ಮತ್ತು ಡ್ರೈ ಫ್ರೂಟ್ಸ್\n• ಮಕ್ಕಳ ಸ್ನಾನದ ಸೋಪು, ಡಿಟರ್ಜೆಂಟ್ ಹಾಗೂ ಶಾಲಾ ನೋಟ್‌ಬುಕ್‌ಗಳು`;
     } else {
       // Default Annadana
       body = pick([
@@ -430,7 +454,19 @@ export function generateAntiBanMessage(options: AntiBanGenerateOptions): AntiBan
         `Janaseva Ashrama is a registered public charitable trust and licensed Child Care Institution under Karnataka Govt JJ Act registration KA18CH0242. Unlike large aggregator charities, 100% of public sponsorships directly feed and educate 25 specific resident boys.`,
         `Every contribution to Janaseva Ashrama is fully eligible for 50% tax deduction under Section 80G Form 10AC of the Income Tax Act. Instant 80G tax receipt is sent to your WhatsApp immediately upon payment.`,
       ]);
-      tierBreakdown = `📜 Verified Accreditations & 80G Tax Exemption:\n• Govt Juvenile Justice Act: ${JJ_ACT_REGISTRATION.registrationNumber}\n• Form 10AC Section 80G URN: ${FORM_10AC.urn}\n• MCA CSR-1 Registration: CSR00078800`;
+      tierBreakdown = `📜 Verified Accreditations & 80G Tax Exemption:\n• Govt Juvenile Justice Act: ${JJ_ACT_REGISTRATION.registrationNumber}\n• Form 10AC Section 80G URN: ${FORM_10AC.urn}\n• MCA CSR-1 Registration: CSR00078800\n• 50% Tax Deduction Receipt sent directly on WhatsApp`;
+    } else if (angle === "location_visit") {
+      body = pick([
+        `You and your family are most warmly welcome to visit Janaseva Ashrama in person. Spend memorable time with our 25 resident boys, tour our kitchen and classrooms, and personally serve a fresh festive meal. Campus visiting hours are open every day from 10:00 AM to 6:00 PM.`,
+        `Visit our serene Turahalli ashrama campus. Meeting our bright resident boys and witnessing their disciplined daily satsang will bring joy to your heart.`,
+      ]);
+      tierBreakdown = `📍 Ashrama Campus Visit & Video Tour Details:\n• Visiting Hours: 10:00 AM — 6:00 PM (Monday to Sunday)\n• Google Maps Navigation: https://maps.app.goo.gl/FMaM6eLKk3nNJmth8\n• Short Campus Video Tour: ${baseUrl}/media/ashrama_video.mp4\n• Ashrama Reception Helpline: ${SITE.phoneIntl}`;
+    } else if (angle === "provisions_inkind") {
+      body = pick([
+        `If you prefer contributing in-kind rather than online funds, Janaseva Ashrama warmly welcomes direct grocery and provision deliveries. You can ship via Blinkit / BigBasket / Amazon or deliver in person directly to our ashrama kitchen.`,
+        `Our kitchen prepares 4 fresh meals daily for 25 growing boys. Sponsoring dry provisions directly supports our daily satvik annadana.`,
+      ]);
+      tierBreakdown = `🍚 Daily Kitchen Groceries & Essentials Wishlist:\n• Sona Masoori Rice: 25kg / 50kg bag\n• Premium Unpolished Toor Dal: 10kg / 20kg\n• Cold-pressed Sunflower Cooking Oil & Cow Ghee\n• Organic Jaggery, Avalakki & Dry Fruits\n• Children's Bath Soaps, Detergent & Ruled Long Notebooks`;
     } else {
       // Default Annadana
       body = pick([

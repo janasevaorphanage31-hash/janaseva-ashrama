@@ -5,7 +5,8 @@ import { formatINR } from "@/lib/site";
 import { LogoMark } from "@/components/Logo";
 import { AntiBanWhatsAppModal } from "@/components/admin/AntiBanWhatsAppModal";
 import { parseCustomerPhone } from "@/lib/whatsapp-phone";
-import { generateAntiBanMessage } from "@/lib/whatsapp-antiban";
+import { generateAntiBanMessage, type NarrativeAngle } from "@/lib/whatsapp-antiban";
+import { validateIndianUtr } from "@/lib/crm-validators";
 
 interface CallerProfile {
   callerId: string;
@@ -158,6 +159,38 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
   const [sessionContactedIds, setSessionContactedIds] = useState<Set<number>>(() => new Set());
   const [selectedSevaAmount, setSelectedSevaAmount] = useState<number>(1500);
   const [preferredLanguage, setPreferredLanguage] = useState<"kanglish" | "kn" | "en">("kanglish");
+  const [selectedNarrativeAngle, setSelectedNarrativeAngle] = useState<NarrativeAngle>("birthday");
+
+  // WhatsApp safe pacing timer (prevents rapid-fire automated flagging)
+  const [waPacingSeconds, setWaPacingSeconds] = useState<number>(0);
+  useEffect(() => {
+    if (waPacingSeconds <= 0) return;
+    const timer = setInterval(() => {
+      setWaPacingSeconds((s) => (s > 0 ? s - 1 : 0));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [waPacingSeconds]);
+
+  // Live in-call timer & talk-time tracking
+  const [callStartTime, setCallStartTime] = useState<number | null>(null);
+  const [callElapsedSeconds, setCallElapsedSeconds] = useState<number>(0);
+  useEffect(() => {
+    if (!callStartTime) {
+      setCallElapsedSeconds(0);
+      return;
+    }
+    const timer = setInterval(() => {
+      setCallElapsedSeconds(Math.floor((Date.now() - callStartTime) / 1000));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [callStartTime]);
+
+  // Respectful Calling Hours Modal state (TRAI guidelines)
+  const [nightCallLead, setNightCallLead] = useState<any | null>(null);
+
+  // Offline Sync Queue state (resilience against mobile 4G drops)
+  const [offlineQueueCount, setOfflineQueueCount] = useState<number>(0);
+  const [isSyncingOffline, setIsSyncingOffline] = useState<boolean>(false);
 
   // Audio chime using Web Audio API (0 dependencies)
   const playCelebrationChime = () => {
@@ -183,10 +216,32 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
     } catch {}
   };
 
+  const playAlertChime = () => {
+    try {
+      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      // 2-tone alert chime for callbacks: A5 (880Hz) -> D6 (1174Hz)
+      osc.frequency.setValueAtTime(880, now);
+      osc.frequency.setValueAtTime(1174.66, now + 0.14);
+      gain.gain.setValueAtTime(0.2, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.6);
+    } catch {}
+  };
+
   // Quick Direct Donation Log Modal state
   const [activeDonationLead, setActiveDonationLead] = useState<any | null>(null);
   const [loggedDonationAmount, setLoggedDonationAmount] = useState<number>(1500);
   const [loggedDonationUtr, setLoggedDonationUtr] = useState<string>("");
+  const [utrValidationError, setUtrValidationError] = useState<string>("");
   const [loggingDonation, setLoggingDonation] = useState<boolean>(false);
 
   // Shift Activity & Edit Modal state
@@ -197,6 +252,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
   const [editDisposition, setEditDisposition] = useState("Interested");
   const [editAmount, setEditAmount] = useState<number | "">("");
   const [editUtr, setEditUtr] = useState("");
+  const [editUtrError, setEditUtrError] = useState("");
   const [editNotes, setEditNotes] = useState("");
   const [editPaymentMode, setEditPaymentMode] = useState("UPI");
   const [savingEdit, setSavingEdit] = useState(false);
@@ -353,29 +409,127 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
     }
   };
 
+  // ── Offline Queue Synchronization Engine (Prevents Data Loss on 4G Drops) ──
+  const queueOfflineAction = (action: {
+    url: string;
+    method?: string;
+    payload: any;
+    leadId: number;
+    leadName: string;
+    actionLabel: string;
+  }) => {
+    if (typeof window === "undefined") return;
+    try {
+      const q: any[] = JSON.parse(localStorage.getItem("janaseva_offline_actions") || "[]");
+      q.push({ ...action, queuedAt: new Date().toISOString() });
+      localStorage.setItem("janaseva_offline_actions", JSON.stringify(q));
+      setOfflineQueueCount(q.length);
+      showToast(`📡 Saved offline (${q.length} queued). Will auto-sync when network reconnects.`);
+    } catch (e) {
+      console.error("Failed to save offline action", e);
+    }
+  };
+
+  const syncOfflineQueue = async () => {
+    if (typeof window === "undefined" || !navigator.onLine) return;
+    try {
+      const raw = localStorage.getItem("janaseva_offline_actions");
+      if (!raw) return;
+      const q: any[] = JSON.parse(raw);
+      if (!Array.isArray(q) || q.length === 0) return;
+
+      setIsSyncingOffline(true);
+      const remaining: any[] = [];
+      let successCount = 0;
+
+      for (const item of q) {
+        try {
+          const res = await fetch(item.url, {
+            method: item.method || "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(item.payload),
+          });
+          const data = await res.json().catch(() => ({}));
+          if (res.ok && data.success) {
+            successCount++;
+          } else {
+            remaining.push(item);
+          }
+        } catch {
+          remaining.push(item);
+        }
+      }
+
+      localStorage.setItem("janaseva_offline_actions", JSON.stringify(remaining));
+      setOfflineQueueCount(remaining.length);
+      setIsSyncingOffline(false);
+
+      if (successCount > 0) {
+        playCelebrationChime();
+        showToast(`✓ Cloud sync complete: ${successCount} offline action(s) synced!`);
+        void loadDailyLogs();
+      }
+    } catch {
+      setIsSyncingOffline(false);
+    }
+  };
+
+  // Sync offline queue on mount and network online event
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const q = JSON.parse(localStorage.getItem("janaseva_offline_actions") || "[]");
+      setOfflineQueueCount(Array.isArray(q) ? q.length : 0);
+    } catch {}
+
+    const handleOnline = () => {
+      void syncOfflineQueue();
+    };
+    window.addEventListener("online", handleOnline);
+    const interval = setInterval(() => {
+      void syncOfflineQueue();
+    }, 25000);
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      clearInterval(interval);
+    };
+  }, []);
+
   const handleOpenEdit = (log: any) => {
     setEditingLog(log);
     setEditDisposition(log.disposition || "Interested");
     setEditAmount(log.effectiveAmount || log.amount || "");
     setEditUtr(log.utr || "");
+    setEditUtrError("");
     setEditNotes(log.notes || "");
     setEditPaymentMode(log.paymentMode || "UPI");
   };
 
   const handleSaveEdit = async () => {
     if (!editingLog) return;
+
+    if (editDisposition === "Donated" && editUtr && editUtr.trim()) {
+      const utrVal = validateIndianUtr(editUtr);
+      if (!utrVal.isValid) {
+        alert(utrVal.error || "Invalid UTR format");
+        return;
+      }
+    }
+
     setSavingEdit(true);
+    const payload = {
+      disposition: editDisposition,
+      amount: editAmount ? Number(editAmount) : null,
+      utr: editUtr.trim() || undefined,
+      notes: editNotes,
+      paymentMode: editPaymentMode,
+    };
+
     try {
       const res = await fetch(`/api/v1/leads/${editingLog.leadId}/log`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          disposition: editDisposition,
-          amount: editAmount ? Number(editAmount) : null,
-          utr: editUtr,
-          notes: editNotes,
-          paymentMode: editPaymentMode,
-        }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to update log");
@@ -391,7 +545,17 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
         void loadCallerLeads(callerProfile.callerId);
       }
     } catch (e: any) {
-      alert("Error updating entry: " + e.message);
+      // Network drop: queue offline
+      queueOfflineAction({
+        url: `/api/v1/leads/${editingLog.leadId}/log`,
+        method: "PATCH",
+        payload,
+        leadId: editingLog.leadId,
+        leadName: editingLog.leadName || `Lead #${editingLog.leadId}`,
+        actionLabel: `Edit -> ${editDisposition}`,
+      });
+      showToast("📡 Network drop: Edit saved offline. Will auto-sync when network returns.");
+      setEditingLog(null);
     } finally {
       setSavingEdit(false);
     }
@@ -657,30 +821,39 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
   // Update Call Disposition
   const handleUpdateDisposition = async (leadId: number, disposition: string, notes?: string, callbackTime?: string) => {
     if (!callerProfile) return;
+
+    // Track talk duration if call timer was active
+    const durationSec = callStartTime ? Math.round((Date.now() - callStartTime) / 1000) : 0;
+    const durationPrefix = durationSec > 0 ? `[Talk time: ${Math.floor(durationSec / 60)}m ${durationSec % 60}s]` : "";
+    setCallStartTime(null);
+    const effectiveNotes = [durationPrefix, notes].filter(Boolean).join(" ") || "Updated from telecaller dashboard";
+
+    const currentLead = leads.find((l) => l.leadId === leadId);
+    const displayName = currentLead
+      ? (currentLead.stream === "PARENTS" || Boolean(currentLead.parentName || currentLead.childName)
+          ? `${cleanChildName(currentLead)} (${cleanParentName(currentLead)})`
+          : currentLead.name)
+      : `Lead #${leadId}`;
+
+    const payload = {
+      callerId: callerProfile.callerId,
+      disposition,
+      notes: effectiveNotes,
+      callbackTime: callbackTime || undefined,
+    };
+
     try {
       const res = await fetch(`/api/v1/leads/${leadId}/log`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          callerId: callerProfile.callerId,
-          disposition,
-          notes: notes || "Updated from telecaller dashboard",
-          callbackTime: callbackTime || undefined,
-        }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (data.success) {
         const nowIso = new Date().toISOString();
-        const updatedList = leads.map((l) => (l.leadId === leadId ? { ...l, status: disposition, lastContactedAt: nowIso, notes: notes || l.notes } : l));
+        const updatedList = leads.map((l) => (l.leadId === leadId ? { ...l, status: disposition, lastContactedAt: nowIso, notes: effectiveNotes } : l));
         setLeads(updatedList);
         computeStats(updatedList, callerProfile.callerId);
-
-        const currentLead = leads.find((l) => l.leadId === leadId);
-        const displayName = currentLead
-          ? (currentLead.stream === "PARENTS" || Boolean(currentLead.parentName || currentLead.childName)
-              ? `${cleanChildName(currentLead)} (${cleanParentName(currentLead)})`
-              : currentLead.name)
-          : `Lead #${leadId}`;
 
         showStampConfirmation({
           leadId,
@@ -688,11 +861,32 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
           disposition,
           stampedAt: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true }),
           telecallerId: callerProfile.callerId,
-          note: notes,
+          note: effectiveNotes,
         });
       }
     } catch (err: any) {
-      showToast("Error updating disposition: " + err.message);
+      // Offline fallback: Queue locally so caller work is never lost on 4G drops
+      queueOfflineAction({
+        url: `/api/v1/leads/${leadId}/log`,
+        method: "POST",
+        payload,
+        leadId,
+        leadName: displayName,
+        actionLabel: disposition,
+      });
+      const nowIso = new Date().toISOString();
+      const updatedList = leads.map((l) => (l.leadId === leadId ? { ...l, status: disposition, lastContactedAt: nowIso, notes: effectiveNotes } : l));
+      setLeads(updatedList);
+      computeStats(updatedList, callerProfile.callerId);
+
+      showStampConfirmation({
+        leadId,
+        name: displayName,
+        disposition: `${disposition} (OFFLINE)`,
+        stampedAt: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true }),
+        telecallerId: callerProfile.callerId,
+        note: `Queued offline · Will auto-sync when network reconnects`,
+      });
     }
   };
 
@@ -701,17 +895,29 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
     await handleUpdateDisposition(leadId, disposition);
   };
 
-  // Safe Phone Call Launch (Direct Customer Call) - Locks card onto current lead so it does not jump or advance while dialing
-  const handleCallLead = (lead: any) => {
-    if (!lead) return;
+  // Direct Call Execution
+  const executeDirectDial = (lead: any) => {
     setActiveFocusLeadId(lead.leadId);
     setCurrentlyDialedLeadId(lead.leadId);
+    setCallStartTime(Date.now());
     if (callerProfile) {
       persistContactedLead(callerProfile.callerId, lead.leadId);
     }
     const phoneInfo = parseCustomerPhone(lead.phone);
     window.location.href = `tel:${phoneInfo.e164}`;
-    showToast(`📞 Dialing ${lead.name}... After call, tap outcome below to advance!`);
+    showToast(`📞 Dialing ${lead.name}... Talk timer started!`);
+  };
+
+  // Safe Phone Call Launch with Respectful Calling Hours Guard (TRAI Guidelines: 9:30 AM – 7:30 PM)
+  const handleCallLead = (lead: any) => {
+    if (!lead) return;
+    const istTimeStr = new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" });
+    const istHour = new Date(istTimeStr).getHours();
+    if (istHour < 9 || istHour >= 20) {
+      setNightCallLead(lead);
+      return;
+    }
+    executeDirectDial(lead);
   };
 
   // Safe WhatsApp Dispatch Launch - Locks card onto current lead
@@ -845,12 +1051,13 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
     showToast(`✓ Opened WhatsApp to ${phoneInfo.display}! Axis Bank QR copied to clipboard.`);
   };
 
-  // 1-Tap Direct WhatsApp Chat Launch (Concise Anti-Ban Engine)
+  // 1-Tap Direct WhatsApp Chat Launch (Concise Anti-Ban Engine with Safe Pacing & Quick Templates)
   const handleDirectWhatsAppChat = (lead: any, customAmount?: number) => {
     if (!lead || !callerProfile) return;
     setActiveFocusLeadId(lead.leadId);
     setCurrentlyDialedLeadId(lead.leadId);
     persistContactedLead(callerProfile.callerId, lead.leadId);
+    setWaPacingSeconds(12);
     const phoneInfo = parseCustomerPhone(lead.phone);
     const amount = customAmount || selectedSevaAmount || 1500;
     const siteOrigin = typeof window !== "undefined" ? window.location.origin : "https://janasevaashrama.org";
@@ -870,6 +1077,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
       callerId: callerProfile.callerId,
       callerName: callerProfile.name,
       language: preferredLanguage,
+      angle: selectedNarrativeAngle,
       amount,
       mode: "concise",
       baseUrl: siteOrigin,
@@ -1121,6 +1329,15 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
   // Save Direct Offline / UPI Donation Log
   const handleSaveDonationLog = async () => {
     if (!activeDonationLead || !callerProfile) return;
+
+    if (loggedDonationUtr.trim()) {
+      const utrVal = validateIndianUtr(loggedDonationUtr);
+      if (!utrVal.isValid) {
+        alert(utrVal.error || "Invalid UTR format");
+        return;
+      }
+    }
+
     const currentLeadId = activeDonationLead.leadId;
     persistContactedLead(callerProfile.callerId, currentLeadId);
     setLoggingDonation(true);
@@ -1143,17 +1360,19 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
       }
     }
 
+    const payload = {
+      callerId: callerProfile.callerId,
+      disposition: "Donated",
+      amount: loggedDonationAmount,
+      utr: loggedDonationUtr.trim() || undefined,
+      notes: `Donation ₹${loggedDonationAmount} logged directly by ${callerProfile.callerId}${loggedDonationUtr ? ` (UTR: ${loggedDonationUtr.trim()})` : ""}`,
+    };
+
     try {
       const res = await fetch(`/api/v1/leads/${currentLeadId}/log`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          callerId: callerProfile.callerId,
-          disposition: "Donated",
-          amount: loggedDonationAmount,
-          utr: loggedDonationUtr.trim() || undefined,
-          notes: `Donation ₹${loggedDonationAmount} logged directly by ${callerProfile.callerId}${loggedDonationUtr ? ` (UTR: ${loggedDonationUtr.trim()})` : ""}`,
-        }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (data.success) {
@@ -1190,7 +1409,43 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
         alert("Failed to save donation: " + (data.error || "Unknown error"));
       }
     } catch (err: any) {
-      alert("Error logging donation: " + err.message);
+      // Offline fallback: Queue locally so caller work is never lost on 4G drops
+      queueOfflineAction({
+        url: `/api/v1/leads/${currentLeadId}/log`,
+        method: "POST",
+        payload,
+        leadId: currentLeadId,
+        leadName: activeDonationLead.name,
+        actionLabel: `Donated ₹${loggedDonationAmount}`,
+      });
+      const updatedList = leads.map((l) =>
+        l.leadId === currentLeadId ? { ...l, status: "Donated" } : l
+      );
+      setLeads(updatedList);
+      setStats((prev) => ({
+        ...prev,
+        convertedCount: prev.convertedCount + 1,
+        totalRevenue: prev.totalRevenue + loggedDonationAmount,
+      }));
+      showStampConfirmation({
+        leadId: currentLeadId,
+        name: activeDonationLead.name,
+        disposition: "Donated (OFFLINE)",
+        stampedAt: new Date().toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true }),
+        telecallerId: callerProfile.callerId,
+        amount: loggedDonationAmount,
+        note: `Queued offline · UTR: ${loggedDonationUtr.trim() || "Offline/Direct"}`,
+      });
+      setActiveDonationLead(null);
+      setLoggedDonationUtr("");
+      setCurrentlyDialedLeadId(null);
+      if (viewMode === "focus") {
+        if (nextLeadId) {
+          setActiveFocusLeadId(nextLeadId);
+        } else {
+          setActiveFocusLeadId(null);
+        }
+      }
     } finally {
       setLoggingDonation(false);
     }
@@ -1268,6 +1523,25 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
       globalTotal: leads.length,
     };
   }, [leads, streamFilter, sessionContactedIds]);
+
+  // Due callback calculation (Scheduled callbacks that are due now or within next 10 minutes)
+  const dueCallbacks = useMemo(() => {
+    const now = Date.now();
+    return (leads || []).filter((l) => {
+      if (l.status !== "Reschedule" || !l.rescheduleDate) return false;
+      const dueTime = new Date(l.rescheduleDate).getTime();
+      if (isNaN(dueTime)) return false;
+      return dueTime <= now + 10 * 60 * 1000 && dueTime >= now - 24 * 60 * 60 * 1000;
+    });
+  }, [leads]);
+
+  const [prevDueCount, setPrevDueCount] = useState(0);
+  useEffect(() => {
+    if (dueCallbacks.length > prevDueCount && prevDueCount !== 0) {
+      playAlertChime();
+    }
+    setPrevDueCount(dueCallbacks.length);
+  }, [dueCallbacks.length, prevDueCount]);
 
   // Filter & Search Leads with Date Sorting
   const filteredLeads = useMemo(() => {
@@ -2206,6 +2480,56 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
           </div>
         </div>
 
+        {/* ── ALARM: URGENT DUE CALLBACKS BANNER ── */}
+        {dueCallbacks.length > 0 && (
+          <div className="bg-gradient-to-r from-amber-500 via-rose-500 to-amber-500 text-white p-3 rounded-2xl shadow-lg border border-amber-300 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 animate-pulse my-2">
+            <div className="flex items-center gap-2.5">
+              <span className="text-2xl">⏰</span>
+              <div>
+                <p className="font-display font-black text-xs sm:text-sm tracking-wide">
+                  URGENT CALLBACK DUE NOW ({dueCallbacks.length}): {dueCallbacks[0].name} ({dueCallbacks[0].phone})
+                </p>
+                <p className="text-[11px] text-amber-100 font-semibold">
+                  Scheduled callback time has arrived! Donor is expecting your call now.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveFocusLeadId(dueCallbacks[0].leadId);
+                  setViewMode("focus");
+                  handleCallLead(dueCallbacks[0]);
+                }}
+                className="bg-teal-950 text-gold hover:bg-black font-black text-xs px-3.5 py-2 rounded-xl cursor-pointer shadow-xs flex items-center gap-1.5 transition active:scale-95"
+              >
+                <span>📞 Dial &amp; Focus Now</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ── OFFLINE QUEUE STATUS BANNER ── */}
+        {offlineQueueCount > 0 && (
+          <div className="bg-amber-50 border border-amber-300 text-amber-950 px-3.5 py-2 rounded-2xl text-xs font-bold flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-2xs my-2">
+            <span className="flex items-center gap-2">
+              <span className="text-base">📡</span>
+              <span>
+                <strong>{offlineQueueCount} update(s)</strong> saved in offline storage. Data is safe and will auto-sync when network returns.
+              </span>
+            </span>
+            <button
+              type="button"
+              onClick={syncOfflineQueue}
+              disabled={isSyncingOffline}
+              className="bg-amber-600 hover:bg-amber-700 active:scale-95 text-white px-3 py-1 rounded-xl text-xs font-black cursor-pointer shrink-0 transition"
+            >
+              {isSyncingOffline ? "Syncing..." : "🔄 Sync to Server Now"}
+            </button>
+          </div>
+        )}
+
         {/* ── MASTER-DETAIL SPLIT COCKPIT (Desktop 2-Column Split / Mobile Tabbed Cockpit) ── */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start pt-1">
           {/* ── LEFT PANE: CALLING QUEUE (Always visible on desktop; on mobile shown when viewMode === 'queue') ── */}
@@ -2809,6 +3133,94 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                       </div>
                     </div>
 
+                    {/* ── AUXILIARY WHATSAPP QUICK-REPLY TEMPLATE SELECTOR ── */}
+                    <div className="rounded-2xl bg-amber-50/60 border border-amber-300/60 p-3 space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-black uppercase text-amber-950 tracking-wider flex items-center gap-1">
+                          <span>⚡</span>
+                          <span>WhatsApp Template (ತ್ವರಿತ ಸಂದೇಶ ಮಾದರಿ):</span>
+                        </span>
+                        <span className="text-[10px] font-mono text-amber-900 font-bold bg-amber-200/60 px-2 py-0.5 rounded-full">
+                          {selectedNarrativeAngle === "birthday"
+                            ? "🎂 Birthday Seva"
+                            : selectedNarrativeAngle === "trust_80g"
+                            ? "📜 80G Tax Exemption"
+                            : selectedNarrativeAngle === "location_visit"
+                            ? "📍 Campus Visit & Map"
+                            : selectedNarrativeAngle === "provisions_inkind"
+                            ? "🍚 Groceries & Rice"
+                            : "🍲 Daily Annadana"}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedNarrativeAngle("birthday")}
+                          className={`py-1.5 px-2 rounded-xl text-xs font-bold transition cursor-pointer text-center flex items-center justify-center gap-1 border ${
+                            selectedNarrativeAngle === "birthday"
+                              ? "bg-amber-500 text-teal-950 border-amber-600 shadow-xs font-black"
+                              : "bg-white text-teal-950 border-amber-200 hover:bg-amber-100/50"
+                          }`}
+                        >
+                          <span>🎂</span>
+                          <span>Birthday Wish</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setSelectedNarrativeAngle("trust_80g")}
+                          className={`py-1.5 px-2 rounded-xl text-xs font-bold transition cursor-pointer text-center flex items-center justify-center gap-1 border ${
+                            selectedNarrativeAngle === "trust_80g"
+                              ? "bg-indigo-950 text-amber-300 border-indigo-950 shadow-xs font-black"
+                              : "bg-white text-teal-950 border-amber-200 hover:bg-amber-100/50"
+                          }`}
+                        >
+                          <span>📜</span>
+                          <span>80G Tax Info</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setSelectedNarrativeAngle("location_visit")}
+                          className={`py-1.5 px-2 rounded-xl text-xs font-bold transition cursor-pointer text-center flex items-center justify-center gap-1 border ${
+                            selectedNarrativeAngle === "location_visit"
+                              ? "bg-teal-950 text-gold border-teal-950 shadow-xs font-black"
+                              : "bg-white text-teal-950 border-amber-200 hover:bg-amber-100/50"
+                          }`}
+                        >
+                          <span>📍</span>
+                          <span>Map &amp; Video</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setSelectedNarrativeAngle("provisions_inkind")}
+                          className={`py-1.5 px-2 rounded-xl text-xs font-bold transition cursor-pointer text-center flex items-center justify-center gap-1 border ${
+                            selectedNarrativeAngle === "provisions_inkind"
+                              ? "bg-amber-800 text-white border-amber-900 shadow-xs font-black"
+                              : "bg-white text-teal-950 border-amber-200 hover:bg-amber-100/50"
+                          }`}
+                        >
+                          <span>🍚</span>
+                          <span>Rice / In-Kind</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Active In-Call Talk Time Live Timer */}
+                    {callStartTime && currentlyDialedLeadId === currentFocusLead.leadId && (
+                      <div className="bg-emerald-600 text-white px-3.5 py-2 rounded-2xl flex items-center justify-between text-xs font-black shadow-md border border-emerald-400 animate-pulse">
+                        <span className="flex items-center gap-2">
+                          <span className="w-2.5 h-2.5 rounded-full bg-white animate-ping" />
+                          <span>📞 LIVE CALL IN PROGRESS WITH {currentFocusLead.name.toUpperCase()}</span>
+                        </span>
+                        <span className="font-mono text-sm tracking-widest bg-emerald-800/90 px-2.5 py-0.5 rounded-lg border border-white/20">
+                          ⏱️ {String(Math.floor(callElapsedSeconds / 60)).padStart(2, "0")}:{String(callElapsedSeconds % 60).padStart(2, "0")}
+                        </span>
+                      </div>
+                    )}
+
                     {/* ── PRIMARY TELECALLER ACTIONS (Bilingual, Ultra Simple & Direct) ── */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       {/* ACTION 1: Dial Customer Now */}
@@ -2830,15 +3242,31 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                       <button
                         type="button"
                         onClick={() => handleDirectWhatsAppChat(currentFocusLead, selectedSevaAmount)}
-                        className="p-3.5 rounded-2xl bg-[#25D366] hover:brightness-105 active:scale-95 text-white font-black text-sm sm:text-base shadow-md transition flex items-center justify-center gap-2 cursor-pointer min-h-[56px]"
+                        disabled={waPacingSeconds > 0}
+                        className={`p-3.5 rounded-2xl text-white font-black text-sm sm:text-base shadow-md transition flex items-center justify-center gap-2 cursor-pointer min-h-[56px] ${
+                          waPacingSeconds > 0
+                            ? "bg-amber-600 cursor-not-allowed opacity-90"
+                            : "bg-[#25D366] hover:brightness-105 active:scale-95"
+                        }`}
                       >
-                        <span className="text-2xl">💬</span>
-                        <div className="text-left">
-                          <span className="block leading-tight font-black">
-                            {isParentLead ? `👶 ಶುಭಾಶಯ ಸಂದೇಶ (${cleanChildName(currentFocusLead)} & ${cleanParentName(currentFocusLead)})` : `WhatsApp ಸಂದೇಶ (₹${formatINR(selectedSevaAmount)})`}
-                          </span>
-                          <span className="block text-[11px] text-white/90">Send Seva Details &amp; Pay Link</span>
-                        </div>
+                        <span className="text-2xl">{waPacingSeconds > 0 ? "⏳" : "💬"}</span>
+                        {waPacingSeconds > 0 ? (
+                          <div className="text-left">
+                            <span className="block leading-tight font-black text-amber-100 flex items-center gap-1.5">
+                              <span>Safe Pacing ({waPacingSeconds}s)...</span>
+                            </span>
+                            <span className="block text-[11px] text-white/90">Anti-ban safe interval active</span>
+                          </div>
+                        ) : (
+                          <div className="text-left">
+                            <span className="block leading-tight font-black">
+                              {isParentLead
+                                ? `👶 ${selectedNarrativeAngle === "trust_80g" ? "80G Tax ಸಂದೇಶ" : selectedNarrativeAngle === "location_visit" ? "ಆಶ್ರಮ ಲೊಕೇಶನ್ & ವಿಡಿಯೋ" : selectedNarrativeAngle === "provisions_inkind" ? "ದಿನಸಿ & ಅಕ್ಕಿ ಪಟ್ಟಿ" : "ಶುಭಾಶಯ ಸಂದೇಶ"}`
+                                : `WhatsApp ಸಂದೇಶ (${selectedNarrativeAngle === "trust_80g" ? "80G Tax" : selectedNarrativeAngle === "location_visit" ? "Map/Video" : selectedNarrativeAngle === "provisions_inkind" ? "Groceries" : `₹${formatINR(selectedSevaAmount)}`})`}
+                            </span>
+                            <span className="block text-[11px] text-white/90">Send Seva Details &amp; Pay Link</span>
+                          </div>
+                        )}
                       </button>
                     </div>
 
@@ -3386,13 +3814,30 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
               <input
                 type="text"
                 value={loggedDonationUtr}
-                onChange={(e) => setLoggedDonationUtr(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setLoggedDonationUtr(val);
+                  if (val.trim()) {
+                    const check = validateIndianUtr(val);
+                    setUtrValidationError(!check.isValid ? (check.error || "Invalid UTR") : "");
+                  } else {
+                    setUtrValidationError("");
+                  }
+                }}
                 placeholder="e.g. 428910293847 (12 digits from GPay/PhonePe)"
-                className="w-full rounded-xl border border-teal-900/20 px-3 py-2 text-xs font-mono text-teal-950 focus:ring-2 focus:ring-amber-400 outline-none"
+                className={`w-full rounded-xl border px-3 py-2 text-xs font-mono text-teal-950 focus:ring-2 outline-none ${
+                  utrValidationError ? "border-rose-500 focus:ring-rose-400 bg-rose-50/50" : "border-teal-900/20 focus:ring-amber-400"
+                }`}
               />
-              <p className="text-[10px] text-teal-950/60 mt-1">
-                Amount and attribution will immediately update your caller stats and revenue bar.
-              </p>
+              {utrValidationError ? (
+                <p className="text-[11px] font-bold text-rose-700 mt-1">
+                  ⚠️ {utrValidationError}
+                </p>
+              ) : (
+                <p className="text-[10px] text-teal-950/60 mt-1">
+                  Amount and attribution will immediately update your caller stats and revenue bar. Must be 12-digit UPI UTR.
+                </p>
+              )}
             </div>
 
             {/* Action Buttons */}
@@ -3596,9 +4041,16 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                                 ✓ Verified: ₹{formatINR(log.verifiedAmount || log.effectiveAmount)}
                               </span>
                             ) : log.verificationStatus === "REJECTED" ? (
-                              <span className="text-[10px] font-bold bg-rose-600 text-white px-2 py-0.5 rounded-full">
-                                ✕ Rejected by Admin
-                              </span>
+                              <div className="text-right space-y-0.5">
+                                <span className="text-[10px] font-bold bg-rose-600 text-white px-2 py-0.5 rounded-full inline-block">
+                                  ✕ Rejected by Admin
+                                </span>
+                                {log.rejectionReason && (
+                                  <span className="block text-[10px] font-bold text-rose-800 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200 text-left max-w-[210px] leading-tight">
+                                    Reason: {log.rejectionReason}
+                                  </span>
+                                )}
+                              </div>
                             ) : (
                               <span className="text-[10px] font-bold bg-amber-400 text-teal-950 px-2 py-0.5 rounded-full">
                                 ⏳ Pending Admin Check
@@ -3653,6 +4105,17 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                 ✕
               </button>
             </div>
+
+            {/* Supervisor Rejection Alert Note */}
+            {editingLog.rejectionReason && (
+              <div className="bg-rose-50 border border-rose-300 p-2.5 rounded-xl text-xs text-rose-950 font-bold space-y-0.5">
+                <span className="text-rose-700 block text-[10px] uppercase font-black tracking-wider">
+                  ⚠️ Supervisor Rejection Note:
+                </span>
+                <p className="font-semibold text-rose-900">{editingLog.rejectionReason}</p>
+                <p className="text-[10px] text-rose-800/80">Please verify UTR or amount with the donor and save correction below.</p>
+              </div>
+            )}
 
             {/* Disposition Dropdown */}
             <div>
@@ -3713,10 +4176,26 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                     <input
                       type="text"
                       value={editUtr}
-                      onChange={(e) => setEditUtr(e.target.value)}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setEditUtr(val);
+                        if (val.trim()) {
+                          const check = validateIndianUtr(val);
+                          setEditUtrError(!check.isValid ? (check.error || "Invalid UTR") : "");
+                        } else {
+                          setEditUtrError("");
+                        }
+                      }}
                       placeholder="e.g. 4289..."
-                      className="w-full rounded-xl border border-emerald-300 px-2 py-1.5 text-xs font-mono text-teal-950 bg-white outline-none"
+                      className={`w-full rounded-xl border px-2 py-1.5 text-xs font-mono text-teal-950 bg-white outline-none ${
+                        editUtrError ? "border-rose-500 bg-rose-50/50" : "border-emerald-300"
+                      }`}
                     />
+                    {editUtrError && (
+                      <p className="text-[10px] font-bold text-rose-600 mt-1">
+                        ⚠️ {editUtrError}
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -3865,6 +4344,63 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                 className="py-2.5 px-3 rounded-xl bg-teal-950 hover:bg-teal-900 active:scale-95 text-gold font-black text-xs shadow-md transition cursor-pointer disabled:opacity-50"
               >
                 {submittingEod ? "Submitting..." : "Confirm & Submit Shift"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── RESPECTFUL CALLING HOURS ADVISORY MODAL (TRAI GUIDELINES) ── */}
+      {nightCallLead && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-teal-950/75 backdrop-blur-xs animate-fadeIn">
+          <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-teal-900/20 space-y-4">
+            <div className="flex items-center gap-2.5 text-amber-600 border-b border-teal-900/10 pb-3">
+              <span className="text-3xl">🌙</span>
+              <div>
+                <h3 className="font-display font-black text-base text-teal-950">
+                  Calling Hours Advisory
+                </h3>
+                <p className="text-[10px] text-teal-950/60 font-semibold uppercase tracking-wider">
+                  TRAI &amp; Telecom Anti-Harassment Rules
+                </p>
+              </div>
+            </div>
+
+            <p className="text-xs text-teal-950/80 leading-relaxed">
+              Current Bengaluru time is{" "}
+              <strong className="text-teal-950 font-mono">
+                {new Date().toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit", hour12: true })}
+              </strong>
+              . Standard courteous calling hours in India are <strong>9:30 AM – 7:30 PM</strong>. Calling late at night or early morning may disturb the donor.
+            </p>
+
+            <div className="bg-sand/30 p-2.5 rounded-xl border border-teal-900/10 text-xs">
+              <p className="font-bold text-teal-950 truncate">
+                Target: {nightCallLead.name}
+              </p>
+              <p className="font-mono text-teal-950/70 text-[11px]">
+                {parseCustomerPhone(nightCallLead.phone).display}
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setNightCallLead(null)}
+                className="py-2.5 px-3 rounded-xl border border-teal-900/20 text-xs font-bold text-teal-950 hover:bg-cream transition cursor-pointer"
+              >
+                Cancel / Dial Later
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const lead = nightCallLead;
+                  setNightCallLead(null);
+                  executeDirectDial(lead);
+                }}
+                className="py-2.5 px-3 rounded-xl bg-amber-600 hover:bg-amber-700 active:scale-95 text-white font-black text-xs shadow-md transition cursor-pointer"
+              >
+                Proceed &amp; Call Now
               </button>
             </div>
           </div>

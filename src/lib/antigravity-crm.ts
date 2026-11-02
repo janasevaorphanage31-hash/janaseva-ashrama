@@ -508,6 +508,39 @@ export async function getCallerPortalData(callerId?: string | null, limit = 1000
   };
 }
 
+export { validateIndianUtr } from "@/lib/crm-validators";
+
+/**
+ * Check if a UTR was already recorded by any telecaller across the system
+ */
+export async function checkUtrAvailability(utr: string) {
+  await ensureDbSchema();
+  const cleanUtr = utr.trim().toUpperCase().replace(/[\s-]/g, "");
+  if (!cleanUtr) return { available: true };
+
+  const [existingDonation] = await db
+    .select({
+      callerRefId: agDonations.callerRefId,
+      amount: agDonations.amount,
+      createdAt: agDonations.createdAt,
+      verificationStatus: agDonations.verificationStatus,
+    })
+    .from(agDonations)
+    .where(eq(agDonations.txnId, `utr_${cleanUtr}`))
+    .limit(1);
+
+  if (existingDonation) {
+    return {
+      available: false,
+      error: `Duplicate UTR! This UTR (${cleanUtr}) was already recorded by telecaller ${existingDonation.callerRefId || "another caller"} for ₹${existingDonation.amount}. Duplicate UTRs cannot be credited twice.`,
+      callerRefId: existingDonation.callerRefId,
+      amount: existingDonation.amount,
+    };
+  }
+
+  return { available: true };
+}
+
 /**
  * 4. Log Call Disposition, Validation Quality & Notes
  */
@@ -1240,7 +1273,7 @@ export async function uploadBulkLeads(
   }
 
   const validLeads = [];
-  const seenInUpload = new Set<string>();
+  const seenInUploadMap = new Map<string, any>();
   let internalDuplicatesSkipped = 0;
   let alreadyInDbSkipped = 0;
   let enrichedUpdatedCount = 0;
@@ -1249,13 +1282,6 @@ export async function uploadBulkLeads(
     const rawDigits = (item.phone || "").replace(/\D/g, "");
     if (rawDigits.length < 10) continue;
     const phone10 = rawDigits.slice(-10);
-
-    // Skip duplicate inside the current upload file
-    if (seenInUpload.has(phone10)) {
-      internalDuplicatesSkipped++;
-      continue;
-    }
-    seenInUpload.add(phone10);
 
     let day = parseInt(String(item.dobDay || currentDay), 10);
     if (isNaN(day) || day < 1 || day > 31) day = currentDay;
@@ -1293,11 +1319,48 @@ export async function uploadBulkLeads(
     const incomingHasRealChild = Boolean(childCandidate && !isPlaceholderStr(childCandidate));
     const incomingHasRealParent = Boolean(parentCandidate && !isPlaceholderStr(parentCandidate));
 
-    // Check if already in database: smart update / enrich if existing lead needs real names
+    // Check duplicate inside the current upload file, with smart Sibling / Twin retention
+    if (seenInUploadMap.has(phone10)) {
+      const prev = seenInUploadMap.get(phone10);
+      if (isParent && incomingHasRealChild && prev && prev.childName && !isPlaceholderStr(prev.childName)) {
+        const prevChild = String(prev.childName).trim();
+        if (childCandidate.toLowerCase() !== prevChild.toLowerCase() && !prevChild.toLowerCase().includes(childCandidate.toLowerCase())) {
+          // Sibling / Twin detected in the same upload file! Combine child names so neither is lost
+          prev.childName = `${prevChild} & ${childCandidate}`;
+          prev.name = `${prev.childName} (${prev.parentName || "ಪೋಷಕರು"})`;
+          enrichedUpdatedCount++;
+          continue;
+        }
+      }
+      internalDuplicatesSkipped++;
+      continue;
+    }
+
+    // Check if already in database: smart update / enrich if existing lead needs real names or has a new sibling
     if (existingLeadMap.has(phone10)) {
       const existing = existingLeadMap.get(phone10)!;
       const existingNeedsChild = isPlaceholderStr(existing.childName) || (existing.name && existing.name.toLowerCase().startsWith("child"));
       const existingNeedsParent = isPlaceholderStr(existing.parentName);
+
+      // Sibling / Twin detected with existing database lead! Combine child names
+      if (isParent && incomingHasRealChild && existing && existing.childName && !isPlaceholderStr(existing.childName)) {
+        const existingChild = String(existing.childName).trim();
+        if (childCandidate.toLowerCase() !== existingChild.toLowerCase() && !existingChild.toLowerCase().includes(childCandidate.toLowerCase())) {
+          const combinedChild = `${existingChild} & ${childCandidate}`;
+          const effectiveParent = incomingHasRealParent ? parentCandidate : (!isPlaceholderStr(existing.parentName) ? existing.parentName! : "ಪೋಷಕರು");
+          await db
+            .update(agLeads)
+            .set({
+              childName: combinedChild,
+              parentName: effectiveParent,
+              name: `${combinedChild} (${effectiveParent})`,
+              updatedAt: new Date(),
+            })
+            .where(eq(agLeads.leadId, existing.leadId));
+          enrichedUpdatedCount++;
+          continue;
+        }
+      }
 
       if (isParent && (incomingHasRealChild || incomingHasRealParent || existingNeedsChild || existingNeedsParent)) {
         const effectiveChild = incomingHasRealChild
@@ -1348,7 +1411,7 @@ export async function uploadBulkLeads(
           : (cleanParent !== "ಪೋಷಕರು" ? `${cleanParent} ಅವರ ಮಗು (${cleanParent})` : "ವಿದ್ಯಾರ್ಥಿ / ಮಗು"))
       : (item.name?.trim() || "Well-wisher");
 
-    validLeads.push({
+    const newLeadItem = {
       stream,
       name: displayName,
       parentName,
@@ -1360,14 +1423,16 @@ export async function uploadBulkLeads(
       status: "Pending",
       validationStatus: "UNVERIFIED",
       lifetimeDonations: 0,
-    });
+    };
+    validLeads.push(newLeadItem);
+    seenInUploadMap.set(phone10, newLeadItem);
   }
 
   if (validLeads.length === 0) {
     return {
       success: true,
       totalReceived: rawLeads.length,
-      validParsed: seenInUpload.size,
+      validParsed: seenInUploadMap.size,
       internalDuplicatesSkipped,
       alreadyInDbSkipped,
       enrichedUpdatedCount,
@@ -1399,7 +1464,7 @@ export async function uploadBulkLeads(
   return {
     success: true,
     totalReceived: rawLeads.length,
-    validParsed: seenInUpload.size,
+    validParsed: seenInUploadMap.size,
     internalDuplicatesSkipped,
     alreadyInDbSkipped,
     validInserted: validLeads.length,
@@ -2995,6 +3060,8 @@ export async function getCallerDailyLogs(callerId: string) {
       amount: agDonations.amount,
       verificationStatus: agDonations.verificationStatus,
       verifiedAmount: agDonations.verifiedAmount,
+      rejectionReason: agDonations.rejectionReason,
+      adminNotes: agDonations.adminNotes,
       paymentMode: agDonations.paymentMode,
       metadata: agDonations.metadata,
     })
@@ -3018,6 +3085,8 @@ export async function getCallerDailyLogs(callerId: string) {
       ...log,
       verificationStatus: linkedDonation?.verificationStatus || (log.disposition === "Donated" ? "PENDING_APPROVAL" : null),
       verifiedAmount: linkedDonation?.verifiedAmount || null,
+      rejectionReason: linkedDonation?.rejectionReason || null,
+      adminNotes: linkedDonation?.adminNotes || null,
       effectiveAmount: linkedDonation?.amount || log.amount || 0,
       paymentMode: linkedDonation?.paymentMode || "UPI",
     };

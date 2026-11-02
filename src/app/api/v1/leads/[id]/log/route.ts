@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { logCallDisposition, recordPaymentAttribution, editCallDispositionLog } from "@/lib/antigravity-crm";
+import { logCallDisposition, recordPaymentAttribution, editCallDispositionLog, validateIndianUtr, checkUtrAvailability } from "@/lib/antigravity-crm";
 import { authenticateCallerOrAdmin } from "@/lib/caller-auth";
 import { db, ensureDbSchema } from "@/db";
 import { agLeads } from "@/db/schema";
@@ -55,8 +55,23 @@ export async function POST(
     const notes = clean(body.notes, 1000);
     const callbackTime = body.callbackTime ? String(body.callbackTime).slice(0, 50) : undefined;
     const amount = body.amount ? Number(body.amount) : null;
-    const utr = body.utr ? clean(body.utr, 50) : null;
+    const rawUtr = body.utr ? clean(body.utr, 50) : null;
     const paymentMode = body.paymentMode ? clean(body.paymentMode, 30) : "UPI";
+
+    let cleanUtr: string | null = null;
+    if (rawUtr) {
+      const utrVal = validateIndianUtr(rawUtr);
+      if (!utrVal.isValid) {
+        return NextResponse.json({ error: utrVal.error }, { status: 400 });
+      }
+      cleanUtr = utrVal.cleaned;
+
+      // Duplicate check across all callers to prevent double claiming
+      const utrCheck = await checkUtrAvailability(cleanUtr);
+      if (!utrCheck.available) {
+        return NextResponse.json({ error: utrCheck.error }, { status: 409 });
+      }
+    }
 
     const VALID_DISPOSITIONS = [
       "Interested",
@@ -77,7 +92,7 @@ export async function POST(
     }
 
     try {
-      await logCallDisposition(leadId, auth.callerId, rawDisposition, notes, callbackTime, amount, utr);
+      await logCallDisposition(leadId, auth.callerId, rawDisposition, notes, callbackTime, amount, cleanUtr);
     } catch (logErr: any) {
       console.error(`[CRM] logCallDisposition non-fatal fallback for lead ${leadId}:`, logErr);
       try {
@@ -97,7 +112,7 @@ export async function POST(
     // If marked Donated with an amount, record payment attribution in real-time
     if (rawDisposition === "Donated" && amount && amount > 0) {
       try {
-        const txnId = utr ? `utr_${utr}` : `offline_${Date.now()}_${leadId}`;
+        const txnId = cleanUtr ? `utr_${cleanUtr}` : `offline_${Date.now()}_${leadId}`;
         await recordPaymentAttribution({
           txnId,
           gatewayOrderId: `order_direct_${Date.now()}`,
@@ -106,7 +121,7 @@ export async function POST(
           leadId,
           donorName: lead.name || null,
           donorPhone: lead.phone || null,
-          metadata: { utr, loggedBy: auth.callerId, notes, paymentMode },
+          metadata: { utr: cleanUtr, loggedBy: auth.callerId, notes, paymentMode },
         });
       } catch (attErr) {
         console.error(`[CRM] Non-fatal payment attribution error for lead ${leadId}:`, attErr);
@@ -153,9 +168,18 @@ export async function PATCH(
     const disposition = clean(body.disposition, 40);
     const notes = clean(body.notes, 1000);
     const amount = body.amount != null ? Number(body.amount) : null;
-    const utr = body.utr ? clean(body.utr, 50) : null;
+    const rawUtr = body.utr ? clean(body.utr, 50) : null;
     const callbackTime = body.callbackTime ? String(body.callbackTime).slice(0, 50) : null;
     const paymentMode = body.paymentMode ? clean(body.paymentMode, 30) : "UPI";
+
+    let cleanUtr: string | null = null;
+    if (rawUtr) {
+      const utrVal = validateIndianUtr(rawUtr);
+      if (!utrVal.isValid) {
+        return NextResponse.json({ error: utrVal.error }, { status: 400 });
+      }
+      cleanUtr = utrVal.cleaned;
+    }
 
     const VALID_DISPOSITIONS = [
       "Interested",
@@ -181,7 +205,7 @@ export async function PATCH(
       disposition,
       notes,
       amount,
-      utr,
+      utr: cleanUtr,
       callbackTime,
       paymentMode,
     });
