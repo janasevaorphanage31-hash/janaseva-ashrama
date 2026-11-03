@@ -276,6 +276,15 @@ export async function ensureDbSchema(): Promise<void> {
             AND parent_name != ''
             AND parent_name != 'Parent';
 
+          -- Safe auto-repair for Direct Donor stream normalization and clearing misclassified parent/child names
+          UPDATE ag_leads
+          SET stream = 'DIRECT_DONOR'
+          WHERE stream = 'DIRECT_DONORS' OR stream IS NULL;
+
+          UPDATE ag_leads
+          SET parent_name = NULL, child_name = NULL
+          WHERE stream = 'DIRECT_DONOR' AND (parent_name IS NOT NULL OR child_name IS NOT NULL);
+
           CREATE TABLE IF NOT EXISTS ag_donations (
             txn_id TEXT PRIMARY KEY,
             gateway_order_id TEXT NOT NULL,

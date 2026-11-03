@@ -299,9 +299,11 @@ export async function distributeTomorrowBirthdayLeads(mode: "balanced" | "round_
     .where(
       and(
         eq(agLeads.stream, "PARENTS"),
-        eq(agLeads.dobDay, targetDay),
-        eq(agLeads.dobMonth, targetMonth),
-        isNull(agLeads.assignedCallerId),
+        or(
+          and(eq(agLeads.dobDay, targetDay), eq(agLeads.dobMonth, targetMonth)),
+          and(eq(agLeads.dobDay, targetMonth), eq(agLeads.dobMonth, targetDay), lte(agLeads.dobDay, 12))
+        ),
+        or(isNull(agLeads.assignedCallerId), eq(agLeads.assignedCallerId, "ADMIN"), eq(agLeads.assignedCallerId, ""), eq(agLeads.assignedCallerId, "UNASSIGNED")),
         or(eq(agLeads.status, "Pending"), isNull(agLeads.status))
       )
     )
@@ -314,9 +316,11 @@ export async function distributeTomorrowBirthdayLeads(mode: "balanced" | "round_
     .where(
       and(
         or(eq(agLeads.stream, "DIRECT_DONOR"), eq(agLeads.stream, "DIRECT_DONORS"), isNull(agLeads.stream)),
-        eq(agLeads.dobDay, targetDay),
-        eq(agLeads.dobMonth, targetMonth),
-        isNull(agLeads.assignedCallerId),
+        or(
+          and(eq(agLeads.dobDay, targetDay), eq(agLeads.dobMonth, targetMonth)),
+          and(eq(agLeads.dobDay, targetMonth), eq(agLeads.dobMonth, targetDay), lte(agLeads.dobDay, 12))
+        ),
+        or(isNull(agLeads.assignedCallerId), eq(agLeads.assignedCallerId, "ADMIN"), eq(agLeads.assignedCallerId, ""), eq(agLeads.assignedCallerId, "UNASSIGNED")),
         or(eq(agLeads.status, "Pending"), isNull(agLeads.status))
       )
     )
@@ -425,9 +429,11 @@ export async function distributeT2BirthdayLeads(mode: "balanced" | "round_robin"
     .where(
       and(
         eq(agLeads.stream, "PARENTS"),
-        eq(agLeads.dobDay, targetDay),
-        eq(agLeads.dobMonth, targetMonth),
-        isNull(agLeads.assignedCallerId),
+        or(
+          and(eq(agLeads.dobDay, targetDay), eq(agLeads.dobMonth, targetMonth)),
+          and(eq(agLeads.dobDay, targetMonth), eq(agLeads.dobMonth, targetDay), lte(agLeads.dobDay, 12))
+        ),
+        or(isNull(agLeads.assignedCallerId), eq(agLeads.assignedCallerId, "ADMIN"), eq(agLeads.assignedCallerId, ""), eq(agLeads.assignedCallerId, "UNASSIGNED")),
         or(eq(agLeads.status, "Pending"), isNull(agLeads.status))
       )
     )
@@ -440,9 +446,11 @@ export async function distributeT2BirthdayLeads(mode: "balanced" | "round_robin"
     .where(
       and(
         or(eq(agLeads.stream, "DIRECT_DONOR"), eq(agLeads.stream, "DIRECT_DONORS"), isNull(agLeads.stream)),
-        eq(agLeads.dobDay, targetDay),
-        eq(agLeads.dobMonth, targetMonth),
-        isNull(agLeads.assignedCallerId),
+        or(
+          and(eq(agLeads.dobDay, targetDay), eq(agLeads.dobMonth, targetMonth)),
+          and(eq(agLeads.dobDay, targetMonth), eq(agLeads.dobMonth, targetDay), lte(agLeads.dobDay, 12))
+        ),
+        or(isNull(agLeads.assignedCallerId), eq(agLeads.assignedCallerId, "ADMIN"), eq(agLeads.assignedCallerId, ""), eq(agLeads.assignedCallerId, "UNASSIGNED")),
         or(eq(agLeads.status, "Pending"), isNull(agLeads.status))
       )
     )
@@ -540,10 +548,14 @@ export async function getAssignedLeads(callerId?: string | null, limit = 10000, 
 
   const orderClauses = [
     sql`case when ${agLeads.status} = 'Reschedule' and ${agLeads.rescheduleDate} <= ${now} then 0 else 1 end`,
+    // PRIORITY 2: Pending Tomorrow's (T+1) Birthday Leads
+    sql`case when (${agLeads.status} = 'Pending' or ${agLeads.status} is null) and ((${agLeads.dobMonth} = ${targetMonth} and ${agLeads.dobDay} = ${targetDay}) or (${agLeads.dobMonth} = ${targetDay} and ${agLeads.dobDay} = ${targetMonth} and ${agLeads.dobDay} <= 12)) then 0 else 1 end`,
+    // PRIORITY 3: Pending Day After Tomorrow's (T+2) Birthday Leads
+    sql`case when (${agLeads.status} = 'Pending' or ${agLeads.status} is null) and ((${agLeads.dobMonth} = ${t2Month} and ${agLeads.dobDay} = ${t2Day}) or (${agLeads.dobMonth} = ${t2Day} and ${agLeads.dobDay} = ${t2Month} and ${agLeads.dobDay} <= 12)) then 0 else 1 end`,
+    // PRIORITY 4: Pending Today's Birthday Leads
+    sql`case when (${agLeads.status} = 'Pending' or ${agLeads.status} is null) and ((${agLeads.dobMonth} = ${todayMonth} and ${agLeads.dobDay} = ${todayDay}) or (${agLeads.dobMonth} = ${todayDay} and ${agLeads.dobDay} = ${todayMonth} and ${agLeads.dobDay} <= 12)) then 0 else 1 end`,
+    // PRIORITY 5: All other Pending uncalled leads
     sql`case when ${agLeads.status} = 'Pending' or ${agLeads.status} is null then 0 else 1 end`,
-    sql`case when ${agLeads.dobMonth} = ${targetMonth} and ${agLeads.dobDay} = ${targetDay} then 0 else 1 end`,
-    sql`case when ${agLeads.dobMonth} = ${t2Month} and ${agLeads.dobDay} = ${t2Day} then 0 else 1 end`,
-    sql`case when ${agLeads.dobMonth} = ${todayMonth} and ${agLeads.dobDay} = ${todayDay} then 0 else 1 end`,
     agLeads.dobMonth,
     agLeads.dobDay,
     desc(agLeads.leadId),
@@ -650,6 +662,15 @@ export async function getAssignedLeads(callerId?: string | null, limit = 10000, 
 export async function getCallerPortalData(callerId?: string | null, limit = 10000, offset = 0) {
   await ensureTelecallersAndSeedData();
   const cid = (callerId || "").trim().toUpperCase();
+
+  // Auto-distribute any unassigned or unallocated advance birthday leads (T+1 and T+2)
+  // so every active telecaller immediately has their fair share of tomorrow's calling queue
+  try {
+    await distributeTomorrowBirthdayLeads("balanced");
+    await distributeT2BirthdayLeads("balanced");
+  } catch (err) {
+    console.warn("Auto-distribution of advance birthday leads skipped:", err);
+  }
 
   const leads = await getAssignedLeads(cid, limit, offset);
 

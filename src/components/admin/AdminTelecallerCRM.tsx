@@ -613,9 +613,18 @@ export function AdminTelecallerCRM() {
           month: m >= 1 && m <= 12 ? m : defaultMonth,
         };
       } else {
-        // DD/MM/YYYY
-        const d = parts[0];
-        const m = parts[1];
+        // DD/MM/YYYY or MM/DD/YYYY
+        let d = parts[0];
+        let m = parts[1];
+        if (m > 12 && d <= 12) {
+          const temp = d;
+          d = m;
+          m = temp;
+        } else if (d === defaultMonth && m <= 31 && d !== m) {
+          const temp = d;
+          d = m;
+          m = temp;
+        }
         return {
           day: d >= 1 && d <= 31 ? d : defaultDay,
           month: m >= 1 && m <= 12 ? m : defaultMonth,
@@ -714,7 +723,7 @@ export function AdminTelecallerCRM() {
           tempMonthCol = colIdx;
         }
 
-        if (h.includes("dobday") || h.includes("birthdayday") || (h.includes("day") && !h.includes("month"))) {
+        if (h.includes("dobday") || h.includes("birthdayday") || ((h.includes("day") || raw.includes("ದಿನ")) && !h.includes("birth") && !h.includes("month"))) {
           tempDayCol = colIdx;
         }
 
@@ -722,10 +731,11 @@ export function AdminTelecallerCRM() {
           tempEmailCol = colIdx;
         }
 
+        const isKannadaBirthday = raw.includes("ಹುಟ್ಟುಹಬ್ಬ") || raw.includes("ದಿನಾಂಕ");
         if (
-          (h.includes("birthday") || h.includes("dob") || h.includes("birthdate") || h.includes("dateofbirth")) &&
-          !h.includes("day") &&
-          !h.includes("month")
+          (h.includes("birthday") || h.includes("dob") || h.includes("birthdate") || h.includes("dateofbirth") || h.includes("bday") || h.includes("bdate") || h === "date" || isKannadaBirthday) &&
+          !h.includes("dobday") &&
+          !h.includes("dobmonth")
         ) {
           tempDateCol = colIdx;
         }

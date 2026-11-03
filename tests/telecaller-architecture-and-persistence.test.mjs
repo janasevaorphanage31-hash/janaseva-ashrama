@@ -209,7 +209,9 @@ test("Direct Donor sheet displays tomorrow's birthday data under Tomorrow_Birthd
     if (streamFilter === "DIRECT_DONOR" && parent) return false;
     if (streamFilter === "PARENTS" && !parent) return false;
     if (filter === "Tomorrow_Birthday") {
-      return l.dobDay === tomorrowDay && l.dobMonth === tomorrowMonth;
+      const lDay = Number(l.dobDay);
+      const lMonth = Number(l.dobMonth);
+      return (lDay === tomorrowDay && lMonth === tomorrowMonth) || (lDay === tomorrowMonth && lMonth === tomorrowDay && lDay <= 12);
     }
     return true;
   });
@@ -217,4 +219,38 @@ test("Direct Donor sheet displays tomorrow's birthday data under Tomorrow_Birthd
   assert.equal(filtered.length, 1);
   assert.equal(filtered[0].leadId, 10);
   assert.equal(filtered[0].name, "Donor Tomorrow");
+});
+
+test("T+1 Direct Donor leads display with string dobDay/dobMonth or American swapped format", () => {
+  const now = new Date();
+  const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+  const tomorrowDay = tomorrow.getDate();
+  const tomorrowMonth = tomorrow.getMonth() + 1;
+
+  const leads = [
+    // Standard integer format
+    { leadId: 101, name: "Donor Standard", stream: "DIRECT_DONOR", dobDay: tomorrowDay, dobMonth: tomorrowMonth },
+    // String number format from JSON serialization
+    { leadId: 102, name: "Donor String", stream: "DIRECT_DONOR", dobDay: String(tomorrowDay), dobMonth: String(tomorrowMonth) },
+    // Swapped MM/DD format
+    { leadId: 103, name: "Donor Swapped", stream: "DIRECT_DONOR", dobDay: tomorrowMonth, dobMonth: tomorrowDay },
+  ];
+
+  const streamFilter = "DIRECT_DONOR";
+  const filter = "Tomorrow_Birthday";
+  const isParent = (l) => l.stream === "PARENTS" || (l.stream !== "DIRECT_DONOR" && l.stream !== "DIRECT_DONORS" && l.stream !== "donor" && l.stream !== "direct" && Boolean(l.parentName || l.childName));
+
+  const filtered = leads.filter((l) => {
+    const parent = isParent(l);
+    if (streamFilter === "DIRECT_DONOR" && parent) return false;
+    if (filter === "Tomorrow_Birthday") {
+      const lDay = Number(l.dobDay);
+      const lMonth = Number(l.dobMonth);
+      return (lDay === tomorrowDay && lMonth === tomorrowMonth) || (lDay === tomorrowMonth && lMonth === tomorrowDay && lDay <= 12);
+    }
+    return true;
+  });
+
+  assert.equal(filtered.length, 3);
+  assert.deepEqual(filtered.map(l => l.leadId), [101, 102, 103]);
 });

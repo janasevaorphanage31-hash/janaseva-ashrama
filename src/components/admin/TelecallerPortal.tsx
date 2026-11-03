@@ -1632,11 +1632,11 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
     const now = new Date();
     const curDay = now.getDate();
     const curMonth = now.getMonth() + 1;
-    const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+    const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
     const tomorrowDay = tomorrow.getDate();
     const tomorrowMonth = tomorrow.getMonth() + 1;
 
-    const t2 = new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000);
+    const t2 = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 2);
     const t2Day = t2.getDate();
     const t2Month = t2.getMonth() + 1;
 
@@ -1652,7 +1652,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
     let donors = 0;
 
     leads.forEach((l) => {
-      const isParent = l.stream === "PARENTS" || (l.stream !== "DIRECT_DONOR" && l.stream !== "DIRECT_DONORS" && Boolean(l.parentName || l.childName));
+      const isParent = l.stream === "PARENTS" || (l.stream !== "DIRECT_DONOR" && l.stream !== "DIRECT_DONORS" && l.stream !== "donor" && l.stream !== "direct" && Boolean(l.parentName || l.childName));
       if (isParent) parents++;
       else donors++;
 
@@ -1667,9 +1667,16 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
         attended++;
       }
 
-      if (l.dobDay === curDay && l.dobMonth === curMonth) birthdays++;
-      if (l.dobDay === tomorrowDay && l.dobMonth === tomorrowMonth) tomorrowBirthdays++;
-      if (l.dobDay === t2Day && l.dobMonth === t2Month) t2Birthdays++;
+      const lDay = Number(l.dobDay ?? (l as any).dob_day ?? 0);
+      const lMonth = Number(l.dobMonth ?? (l as any).dob_month ?? 0);
+
+      const isTodayMatch = (lDay === curDay && lMonth === curMonth) || (lDay === curMonth && lMonth === curDay && lDay <= 12);
+      const isTomorrowMatch = (lDay === tomorrowDay && lMonth === tomorrowMonth) || (lDay === tomorrowMonth && lMonth === tomorrowDay && lDay <= 12);
+      const isT2Match = (lDay === t2Day && lMonth === t2Month) || (lDay === t2Month && lMonth === t2Day && lDay <= 12);
+
+      if (isTodayMatch) birthdays++;
+      if (isTomorrowMatch) tomorrowBirthdays++;
+      if (isT2Match) t2Birthdays++;
       if (l.status === "Interested") interested++;
       if (l.status === "Reschedule") reschedule++;
       if (l.status === "Donated") donated++;
@@ -1722,11 +1729,11 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
     const now = new Date();
     const curDay = now.getDate();
     const curMonth = now.getMonth() + 1;
-    const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+    const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
     const tomorrowDay = tomorrow.getDate();
     const tomorrowMonth = tomorrow.getMonth() + 1;
 
-    const t2 = new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000);
+    const t2 = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 2);
     const t2Day = t2.getDate();
     const t2Month = t2.getMonth() + 1;
 
@@ -1739,7 +1746,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
 
     const base = leads.filter((l) => {
       // 1. Stream filter (Parents vs Direct Donors)
-      const isParent = l.stream === "PARENTS" || (l.stream !== "DIRECT_DONOR" && l.stream !== "DIRECT_DONORS" && Boolean(l.parentName || l.childName));
+      const isParent = l.stream === "PARENTS" || (l.stream !== "DIRECT_DONOR" && l.stream !== "DIRECT_DONORS" && l.stream !== "donor" && l.stream !== "direct" && Boolean(l.parentName || l.childName));
       if (!isSearching) {
         if (streamFilter === "PARENTS" && !isParent) return false;
         if (streamFilter === "DIRECT_DONOR" && isParent) return false;
@@ -1755,12 +1762,18 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
       // 3. Tab Status Filtering (Bypassed when actively searching so all matching records can be found)
       let matchesFilter = true;
       if (!isSearching) {
+        const lDay = Number(l.dobDay ?? (l as any).dob_day ?? 0);
+        const lMonth = Number(l.dobMonth ?? (l as any).dob_month ?? 0);
+        const isTodayMatch = (lDay === curDay && lMonth === curMonth) || (lDay === curMonth && lMonth === curDay && lDay <= 12);
+        const isTomorrowMatch = (lDay === tomorrowDay && lMonth === tomorrowMonth) || (lDay === tomorrowMonth && lMonth === tomorrowDay && lDay <= 12);
+        const isT2Match = (lDay === t2Day && lMonth === t2Month) || (lDay === t2Month && lMonth === t2Day && lDay <= 12);
+
         if (filter === "T2_Birthday") {
-          matchesFilter = l.dobDay === t2Day && l.dobMonth === t2Month;
+          matchesFilter = isT2Match;
         } else if (filter === "Tomorrow_Birthday") {
-          matchesFilter = l.dobDay === tomorrowDay && l.dobMonth === tomorrowMonth;
+          matchesFilter = isTomorrowMatch;
         } else if (filter === "Today_Birthday") {
-          matchesFilter = l.dobDay === curDay && l.dobMonth === curMonth;
+          matchesFilter = isTodayMatch;
         } else if (filter === "Pending") {
           matchesFilter = !l.status || l.status === "Pending";
         } else if (filter === "Interested") {
@@ -2843,15 +2856,17 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                   const now = new Date();
                   const curDay = now.getDate();
                   const curMonth = now.getMonth() + 1;
-                  const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+                  const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
                   const tomorrowDay = tomorrow.getDate();
                   const tomorrowMonth = tomorrow.getMonth() + 1;
-                  const t2 = new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000);
+                  const t2 = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 2);
                   const t2Day = t2.getDate();
                   const t2Month = t2.getMonth() + 1;
-                  const isTodayBirthday = lead.dobDay === curDay && lead.dobMonth === curMonth;
-                  const isTomorrowBirthday = lead.dobDay === tomorrowDay && lead.dobMonth === tomorrowMonth;
-                  const isT2Birthday = lead.dobDay === t2Day && lead.dobMonth === t2Month;
+                  const lDay = Number(lead.dobDay ?? (lead as any).dob_day ?? 0);
+                  const lMonth = Number(lead.dobMonth ?? (lead as any).dob_month ?? 0);
+                  const isTodayBirthday = (lDay === curDay && lMonth === curMonth) || (lDay === curMonth && lMonth === curDay && lDay <= 12);
+                  const isTomorrowBirthday = (lDay === tomorrowDay && lMonth === tomorrowMonth) || (lDay === tomorrowMonth && lMonth === tomorrowDay && lDay <= 12);
+                  const isT2Birthday = (lDay === t2Day && lMonth === t2Month) || (lDay === t2Month && lMonth === t2Day && lDay <= 12);
                   const isSelected = lead.leadId === activeFocusLeadId;
                   const isDialing = lead.leadId === currentlyDialedLeadId;
                   const isDialed = sessionContactedIds.has(lead.leadId);
@@ -3105,6 +3120,20 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                 </div>
 
                 <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
+                  {(filter === "Tomorrow_Birthday" || filter === "T2_Birthday") && counts.pending > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFilter("Pending");
+                        setDateSortOrder("birthday_upcoming");
+                        setFocusIndex(0);
+                      }}
+                      className="rounded-2xl bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-teal-950 font-black px-5 py-3 text-xs shadow-md transition cursor-pointer flex items-center justify-center gap-2 w-full max-w-sm mb-2"
+                    >
+                      <span>🎂</span>
+                      <span>ಮುಂಬರುವ ಹುಟ್ಟುಹಬ್ಬಗಳಿಗೆ ಕರೆ ಮಾಡಿ ({counts.pending} ಬಾಕಿ)</span>
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => setFilter("Reschedule")}
@@ -3135,16 +3164,18 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                 const now = new Date();
                 const curDay = now.getDate();
                 const curMonth = now.getMonth() + 1;
-                const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+                const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
                 const tomorrowDay = tomorrow.getDate();
                 const tomorrowMonth = tomorrow.getMonth() + 1;
-                const dayAfter = new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000);
+                const dayAfter = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 2);
                 const t2Day = dayAfter.getDate();
                 const t2Month = dayAfter.getMonth() + 1;
-                const isTodayBirthday = currentFocusLead.dobDay === curDay && currentFocusLead.dobMonth === curMonth;
-                const isTomorrowBirthday = currentFocusLead.dobDay === tomorrowDay && currentFocusLead.dobMonth === tomorrowMonth;
-                const isT2Birthday = currentFocusLead.dobDay === t2Day && currentFocusLead.dobMonth === t2Month;
-                const isParentLead = currentFocusLead.stream === "PARENTS" || (currentFocusLead.stream !== "DIRECT_DONOR" && currentFocusLead.stream !== "DIRECT_DONORS" && Boolean(currentFocusLead.parentName || currentFocusLead.childName));
+                const curLeadDay = Number(currentFocusLead.dobDay ?? (currentFocusLead as any).dob_day ?? 0);
+                const curLeadMonth = Number(currentFocusLead.dobMonth ?? (currentFocusLead as any).dob_month ?? 0);
+                const isTodayBirthday = (curLeadDay === curDay && curLeadMonth === curMonth) || (curLeadDay === curMonth && curLeadMonth === curDay && curLeadDay <= 12);
+                const isTomorrowBirthday = (curLeadDay === tomorrowDay && curLeadMonth === tomorrowMonth) || (curLeadDay === tomorrowMonth && curLeadMonth === tomorrowDay && curLeadDay <= 12);
+                const isT2Birthday = (curLeadDay === t2Day && curLeadMonth === t2Month) || (curLeadDay === t2Month && curLeadMonth === t2Day && curLeadDay <= 12);
+                const isParentLead = currentFocusLead.stream === "PARENTS" || (currentFocusLead.stream !== "DIRECT_DONOR" && currentFocusLead.stream !== "DIRECT_DONORS" && currentFocusLead.stream !== "donor" && currentFocusLead.stream !== "direct" && Boolean(currentFocusLead.parentName || currentFocusLead.childName));
                 const phoneInfo = parseCustomerPhone(currentFocusLead.phone);
 
                 return (
