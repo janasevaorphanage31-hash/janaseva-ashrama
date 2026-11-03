@@ -544,6 +544,60 @@ export function AdminTelecallerCRM() {
     }
   };
 
+  // ── TOGGLE ATTENDANCE (WORKING TODAY VS ABSENT TODAY) ──
+  const handleToggleAttendance = async (callerId: string, currentWorkingStatus?: boolean) => {
+    setActionLoading(true);
+    const newStatus = !(currentWorkingStatus ?? true);
+    try {
+      const res = await fetch("/api/v1/admin/telecallers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "toggle_attendance",
+          callerId,
+          isWorkingToday: newStatus,
+          reallocateLeads: true,
+        }),
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error || "Failed to update attendance status");
+
+      showToast(`✓ ${data.message}`);
+      setCallers(data.callers || []);
+    } catch (err: any) {
+      showToast("Attendance update failed: " + err.message);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // ── REALLOCATE ABSENTEE T+1 ADVANCE LEADS TO PRESENT FLOOR CALLERS ──
+  const handleReallocateAbsenteeAdvance = async () => {
+    if (!confirm("Harvest time-critical T+1 (Tomorrow) and T+2 leads from absent/paused callers and distribute them equally among callers working on the floor today?")) {
+      return;
+    }
+    setActionLoading(true);
+    try {
+      const res = await fetch("/api/v1/admin/telecallers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "reallocate_absentee_advance",
+          includeT2: true,
+        }),
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error || "Failed to reallocate advance leads");
+
+      showToast(`✓ ${data.message}`);
+      setCallers(data.callers || []);
+    } catch (err: any) {
+      showToast("Reallocation failed: " + err.message);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   // ── UNIVERSAL SPREADSHEET & CSV PARSING ENGINE ──
   const MONTH_MAP: Record<string, number> = {
     jan: 1, january: 1, feb: 2, february: 2, mar: 3, march: 3,
@@ -2067,6 +2121,16 @@ export function AdminTelecallerCRM() {
         <div className="flex flex-wrap items-center gap-2 shrink-0">
           <button
             type="button"
+            onClick={handleReallocateAbsenteeAdvance}
+            disabled={actionLoading}
+            className="focus-ring tap-scale inline-flex items-center gap-1.5 rounded-xl bg-rose-700 hover:bg-rose-600 text-white px-3.5 py-2 text-xs font-black shadow-xs transition cursor-pointer disabled:opacity-50"
+            title="Harvest T+1 advance leads from absent telecallers and distribute equally to present floor callers"
+          >
+            <span>⚡ Reallocate Absentee T+1 Leads to Floor</span>
+          </button>
+
+          <button
+            type="button"
             onClick={() => setIsResetDailyModalOpen(true)}
             disabled={actionLoading}
             className="focus-ring tap-scale inline-flex items-center gap-1.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white px-3.5 py-2 text-xs font-black shadow-xs transition cursor-pointer disabled:opacity-50"
@@ -2080,9 +2144,9 @@ export function AdminTelecallerCRM() {
             onClick={() => handleDistributeEqually("balanced")}
             disabled={actionLoading}
             className="focus-ring tap-scale inline-flex items-center gap-1.5 rounded-xl bg-teal-950 hover:bg-teal-900 text-gold px-3.5 py-2 text-xs font-black shadow-xs transition cursor-pointer disabled:opacity-50"
-            title="Distribute and rebalance all pending leads (50% Parents + 50% Donors fair share) across active callers"
+            title="Distribute and rebalance all pending leads by date (50% Parents + 50% Donors fair share) across active callers"
           >
-            <span>⚖️ Distribute &amp; Balance Workload (50/50 Mix)</span>
+            <span>🎯 Date-Partitioned Equal Distribution (All Dates)</span>
           </button>
 
           <button
@@ -2318,18 +2382,32 @@ export function AdminTelecallerCRM() {
                     </td>
                     <td className="p-3 font-semibold">{c.dailyQuota || 50}/day</td>
                     <td className="p-3">
-                      <button
-                        type="button"
-                        onClick={() => handleToggleActive(c.callerId, c.isActive)}
-                        title="Click to toggle Active / Paused state"
-                        className={`rounded-full px-2 py-0.5 text-[9px] font-black uppercase cursor-pointer transition ${
-                          c.isActive
-                            ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-200"
-                            : "bg-slate-200 text-slate-700 hover:bg-slate-300"
-                        }`}
-                      >
-                        {c.isActive ? "● Active" : "○ Paused"}
-                      </button>
+                      <div className="flex flex-col gap-1 items-start">
+                        <button
+                          type="button"
+                          onClick={() => handleToggleActive(c.callerId, c.isActive)}
+                          title="Click to toggle Active / Paused state"
+                          className={`rounded-full px-2 py-0.5 text-[9px] font-black uppercase cursor-pointer transition ${
+                            c.isActive
+                              ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-200"
+                              : "bg-slate-200 text-slate-700 hover:bg-slate-300"
+                          }`}
+                        >
+                          {c.isActive ? "● Active" : "○ Paused"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleToggleAttendance(c.callerId, c.isWorkingToday)}
+                          title="Click to toggle Today's Shift Presence (Present vs Absent)"
+                          className={`rounded-full px-2 py-0.5 text-[9px] font-black uppercase cursor-pointer transition ${
+                            c.isWorkingToday !== false
+                              ? "bg-teal-100 text-teal-800 hover:bg-teal-200"
+                              : "bg-rose-100 text-rose-800 hover:bg-rose-200"
+                          }`}
+                        >
+                          {c.isWorkingToday !== false ? "🟢 Present" : "🔴 Absent"}
+                        </button>
+                      </div>
                     </td>
                     <td className="p-3 font-semibold">{c.assignedCount}</td>
                     <td className="p-3 text-teal-950/70">{c.contactedCount}</td>
@@ -2440,17 +2518,30 @@ export function AdminTelecallerCRM() {
                   </div>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => handleToggleActive(c.callerId, c.isActive)}
-                  className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase cursor-pointer shrink-0 transition ${
-                    c.isActive
-                      ? "bg-emerald-100 text-emerald-800"
-                      : "bg-slate-200 text-slate-700"
-                  }`}
-                >
-                  {c.isActive ? "● Active" : "○ Paused"}
-                </button>
+                <div className="flex flex-col items-end gap-1 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => handleToggleActive(c.callerId, c.isActive)}
+                    className={`rounded-full px-2.5 py-0.5 text-[9px] font-black uppercase cursor-pointer transition ${
+                      c.isActive
+                        ? "bg-emerald-100 text-emerald-800"
+                        : "bg-slate-200 text-slate-700"
+                    }`}
+                  >
+                    {c.isActive ? "● Active" : "○ Paused"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleToggleAttendance(c.callerId, c.isWorkingToday)}
+                    className={`rounded-full px-2.5 py-0.5 text-[9px] font-black uppercase cursor-pointer transition ${
+                      c.isWorkingToday !== false
+                        ? "bg-teal-100 text-teal-800"
+                        : "bg-rose-100 text-rose-800"
+                    }`}
+                  >
+                    {c.isWorkingToday !== false ? "🟢 Present" : "🔴 Absent"}
+                  </button>
+                </div>
               </div>
 
               {/* Phone info & Quota */}

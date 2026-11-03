@@ -534,6 +534,8 @@ export const agTelecallers = pgTable("ag_telecallers", {
   passwordHash: text("password_hash").notNull(),
   dailyQuota: integer("daily_quota").notNull().default(50),
   isActive: boolean("is_active").notNull().default(true),
+  isWorkingToday: boolean("is_working_today").notNull().default(true),
+  attendanceDate: text("attendance_date"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

@@ -230,6 +230,20 @@ export async function ensureDbSchema(): Promise<void> {
             ) THEN
               ALTER TABLE ag_leads ADD COLUMN lifetime_donations INTEGER NOT NULL DEFAULT 0;
             END IF;
+
+            IF NOT EXISTS (
+              SELECT 1 FROM information_schema.columns 
+              WHERE table_name = 'ag_telecallers' AND column_name = 'is_working_today'
+            ) THEN
+              ALTER TABLE ag_telecallers ADD COLUMN is_working_today BOOLEAN NOT NULL DEFAULT TRUE;
+            END IF;
+
+            IF NOT EXISTS (
+              SELECT 1 FROM information_schema.columns 
+              WHERE table_name = 'ag_telecallers' AND column_name = 'attendance_date'
+            ) THEN
+              ALTER TABLE ag_telecallers ADD COLUMN attendance_date TEXT;
+            END IF;
           END $$;
 
           CREATE TABLE IF NOT EXISTS ag_call_logs (

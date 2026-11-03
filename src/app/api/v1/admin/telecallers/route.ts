@@ -16,6 +16,8 @@ import {
   distributeAllPendingLeads,
   distributeUnassignedLeads,
   distributeDualStreamBalanced,
+  reallocateAbsenteeAdvanceLeads,
+  toggleTelecallerAttendance,
   generateAgencyCSVExport,
   resetTelecallerPassword,
   saveCrmWhatsAppSettings,
@@ -180,6 +182,31 @@ export async function POST(req: Request) {
       });
     }
 
+    if (action === "toggle_attendance") {
+      const { callerId, isWorkingToday, reallocateLeads } = body;
+      if (!callerId || typeof isWorkingToday !== "boolean") {
+        return NextResponse.json({ error: "Caller ID and isWorkingToday boolean are required." }, { status: 400 });
+      }
+      const res = await toggleTelecallerAttendance(callerId, isWorkingToday, reallocateLeads !== false);
+
+      await writeAudit({
+        actorAdminUserId: session.user.id ?? null,
+        action: "crm.toggle_telecaller_attendance",
+        entity: "ag_telecallers",
+        entityId: callerId,
+        afterState: { isWorkingToday, reallocatedCount: res.reallocatedCount },
+        ipAddress: ip,
+      });
+
+      const updatedLeaderboard = await getAdminLeaderboard();
+      return NextResponse.json({
+        success: true,
+        message: `Telecaller ${callerId} is marked as ${isWorkingToday ? "Working Today" : "Absent Today"}.${res.reallocatedCount > 0 ? ` Reallocated ${res.reallocatedCount} advance leads to present floor callers.` : ""}`,
+        attendanceResult: res,
+        ...updatedLeaderboard,
+      });
+    }
+
     if (action === "upload_chunk" || action === "upload_leads") {
       const { leads, autoDistribute, mode } = body;
       if (!leads || !Array.isArray(leads) || leads.length === 0) {
@@ -293,6 +320,27 @@ export async function POST(req: Request) {
       });
     }
 
+    if (action === "reallocate_absentee_advance") {
+      const { includeT2 } = body;
+      const res = await reallocateAbsenteeAdvanceLeads({ includeT2: includeT2 !== false });
+
+      await writeAudit({
+        actorAdminUserId: session.user.id ?? null,
+        action: "crm.reallocate_absentee_advance",
+        entity: "ag_leads",
+        afterState: res,
+        ipAddress: ip,
+      });
+
+      const updatedLeaderboard = await getAdminLeaderboard();
+      return NextResponse.json({
+        success: true,
+        message: `Harvested ${res.harvestedFromAbsentCount} advance leads from absent callers and reallocated ${res.reallocatedToPresentCount} leads equally across ${res.presentCallersCount} present floor callers.`,
+        reallocationResult: res,
+        ...updatedLeaderboard,
+      });
+    }
+
     if (action === "distribute_equally" || action === "distribute_dual_stream") {
       const { mode, unassignedOnly } = body;
       const res = await distributeDualStreamBalanced({
@@ -313,6 +361,27 @@ export async function POST(req: Request) {
         success: true,
         message: `Distributed ${res.distributed} leads (👶 ${res.parentsDistributed} Parents + 🎂 ${res.donorsDistributed} Donors) equally across ${res.callersCount} callers.`,
         distributionResult: res,
+        ...updatedLeaderboard,
+      });
+    }
+
+    if (action === "reallocate_absentee_advance") {
+      const { includeT2 } = body;
+      const res = await reallocateAbsenteeAdvanceLeads({ includeT2: includeT2 !== false });
+
+      await writeAudit({
+        actorAdminUserId: session.user.id ?? null,
+        action: "crm.reallocate_absentee_advance",
+        entity: "ag_leads",
+        afterState: res,
+        ipAddress: ip,
+      });
+
+      const updatedLeaderboard = await getAdminLeaderboard();
+      return NextResponse.json({
+        success: true,
+        message: `Harvested ${res.harvestedFromAbsentCount} advance leads from absent callers and reallocated ${res.reallocatedToPresentCount} leads equally across ${res.presentCallersCount} present floor callers.`,
+        reallocationResult: res,
         ...updatedLeaderboard,
       });
     }

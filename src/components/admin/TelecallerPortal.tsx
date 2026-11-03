@@ -2192,7 +2192,8 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
 
   // Daily target for high-volume telecaller (user indicated 300 to 500 dispatches)
   const dailyTarget = callerProfile.dailyQuota && callerProfile.dailyQuota >= 100 ? callerProfile.dailyQuota : 400;
-  const progressPercent = Math.min(100, Math.round((stats.contactedCount / dailyTarget) * 100));
+  const todayCallsCount = typeof (stats as any).todayContactedCount === "number" ? (stats as any).todayContactedCount : stats.contactedCount;
+  const progressPercent = Math.min(100, Math.round((todayCallsCount / dailyTarget) * 100));
 
   // ── AUTHENTICATED STATE: DEDICATED TELECALLER WORKSPACE ──
   return (
@@ -2260,7 +2261,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
           </div>
           <div className="bg-emerald-50 rounded-xl p-1.5 border border-emerald-200">
             <span className="block text-[8px] font-black uppercase text-emerald-800">ಕರೆ (Today)</span>
-            <span className="font-mono text-xs font-black text-emerald-800">{stats.contactedCount}/{dailyTarget}</span>
+            <span className="font-mono text-xs font-black text-emerald-800">{todayCallsCount}/{dailyTarget}</span>
           </div>
           <div className="bg-amber-50 rounded-xl p-1.5 border border-amber-200">
             <span className="block text-[8px] font-black uppercase text-amber-900">ದಾನ (Paid)</span>
@@ -2288,7 +2289,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
             {/* Progress Bar */}
             <div className="space-y-1">
               <div className="flex items-center justify-between text-[11px] font-bold text-teal-950">
-                <span>🎯 ದಿನದ ಗುರಿ: {stats.contactedCount}/{dailyTarget} ({progressPercent}%)</span>
+                <span>🎯 ದಿನದ ಗುರಿ: {todayCallsCount}/{dailyTarget} ({progressPercent}%)</span>
                 <span>{progressPercent}% Complete</span>
               </div>
               <div className="w-full bg-teal-950/10 rounded-full h-2 overflow-hidden border border-teal-900/10">
@@ -2444,7 +2445,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
               Attended Today
             </p>
             <p className="font-display text-xl sm:text-2xl font-black text-emerald-800 mt-1">
-              {stats.contactedCount}
+              {todayCallsCount}
             </p>
             <p className="text-[10px] text-emerald-700 font-semibold mt-0.5">
               {progressPercent}% of {dailyTarget} goal
@@ -2481,7 +2482,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
               <span className="text-base">🎯</span>
               <span>Today&apos;s Outreach:</span>
               <span className="font-mono text-emerald-900 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300 text-xs font-bold">
-                {stats.contactedCount} / {dailyTarget} Calls ({progressPercent}%)
+                {todayCallsCount} / {dailyTarget} Calls ({progressPercent}%)
               </span>
             </div>
             <span className="text-[11px] text-teal-950/70 font-semibold">
@@ -2506,11 +2507,21 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
         <div className="space-y-3">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <h2 className="font-display text-base sm:text-lg font-bold text-teal-950 flex items-center gap-2">
+              <h2 className="font-display text-base sm:text-lg font-bold text-teal-950 flex items-center gap-2 flex-wrap">
                 <span>{viewMode === "focus" ? "⚡ Calling Card" : "📋 All Leads"}</span>
                 <span className="text-xs font-mono bg-cream px-2.5 py-0.5 rounded-full border border-teal-900/15 font-bold">
                   {filteredLeads.length} leads
                 </span>
+                <button
+                  type="button"
+                  onClick={() => loadCallerLeads(callerProfile.callerId)}
+                  disabled={loadingLeads}
+                  title="Refresh leads from server (ಕ್ಯೂ ನವೀಕರಿಸಿ)"
+                  className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-black bg-teal-100 hover:bg-teal-200 active:scale-95 text-teal-950 transition cursor-pointer border border-teal-900/20"
+                >
+                  <span className={loadingLeads ? "animate-spin" : ""}>🔄</span>
+                  <span>ನವೀಕರಿಸಿ (Refresh)</span>
+                </button>
               </h2>
               <p className="text-xs text-teal-950/60 mt-0.5">
                 {viewMode === "focus"

@@ -98,6 +98,8 @@ export interface TelecallerStats {
   whatsappNumber: string;
   email?: string;
   isActive: boolean;
+  isWorkingToday?: boolean;
+  attendanceDate?: string | null;
   dailyQuota: number;
   assignedCount: number;
   contactedCount: number;
@@ -268,260 +270,534 @@ export async function ensureTelecallersAndSeedData(forceCheck = false) {
 }
 
 /**
- * 2. Distribute Tomorrow's Birthday Leads with 50/50 Dual-Stream Balancing:
- * - Calculates Tomorrow's date (T+1 day) with month/leap-year rollover.
- * - Pulls unassigned Pending leads for Parents (Child Birthday) and Direct Donors.
- * - Allocates an equal mix (50% Parents + 50% Donors) mathematically across all active callers.
- * - If a caller is inactive/deleted, they receive 0 leads.
+ * 2. Date-Partitioned Equal Lead Distribution Engine
+ *
+ * Guarantees exact fair share (floor(N/K)) for EVERY calendar date independently:
+ * - Buckets leads by (dobMonth, dobDay) and stream (DIRECT_DONOR vs PARENTS).
+ * - Priority order: T+1 (Tomorrow IST) -> T+2 (Day After IST) -> Today (Day T IST) -> Upcoming dates by distance.
+ * - For each date and stream, distributes floor(N/K) leads to each active/present caller.
+ * - Rolling remainder offset ensures fair remainder allocation across all dates without bias.
+ * - Eliminates telecaller starvation (e.g. TC08 having 1,214 total leads but 0 for tomorrow).
  */
-export async function distributeTomorrowBirthdayLeads(mode: "balanced" | "round_robin" = "balanced") {
+export async function distributeDatePartitionedBalanced(options?: {
+  unassignedOnly?: boolean;
+  targetCallerIds?: string[];
+  stream?: "PARENTS" | "DIRECT_DONOR" | "ALL";
+  dateFilter?: { month: number; day: number };
+}) {
   await ensureTelecallersAndSeedData();
-  const now = new Date();
-  const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-  const targetDay = tomorrow.getDate();
-  const targetMonth = tomorrow.getMonth() + 1;
+  const unassignedOnly = options?.unassignedOnly ?? false;
+  const targetStream = options?.stream || "ALL";
 
-  const activeCallers = await db
-    .select({ callerId: agTelecallers.callerId })
-    .from(agTelecallers)
-    .where(eq(agTelecallers.isActive, true))
-    .orderBy(agTelecallers.callerId);
+  // 1. Identify active/eligible telecallers
+  let callerIds: string[] = [];
+  if (options?.targetCallerIds && options.targetCallerIds.length > 0) {
+    callerIds = Array.from(new Set(options.targetCallerIds.map((c) => c.trim().toUpperCase())));
+  } else {
+    const { dateStr: todayISTStr } = getISTDateBounds();
+    const allCallers = await db
+      .select({
+        callerId: agTelecallers.callerId,
+        isActive: agTelecallers.isActive,
+        isWorkingToday: agTelecallers.isWorkingToday,
+        attendanceDate: agTelecallers.attendanceDate,
+      })
+      .from(agTelecallers)
+      .where(eq(agTelecallers.isActive, true))
+      .orderBy(agTelecallers.callerId);
 
-  const K = activeCallers.length;
-  if (K === 0) {
-    return { distributed: 0, parentsDistributed: 0, donorsDistributed: 0, callersCount: 0, perCaller: {} };
+    const activeCallers = allCallers.filter((c) => {
+      if (c.callerId === "ADMIN") return false;
+      const isSameDay = c.attendanceDate === todayISTStr;
+      const workingToday = isSameDay ? (c.isWorkingToday ?? true) : true;
+      return c.isActive && workingToday;
+    });
+
+    callerIds = activeCallers.map((c) => c.callerId);
+    if (callerIds.length === 0) {
+      callerIds = allCallers.filter((c) => c.callerId !== "ADMIN").map((c) => c.callerId);
+    }
   }
 
-  // 1. Fetch unassigned Pending leads for Parents (Child Birthday Tomorrow)
-  const parentsLeads = await db
-    .select({ leadId: agLeads.leadId })
-    .from(agLeads)
-    .where(
-      and(
-        eq(agLeads.stream, "PARENTS"),
-        or(
-          and(eq(agLeads.dobDay, targetDay), eq(agLeads.dobMonth, targetMonth)),
-          and(eq(agLeads.dobDay, targetMonth), eq(agLeads.dobMonth, targetDay), lte(agLeads.dobDay, 12))
-        ),
-        or(isNull(agLeads.assignedCallerId), eq(agLeads.assignedCallerId, "ADMIN"), eq(agLeads.assignedCallerId, ""), eq(agLeads.assignedCallerId, "UNASSIGNED")),
-        or(eq(agLeads.status, "Pending"), isNull(agLeads.status))
+  const K = callerIds.length;
+  if (K === 0) {
+    throw new Error("Cannot distribute leads: No active telecallers found.");
+  }
+
+  // 2. IST Reference Dates
+  const { day: curDay, month: curMonth, year: curYear } = getISTDateBounds();
+  const nowIST = new Date(Date.UTC(curYear, curMonth - 1, curDay));
+
+  const t1Date = new Date(nowIST.getTime() + 24 * 60 * 60 * 1000);
+  const t1Day = t1Date.getUTCDate();
+  const t1Month = t1Date.getUTCMonth() + 1;
+
+  const t2Date = new Date(nowIST.getTime() + 2 * 24 * 60 * 60 * 1000);
+  const t2Day = t2Date.getUTCDate();
+  const t2Month = t2Date.getUTCMonth() + 1;
+
+  // 3. Query Target Leads
+  const conditions = [];
+
+  if (unassignedOnly) {
+    conditions.push(
+      or(
+        isNull(agLeads.assignedCallerId),
+        eq(agLeads.assignedCallerId, "ADMIN"),
+        eq(agLeads.assignedCallerId, ""),
+        eq(agLeads.assignedCallerId, "UNASSIGNED")
       )
-    )
+    );
+    conditions.push(or(isNull(agLeads.status), eq(agLeads.status, "Pending")));
+  } else {
+    // Rebalance all pending or unassigned leads
+    conditions.push(
+      or(
+        isNull(agLeads.status),
+        eq(agLeads.status, "Pending"),
+        isNull(agLeads.assignedCallerId),
+        eq(agLeads.assignedCallerId, "ADMIN"),
+        eq(agLeads.assignedCallerId, ""),
+        eq(agLeads.assignedCallerId, "UNASSIGNED")
+      )
+    );
+  }
+
+  if (targetStream === "PARENTS") {
+    conditions.push(eq(agLeads.stream, "PARENTS"));
+  } else if (targetStream === "DIRECT_DONOR") {
+    conditions.push(
+      or(
+        eq(agLeads.stream, "DIRECT_DONOR"),
+        eq(agLeads.stream, "DIRECT_DONORS"),
+        isNull(agLeads.stream)
+      )
+    );
+  }
+
+  if (options?.dateFilter) {
+    const { month: fm, day: fd } = options.dateFilter;
+    conditions.push(
+      or(
+        and(eq(agLeads.dobDay, fd), eq(agLeads.dobMonth, fm)),
+        and(eq(agLeads.dobDay, fm), eq(agLeads.dobMonth, fd), lte(agLeads.dobDay, 12))
+      )
+    );
+  }
+
+  const leads = await db
+    .select({
+      leadId: agLeads.leadId,
+      stream: agLeads.stream,
+      dobDay: agLeads.dobDay,
+      dobMonth: agLeads.dobMonth,
+      parentName: agLeads.parentName,
+      childName: agLeads.childName,
+    })
+    .from(agLeads)
+    .where(and(...conditions))
     .orderBy(desc(agLeads.leadId));
 
-  // 2. Fetch unassigned Pending leads for Direct Donors (Donor Birthday Tomorrow)
-  const donorLeads = await db
-    .select({ leadId: agLeads.leadId })
-    .from(agLeads)
-    .where(
-      and(
-        or(eq(agLeads.stream, "DIRECT_DONOR"), eq(agLeads.stream, "DIRECT_DONORS"), isNull(agLeads.stream)),
-        or(
-          and(eq(agLeads.dobDay, targetDay), eq(agLeads.dobMonth, targetMonth)),
-          and(eq(agLeads.dobDay, targetMonth), eq(agLeads.dobMonth, targetDay), lte(agLeads.dobDay, 12))
-        ),
-        or(isNull(agLeads.assignedCallerId), eq(agLeads.assignedCallerId, "ADMIN"), eq(agLeads.assignedCallerId, ""), eq(agLeads.assignedCallerId, "UNASSIGNED")),
-        or(eq(agLeads.status, "Pending"), isNull(agLeads.status))
-      )
-    )
-    .orderBy(desc(agLeads.leadId));
+  if (leads.length === 0) {
+    const perCaller: Record<string, number> = {};
+    callerIds.forEach((id) => (perCaller[id] = 0));
+    return {
+      success: true,
+      distributed: 0,
+      parentsDistributed: 0,
+      donorsDistributed: 0,
+      callersCount: K,
+      perCaller,
+      dateBucketsCount: 0,
+      datesSummary: {},
+    };
+  }
+
+  // 4. Partition Leads into Date & Stream Buckets
+  interface DateBucket {
+    month: number;
+    day: number;
+    priorityRank: number;
+    parents: number[];
+    donors: number[];
+  }
+
+  const buckets = new Map<string, DateBucket>();
+
+  const getPriorityRank = (m: number, d: number): number => {
+    if (m <= 0 || d <= 0) return 9999;
+    const isT1 = (d === t1Day && m === t1Month) || (d === t1Month && m === t1Day && d <= 12);
+    if (isT1) return 1;
+    const isT2 = (d === t2Day && m === t2Month) || (d === t2Month && m === t2Day && d <= 12);
+    if (isT2) return 2;
+    const isToday = (d === curDay && m === curMonth) || (d === curMonth && m === curDay && d <= 12);
+    if (isToday) return 3;
+
+    // Upcoming calendar days sorted by ascending days from today
+    let bDate = new Date(curYear, m - 1, d);
+    let diff = Math.round((bDate.getTime() - nowIST.getTime()) / 86400000);
+    if (diff < 0) {
+      bDate = new Date(curYear + 1, m - 1, d);
+      diff = Math.round((bDate.getTime() - nowIST.getTime()) / 86400000);
+    }
+    return 10 + diff;
+  };
+
+  for (const l of leads) {
+    const rawDay = Number(l.dobDay || 0);
+    const rawMonth = Number(l.dobMonth || 0);
+    let d = rawDay;
+    let m = rawMonth;
+    if (d > 12 && m <= 12) {
+      // standard DD/MM
+    } else if (d <= 12 && m > 12) {
+      d = rawMonth;
+      m = rawDay;
+    }
+
+    const key = `${m}_${d}`;
+    if (!buckets.has(key)) {
+      buckets.set(key, {
+        month: m,
+        day: d,
+        priorityRank: getPriorityRank(m, d),
+        parents: [],
+        donors: [],
+      });
+    }
+
+    const b = buckets.get(key)!;
+    const isParent =
+      l.stream === "PARENTS" ||
+      (l.stream !== "DIRECT_DONOR" &&
+        l.stream !== "DIRECT_DONORS" &&
+        l.stream !== "donor" &&
+        Boolean(l.parentName || l.childName));
+
+    if (isParent) {
+      b.parents.push(l.leadId);
+    } else {
+      b.donors.push(l.leadId);
+    }
+  }
+
+  // 5. Sort Date Buckets by Priority Rank
+  const sortedBuckets = Array.from(buckets.values()).sort(
+    (a, b) => a.priorityRank - b.priorityRank || a.month - b.month || a.day - b.day
+  );
+
+  // 6. Fair-Share Allocation with Rolling Remainder Offset
+  const assignmentBuckets = new Map<string, number[]>();
+  callerIds.forEach((id) => assignmentBuckets.set(id, []));
+
+  let rollingOffset = 0;
+  let totalParents = 0;
+  let totalDonors = 0;
+  const datesSummary: Record<string, { month: number; day: number; parents: number; donors: number; total: number }> = {};
+
+  for (const bucket of sortedBuckets) {
+    const dateLabel = `${bucket.day}/${bucket.month}`;
+    datesSummary[dateLabel] = {
+      month: bucket.month,
+      day: bucket.day,
+      parents: bucket.parents.length,
+      donors: bucket.donors.length,
+      total: bucket.parents.length + bucket.donors.length,
+    };
+
+    // A. Distribute Parents stream for this date
+    const P = bucket.parents.length;
+    if (P > 0) {
+      totalParents += P;
+      const q = Math.floor(P / K);
+      const r = P % K;
+      let pIdx = 0;
+      for (let i = 0; i < K; i++) {
+        const callerIndex = (i + rollingOffset) % K;
+        const cid = callerIds[callerIndex];
+        const count = q + (i < r ? 1 : 0);
+        for (let j = 0; j < count && pIdx < P; j++) {
+          assignmentBuckets.get(cid)!.push(bucket.parents[pIdx]);
+          pIdx++;
+        }
+      }
+      rollingOffset = (rollingOffset + r) % K;
+    }
+
+    // B. Distribute Direct Donors stream for this date
+    const D = bucket.donors.length;
+    if (D > 0) {
+      totalDonors += D;
+      const q = Math.floor(D / K);
+      const r = D % K;
+      let dIdx = 0;
+      for (let i = 0; i < K; i++) {
+        const callerIndex = (i + rollingOffset) % K;
+        const cid = callerIds[callerIndex];
+        const count = q + (i < r ? 1 : 0);
+        for (let j = 0; j < count && dIdx < D; j++) {
+          assignmentBuckets.get(cid)!.push(bucket.donors[dIdx]);
+          dIdx++;
+        }
+      }
+      rollingOffset = (rollingOffset + r) % K;
+    }
+  }
+
+  // 7. Batch Update Database (500/chunk)
+  const BATCH_SIZE = 500;
+  for (const [callerId, ids] of assignmentBuckets.entries()) {
+    if (ids.length === 0) continue;
+    for (let i = 0; i < ids.length; i += BATCH_SIZE) {
+      const chunk = ids.slice(i, i + BATCH_SIZE);
+      await db
+        .update(agLeads)
+        .set({
+          assignedCallerId: callerId,
+          status: "Pending",
+          updatedAt: new Date(),
+        })
+        .where(inArray(agLeads.leadId, chunk));
+    }
+  }
 
   const perCaller: Record<string, number> = {};
-  for (const c of activeCallers) {
-    perCaller[c.callerId] = 0;
+  for (const [callerId, ids] of assignmentBuckets.entries()) {
+    perCaller[callerId] = ids.length;
   }
 
-  const updates: Array<{ leadId: number; callerId: string }> = [];
+  return {
+    success: true,
+    distributed: leads.length,
+    parentsDistributed: totalParents,
+    donorsDistributed: totalDonors,
+    callersCount: K,
+    perCaller,
+    dateBucketsCount: sortedBuckets.length,
+    datesSummary,
+  };
+}
 
-  // 3. Mathematical fair-share distribution for Parents stream
-  const P = parentsLeads.length;
-  if (P > 0) {
-    const qP = Math.floor(P / K);
-    const rP = P % K;
-    let pIdx = 0;
-    for (let i = 0; i < K; i++) {
-      const callerId = activeCallers[i].callerId;
-      const count = qP + (i < rP ? 1 : 0);
-      for (let j = 0; j < count && pIdx < P; j++) {
-        updates.push({ leadId: parentsLeads[pIdx].leadId, callerId });
-        perCaller[callerId] = (perCaller[callerId] || 0) + 1;
-        pIdx++;
-      }
+/**
+ * 2b. Reallocate Absentee Advance Leads to Present Floor Telecallers
+ *
+ * If a telecaller is absent today or inactive, their time-critical T+1 (Tomorrow's birthday)
+ * and T+2 leads are harvested and distributed strictly across present telecallers using
+ * date-partitioned fair share. Non-urgent future dates remain with the absent caller.
+ */
+export async function reallocateAbsenteeAdvanceLeads(options?: {
+  includeT2?: boolean;
+}) {
+  await ensureTelecallersAndSeedData();
+  const includeT2 = options?.includeT2 ?? true;
+  const { dateStr: todayISTStr, day: curDay, month: curMonth, year: curYear } = getISTDateBounds();
+
+  // 1. Fetch telecallers and determine active floor vs absent callers
+  const allCallers = await db
+    .select({
+      callerId: agTelecallers.callerId,
+      name: agTelecallers.name,
+      isActive: agTelecallers.isActive,
+      isWorkingToday: agTelecallers.isWorkingToday,
+      attendanceDate: agTelecallers.attendanceDate,
+    })
+    .from(agTelecallers)
+    .orderBy(agTelecallers.callerId);
+
+  const presentCallers: string[] = [];
+  const absentCallers: string[] = [];
+
+  for (const c of allCallers) {
+    if (c.callerId === "ADMIN") continue;
+    const isSameDay = c.attendanceDate === todayISTStr;
+    const workingToday = isSameDay ? (c.isWorkingToday ?? true) : true;
+    if (c.isActive && workingToday) {
+      presentCallers.push(c.callerId);
+    } else {
+      absentCallers.push(c.callerId);
     }
   }
 
-  // 4. Mathematical fair-share distribution for Direct Donors stream
-  const D = donorLeads.length;
-  if (D > 0) {
-    const qD = Math.floor(D / K);
-    const rD = D % K;
-    let dIdx = 0;
-    for (let i = 0; i < K; i++) {
-      const callerId = activeCallers[i].callerId;
-      const count = qD + (i < rD ? 1 : 0);
-      for (let j = 0; j < count && dIdx < D; j++) {
-        updates.push({ leadId: donorLeads[dIdx].leadId, callerId });
-        perCaller[callerId] = (perCaller[callerId] || 0) + 1;
-        dIdx++;
-      }
-    }
+  if (presentCallers.length === 0) {
+    return {
+      success: false,
+      message: "No active telecallers are currently marked as present and working today.",
+      harvestedFromAbsentCount: 0,
+      reallocatedToPresentCount: 0,
+      distributed: 0,
+      parentsDistributed: 0,
+      donorsDistributed: 0,
+      callersCount: 0,
+      presentCallersCount: 0,
+      absentCallersCount: absentCallers.length,
+      t1Distributed: 0,
+      t2Distributed: 0,
+      presentCallers: [] as string[],
+      absentCallers,
+      perCaller: {},
+    };
   }
 
-  // 5. Batch update in database
-  if (updates.length > 0) {
-    const callerToLeadIds = new Map<string, number[]>();
-    for (const u of updates) {
-      if (!callerToLeadIds.has(u.callerId)) callerToLeadIds.set(u.callerId, []);
-      callerToLeadIds.get(u.callerId)!.push(u.leadId);
-    }
+  // 2. IST Advance Dates: T+1 (Tomorrow) and T+2
+  const nowIST = new Date(Date.UTC(curYear, curMonth - 1, curDay));
+  const t1Date = new Date(nowIST.getTime() + 24 * 60 * 60 * 1000);
+  const t1Day = t1Date.getUTCDate();
+  const t1Month = t1Date.getUTCMonth() + 1;
 
-    for (const [callerId, ids] of callerToLeadIds.entries()) {
-      for (let i = 0; i < ids.length; i += 200) {
-        const chunk = ids.slice(i, i + 200);
+  const t2Date = new Date(nowIST.getTime() + 2 * 24 * 60 * 60 * 1000);
+  const t2Day = t2Date.getUTCDate();
+  const t2Month = t2Date.getUTCMonth() + 1;
+
+  const targetDateConditions = [
+    or(
+      and(eq(agLeads.dobDay, t1Day), eq(agLeads.dobMonth, t1Month)),
+      and(eq(agLeads.dobDay, t1Month), eq(agLeads.dobMonth, t1Day), lte(agLeads.dobDay, 12))
+    ),
+  ];
+
+  if (includeT2) {
+    targetDateConditions.push(
+      or(
+        and(eq(agLeads.dobDay, t2Day), eq(agLeads.dobMonth, t2Month)),
+        and(eq(agLeads.dobDay, t2Month), eq(agLeads.dobMonth, t2Day), lte(agLeads.dobDay, 12))
+      )
+    );
+  }
+
+  // 3. Harvest pending advance leads from absent callers
+  let harvestedFromAbsentCount = 0;
+  if (absentCallers.length > 0) {
+    const absentLeads = await db
+      .select({ leadId: agLeads.leadId })
+      .from(agLeads)
+      .where(
+        and(
+          inArray(agLeads.assignedCallerId, absentCallers),
+          or(isNull(agLeads.status), eq(agLeads.status, "Pending")),
+          or(...targetDateConditions)
+        )
+      );
+
+    if (absentLeads.length > 0) {
+      harvestedFromAbsentCount = absentLeads.length;
+      const ids = absentLeads.map((l) => l.leadId);
+      for (let i = 0; i < ids.length; i += 500) {
+        const chunk = ids.slice(i, i + 500);
         await db
           .update(agLeads)
-          .set({ assignedCallerId: callerId, updatedAt: new Date() })
+          .set({ assignedCallerId: null, updatedAt: new Date() })
           .where(inArray(agLeads.leadId, chunk));
       }
     }
   }
 
+  // 4. Equalize uncalled T+1 leads across present floor telecallers
+  const allPendingAdvanceLeads = await db
+    .select({ leadId: agLeads.leadId })
+    .from(agLeads)
+    .where(
+      and(
+        or(isNull(agLeads.status), eq(agLeads.status, "Pending")),
+        or(...targetDateConditions)
+      )
+    );
+
+  if (allPendingAdvanceLeads.length > 0) {
+    const allIds = allPendingAdvanceLeads.map((l) => l.leadId);
+    for (let i = 0; i < allIds.length; i += 500) {
+      const chunk = allIds.slice(i, i + 500);
+      await db
+        .update(agLeads)
+        .set({ assignedCallerId: null, updatedAt: new Date() })
+        .where(inArray(agLeads.leadId, chunk));
+    }
+  }
+
+  // 5. Run Date-Partitioned Fair-Share Distribution strictly for present callers
+  const resT1 = await distributeDatePartitionedBalanced({
+    unassignedOnly: true,
+    targetCallerIds: presentCallers,
+    dateFilter: { month: t1Month, day: t1Day },
+  });
+
+  let t2Distributed = 0;
+  let t2Parents = 0;
+  let t2Donors = 0;
+  if (includeT2) {
+    const resT2 = await distributeDatePartitionedBalanced({
+      unassignedOnly: true,
+      targetCallerIds: presentCallers,
+      dateFilter: { month: t2Month, day: t2Day },
+    });
+    t2Distributed = resT2.distributed;
+    t2Parents = resT2.parentsDistributed || 0;
+    t2Donors = resT2.donorsDistributed || 0;
+  }
+
   return {
-    distributed: updates.length,
-    parentsDistributed: P,
-    donorsDistributed: D,
-    callersCount: K,
-    perCaller,
-    targetDay,
-    targetMonth,
+    success: true,
+    harvestedFromAbsentCount,
+    reallocatedToPresentCount: resT1.distributed + t2Distributed,
+    distributed: resT1.distributed + t2Distributed,
+    parentsDistributed: (resT1.parentsDistributed || 0) + t2Parents,
+    donorsDistributed: (resT1.donorsDistributed || 0) + t2Donors,
+    callersCount: presentCallers.length,
+    t1Distributed: resT1.distributed,
+    t2Distributed,
+    presentCallersCount: presentCallers.length,
+    absentCallersCount: absentCallers.length,
+    presentCallers,
+    absentCallers,
+    perCaller: resT1.perCaller,
   };
+}
+
+/**
+ * 2c. Toggle Telecaller Attendance (Working Today vs Absent Today)
+ */
+export async function toggleTelecallerAttendance(
+  callerId: string,
+  isWorkingToday: boolean,
+  reallocateAdvanceLeads = true
+) {
+  await ensureTelecallersAndSeedData();
+  const cid = callerId.trim().toUpperCase();
+  const { dateStr } = getISTDateBounds();
+
+  await db
+    .update(agTelecallers)
+    .set({
+      isWorkingToday,
+      attendanceDate: dateStr,
+      updatedAt: new Date(),
+    })
+    .where(eq(agTelecallers.callerId, cid));
+
+  let reallocatedCount = 0;
+  if (!isWorkingToday && reallocateAdvanceLeads) {
+    const res = await reallocateAbsenteeAdvanceLeads();
+    reallocatedCount = res.reallocatedToPresentCount;
+  }
+
+  return {
+    success: true,
+    callerId: cid,
+    isWorkingToday,
+    attendanceDate: dateStr,
+    reallocatedCount,
+  };
+}
+
+export async function distributeTomorrowBirthdayLeads(mode: "balanced" | "round_robin" = "balanced") {
+  return reallocateAbsenteeAdvanceLeads({ includeT2: false });
 }
 
 export async function distributeBirthdayLeads() {
   return distributeTomorrowBirthdayLeads("balanced");
 }
 
-/**
- * Distribute Day After Tomorrow's Birthday Leads (T+2 Stream) with 50/50 Dual-Stream Balancing:
- */
 export async function distributeT2BirthdayLeads(mode: "balanced" | "round_robin" = "balanced") {
-  await ensureTelecallersAndSeedData();
-  const now = new Date();
-  const t2 = new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000);
-  const targetDay = t2.getDate();
-  const targetMonth = t2.getMonth() + 1;
-
-  const activeCallers = await db
-    .select({ callerId: agTelecallers.callerId })
-    .from(agTelecallers)
-    .where(eq(agTelecallers.isActive, true))
-    .orderBy(agTelecallers.callerId);
-
-  const K = activeCallers.length;
-  if (K === 0) {
-    return { distributed: 0, parentsDistributed: 0, donorsDistributed: 0, callersCount: 0, perCaller: {} };
-  }
-
-  // 1. Fetch unassigned Pending leads for Parents (Child Birthday Day After Tomorrow)
-  const parentsLeads = await db
-    .select({ leadId: agLeads.leadId })
-    .from(agLeads)
-    .where(
-      and(
-        eq(agLeads.stream, "PARENTS"),
-        or(
-          and(eq(agLeads.dobDay, targetDay), eq(agLeads.dobMonth, targetMonth)),
-          and(eq(agLeads.dobDay, targetMonth), eq(agLeads.dobMonth, targetDay), lte(agLeads.dobDay, 12))
-        ),
-        or(isNull(agLeads.assignedCallerId), eq(agLeads.assignedCallerId, "ADMIN"), eq(agLeads.assignedCallerId, ""), eq(agLeads.assignedCallerId, "UNASSIGNED")),
-        or(eq(agLeads.status, "Pending"), isNull(agLeads.status))
-      )
-    )
-    .orderBy(desc(agLeads.leadId));
-
-  // 2. Fetch unassigned Pending leads for Direct Donors (Donor Birthday Day After Tomorrow)
-  const donorLeads = await db
-    .select({ leadId: agLeads.leadId })
-    .from(agLeads)
-    .where(
-      and(
-        or(eq(agLeads.stream, "DIRECT_DONOR"), eq(agLeads.stream, "DIRECT_DONORS"), isNull(agLeads.stream)),
-        or(
-          and(eq(agLeads.dobDay, targetDay), eq(agLeads.dobMonth, targetMonth)),
-          and(eq(agLeads.dobDay, targetMonth), eq(agLeads.dobMonth, targetDay), lte(agLeads.dobDay, 12))
-        ),
-        or(isNull(agLeads.assignedCallerId), eq(agLeads.assignedCallerId, "ADMIN"), eq(agLeads.assignedCallerId, ""), eq(agLeads.assignedCallerId, "UNASSIGNED")),
-        or(eq(agLeads.status, "Pending"), isNull(agLeads.status))
-      )
-    )
-    .orderBy(desc(agLeads.leadId));
-
-  const perCaller: Record<string, number> = {};
-  for (const c of activeCallers) {
-    perCaller[c.callerId] = 0;
-  }
-
-  const updates: Array<{ leadId: number; callerId: string }> = [];
-
-  const P = parentsLeads.length;
-  if (P > 0) {
-    const qP = Math.floor(P / K);
-    const rP = P % K;
-    let pIdx = 0;
-    for (let i = 0; i < K; i++) {
-      const callerId = activeCallers[i].callerId;
-      const count = qP + (i < rP ? 1 : 0);
-      for (let j = 0; j < count && pIdx < P; j++) {
-        updates.push({ leadId: parentsLeads[pIdx].leadId, callerId });
-        perCaller[callerId] = (perCaller[callerId] || 0) + 1;
-        pIdx++;
-      }
-    }
-  }
-
-  const D = donorLeads.length;
-  if (D > 0) {
-    const qD = Math.floor(D / K);
-    const rD = D % K;
-    let dIdx = 0;
-    for (let i = 0; i < K; i++) {
-      const callerId = activeCallers[i].callerId;
-      const count = qD + (i < rD ? 1 : 0);
-      for (let j = 0; j < count && dIdx < D; j++) {
-        updates.push({ leadId: donorLeads[dIdx].leadId, callerId });
-        perCaller[callerId] = (perCaller[callerId] || 0) + 1;
-        dIdx++;
-      }
-    }
-  }
-
-  if (updates.length > 0) {
-    const callerToLeadIds = new Map<string, number[]>();
-    for (const u of updates) {
-      if (!callerToLeadIds.has(u.callerId)) callerToLeadIds.set(u.callerId, []);
-      callerToLeadIds.get(u.callerId)!.push(u.leadId);
-    }
-
-    for (const [callerId, ids] of callerToLeadIds.entries()) {
-      for (let i = 0; i < ids.length; i += 200) {
-        const chunk = ids.slice(i, i + 200);
-        await db
-          .update(agLeads)
-          .set({ assignedCallerId: callerId, updatedAt: new Date() })
-          .where(inArray(agLeads.leadId, chunk));
-      }
-    }
-  }
-
-  return {
-    distributed: updates.length,
-    parentsDistributed: P,
-    donorsDistributed: D,
-    callersCount: K,
-    perCaller,
-    targetDay,
-    targetMonth,
-  };
+  return reallocateAbsenteeAdvanceLeads({ includeT2: true });
 }
 
 /**
@@ -535,16 +811,16 @@ export async function distributeT2BirthdayLeads(mode: "balanced" | "round_robin"
 export async function getAssignedLeads(callerId?: string | null, limit = 10000, offset = 0) {
   await ensureTelecallersAndSeedData();
   const cid = (callerId || "").trim().toUpperCase();
-  const now = new Date();
-  const todayDay = now.getDate();
-  const todayMonth = now.getMonth() + 1;
-  const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-  const targetDay = tomorrow.getDate();
-  const targetMonth = tomorrow.getMonth() + 1;
+  const { day: todayDay, month: todayMonth, year: todayYear } = getISTDateBounds();
+  const nowIST = new Date(Date.UTC(todayYear, todayMonth - 1, todayDay));
+  const tomorrow = new Date(nowIST.getTime() + 24 * 60 * 60 * 1000);
+  const targetDay = tomorrow.getUTCDate();
+  const targetMonth = tomorrow.getUTCMonth() + 1;
 
-  const t2 = new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000);
-  const t2Day = t2.getDate();
-  const t2Month = t2.getMonth() + 1;
+  const t2 = new Date(nowIST.getTime() + 2 * 24 * 60 * 60 * 1000);
+  const t2Day = t2.getUTCDate();
+  const t2Month = t2.getUTCMonth() + 1;
+  const now = new Date();
 
   const orderClauses = [
     sql`case when ${agLeads.status} = 'Reschedule' and ${agLeads.rescheduleDate} <= ${now} then 0 else 1 end`,
@@ -696,11 +972,23 @@ export async function getCallerPortalData(callerId?: string | null, limit = 1000
     .from(agDonations)
     .where(donationCondition);
 
+  // Today's calls count directly from agCallLogs (IST bounds)
+  const { todayStart, todayEnd } = getISTDateBounds();
+  const callerLogsCondition = cid && cid !== "ALL" 
+    ? and(eq(agCallLogs.callerId, cid), gte(agCallLogs.createdAt, todayStart), lte(agCallLogs.createdAt, todayEnd))
+    : and(gte(agCallLogs.createdAt, todayStart), lte(agCallLogs.createdAt, todayEnd));
+
+  const [todayCalls] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(agCallLogs)
+    .where(callerLogsCondition);
+
   return {
     leads,
     stats: {
       totalAssigned: Number(leadStats?.totalAssigned || 0),
       contactedCount: Number(leadStats?.contactedCount || 0),
+      todayContactedCount: Number(todayCalls?.count || 0),
       convertedCount: Number(leadStats?.convertedCount || 0),
       pendingCount: Number(leadStats?.pendingCount || 0),
       interestedCount: Number(leadStats?.interestedCount || 0),
@@ -1194,12 +1482,16 @@ export async function getAdminLeaderboard(): Promise<{
     }
   }
 
+  const { dateStr: todayISTStr } = getISTDateBounds();
+
   const statsList: TelecallerStats[] = allCallers.map((c) => {
     const assigned = assignedByCaller[c.callerId] || 0;
     const contacted = contactedByCaller[c.callerId] || 0;
     const converted = convertedByCaller[c.callerId] || 0;
     const totalAmount = donationsByCaller[c.callerId] || 0;
     const rate = assigned > 0 ? (converted / assigned) * 100 : 0;
+    const isSameDay = c.attendanceDate === todayISTStr;
+    const isWorkingToday = isSameDay ? (c.isWorkingToday ?? true) : true;
 
     return {
       callerId: c.callerId,
@@ -1207,6 +1499,8 @@ export async function getAdminLeaderboard(): Promise<{
       whatsappNumber: c.whatsappNumber,
       email: c.email,
       isActive: c.isActive,
+      isWorkingToday,
+      attendanceDate: c.attendanceDate,
       dailyQuota: c.dailyQuota,
       assignedCount: assigned,
       contactedCount: contacted,
@@ -2187,111 +2481,11 @@ export async function distributeSpecificLeads(
 export async function distributeDualStreamBalanced(options?: {
   unassignedOnly?: boolean;
   mode?: "balanced" | "round_robin";
+  targetCallerIds?: string[];
+  stream?: "PARENTS" | "DIRECT_DONOR" | "ALL";
+  dateFilter?: { month: number; day: number };
 }) {
-  await ensureTelecallersAndSeedData();
-  const unassignedOnly = options?.unassignedOnly ?? false;
-
-  const activeCallers = await db
-    .select({ callerId: agTelecallers.callerId })
-    .from(agTelecallers)
-    .where(eq(agTelecallers.isActive, true))
-    .orderBy(agTelecallers.callerId);
-
-  const K = activeCallers.length;
-  if (K === 0) {
-    throw new Error("Cannot distribute leads: No active telecallers found.");
-  }
-
-  const now = new Date();
-  const todayDay = now.getDate();
-  const todayMonth = now.getMonth() + 1;
-  const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-  const tomDay = tomorrow.getDate();
-  const tomMonth = tomorrow.getMonth() + 1;
-
-  const orderClauses = [
-    sql`case when ${agLeads.dobMonth} = ${tomMonth} and ${agLeads.dobDay} = ${tomDay} then 0 else 1 end`,
-    sql`case when ${agLeads.dobMonth} = ${todayMonth} and ${agLeads.dobDay} = ${todayDay} then 0 else 1 end`,
-    agLeads.dobMonth,
-    agLeads.dobDay,
-    desc(agLeads.leadId),
-  ];
-
-  const baseCondition = unassignedOnly
-    ? isNull(agLeads.assignedCallerId)
-    : or(isNull(agLeads.assignedCallerId), eq(agLeads.status, "Pending"), isNull(agLeads.status));
-
-  // 1. Fetch Parents Pool
-  const parentsLeads = await db
-    .select({ leadId: agLeads.leadId })
-    .from(agLeads)
-    .where(and(eq(agLeads.stream, "PARENTS"), baseCondition))
-    .orderBy(...orderClauses);
-
-  // 2. Fetch Direct Donors Pool
-  const donorLeads = await db
-    .select({ leadId: agLeads.leadId })
-    .from(agLeads)
-    .where(and(or(eq(agLeads.stream, "DIRECT_DONOR"), eq(agLeads.stream, "DIRECT_DONORS"), isNull(agLeads.stream)), baseCondition))
-    .orderBy(...orderClauses);
-
-  // 3. Interleave Pool A and Pool B 50/50: [P0, D0, P1, D1, P2, D2...]
-  const interleavedLeadIds: number[] = [];
-  const maxLen = Math.max(parentsLeads.length, donorLeads.length);
-  for (let i = 0; i < maxLen; i++) {
-    if (i < parentsLeads.length) interleavedLeadIds.push(parentsLeads[i].leadId);
-    if (i < donorLeads.length) interleavedLeadIds.push(donorLeads[i].leadId);
-  }
-
-  const perCaller: Record<string, number> = {};
-  activeCallers.forEach((c) => {
-    perCaller[c.callerId] = 0;
-  });
-
-  if (interleavedLeadIds.length === 0) {
-    return {
-      distributed: 0,
-      parentsDistributed: 0,
-      donorsDistributed: 0,
-      callersCount: K,
-      perCaller,
-    };
-  }
-
-  // 4. Group assignments per caller
-  const assignmentBuckets = new Map<string, number[]>();
-  activeCallers.forEach((c) => assignmentBuckets.set(c.callerId, []));
-
-  interleavedLeadIds.forEach((leadId, idx) => {
-    const callerId = activeCallers[idx % K].callerId;
-    assignmentBuckets.get(callerId)!.push(leadId);
-    perCaller[callerId] = (perCaller[callerId] || 0) + 1;
-  });
-
-  // 5. Sequential batch updates (500 per chunk)
-  const BATCH_SIZE = 500;
-  for (const [callerId, ids] of assignmentBuckets.entries()) {
-    if (ids.length === 0) continue;
-    for (let i = 0; i < ids.length; i += BATCH_SIZE) {
-      const chunk = ids.slice(i, i + BATCH_SIZE);
-      await db
-        .update(agLeads)
-        .set({
-          assignedCallerId: callerId,
-          status: "Pending",
-          updatedAt: new Date(),
-        })
-        .where(inArray(agLeads.leadId, chunk));
-    }
-  }
-
-  return {
-    distributed: interleavedLeadIds.length,
-    parentsDistributed: parentsLeads.length,
-    donorsDistributed: donorLeads.length,
-    callersCount: K,
-    perCaller,
-  };
+  return distributeDatePartitionedBalanced(options);
 }
 
 export async function distributeUnassignedLeads(mode: "balanced" | "round_robin" = "balanced") {
