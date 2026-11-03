@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { formatINR } from "@/lib/site";
 import { LogoMark } from "@/components/Logo";
 import { AntiBanWhatsAppModal } from "@/components/admin/AntiBanWhatsAppModal";
@@ -148,6 +148,9 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
 
   // Disposition Reason Quick-Picker state
   const [selectedDispositionReason, setSelectedDispositionReason] = useState<string>("");
+
+  // Anchor ref to Calling Card container so mobile transitions keep card in view without scrolling to top of page
+  const callingCardRef = useRef<HTMLDivElement>(null);
 
   // 1-Tap Disposition Confirmation state (prevents accidental advance & mobile scroll jump)
   const [pendingConfirmation, setPendingConfirmation] = useState<{
@@ -334,12 +337,22 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
       if (l.status === "Donated") converted++;
     });
 
-    setStats((prev) => ({
+    setStats((prev: any) => ({
       ...prev,
       totalAssigned: leadItems.length,
       contactedCount: contacted,
       convertedCount: converted,
+      todayContactedCount: typeof prev?.todayContactedCount === "number" ? Math.max(prev.todayContactedCount, contacted) : contacted,
     }));
+  };
+
+  // Smooth scroll helper: Keeps calling card in focus on mobile without jumping to top of browser
+  const scrollToCallingCard = () => {
+    if (typeof window !== "undefined") {
+      setTimeout(() => {
+        callingCardRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }, 40);
+    }
   };
 
   // ── Contacted Leads Persistent Session Cache Helpers ──
@@ -362,10 +375,11 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
     });
   };
 
-  const loadCallerLeads = async (cid: string) => {
+  const loadCallerLeads = async (cid: string, isRefresh = false) => {
     setLoadingLeads(true);
     try {
-      const res = await fetch(`/api/v1/leads/assigned?callerId=${encodeURIComponent(cid)}`);
+      const refreshParam = isRefresh ? "&refresh=true" : "";
+      const res = await fetch(`/api/v1/leads/assigned?callerId=${encodeURIComponent(cid)}${refreshParam}`);
       const data = await res.json();
       if (data.success) {
         const leadItems = data.leads || [];
@@ -921,6 +935,11 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
             : l
         );
         setLeads(updatedList);
+        setStats((prev: any) => ({
+          ...prev,
+          todayContactedCount: ((prev && prev.todayContactedCount) || 0) + 1,
+          contactedCount: ((prev && prev.contactedCount) || 0) + 1,
+        }));
         computeStats(updatedList, callerProfile.callerId);
 
         showStampConfirmation({
@@ -991,6 +1010,11 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
             : l
         );
         setLeads(updatedList);
+        setStats((prev: any) => ({
+          ...prev,
+          todayContactedCount: ((prev && prev.todayContactedCount) || 0) + 1,
+          contactedCount: ((prev && prev.contactedCount) || 0) + 1,
+        }));
         computeStats(updatedList, callerProfile.callerId);
         setSessionContactedIds((prev) => {
           const next = new Set(prev);
@@ -1387,6 +1411,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
             localStorage.setItem(`janaseva_last_lead_${callerProfile.callerId}`, String(nextId));
           } catch {}
         }
+        scrollToCallingCard();
       }
     }
   };
@@ -1403,6 +1428,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
             localStorage.setItem(`janaseva_last_lead_${callerProfile.callerId}`, String(prevId));
           } catch {}
         }
+        scrollToCallingCard();
       }
     }
   };
@@ -1483,6 +1509,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
           localStorage.setItem(`janaseva_last_lead_${callerProfile.callerId}`, String(nextLeadId));
         } catch {}
       }
+      scrollToCallingCard();
     } else {
       setActiveFocusLeadId(null);
     }
@@ -1752,14 +1779,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
         if (streamFilter === "DIRECT_DONOR" && isParent) return false;
       }
 
-      // 2. Strict deduplication by normalized 10-digit mobile number
-      const cleanPhone = (l.phone || "").replace(/\D/g, "").slice(-10);
-      if (cleanPhone && !isSearching) {
-        if (seenPhones.has(cleanPhone)) return false;
-        seenPhones.add(cleanPhone);
-      }
-
-      // 3. Tab Status Filtering (Bypassed when actively searching so all matching records can be found)
+      // 2. Tab Status Filtering (Bypassed when actively searching so all matching records can be found)
       let matchesFilter = true;
       if (!isSearching) {
         const lDay = Number(l.dobDay ?? (l as any).dob_day ?? 0);
@@ -1787,9 +1807,18 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
         } else if (filter !== "ALL") {
           matchesFilter = l.status === filter;
         }
+
+        if (!matchesFilter) return false;
       }
 
-      if (!isSearching) return matchesFilter;
+      // 3. Strict deduplication by normalized 10-digit mobile number WITHIN the filtered stream
+      const cleanPhone = (l.phone || "").replace(/\D/g, "").slice(-10);
+      if (cleanPhone && !isSearching) {
+        if (seenPhones.has(cleanPhone)) return false;
+        seenPhones.add(cleanPhone);
+      }
+
+      if (!isSearching) return true;
 
       // 4. Smart Multi-Field & Digit-Normalized Search (Searches Calling Phone, WhatsApp Phone, Names, Reasons & Notes)
       const phoneDigits = (l.phone || "").replace(/\D/g, "");
@@ -2514,7 +2543,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                 </span>
                 <button
                   type="button"
-                  onClick={() => loadCallerLeads(callerProfile.callerId)}
+                  onClick={() => loadCallerLeads(callerProfile.callerId, true)}
                   disabled={loadingLeads}
                   title="Refresh leads from server (ಕ್ಯೂ ನವೀಕರಿಸಿ)"
                   className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-black bg-teal-100 hover:bg-teal-200 active:scale-95 text-teal-950 transition cursor-pointer border border-teal-900/20"
@@ -3113,7 +3142,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
           </div>
 
           {/* ── RIGHT PANE: ACTIVE CALLING CARD WORKSPACE (Always visible on desktop; on mobile shown when viewMode === 'focus') ── */}
-          <div className={`space-y-4 lg:col-span-7 xl:col-span-8 ${viewMode === "focus" ? "block" : "hidden lg:block"}`}>
+          <div ref={callingCardRef} className={`space-y-4 lg:col-span-7 xl:col-span-8 ${viewMode === "focus" ? "block" : "hidden lg:block"}`}>
             {!currentFocusLead ? (
               <div className="rounded-3xl p-8 sm:p-12 bg-gradient-to-b from-amber-50/50 via-white to-cream/30 text-center border border-teal-900/15 shadow-sm space-y-4">
                 <div className="h-16 w-16 mx-auto rounded-2xl bg-amber-500/10 flex items-center justify-center text-3xl">
@@ -5353,6 +5382,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                   );
                   setCardNoteInput("");
                   setSelectedDispositionReason("");
+                  scrollToCallingCard();
                 }}
                 className="py-3 px-4 rounded-2xl bg-teal-950 hover:bg-teal-900 active:scale-98 text-gold font-black text-xs shadow-lg transition cursor-pointer flex items-center justify-center gap-1.5 text-center ring-2 ring-amber-400"
               >

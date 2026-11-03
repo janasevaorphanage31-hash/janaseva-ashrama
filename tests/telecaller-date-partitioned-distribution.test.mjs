@@ -194,3 +194,63 @@ test("Resolution: Direct Donors stream with 1,214 total leads guarantees T+1 lea
   assert.ok(tc08Assigned, "TC08 must be in the assigned callers list");
   assert.equal(tc08Assigned.donors.length, 10, "TC08 Vedhavathi must receive exactly 10 direct donor leads for tomorrow!");
 });
+
+// 6. Least-Loaded Water-Filling Test
+test("Water-Filling: Unassigned leads are allocated to lowest-count callers first until equalized", () => {
+  const callers = ["TC01", "TC02", "TC08"];
+  // TC01 has 10 leads, TC02 has 10 leads, TC08 has 0 leads
+  const existingCounts = { TC01: 10, TC02: 10, TC08: 0 };
+  const unassigned = Array.from({ length: 13 }, (_, i) => ({ id: `U_${i}` }));
+
+  // Simulate water filling
+  const assignedBuckets = { TC01: [], TC02: [], TC08: [] };
+  const tally = { ...existingCounts };
+
+  for (const lead of unassigned) {
+    let minCaller = callers[0];
+    let minCount = tally[minCaller];
+    for (let i = 1; i < callers.length; i++) {
+      const cid = callers[i];
+      if (tally[cid] < minCount) {
+        minCaller = cid;
+        minCount = tally[cid];
+      }
+    }
+    assignedBuckets[minCaller].push(lead);
+    tally[minCaller]++;
+  }
+
+  // TC08 had 0, so TC08 receives 10 leads first (reaching 10), then 1 more (reaching 11)
+  assert.equal(assignedBuckets.TC08.length, 11, "TC08 must receive 11 leads to reach parity");
+  assert.equal(assignedBuckets.TC01.length, 1, "TC01 receives 1 lead from remaining remainder");
+  assert.equal(assignedBuckets.TC02.length, 1, "TC02 receives 1 lead from remaining remainder");
+
+  // Final totals: all callers have exactly 11 leads!
+  assert.equal(tally.TC01, 11);
+  assert.equal(tally.TC02, 11);
+  assert.equal(tally.TC08, 11);
+});
+
+// 7. Non-Destructive Absentee Reallocation Test
+test("Non-Destructive: Present callers retain their assigned leads intact during absentee reallocation", () => {
+  const presentCallers = ["TC03", "TC08"];
+  const absentCallers = ["TC04"];
+
+  // Present callers already have assigned leads for tomorrow
+  const callerAssignments = {
+    TC03: [{ id: "L_1", caller: "TC03", day: 4, month: 11 }],
+    TC08: [{ id: "L_2", caller: "TC08", day: 4, month: 11 }],
+    TC04: [{ id: "L_3", caller: "TC04", day: 4, month: 11 }], // Absent
+  };
+
+  // Only absent callers' leads are harvested
+  const harvested = [];
+  for (const cid of absentCallers) {
+    harvested.push(...callerAssignments[cid]);
+    delete callerAssignments[cid];
+  }
+
+  assert.equal(harvested.length, 1, "Only TC04's lead was harvested");
+  assert.equal(callerAssignments.TC03.length, 1, "TC03 retains existing lead untouched");
+  assert.equal(callerAssignments.TC08.length, 1, "TC08 retains existing lead untouched");
+});

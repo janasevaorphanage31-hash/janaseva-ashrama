@@ -51,11 +51,19 @@ export async function POST(
       return NextResponse.json({ error: "Lead not found." }, { status: 404 });
     }
 
-    if (!auth.isAdmin && lead.assignedCallerId !== auth.callerId) {
+    if (!auth.isAdmin && lead.assignedCallerId && lead.assignedCallerId !== auth.callerId) {
       return NextResponse.json(
         { error: "Access denied. This lead is assigned to another telecaller." },
         { status: 403 },
       );
+    }
+
+    // Auto-claim unassigned lead when the active caller logs their call
+    if (!lead.assignedCallerId && auth.callerId && auth.callerId !== "ADMIN") {
+      await db
+        .update(agLeads)
+        .set({ assignedCallerId: auth.callerId, updatedAt: new Date() })
+        .where(eq(agLeads.leadId, leadId));
     }
 
     const body = await req.json().catch(() => ({}));

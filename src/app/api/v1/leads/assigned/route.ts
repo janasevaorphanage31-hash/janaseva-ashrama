@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getCallerPortalData } from "@/lib/antigravity-crm";
+import { getCallerPortalData, reallocateAbsenteeAdvanceLeads } from "@/lib/antigravity-crm";
 import { authenticateCallerOrAdmin } from "@/lib/caller-auth";
 import { ensureDbSchema } from "@/db";
 
@@ -21,9 +21,19 @@ export async function GET(req: Request) {
     const paramCallerId = url.searchParams.get("callerId");
     const paramLimit = url.searchParams.get("limit");
     const paramPage = url.searchParams.get("page");
+    const paramRefresh = url.searchParams.get("refresh");
     const page = paramPage ? Math.max(1, parseInt(paramPage, 10)) : 1;
     const limit = paramLimit ? Math.min(parseInt(paramLimit, 10), 10000) : (paramPage ? 100 : 2500);
     const offset = (page - 1) * limit;
+
+    // On-demand explicit refresh: harvest absentee advance leads and distribute unassigned T+1/T+2 leads
+    if (paramRefresh === "true" || paramRefresh === "1") {
+      try {
+        await reallocateAbsenteeAdvanceLeads({ includeT2: true });
+      } catch (e) {
+        console.warn("Advance lead reallocate on refresh skipped:", e);
+      }
+    }
 
     const targetCallerId = auth.isAdmin
       ? (paramCallerId || auth.callerId)

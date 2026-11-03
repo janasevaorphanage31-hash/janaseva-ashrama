@@ -486,7 +486,7 @@ export async function distributeDatePartitionedBalanced(options?: {
     (a, b) => a.priorityRank - b.priorityRank || a.month - b.month || a.day - b.day
   );
 
-  // 6. Fair-Share Allocation with Rolling Remainder Offset
+  // 6. Fair-Share Allocation with Least-Loaded Balancing for Unassigned Pools
   const assignmentBuckets = new Map<string, number[]>();
   callerIds.forEach((id) => assignmentBuckets.set(id, []));
 
@@ -505,42 +505,127 @@ export async function distributeDatePartitionedBalanced(options?: {
       total: bucket.parents.length + bucket.donors.length,
     };
 
+    // If unassignedOnly, fetch existing assigned pending counts per caller for this specific date
+    // to apply least-loaded water-filling so callers with 0 leads are prioritized first.
+    let existingParentsTally: Record<string, number> = {};
+    let existingDonorsTally: Record<string, number> = {};
+    callerIds.forEach((cid) => {
+      existingParentsTally[cid] = 0;
+      existingDonorsTally[cid] = 0;
+    });
+
+    if (unassignedOnly) {
+      try {
+        const assignedRows = await db
+          .select({
+            callerId: agLeads.assignedCallerId,
+            stream: agLeads.stream,
+            count: sql<number>`count(*)`,
+          })
+          .from(agLeads)
+          .where(
+            and(
+              inArray(agLeads.assignedCallerId, callerIds),
+              or(isNull(agLeads.status), eq(agLeads.status, "Pending")),
+              or(
+                and(eq(agLeads.dobDay, bucket.day), eq(agLeads.dobMonth, bucket.month)),
+                and(eq(agLeads.dobDay, bucket.month), eq(agLeads.dobMonth, bucket.day), lte(agLeads.dobDay, 12))
+              )
+            )
+          )
+          .groupBy(agLeads.assignedCallerId, agLeads.stream);
+
+        assignedRows.forEach((r) => {
+          if (r.callerId) {
+            const num = Number(r.count || 0);
+            if (r.stream === "PARENTS") {
+              existingParentsTally[r.callerId] = (existingParentsTally[r.callerId] || 0) + num;
+            } else {
+              existingDonorsTally[r.callerId] = (existingDonorsTally[r.callerId] || 0) + num;
+            }
+          }
+        });
+      } catch (err) {
+        console.warn("[CRM] Least-loaded tally check fallback:", err);
+      }
+    }
+
     // A. Distribute Parents stream for this date
     const P = bucket.parents.length;
     if (P > 0) {
       totalParents += P;
-      const q = Math.floor(P / K);
-      const r = P % K;
-      let pIdx = 0;
-      for (let i = 0; i < K; i++) {
-        const callerIndex = (i + rollingOffset) % K;
-        const cid = callerIds[callerIndex];
-        const count = q + (i < r ? 1 : 0);
-        for (let j = 0; j < count && pIdx < P; j++) {
-          assignmentBuckets.get(cid)!.push(bucket.parents[pIdx]);
-          pIdx++;
+      if (unassignedOnly) {
+        // Least-Loaded Water-Filling for Parents
+        for (let pIdx = 0; pIdx < P; pIdx++) {
+          let minCaller = callerIds[0];
+          let minCount = existingParentsTally[minCaller] ?? 0;
+          for (let i = 1; i < K; i++) {
+            const cid = callerIds[(i + rollingOffset) % K];
+            const cnt = existingParentsTally[cid] ?? 0;
+            if (cnt < minCount) {
+              minCaller = cid;
+              minCount = cnt;
+            }
+          }
+          assignmentBuckets.get(minCaller)!.push(bucket.parents[pIdx]);
+          existingParentsTally[minCaller] = (existingParentsTally[minCaller] || 0) + 1;
         }
+        rollingOffset = (rollingOffset + 1) % K;
+      } else {
+        // Equal floor(N/K) with rolling remainder offset for complete rebalance
+        const q = Math.floor(P / K);
+        const r = P % K;
+        let pIdx = 0;
+        for (let i = 0; i < K; i++) {
+          const callerIndex = (i + rollingOffset) % K;
+          const cid = callerIds[callerIndex];
+          const count = q + (i < r ? 1 : 0);
+          for (let j = 0; j < count && pIdx < P; j++) {
+            assignmentBuckets.get(cid)!.push(bucket.parents[pIdx]);
+            pIdx++;
+          }
+        }
+        rollingOffset = (rollingOffset + r) % K;
       }
-      rollingOffset = (rollingOffset + r) % K;
     }
 
     // B. Distribute Direct Donors stream for this date
     const D = bucket.donors.length;
     if (D > 0) {
       totalDonors += D;
-      const q = Math.floor(D / K);
-      const r = D % K;
-      let dIdx = 0;
-      for (let i = 0; i < K; i++) {
-        const callerIndex = (i + rollingOffset) % K;
-        const cid = callerIds[callerIndex];
-        const count = q + (i < r ? 1 : 0);
-        for (let j = 0; j < count && dIdx < D; j++) {
-          assignmentBuckets.get(cid)!.push(bucket.donors[dIdx]);
-          dIdx++;
+      if (unassignedOnly) {
+        // Least-Loaded Water-Filling for Direct Donors
+        for (let dIdx = 0; dIdx < D; dIdx++) {
+          let minCaller = callerIds[0];
+          let minCount = existingDonorsTally[minCaller] ?? 0;
+          for (let i = 1; i < K; i++) {
+            const cid = callerIds[(i + rollingOffset) % K];
+            const cnt = existingDonorsTally[cid] ?? 0;
+            if (cnt < minCount) {
+              minCaller = cid;
+              minCount = cnt;
+            }
+          }
+          assignmentBuckets.get(minCaller)!.push(bucket.donors[dIdx]);
+          existingDonorsTally[minCaller] = (existingDonorsTally[minCaller] || 0) + 1;
         }
+        rollingOffset = (rollingOffset + 1) % K;
+      } else {
+        // Equal floor(N/K) with rolling remainder offset for complete rebalance
+        const q = Math.floor(D / K);
+        const r = D % K;
+        let dIdx = 0;
+        for (let i = 0; i < K; i++) {
+          const callerIndex = (i + rollingOffset) % K;
+          const cid = callerIds[callerIndex];
+          const count = q + (i < r ? 1 : 0);
+          for (let j = 0; j < count && dIdx < D; j++) {
+            assignmentBuckets.get(cid)!.push(bucket.donors[dIdx]);
+            dIdx++;
+          }
+        }
+        rollingOffset = (rollingOffset + r) % K;
       }
-      rollingOffset = (rollingOffset + r) % K;
     }
   }
 
@@ -691,29 +776,7 @@ export async function reallocateAbsenteeAdvanceLeads(options?: {
     }
   }
 
-  // 4. Equalize uncalled T+1 leads across present floor telecallers
-  const allPendingAdvanceLeads = await db
-    .select({ leadId: agLeads.leadId })
-    .from(agLeads)
-    .where(
-      and(
-        or(isNull(agLeads.status), eq(agLeads.status, "Pending")),
-        or(...targetDateConditions)
-      )
-    );
-
-  if (allPendingAdvanceLeads.length > 0) {
-    const allIds = allPendingAdvanceLeads.map((l) => l.leadId);
-    for (let i = 0; i < allIds.length; i += 500) {
-      const chunk = allIds.slice(i, i + 500);
-      await db
-        .update(agLeads)
-        .set({ assignedCallerId: null, updatedAt: new Date() })
-        .where(inArray(agLeads.leadId, chunk));
-    }
-  }
-
-  // 5. Run Date-Partitioned Fair-Share Distribution strictly for present callers
+  // 4. Distribute any unassigned or harvested advance leads strictly to present floor callers
   const resT1 = await distributeDatePartitionedBalanced({
     unassignedOnly: true,
     targetCallerIds: presentCallers,
@@ -938,15 +1001,6 @@ export async function getAssignedLeads(callerId?: string | null, limit = 10000, 
 export async function getCallerPortalData(callerId?: string | null, limit = 10000, offset = 0) {
   await ensureTelecallersAndSeedData();
   const cid = (callerId || "").trim().toUpperCase();
-
-  // Auto-distribute any unassigned or unallocated advance birthday leads (T+1 and T+2)
-  // so every active telecaller immediately has their fair share of tomorrow's calling queue
-  try {
-    await distributeTomorrowBirthdayLeads("balanced");
-    await distributeT2BirthdayLeads("balanced");
-  } catch (err) {
-    console.warn("Auto-distribution of advance birthday leads skipped:", err);
-  }
 
   const leads = await getAssignedLeads(cid, limit, offset);
 
