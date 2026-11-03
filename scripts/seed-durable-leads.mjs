@@ -124,7 +124,7 @@ async function seedDatabase() {
         INSERT INTO ag_leads (
           name, phone, dob_day, dob_month,
           stream, assigned_caller_id, status, validation_status, created_at, updated_at
-        ) VALUES ($1, $2, $3, $4, 'DIRECT_DONORS', $5, 'Pending', 'UNVERIFIED', NOW(), NOW())
+        ) VALUES ($1, $2, $3, $4, 'DIRECT_DONOR', $5, 'Pending', 'UNVERIFIED', NOW(), NOW())
         ON CONFLICT DO NOTHING;
       `, [d.name, phone, slot.day, slot.month, assigned]);
       inserted++;

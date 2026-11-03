@@ -737,7 +737,8 @@ export function AdminTelecallerCRM() {
         tempChildCol = tempNameCol;
         tempNameCol = -1;
       } else if (
-        (uploadStream === "PARENTS" || streamOverride === "PARENTS") &&
+        streamOverride !== "DIRECT_DONOR" &&
+        uploadStream === "PARENTS" &&
         tempChildCol === -1 &&
         tempNameCol !== -1 &&
         tempParentCol === -1
@@ -860,9 +861,12 @@ export function AdminTelecallerCRM() {
         }
       }
 
-      // Auto-detect parents stream if child/student or parent column is found, or if uploadStream is PARENTS
+      // Auto-detect parents stream if child/student or parent column is found, unless uploadStream is explicitly DIRECT_DONOR
       const hasParentOrChildCol = childCol !== -1 || parentCol !== -1;
-      const isParentsStream = streamOverride === "PARENTS" || uploadStream === "PARENTS" || hasParentOrChildCol;
+      const effectiveUploadStream = streamOverride || uploadStream;
+      const isParentsStream = effectiveUploadStream === "DIRECT_DONOR"
+        ? false
+        : (effectiveUploadStream === "PARENTS" ? true : hasParentOrChildCol);
       const activeStream: "PARENTS" | "DIRECT_DONOR" = isParentsStream ? "PARENTS" : "DIRECT_DONOR";
 
       // Smart resolution of student/child name and parent name
@@ -955,13 +959,22 @@ export function AdminTelecallerCRM() {
         try {
           const buffer = event.target?.result as ArrayBuffer;
           const workbook = XLSX.read(buffer, { type: "array", cellDates: false });
-          const firstSheetName = workbook.SheetNames[0];
-          const worksheet = workbook.Sheets[firstSheetName];
+          // Smart sheet detection: if user selected DIRECT_DONOR, look for a sheet matching donor/direct
+          let targetSheetName = workbook.SheetNames[0];
+          if (uploadStream === "DIRECT_DONOR") {
+            const donorSheet = workbook.SheetNames.find((s) => /donor|direct/i.test(s));
+            if (donorSheet) targetSheetName = donorSheet;
+            else if (workbook.SheetNames.length > 1) targetSheetName = workbook.SheetNames[1];
+          } else if (uploadStream === "PARENTS") {
+            const parentSheet = workbook.SheetNames.find((s) => /parent|child|student/i.test(s));
+            if (parentSheet) targetSheetName = parentSheet;
+          }
+          const worksheet = workbook.Sheets[targetSheetName];
           const grid = XLSX.utils.sheet_to_json<any[]>(worksheet, { header: 1, raw: false, defval: "" });
           // Generate clean CSV preview for textarea
           const csvPreview = grid.slice(0, 50).map((r) => r.map((c: any) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
           setPastedText(csvPreview);
-          parse2DGrid(grid);
+          parse2DGrid(grid, uploadStream);
         } catch (err: any) {
           alert("Error parsing Excel file: " + err.message);
         }
@@ -1600,7 +1613,9 @@ export function AdminTelecallerCRM() {
 
     const base = leadsList.filter((l) => {
       if (statusFilter !== "ALL" && l.status !== statusFilter) return false;
-      if (leadStreamFilter !== "ALL" && (l.stream || "PARENTS") !== leadStreamFilter) return false;
+      const isLeadParent = l.stream === "PARENTS" || (l.stream !== "DIRECT_DONOR" && l.stream !== "DIRECT_DONORS" && Boolean(l.parentName || l.childName));
+      const normalizedStream = isLeadParent ? "PARENTS" : "DIRECT_DONOR";
+      if (leadStreamFilter !== "ALL" && normalizedStream !== leadStreamFilter) return false;
       return true;
     });
 

@@ -1652,7 +1652,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
     let donors = 0;
 
     leads.forEach((l) => {
-      const isParent = l.stream === "PARENTS" || Boolean(l.parentName || l.childName);
+      const isParent = l.stream === "PARENTS" || (l.stream !== "DIRECT_DONOR" && l.stream !== "DIRECT_DONORS" && Boolean(l.parentName || l.childName));
       if (isParent) parents++;
       else donors++;
 
@@ -1739,7 +1739,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
 
     const base = leads.filter((l) => {
       // 1. Stream filter (Parents vs Direct Donors)
-      const isParent = l.stream === "PARENTS" || Boolean(l.parentName || l.childName);
+      const isParent = l.stream === "PARENTS" || (l.stream !== "DIRECT_DONOR" && l.stream !== "DIRECT_DONORS" && Boolean(l.parentName || l.childName));
       if (!isSearching) {
         if (streamFilter === "PARENTS" && !isParent) return false;
         if (streamFilter === "DIRECT_DONOR" && isParent) return false;
@@ -2857,7 +2857,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                   const isDialed = sessionContactedIds.has(lead.leadId);
                   const isAttended = lead.status && lead.status !== "Pending";
                   const phoneInfo = parseCustomerPhone(lead.phone);
-                  const isParent = lead.stream === "PARENTS" || Boolean(lead.parentName || lead.childName);
+                  const isParent = lead.stream === "PARENTS" || (lead.stream !== "DIRECT_DONOR" && lead.stream !== "DIRECT_DONORS" && Boolean(lead.parentName || lead.childName));
 
                   return (
                     <div
@@ -3144,7 +3144,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                 const isTodayBirthday = currentFocusLead.dobDay === curDay && currentFocusLead.dobMonth === curMonth;
                 const isTomorrowBirthday = currentFocusLead.dobDay === tomorrowDay && currentFocusLead.dobMonth === tomorrowMonth;
                 const isT2Birthday = currentFocusLead.dobDay === t2Day && currentFocusLead.dobMonth === t2Month;
-                const isParentLead = currentFocusLead.stream === "PARENTS" || Boolean(currentFocusLead.parentName || currentFocusLead.childName);
+                const isParentLead = currentFocusLead.stream === "PARENTS" || (currentFocusLead.stream !== "DIRECT_DONOR" && currentFocusLead.stream !== "DIRECT_DONORS" && Boolean(currentFocusLead.parentName || currentFocusLead.childName));
                 const phoneInfo = parseCustomerPhone(currentFocusLead.phone);
 
                 return (

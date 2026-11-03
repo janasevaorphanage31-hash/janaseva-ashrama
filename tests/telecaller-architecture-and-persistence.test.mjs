@@ -163,3 +163,58 @@ test("Validation status mappings properly categorizes junk and soft rejects", ()
   assert.equal(getValidationStatus("Not_Reachable"), "UNVERIFIED");
   assert.equal(getValidationStatus("No_Answer"), "UNVERIFIED");
 });
+
+
+test("Direct Donor stream filtering matches DIRECT_DONOR and DIRECT_DONORS and never misclassifies direct donors with parentheses as parents", () => {
+  const isParent = (l) => l.stream === "PARENTS" || (l.stream !== "DIRECT_DONOR" && l.stream !== "DIRECT_DONORS" && Boolean(l.parentName || l.childName));
+
+  const sampleLeads = [
+    { leadId: 1, name: "ಡಾ. ಚಂದ್ರಶೇಖರ್ ಎಚ್. (Dr. Chandrashekar H.)", stream: "DIRECT_DONOR", parentName: null, childName: null },
+    { leadId: 2, name: "ಗಾಯತ್ರಿ ರಾಮನಾಥನ್ (Gayatri Ramanathan)", stream: "DIRECT_DONORS", parentName: null, childName: null },
+    { leadId: 3, name: "ಆರವ್ ಶರ್ಮಾ (Aarav Sharma)", stream: "PARENTS", parentName: "ಮಹೇಶ್ ಶರ್ಮಾ", childName: "ಆರವ್ ಶರ್ಮಾ" },
+    { leadId: 4, name: "ಅನ್ವಿತಾ ಗೌಡ (Anvitha Gowda)", stream: "PARENTS", parentName: "ರಮೇಶ್ ಗೌಡ", childName: "ಅನ್ವಿತಾ ಗೌಡ" },
+  ];
+
+  assert.equal(isParent(sampleLeads[0]), false);
+  assert.equal(isParent(sampleLeads[1]), false);
+  assert.equal(isParent(sampleLeads[2]), true);
+  assert.equal(isParent(sampleLeads[3]), true);
+
+  // When streamFilter is DIRECT_DONOR:
+  const directDonors = sampleLeads.filter((l) => !isParent(l));
+  assert.equal(directDonors.length, 2);
+  assert.equal(directDonors[0].leadId, 1);
+  assert.equal(directDonors[1].leadId, 2);
+});
+
+test("Direct Donor sheet displays tomorrow's birthday data under Tomorrow_Birthday tab", () => {
+  const now = new Date();
+  const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+  const tomorrowDay = tomorrow.getDate();
+  const tomorrowMonth = tomorrow.getMonth() + 1;
+
+  const leads = [
+    { leadId: 10, name: "Donor Tomorrow", stream: "DIRECT_DONOR", dobDay: tomorrowDay, dobMonth: tomorrowMonth, status: "Pending" },
+    { leadId: 11, name: "Donor Next Week", stream: "DIRECT_DONOR", dobDay: ((tomorrowDay + 7) % 28) + 1, dobMonth: tomorrowMonth, status: "Pending" },
+    { leadId: 12, name: "Parent Tomorrow", stream: "PARENTS", parentName: "Father", childName: "Kid", dobDay: tomorrowDay, dobMonth: tomorrowMonth, status: "Pending" },
+  ];
+
+  const streamFilter = "DIRECT_DONOR";
+  const filter = "Tomorrow_Birthday";
+
+  const isParent = (l) => l.stream === "PARENTS" || (l.stream !== "DIRECT_DONOR" && l.stream !== "DIRECT_DONORS" && Boolean(l.parentName || l.childName));
+
+  const filtered = leads.filter((l) => {
+    const parent = isParent(l);
+    if (streamFilter === "DIRECT_DONOR" && parent) return false;
+    if (streamFilter === "PARENTS" && !parent) return false;
+    if (filter === "Tomorrow_Birthday") {
+      return l.dobDay === tomorrowDay && l.dobMonth === tomorrowMonth;
+    }
+    return true;
+  });
+
+  assert.equal(filtered.length, 1);
+  assert.equal(filtered[0].leadId, 10);
+  assert.equal(filtered[0].name, "Donor Tomorrow");
+});

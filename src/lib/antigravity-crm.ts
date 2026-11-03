@@ -256,7 +256,7 @@ export async function ensureTelecallersAndSeedData(forceCheck = false) {
           phone: `${don.phone.slice(0, 8)}${String(round).padStart(2, "0")}`,
           dobDay: d.day,
           dobMonth: d.month,
-          stream: "DIRECT_DONORS",
+          stream: "DIRECT_DONOR",
           assignedCallerId: assigned,
           status: "Pending",
           validationStatus: "UNVERIFIED",
@@ -313,7 +313,7 @@ export async function distributeTomorrowBirthdayLeads(mode: "balanced" | "round_
     .from(agLeads)
     .where(
       and(
-        or(eq(agLeads.stream, "DIRECT_DONOR"), isNull(agLeads.stream)),
+        or(eq(agLeads.stream, "DIRECT_DONOR"), eq(agLeads.stream, "DIRECT_DONORS"), isNull(agLeads.stream)),
         eq(agLeads.dobDay, targetDay),
         eq(agLeads.dobMonth, targetMonth),
         isNull(agLeads.assignedCallerId),
@@ -588,7 +588,7 @@ export async function getAssignedLeads(callerId?: string | null, limit = 10000, 
 
   // Auto-resolve childName, parentName, and stream for existing leads
   return rawLeads.map((l) => {
-    const isParent = l.stream === "PARENTS" || Boolean(l.parentName || l.childName);
+    const isParent = l.stream === "PARENTS" || (l.stream !== "DIRECT_DONOR" && l.stream !== "DIRECT_DONORS" && Boolean(l.parentName || l.childName));
     let childName = l.childName?.trim() || null;
     let parentName = l.parentName?.trim() || null;
 
@@ -636,9 +636,9 @@ export async function getAssignedLeads(callerId?: string | null, limit = 10000, 
 
     return {
       ...l,
-      stream: isParent ? "PARENTS" : l.stream,
-      childName: isParent ? childName : l.childName,
-      parentName: isParent ? parentName : l.parentName,
+      stream: isParent ? "PARENTS" : "DIRECT_DONOR",
+      childName: isParent ? childName : null,
+      parentName: isParent ? parentName : null,
     };
   });
 }
@@ -2211,7 +2211,7 @@ export async function distributeDualStreamBalanced(options?: {
   const donorLeads = await db
     .select({ leadId: agLeads.leadId })
     .from(agLeads)
-    .where(and(or(eq(agLeads.stream, "DIRECT_DONOR"), isNull(agLeads.stream)), baseCondition))
+    .where(and(or(eq(agLeads.stream, "DIRECT_DONOR"), eq(agLeads.stream, "DIRECT_DONORS"), isNull(agLeads.stream)), baseCondition))
     .orderBy(...orderClauses);
 
   // 3. Interleave Pool A and Pool B 50/50: [P0, D0, P1, D1, P2, D2...]
