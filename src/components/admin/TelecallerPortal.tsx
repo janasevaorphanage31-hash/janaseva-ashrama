@@ -127,11 +127,40 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
   const [filter, setFilter] = useState<string>("Pending");
   const [streamFilter, setStreamFilter] = useState<"ALL" | "PARENTS" | "DIRECT_DONOR">("ALL");
   const [dateSortOrder, setDateSortOrder] = useState<
-    "birthday_upcoming" | "birthday_calendar" | "date_newest" | "date_oldest" | "callback_earliest"
+    | "birthday_upcoming"
+    | "birthday_calendar"
+    | "date_newest"
+    | "date_oldest"
+    | "callback_earliest"
+    | "interested_first"
+    | "donated_amount_desc"
+    | "name_asc"
   >("birthday_upcoming");
   const [portalPage, setPortalPage] = useState<number>(1);
   const portalPageSize = 40;
   const [toastMsg, setToastMsg] = useState("");
+
+  // Contact & Secondary WhatsApp Editor state (Case 1)
+  const [editContactLead, setEditContactLead] = useState<any | null>(null);
+  const [editCallingPhone, setEditCallingPhone] = useState("");
+  const [editWhatsAppPhone, setEditWhatsAppPhone] = useState("");
+  const [savingContact, setSavingContact] = useState(false);
+
+  // Disposition Reason Quick-Picker state
+  const [selectedDispositionReason, setSelectedDispositionReason] = useState<string>("");
+
+  // 1-Tap Disposition Confirmation state (prevents accidental advance & mobile scroll jump)
+  const [pendingConfirmation, setPendingConfirmation] = useState<{
+    leadId: number;
+    leadName: string;
+    phone: string;
+    disposition: string;
+    labelKannada: string;
+    icon: string;
+    notes?: string;
+    callbackTime?: string;
+    reason?: string;
+  } | null>(null);
 
   // Notes & Callback Modal state
   const [activeNotesLead, setActiveNotesLead] = useState<any | null>(null);
@@ -358,11 +387,22 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
               }
             }
             const savedLastLead = localStorage.getItem(`janaseva_last_lead_${cid}`);
+            let restored = false;
             if (savedLastLead) {
               const num = Number(savedLastLead);
-              if (num && leadItems.some((l: any) => l.leadId === num)) {
+              const targetLead = leadItems.find((l: any) => l.leadId === num);
+              if (targetLead && (!targetLead.status || targetLead.status === "Pending")) {
                 setActiveFocusLeadId(num);
                 const sIdx = leadItems.findIndex((l: any) => l.leadId === num);
+                if (sIdx !== -1) setFocusIndex(sIdx);
+                restored = true;
+              }
+            }
+            if (!restored) {
+              const firstPending = leadItems.find((l: any) => !l.status || l.status === "Pending");
+              if (firstPending) {
+                setActiveFocusLeadId(firstPending.leadId);
+                const sIdx = leadItems.findIndex((l: any) => l.leadId === firstPending.leadId);
                 if (sIdx !== -1) setFocusIndex(sIdx);
               }
             }
@@ -384,7 +424,16 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
       const res = await fetch("/api/v1/telecaller/daily-logs");
       const data = await res.json();
       if (data.success) {
-        setDailyLogs(data.logs || []);
+        const fetchedLogs = data.logs || [];
+        setDailyLogs(fetchedLogs);
+        // Persistently sync dialed IDs from server database so today's dial history is durable across logouts & tabs
+        setSessionContactedIds((prev) => {
+          const next = new Set(prev);
+          fetchedLogs.forEach((lg: any) => {
+            if (lg.leadId) next.add(lg.leadId);
+          });
+          return next;
+        });
       }
     } catch (e) {
       console.error("Failed to load daily logs:", e);
@@ -819,7 +868,13 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
   };
 
   // Update Call Disposition
-  const handleUpdateDisposition = async (leadId: number, disposition: string, notes?: string, callbackTime?: string) => {
+  const handleUpdateDisposition = async (
+    leadId: number,
+    disposition: string,
+    notes?: string,
+    callbackTime?: string,
+    reason?: string
+  ) => {
     if (!callerProfile) return;
 
     // Track talk duration if call timer was active
@@ -835,11 +890,14 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
           : currentLead.name)
       : `Lead #${leadId}`;
 
+    const effectiveReason = reason || selectedDispositionReason || undefined;
+
     const payload = {
       callerId: callerProfile.callerId,
       disposition,
       notes: effectiveNotes,
       callbackTime: callbackTime || undefined,
+      dispositionReason: effectiveReason,
     };
 
     try {
@@ -851,7 +909,17 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
       const data = await res.json();
       if (data.success) {
         const nowIso = new Date().toISOString();
-        const updatedList = leads.map((l) => (l.leadId === leadId ? { ...l, status: disposition, lastContactedAt: nowIso, notes: effectiveNotes } : l));
+        const updatedList = leads.map((l) =>
+          l.leadId === leadId
+            ? {
+                ...l,
+                status: disposition,
+                lastContactedAt: nowIso,
+                notes: effectiveNotes,
+                dispositionReason: effectiveReason || l.dispositionReason,
+              }
+            : l
+        );
         setLeads(updatedList);
         computeStats(updatedList, callerProfile.callerId);
 
@@ -863,6 +931,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
           telecallerId: callerProfile.callerId,
           note: effectiveNotes,
         });
+        setSelectedDispositionReason("");
       }
     } catch (err: any) {
       // Offline fallback: Queue locally so caller work is never lost on 4G drops
@@ -875,7 +944,17 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
         actionLabel: disposition,
       });
       const nowIso = new Date().toISOString();
-      const updatedList = leads.map((l) => (l.leadId === leadId ? { ...l, status: disposition, lastContactedAt: nowIso, notes: effectiveNotes } : l));
+      const updatedList = leads.map((l) =>
+        l.leadId === leadId
+          ? {
+              ...l,
+              status: disposition,
+              lastContactedAt: nowIso,
+              notes: effectiveNotes,
+              dispositionReason: effectiveReason || l.dispositionReason,
+            }
+          : l
+      );
       setLeads(updatedList);
       computeStats(updatedList, callerProfile.callerId);
 
@@ -887,6 +966,78 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
         telecallerId: callerProfile.callerId,
         note: `Queued offline · Will auto-sync when network reconnects`,
       });
+      setSelectedDispositionReason("");
+    }
+  };
+
+  // 1-Tap Undo: Revert attended lead to Pending
+  const handleRevertToPending = async (leadId: number) => {
+    if (!callerProfile) return;
+    try {
+      const res = await fetch(`/api/v1/leads/${leadId}/log`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "revert_to_pending",
+          disposition: "Pending",
+          callerId: callerProfile.callerId,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        const updatedList = leads.map((l) =>
+          l.leadId === leadId
+            ? { ...l, status: "Pending", validationStatus: "UNVERIFIED", rescheduleDate: null }
+            : l
+        );
+        setLeads(updatedList);
+        computeStats(updatedList, callerProfile.callerId);
+        setSessionContactedIds((prev) => {
+          const next = new Set(prev);
+          next.delete(leadId);
+          return next;
+        });
+        showToast(`↩️ ಲೀಡ್ #${leadId} ಅನ್ನು ಯಶಸ್ವಿಯಾಗಿ ಬಾಕಿ ಪಟ್ಟಿಗೆ (Pending) ಮರಳಿಸಲಾಗಿದೆ.`);
+        setActiveFocusLeadId(leadId);
+      } else {
+        alert(data.error || "Failed to revert lead to Pending.");
+      }
+    } catch (e: any) {
+      alert("Error reverting lead: " + e.message);
+    }
+  };
+
+  // Save Contact Updates (Add/Change Calling Phone or Alternate WhatsApp Number - Case 1)
+  const handleSaveContactUpdate = async (leadId: number, updates: { phone?: string; whatsappPhone?: string | null }) => {
+    if (!callerProfile) return;
+    try {
+      setSavingContact(true);
+      const res = await fetch(`/api/v1/leads/${leadId}/log`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "update_contact",
+          callerId: callerProfile.callerId,
+          ...updates,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        const updatedList = leads.map((l) =>
+          l.leadId === leadId
+            ? { ...l, ...updates }
+            : l
+        );
+        setLeads(updatedList);
+        showToast(`✅ ಸಂಪರ್ಕ ಸಂಖ್ಯೆಗಳನ್ನು ಯಶಸ್ವಿಯಾಗಿ ಉಳಿಸಲಾಗಿದೆ (Numbers updated).`);
+        setEditContactLead(null);
+      } else {
+        alert(data.error || "Failed to update contact.");
+      }
+    } catch (e: any) {
+      alert("Error updating contact: " + e.message);
+    } finally {
+      setSavingContact(false);
     }
   };
 
@@ -991,7 +1142,8 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
       void handleUpdateDisposition(lead.leadId, "Contacted", "Auto-marked attended on QR share");
     }
 
-    const phoneInfo = parseCustomerPhone(lead.phone);
+    const targetPhone = lead.whatsappPhone || lead.phone;
+    const phoneInfo = parseCustomerPhone(targetPhone);
     try {
       await navigator.clipboard.writeText(phoneInfo.waNumber);
     } catch {}
@@ -1058,7 +1210,8 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
     setCurrentlyDialedLeadId(lead.leadId);
     persistContactedLead(callerProfile.callerId, lead.leadId);
     setWaPacingSeconds(12);
-    const phoneInfo = parseCustomerPhone(lead.phone);
+    const targetPhone = lead.whatsappPhone || lead.phone;
+    const phoneInfo = parseCustomerPhone(targetPhone);
     const amount = customAmount || selectedSevaAmount || 1500;
     const siteOrigin = typeof window !== "undefined" ? window.location.origin : "https://janasevaashrama.org";
 
@@ -1284,7 +1437,13 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
   };
 
   // Focus Mode Disposition with Auto-Advance (Prevents skipping and duplicate bounce)
-  const handleFocusDisposition = async (leadId: number, disposition: string, notes?: string, callbackTime?: string) => {
+  const handleFocusDisposition = async (
+    leadId: number,
+    disposition: string,
+    notes?: string,
+    callbackTime?: string,
+    reason?: string
+  ) => {
     if (callerProfile) {
       persistContactedLead(callerProfile.callerId, leadId);
     }
@@ -1295,15 +1454,18 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
     let nextLeadId: number | null = null;
 
     if (filter === "Pending") {
-      // In "Pending" filter, updating status removes current lead from the list.
-      // The subsequent lead naturally slides into currentIdx position!
-      if (currentIdx + 1 < filteredLeads.length) {
-        nextLeadId = filteredLeads[currentIdx + 1].leadId;
-      } else if (currentIdx > 0) {
-        nextLeadId = filteredLeads[currentIdx - 1].leadId;
+      // Find remaining pending leads excluding the one currently being marked
+      const remainingPending = filteredLeads.filter(
+        (l) => l.leadId !== leadId && (!l.status || l.status === "Pending")
+      );
+      if (remainingPending.length > 0) {
+        const afterCurrent = remainingPending.find((l) => {
+          const idx = filteredLeads.findIndex((fl) => fl.leadId === l.leadId);
+          return idx > currentIdx;
+        });
+        nextLeadId = afterCurrent ? afterCurrent.leadId : remainingPending[0].leadId;
       }
     } else {
-      // In "ALL" or other views where the lead remains in the list, advance to next pending lead
       const nextPending = filteredLeads.slice(currentIdx + 1).find((l) => !l.status || l.status === "Pending");
       if (nextPending) {
         nextLeadId = nextPending.leadId;
@@ -1312,7 +1474,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
       }
     }
 
-    await handleUpdateDisposition(leadId, disposition, notes, callbackTime);
+    await handleUpdateDisposition(leadId, disposition, notes, callbackTime, reason);
 
     if (nextLeadId) {
       setActiveFocusLeadId(nextLeadId);
@@ -1346,10 +1508,15 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
     const currentIdx = filteredLeads.findIndex((l) => l.leadId === currentLeadId);
     let nextLeadId: number | null = null;
     if (filter === "Pending") {
-      if (currentIdx + 1 < filteredLeads.length) {
-        nextLeadId = filteredLeads[currentIdx + 1].leadId;
-      } else if (currentIdx > 0) {
-        nextLeadId = filteredLeads[currentIdx - 1].leadId;
+      const remainingPending = filteredLeads.filter(
+        (l) => l.leadId !== currentLeadId && (!l.status || l.status === "Pending")
+      );
+      if (remainingPending.length > 0) {
+        const afterCurrent = remainingPending.find((l) => {
+          const idx = filteredLeads.findIndex((fl) => fl.leadId === l.leadId);
+          return idx > currentIdx;
+        });
+        nextLeadId = afterCurrent ? afterCurrent.leadId : remainingPending[0].leadId;
       }
     } else {
       const nextPending = filteredLeads.slice(currentIdx + 1).find((l) => !l.status || l.status === "Pending");
@@ -1469,10 +1636,15 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
     const tomorrowDay = tomorrow.getDate();
     const tomorrowMonth = tomorrow.getMonth() + 1;
 
+    const t2 = new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000);
+    const t2Day = t2.getDate();
+    const t2Month = t2.getMonth() + 1;
+
     let pending = 0;
     let attended = 0;
     let birthdays = 0;
     let tomorrowBirthdays = 0;
+    let t2Birthdays = 0;
     let interested = 0;
     let reschedule = 0;
     let donated = 0;
@@ -1497,6 +1669,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
 
       if (l.dobDay === curDay && l.dobMonth === curMonth) birthdays++;
       if (l.dobDay === tomorrowDay && l.dobMonth === tomorrowMonth) tomorrowBirthdays++;
+      if (l.dobDay === t2Day && l.dobMonth === t2Month) t2Birthdays++;
       if (l.status === "Interested") interested++;
       if (l.status === "Reschedule") reschedule++;
       if (l.status === "Donated") donated++;
@@ -1515,6 +1688,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
       attended,
       birthdays,
       tomorrowBirthdays,
+      t2Birthdays,
       interested,
       reschedule,
       donated,
@@ -1552,47 +1726,78 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
     const tomorrowDay = tomorrow.getDate();
     const tomorrowMonth = tomorrow.getMonth() + 1;
 
+    const t2 = new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000);
+    const t2Day = t2.getDate();
+    const t2Month = t2.getMonth() + 1;
+
     // Strict phone number deduplication across cards to eliminate repetition within the filtered stream
     const seenPhones = new Set<string>();
+
+    const q = searchQuery.toLowerCase().trim();
+    const qDigits = q.replace(/\D/g, "");
+    const isSearching = q.length > 0;
 
     const base = leads.filter((l) => {
       // 1. Stream filter (Parents vs Direct Donors)
       const isParent = l.stream === "PARENTS" || Boolean(l.parentName || l.childName);
-      if (streamFilter === "PARENTS" && !isParent) return false;
-      if (streamFilter === "DIRECT_DONOR" && isParent) return false;
+      if (!isSearching) {
+        if (streamFilter === "PARENTS" && !isParent) return false;
+        if (streamFilter === "DIRECT_DONOR" && isParent) return false;
+      }
 
       // 2. Strict deduplication by normalized 10-digit mobile number
       const cleanPhone = (l.phone || "").replace(/\D/g, "").slice(-10);
-      if (cleanPhone) {
+      if (cleanPhone && !isSearching) {
         if (seenPhones.has(cleanPhone)) return false;
         seenPhones.add(cleanPhone);
       }
 
+      // 3. Tab Status Filtering (Bypassed when actively searching so all matching records can be found)
       let matchesFilter = true;
-      if (filter === "Tomorrow_Birthday") {
-        matchesFilter = l.dobDay === tomorrowDay && l.dobMonth === tomorrowMonth;
-      } else if (filter === "Today_Birthday") {
-        matchesFilter = l.dobDay === curDay && l.dobMonth === curMonth;
-      } else if (filter === "Pending") {
-        // Pending leads: Keep freshly contacted leads from the current session visible so cards never vanish under the caller!
-        matchesFilter = !l.status || l.status === "Pending" || sessionContactedIds.has(l.leadId);
-      } else if (filter === "Attended") {
-        matchesFilter = (l.status && l.status !== "Pending") || sessionContactedIds.has(l.leadId);
-      } else if (filter === "Reschedule") {
-        matchesFilter = l.status === "Reschedule";
-      } else if (filter !== "ALL") {
-        matchesFilter = l.status === filter;
+      if (!isSearching) {
+        if (filter === "T2_Birthday") {
+          matchesFilter = l.dobDay === t2Day && l.dobMonth === t2Month;
+        } else if (filter === "Tomorrow_Birthday") {
+          matchesFilter = l.dobDay === tomorrowDay && l.dobMonth === tomorrowMonth;
+        } else if (filter === "Today_Birthday") {
+          matchesFilter = l.dobDay === curDay && l.dobMonth === curMonth;
+        } else if (filter === "Pending") {
+          matchesFilter = !l.status || l.status === "Pending";
+        } else if (filter === "Interested") {
+          matchesFilter = l.status === "Interested";
+        } else if (filter === "Donated") {
+          matchesFilter = l.status === "Donated";
+        } else if (filter === "Attended") {
+          matchesFilter = Boolean(l.status && l.status !== "Pending");
+        } else if (filter === "Reschedule") {
+          matchesFilter = l.status === "Reschedule";
+        } else if (filter !== "ALL") {
+          matchesFilter = l.status === filter;
+        }
       }
 
-      const q = searchQuery.toLowerCase().trim();
-      const matchesSearch =
-        !q ||
+      if (!isSearching) return matchesFilter;
+
+      // 4. Smart Multi-Field & Digit-Normalized Search (Searches Calling Phone, WhatsApp Phone, Names, Reasons & Notes)
+      const phoneDigits = (l.phone || "").replace(/\D/g, "");
+      const waDigits = (l.whatsappPhone || "").replace(/\D/g, "");
+
+      const matchesPhone = qDigits.length >= 3 && (
+        phoneDigits.includes(qDigits) ||
+        waDigits.includes(qDigits) ||
+        (l.phone && l.phone.toLowerCase().includes(q)) ||
+        (l.whatsappPhone && l.whatsappPhone.toLowerCase().includes(q))
+      );
+
+      const matchesText =
         (l.name && l.name.toLowerCase().includes(q)) ||
-        (l.phone && l.phone.includes(q)) ||
         (l.parentName && l.parentName.toLowerCase().includes(q)) ||
         (l.childName && l.childName.toLowerCase().includes(q)) ||
+        (l.dispositionReason && l.dispositionReason.toLowerCase().includes(q)) ||
+        (l.notes && l.notes.toLowerCase().includes(q)) ||
         String(l.leadId).includes(q);
-      return matchesFilter && matchesSearch;
+
+      return matchesPhone || matchesText;
     });
 
     // Helper for exact upcoming birthday distance in calendar days (100% leap-year & month rollover safe)
@@ -1613,6 +1818,32 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
     const nowMs = Date.now();
 
     return [...base].sort((a, b) => {
+      // 0. SPECIFIC SORT: Interested Leads First
+      if (dateSortOrder === "interested_first") {
+        const aInt = a.status === "Interested";
+        const bInt = b.status === "Interested";
+        if (aInt && !bInt) return -1;
+        if (!aInt && bInt) return 1;
+        return a.leadId - b.leadId;
+      }
+
+      // 0b. SPECIFIC SORT: Donated Highest Amount First
+      if (dateSortOrder === "donated_amount_desc") {
+        const aDon = a.status === "Donated";
+        const bDon = b.status === "Donated";
+        if (aDon && !bDon) return -1;
+        if (!aDon && bDon) return 1;
+        const amtA = a.amount || a.lifetimeDonations || 0;
+        const amtB = b.amount || b.lifetimeDonations || 0;
+        return amtB - amtA || a.leadId - b.leadId;
+      }
+
+      // 0c. SPECIFIC SORT: Alphabetical A -> Z
+      if (dateSortOrder === "name_asc") {
+        const nameA = (a.name || a.parentName || "").toLowerCase();
+        const nameB = (b.name || b.parentName || "").toLowerCase();
+        return nameA.localeCompare(nameB) || a.leadId - b.leadId;
+      }
       // 1. SPECIFIC SORT: Urgent Callbacks First
       if (dateSortOrder === "callback_earliest") {
         const aResched = a.status === "Reschedule";
@@ -1698,16 +1929,26 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
         const saved = localStorage.getItem(`janaseva_last_lead_${callerProfile.callerId}`);
         if (saved) {
           const num = Number(saved);
-          const sIdx = filteredLeads.findIndex((l) => l.leadId === num);
-          if (sIdx !== -1) {
+          const targetLead = filteredLeads.find((l) => l.leadId === num);
+          if (targetLead && (!targetLead.status || targetLead.status === "Pending")) {
             setActiveFocusLeadId(num);
-            setFocusIndex(sIdx);
-            return;
+            const sIdx = filteredLeads.findIndex((l) => l.leadId === num);
+            if (sIdx !== -1) {
+              setFocusIndex(sIdx);
+              return;
+            }
           }
         }
       } catch {}
     }
-    setFocusIndex(0);
+    const firstPending = filteredLeads.find((l) => !l.status || l.status === "Pending");
+    if (firstPending) {
+      setActiveFocusLeadId(firstPending.leadId);
+      const sIdx = filteredLeads.findIndex((l) => l.leadId === firstPending.leadId);
+      setFocusIndex(sIdx !== -1 ? sIdx : 0);
+    } else {
+      setFocusIndex(0);
+    }
   }, [filter, searchQuery, dateSortOrder, streamFilter, filteredLeads, activeFocusLeadId, callerProfile]);
 
   const totalPortalPages = Math.max(1, Math.ceil(filteredLeads.length / portalPageSize));
@@ -1814,7 +2055,8 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
         {toastMsg && (
           <div className="mb-4 rounded-2xl bg-teal-950 text-gold px-4 py-3 shadow-lg border border-amber-400/40 text-xs font-bold flex items-center justify-between">
             <span>{toastMsg}</span>
-            <button onClick={() => setToastMsg("")} className="text-white hover:text-gold ml-2 cursor-pointer">✕</button>
+            <button
+                  type="button" onClick={() => setToastMsg("")} className="text-white hover:text-gold ml-2 cursor-pointer">✕</button>
           </div>
         )}
 
@@ -1946,7 +2188,8 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
       {toastMsg && (
         <div className="rounded-2xl bg-teal-950 text-gold px-4 py-3 shadow-lg border border-amber-400/40 text-xs font-bold flex items-center justify-between sticky top-3 z-30 animate-fadeIn">
           <span>{toastMsg}</span>
-          <button onClick={() => setToastMsg("")} className="text-white hover:text-gold ml-2 cursor-pointer">✕</button>
+          <button
+                  type="button" onClick={() => setToastMsg("")} className="text-white hover:text-gold ml-2 cursor-pointer">✕</button>
         </div>
       )}
 
@@ -2264,25 +2507,44 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
             </div>
 
             {/* Search Input */}
-            <div className="relative w-full sm:w-64">
+            <div className="relative w-full sm:w-72">
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search donor name or phone..."
-                className="w-full rounded-xl border border-teal-900/20 px-3 py-2 text-xs bg-white text-teal-950 focus:ring-2 focus:ring-amber-400 outline-none"
+                placeholder="Search name, phone, WA no or reason..."
+                className="w-full rounded-xl border border-teal-900/20 px-3 py-2 text-xs bg-white text-teal-950 focus:ring-2 focus:ring-amber-400 outline-none pr-8"
               />
               {searchQuery && (
                 <button
                   type="button"
                   onClick={() => setSearchQuery("")}
-                  className="absolute right-2.5 top-2 text-teal-950/40 hover:text-teal-950 text-xs cursor-pointer"
+                  className="absolute right-2.5 top-2 text-teal-950/40 hover:text-teal-950 text-xs cursor-pointer font-bold"
                 >
                   ✕
                 </button>
               )}
             </div>
           </div>
+
+          {/* Global Search Status Banner */}
+          {searchQuery.trim() && (
+            <div className="flex items-center justify-between gap-2 p-2.5 px-3 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-950 text-xs font-bold">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span>🔍</span>
+                <span>
+                  &quot;<strong>{searchQuery}</strong>&quot; ಹುಡುಕಾಟ ಫಲಿತಾಂಶಗಳು: <strong>{filteredLeads.length}</strong> ಲೀಡ್‌ಗಳು ಕಂಡುಬಂದಿವೆ (ಎಲ್ಲಾ ಟ್ಯಾಬ್‌ಗಳಿಂದ)
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="text-xs font-black underline cursor-pointer hover:text-amber-800 shrink-0"
+              >
+                ✕ ಹುಡುಕಾಟ ತೆರವುಗೊಳಿಸಿ (Clear Search)
+              </button>
+            </div>
+          )}
 
           {/* Dual-Stream Switcher Bar: Parents Sheet vs Direct Donors Sheet */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-sand/35 p-2 rounded-2xl border border-teal-900/10">
@@ -2350,10 +2612,13 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
             <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar flex-1">
               {[
                 { id: "Pending", label: "⏳ ಕರೆ ಬಾಕಿ (To Call)", count: counts.pending, color: "text-amber-900 bg-amber-100" },
+                { id: "Interested", label: "⭐ ಆಸಕ್ತರು (Interested)", count: counts.interested, color: "text-amber-900 bg-amber-200" },
+                { id: "Donated", label: "💰 ದೇಣಿಗೆ (Donated)", count: counts.donated, color: "text-emerald-900 bg-emerald-200" },
+                { id: "T2_Birthday", label: "🌟 ನಾಡಿದ್ದು ಹುಟ್ಟುಹಬ್ಬ (T+2)", count: counts.t2Birthdays, color: "text-indigo-900 bg-indigo-100" },
                 { id: "Tomorrow_Birthday", label: "🎂 ನಾಳೆ ಹುಟ್ಟುಹಬ್ಬ (Tomorrow)", count: counts.tomorrowBirthdays, color: "text-purple-900 bg-purple-100" },
                 { id: "Today_Birthday", label: "🎉 ಇಂದು ಹುಟ್ಟುಹಬ್ಬ (Today)", count: counts.birthdays, color: "text-pink-900 bg-pink-100" },
                 { id: "Reschedule", label: "📅 ಮತ್ತೆ ಕರೆ (Callbacks)", count: counts.reschedule, color: "text-blue-900 bg-blue-100" },
-                { id: "Attended", label: "✓ ಮುಗಿದಿದೆ (Completed)", count: counts.attended, color: "text-emerald-900 bg-emerald-100" },
+                { id: "Attended", label: "✓ ಮುಗಿದಿದೆ (Completed)", count: counts.attended, color: "text-teal-900 bg-teal-100" },
                 { id: "ALL", label: "📋 ಎಲ್ಲವೂ (All)", count: counts.all, color: "text-teal-950/60 bg-white" },
               ].map((st) => {
                 const isActive = filter === st.id;
@@ -2397,10 +2662,13 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                 className="bg-transparent text-xs font-bold text-teal-950 outline-none cursor-pointer"
               >
                 <option value="birthday_upcoming">🎂 ಇಂದು &amp; ಮುಂಬರುವ ಹುಟ್ಟುಹಬ್ಬ (Upcoming First)</option>
-                <option value="birthday_calendar">🎂 ಕ್ಯಾಲೆಂಡರ್ ದಿನಾಂಕ (Jan 1 → Dec 31)</option>
+                <option value="interested_first">⭐ ಆಸಕ್ತಿ ಹೊಂದಿದವರು ಮೊದಲು (Interested First)</option>
+                <option value="donated_amount_desc">💰 ಗರಿಷ್ಠ ದೇಣಿಗೆ ಮೊದಲು (Highest Donation First)</option>
+                <option value="callback_earliest">⏰ ಮರುಕರೆ ಸಮಯ (Urgent Callbacks First)</option>
+                <option value="name_asc">🔤 ಹೆಸರಿನ ಅಕಾರಾದಿ (Name A → Z)</option>
                 <option value="date_newest">🆕 ಹೊಸ ಲೀಡ್ ಮೊದಲು (Newest Added First)</option>
                 <option value="date_oldest">⏳ ಹಳೆಯ ಲೀಡ್ ಮೊದಲು (Oldest Added First)</option>
-                <option value="callback_earliest">⏰ ಮರುಕರೆ ಸಮಯ (Urgent Callbacks First)</option>
+                <option value="birthday_calendar">🎂 ಕ್ಯಾಲೆಂಡರ್ ದಿನಾಂಕ (Jan 1 → Dec 31)</option>
               </select>
             </div>
           </div>
@@ -2578,8 +2846,12 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                   const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
                   const tomorrowDay = tomorrow.getDate();
                   const tomorrowMonth = tomorrow.getMonth() + 1;
+                  const t2 = new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000);
+                  const t2Day = t2.getDate();
+                  const t2Month = t2.getMonth() + 1;
                   const isTodayBirthday = lead.dobDay === curDay && lead.dobMonth === curMonth;
                   const isTomorrowBirthday = lead.dobDay === tomorrowDay && lead.dobMonth === tomorrowMonth;
+                  const isT2Birthday = lead.dobDay === t2Day && lead.dobMonth === t2Month;
                   const isSelected = lead.leadId === activeFocusLeadId;
                   const isDialing = lead.leadId === currentlyDialedLeadId;
                   const isDialed = sessionContactedIds.has(lead.leadId);
@@ -2604,7 +2876,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                       className={`rounded-2xl p-3 border transition shadow-xs cursor-pointer select-none ${
                         isSelected
                           ? "border-amber-500 ring-2 ring-amber-400/50 bg-amber-50/60 shadow-sm"
-                          : isTodayBirthday || isTomorrowBirthday
+                          : isTodayBirthday || isTomorrowBirthday || isT2Birthday
                           ? "border-purple-300 bg-purple-50/30 hover:border-purple-400"
                           : isAttended
                           ? "border-emerald-500/25 bg-white/80 hover:border-emerald-500/40"
@@ -2645,6 +2917,22 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                             <span className="rounded-full bg-blue-600 text-white px-2 py-0.5 text-[9px] font-black">
                               📅 Callback
                             </span>
+                          ) : lead.status === "Wrong_Number" || lead.status === "Invalid_Number" ? (
+                            <span className="rounded-full bg-rose-600 text-white px-2 py-0.5 text-[9px] font-black">
+                              ❌ Invalid No
+                            </span>
+                          ) : lead.status === "Not_Reachable" ? (
+                            <span className="rounded-full bg-slate-600 text-white px-2 py-0.5 text-[9px] font-black">
+                              📵 Not Reachable
+                            </span>
+                          ) : lead.status === "No_Answer" || lead.status === "Busy" ? (
+                            <span className="rounded-full bg-amber-700 text-white px-2 py-0.5 text-[9px] font-black">
+                              ⏳ Busy / RNR
+                            </span>
+                          ) : lead.status === "Rejected" ? (
+                            <span className="rounded-full bg-zinc-500 text-white px-2 py-0.5 text-[9px] font-black">
+                              ✕ Rejected
+                            </span>
                           ) : isDialing ? (
                             <span className="rounded-full bg-emerald-500 text-white px-2 py-0.5 text-[9px] font-black animate-pulse">
                               📞 Dialing...
@@ -2677,13 +2965,27 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
 
                         {lead.dobDay && lead.dobMonth && (
                           <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${
-                            isTomorrowBirthday
+                            isT2Birthday
+                              ? "bg-indigo-100 text-indigo-900 font-black"
+                              : isTomorrowBirthday
                               ? "bg-purple-100 text-purple-900 font-black animate-pulse"
                               : isTodayBirthday
                               ? "bg-amber-100 text-amber-900 font-black"
                               : "text-teal-950/60"
                           }`}>
-                            🎂 {lead.dobDay}/{lead.dobMonth} {isTomorrowBirthday ? "(Tomorrow)" : (isTodayBirthday ? "(Today)" : "")}
+                            🎂 {lead.dobDay}/{lead.dobMonth} {isT2Birthday ? "(T+2)" : (isTomorrowBirthday ? "(Tomorrow)" : (isTodayBirthday ? "(Today)" : ""))}
+                          </span>
+                        )}
+
+                        {lead.whatsappPhone && (
+                          <span className="font-mono text-[10px] font-bold text-emerald-950 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-300">
+                            🟢 WA: {lead.whatsappPhone}
+                          </span>
+                        )}
+
+                        {lead.dispositionReason && (
+                          <span className="text-[10px] font-bold text-indigo-950 bg-indigo-50 px-1.5 py-0.2 rounded border border-indigo-200">
+                            🏷️ {lead.dispositionReason}
                           </span>
                         )}
 
@@ -2700,12 +3002,27 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                       )}
 
                       {/* Queue Card Bottom Strip: Stamp & Open Card Action */}
-                      <div className="flex items-center justify-between gap-1.5 mt-2 pt-1.5 border-t border-teal-900/5 text-[10px]">
+                      <div className="flex items-center justify-between gap-1.5 mt-2 pt-1.5 border-t border-teal-900/5 text-[10px] flex-wrap">
                         {isAttended ? (
-                          <span className="font-mono font-bold text-emerald-950 bg-emerald-100/90 px-2 py-0.5 rounded-md border border-emerald-300 flex items-center gap-1">
-                            <span>🔖</span>
-                            <span>STAMP: {lead.status?.toUpperCase()}</span>
-                          </span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-mono font-bold text-emerald-950 bg-emerald-100/90 px-2 py-0.5 rounded-md border border-emerald-300 flex items-center gap-1">
+                              <span>🔖</span>
+                              <span>STAMP: {lead.status?.toUpperCase()}</span>
+                            </span>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (confirm(`Revert lead #${lead.leadId} (${lead.name}) back to fresh pending queue?`)) {
+                                  void handleRevertToPending(lead.leadId);
+                                }
+                              }}
+                              className="text-[10px] font-bold text-amber-950 bg-amber-100 hover:bg-amber-200 border border-amber-300 px-2 py-0.5 rounded-md cursor-pointer transition flex items-center gap-1 shadow-2xs"
+                              title="Revert back to Pending"
+                            >
+                              <span>↩️ Revert</span>
+                            </button>
+                          </div>
                         ) : isSelected ? (
                           <span className="font-bold text-amber-950 bg-amber-200 px-2 py-0.5 rounded-md flex items-center gap-1 animate-pulse">
                             <span>📍</span>
@@ -2717,10 +3034,25 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                           </span>
                         )}
 
-                        <span className="font-bold text-teal-900 bg-sand/60 hover:bg-sand px-2 py-0.5 rounded-md flex items-center gap-1 ml-auto">
-                          <span>Open Card</span>
-                          <span>➔</span>
-                        </span>
+                        <div className="flex items-center gap-1.5 ml-auto">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditContactLead(lead);
+                              setEditCallingPhone(lead.phone || "");
+                              setEditWhatsAppPhone(lead.whatsappPhone || "");
+                            }}
+                            className="text-[10px] font-bold text-teal-950 bg-white hover:bg-amber-50 border border-teal-900/15 px-1.5 py-0.5 rounded-md transition cursor-pointer"
+                            title="Edit numbers / Add WhatsApp"
+                          >
+                            ✏️ No.
+                          </button>
+                          <span className="font-bold text-teal-900 bg-sand/60 hover:bg-sand px-2 py-0.5 rounded-md flex items-center gap-1">
+                            <span>Open</span>
+                            <span>➔</span>
+                          </span>
+                        </div>
                       </div>
                     </div>
                   );
@@ -2806,8 +3138,12 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                 const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
                 const tomorrowDay = tomorrow.getDate();
                 const tomorrowMonth = tomorrow.getMonth() + 1;
+                const dayAfter = new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000);
+                const t2Day = dayAfter.getDate();
+                const t2Month = dayAfter.getMonth() + 1;
                 const isTodayBirthday = currentFocusLead.dobDay === curDay && currentFocusLead.dobMonth === curMonth;
                 const isTomorrowBirthday = currentFocusLead.dobDay === tomorrowDay && currentFocusLead.dobMonth === tomorrowMonth;
+                const isT2Birthday = currentFocusLead.dobDay === t2Day && currentFocusLead.dobMonth === t2Month;
                 const isParentLead = currentFocusLead.stream === "PARENTS" || Boolean(currentFocusLead.parentName || currentFocusLead.childName);
                 const phoneInfo = parseCustomerPhone(currentFocusLead.phone);
 
@@ -2848,6 +3184,12 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                             <span>2. Direct Donor Sheet</span>
                           </span>
                         )}
+                        {isT2Birthday && (
+                          <span className="rounded-full bg-indigo-600 text-white px-3 py-1 text-xs font-black uppercase shadow-xs animate-pulse flex items-center gap-1">
+                            <span>🌟</span>
+                            <span>ನಾಡಿದ್ದು ಹುಟ್ಟುಹಬ್ಬ (T+2 Advance Seva)</span>
+                          </span>
+                        )}
                         {isTomorrowBirthday && (
                           <span className="rounded-full bg-purple-600 text-white px-3 py-1 text-xs font-black uppercase shadow-xs animate-pulse flex items-center gap-1">
                             <span>🎂</span>
@@ -2861,9 +3203,24 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                           </span>
                         )}
                         {currentFocusLead.status && currentFocusLead.status !== "Pending" ? (
-                          <span className="rounded-full bg-emerald-100 text-emerald-900 px-2.5 py-0.5 text-xs font-bold border border-emerald-300">
-                            ✓ {currentFocusLead.status}
-                          </span>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="rounded-full bg-emerald-100 text-emerald-900 px-2.5 py-0.5 text-xs font-bold border border-emerald-300">
+                              ✓ {currentFocusLead.status}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (confirm(`Revert lead #${currentFocusLead.leadId} (${currentFocusLead.name}) back to Pending?`)) {
+                                  void handleRevertToPending(currentFocusLead.leadId);
+                                }
+                              }}
+                              className="rounded-full bg-amber-100 hover:bg-amber-200 text-amber-950 border border-amber-300 px-2 py-0.5 text-[10px] font-black transition cursor-pointer shadow-2xs flex items-center gap-1"
+                              title="Accidentally marked? Revert back to Pending queue"
+                            >
+                              <span>↩️ Revert</span>
+                            </button>
+                          </div>
                         ) : (
                           <span className="rounded-full bg-amber-100 text-amber-900 px-2.5 py-0.5 text-xs font-bold border border-amber-300">
                             ⏳ Pending
@@ -2950,13 +3307,27 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                           </div>
                         </div>
 
-                        <button
-                          type="button"
-                          onClick={handleJumpToNextPending}
-                          className="rounded-xl bg-teal-950 hover:bg-teal-900 text-gold px-3 py-1.5 text-xs font-black transition cursor-pointer shadow-xs flex items-center justify-center gap-1.5 self-start sm:self-auto shrink-0"
-                        >
-                          <span>⏭️ Jump to Fresh Lead</span>
-                        </button>
+                        <div className="flex items-center gap-2 self-start sm:self-auto shrink-0 flex-wrap">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (confirm(`Revert lead #${currentFocusLead.leadId} (${currentFocusLead.name}) back to fresh pending queue?`)) {
+                                void handleRevertToPending(currentFocusLead.leadId);
+                              }
+                            }}
+                            className="rounded-xl bg-amber-100 hover:bg-amber-200 text-amber-950 border border-amber-300 px-3 py-1.5 text-xs font-black transition cursor-pointer shadow-xs flex items-center gap-1.5"
+                            title="Undo disposition and restore lead to fresh pending state"
+                          >
+                            <span>↩️ Revert to Pending</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleJumpToNextPending}
+                            className="rounded-xl bg-teal-950 hover:bg-teal-900 text-gold px-3 py-1.5 text-xs font-black transition cursor-pointer shadow-xs flex items-center justify-center gap-1.5"
+                          >
+                            <span>⏭️ Jump to Fresh Lead</span>
+                          </button>
+                        </div>
                       </div>
                     )}
 
@@ -2997,10 +3368,58 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                               </div>
                             </div>
 
-                            <div className="flex items-center gap-2.5 text-xs text-teal-950/80 flex-wrap pt-0.5">
-                              <span className="font-mono text-xs font-bold text-teal-950 bg-white px-2 py-0.5 rounded-lg border border-teal-900/15">
-                                📱 {phoneInfo.display}
+                            <div className="flex items-center gap-2 text-xs text-teal-950/80 flex-wrap pt-0.5">
+                              <span className="font-mono text-xs font-bold text-teal-950 bg-white px-2 py-0.5 rounded-lg border border-teal-900/15 flex items-center gap-1">
+                                <span>📱 Call:</span>
+                                <strong>{phoneInfo.display}</strong>
                               </span>
+
+                              {currentFocusLead.whatsappPhone ? (
+                                <span className="font-mono text-xs font-bold text-emerald-950 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-300 flex items-center gap-1">
+                                  <span>🟢 WA:</span>
+                                  <strong>{currentFocusLead.whatsappPhone}</strong>
+                                </span>
+                              ) : (
+                                <span className="text-[10px] text-teal-950/60 italic bg-sand/40 px-2 py-0.5 rounded-lg border border-teal-900/10">
+                                  WA: Same as Call
+                                </span>
+                              )}
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditContactLead(currentFocusLead);
+                                  setEditCallingPhone(currentFocusLead.phone || "");
+                                  setEditWhatsAppPhone(currentFocusLead.whatsappPhone || "");
+                                }}
+                                className="rounded-lg bg-sand/80 hover:bg-amber-100 text-teal-950 border border-teal-900/20 px-2 py-0.5 text-[11px] font-bold transition cursor-pointer flex items-center gap-1 shadow-2xs"
+                                title="Add alternate WhatsApp number or update calling number"
+                              >
+                                <span>✏️</span>
+                                <span>Add / Change Numbers</span>
+                              </button>
+
+                              {currentFocusLead.whatsappPhone && (
+                                <a
+                                  href={`tel:${currentFocusLead.whatsappPhone.replace(/\D/g, "")}`}
+                                  onClick={() => {
+                                    setCurrentlyDialedLeadId(currentFocusLead.leadId);
+                                    setCallStartTime(Date.now());
+                                  }}
+                                  className="rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-950 border border-emerald-300 px-2 py-0.5 text-[11px] font-bold transition cursor-pointer flex items-center gap-1 shadow-2xs"
+                                  title="Dial alternate WhatsApp number directly"
+                                >
+                                  <span>📞 Dial WA No.</span>
+                                </a>
+                              )}
+
+                              {currentFocusLead.dispositionReason && (
+                                <span className="rounded-lg bg-indigo-50 text-indigo-950 px-2 py-0.5 text-[11px] font-bold border border-indigo-200 flex items-center gap-1">
+                                  <span>🏷️ Reason:</span>
+                                  <span>{currentFocusLead.dispositionReason}</span>
+                                </span>
+                              )}
+
                               {currentFocusLead.lastContactedAt && (Date.now() - new Date(currentFocusLead.lastContactedAt).getTime()) < 4 * 60 * 60 * 1000 && (
                                 <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-lg border border-amber-300 flex items-center gap-1">
                                   <span>⚠️</span>
@@ -3025,10 +3444,58 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                             <h2 className="font-display text-xl sm:text-2xl font-black text-teal-950">
                               {currentFocusLead.name}
                             </h2>
-                            <div className="flex items-center gap-2.5 text-xs text-teal-950/70 flex-wrap pt-0.5">
-                              <span className="font-mono text-sm font-bold text-teal-950 bg-white px-2 py-0.5 rounded-lg border border-teal-900/15">
-                                📱 {phoneInfo.display}
+                            <div className="flex items-center gap-2 text-xs text-teal-950/80 flex-wrap pt-0.5">
+                              <span className="font-mono text-xs font-bold text-teal-950 bg-white px-2 py-0.5 rounded-lg border border-teal-900/15 flex items-center gap-1">
+                                <span>📱 Call:</span>
+                                <strong>{phoneInfo.display}</strong>
                               </span>
+
+                              {currentFocusLead.whatsappPhone ? (
+                                <span className="font-mono text-xs font-bold text-emerald-950 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-300 flex items-center gap-1">
+                                  <span>🟢 WA:</span>
+                                  <strong>{currentFocusLead.whatsappPhone}</strong>
+                                </span>
+                              ) : (
+                                <span className="text-[10px] text-teal-950/60 italic bg-sand/40 px-2 py-0.5 rounded-lg border border-teal-900/10">
+                                  WA: Same as Call
+                                </span>
+                              )}
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditContactLead(currentFocusLead);
+                                  setEditCallingPhone(currentFocusLead.phone || "");
+                                  setEditWhatsAppPhone(currentFocusLead.whatsappPhone || "");
+                                }}
+                                className="rounded-lg bg-sand/80 hover:bg-amber-100 text-teal-950 border border-teal-900/20 px-2 py-0.5 text-[11px] font-bold transition cursor-pointer flex items-center gap-1 shadow-2xs"
+                                title="Add alternate WhatsApp number or update calling number"
+                              >
+                                <span>✏️</span>
+                                <span>Add / Change Numbers</span>
+                              </button>
+
+                              {currentFocusLead.whatsappPhone && (
+                                <a
+                                  href={`tel:${currentFocusLead.whatsappPhone.replace(/\D/g, "")}`}
+                                  onClick={() => {
+                                    setCurrentlyDialedLeadId(currentFocusLead.leadId);
+                                    setCallStartTime(Date.now());
+                                  }}
+                                  className="rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-950 border border-emerald-300 px-2 py-0.5 text-[11px] font-bold transition cursor-pointer flex items-center gap-1 shadow-2xs"
+                                  title="Dial alternate WhatsApp number directly"
+                                >
+                                  <span>📞 Dial WA No.</span>
+                                </a>
+                              )}
+
+                              {currentFocusLead.dispositionReason && (
+                                <span className="rounded-lg bg-indigo-50 text-indigo-950 px-2 py-0.5 text-[11px] font-bold border border-indigo-200 flex items-center gap-1">
+                                  <span>🏷️ Reason:</span>
+                                  <span>{currentFocusLead.dispositionReason}</span>
+                                </span>
+                              )}
+
                               {currentFocusLead.lastContactedAt && (Date.now() - new Date(currentFocusLead.lastContactedAt).getTime()) < 4 * 60 * 60 * 1000 && (
                                 <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-lg border border-amber-300 flex items-center gap-1">
                                   <span>⚠️</span>
@@ -3381,6 +3848,55 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                       </div>
                     </div>
 
+                    {/* ── CROSS-CALLER DISPOSITION REASON CHIPS (Visible to all callers) ── */}
+                    <div className="rounded-2xl border border-teal-900/15 bg-sand/30 p-2.5 space-y-1.5 text-xs">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-black uppercase text-teal-950 tracking-wider flex items-center gap-1">
+                          <span>🏷️</span>
+                          <span>ಕಾರಣ ಆಯ್ಕೆಮಾಡಿ (Select Reason - Stored in Database for All Telecallers):</span>
+                        </span>
+                        {selectedDispositionReason && (
+                          <button
+                            type="button"
+                            onClick={() => setSelectedDispositionReason("")}
+                            className="text-[10px] text-rose-700 font-bold hover:underline cursor-pointer"
+                          >
+                            ✕ Clear Reason
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="flex flex-wrap gap-1.5">
+                        {[
+                          "💰 ಆರ್ಥಿಕ ಸಮಸ್ಯೆ (Financial constraint)",
+                          "🏛️ ಆಶ್ರಮಕ್ಕೆ ನೇರ ಭೇಟಿ (Ashrama visit)",
+                          "🏢 ಆಫೀಸ್‌ನಲ್ಲಿ ಬಿಜಿ (Busy in office)",
+                          "⏳ ಸಂಜೆ ಕರೆ (Evening call)",
+                          "📲 UPI QR ಕಳುಹಿಸಲಾಗಿದೆ (UPI QR sent)",
+                          "📜 80G ರಶೀದಿ ಬೇಕು (Needs 80G)",
+                          "👵 ವೃದ್ಧಾಶ್ರಮ ಸೇವೆ ಆಸಕ್ತಿ (Old age care)",
+                          "❌ ತಪ್ಪು ನಂಬರ್ / ಸ್ವಿಚ್ಡ್ ಆಫ್ (Wrong No)",
+                          "🙏 ಈ ತಿಂಗಳು ಸಾಧ್ಯವಿಲ್ಲ (Not this month)",
+                        ].map((reasonItem) => {
+                          const isPicked = selectedDispositionReason === reasonItem;
+                          return (
+                            <button
+                              key={reasonItem}
+                              type="button"
+                              onClick={() => setSelectedDispositionReason(isPicked ? "" : reasonItem)}
+                              className={`text-[10px] px-2 py-1 rounded-lg font-bold transition cursor-pointer border ${
+                                isPicked
+                                  ? "bg-teal-950 text-gold border-teal-950 shadow-xs ring-2 ring-amber-400"
+                                  : "bg-white text-teal-950 border-teal-900/15 hover:bg-amber-50"
+                              }`}
+                            >
+                              {isPicked ? "✓ " : ""}{reasonItem}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
                     {/* ── 1-TAP DISPOSITION & AUTO-ADVANCE STRIP ── */}
                     <div className="space-y-2 pt-2 border-t border-teal-900/10">
                       <div className="flex items-center justify-between">
@@ -3392,106 +3908,209 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                         </span>
                       </div>
 
-                      <div className="grid grid-cols-2 sm:grid-cols-6 gap-2">
-                        {/* WARM / INTERESTED */}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const note = cardNoteInput.trim() || undefined;
-                            void handleFocusDisposition(currentFocusLead.leadId, "Interested", note);
-                            setCardNoteInput("");
-                          }}
-                          className="min-h-[54px] p-2 rounded-2xl bg-amber-500 hover:bg-amber-600 active:scale-95 text-teal-950 font-black shadow-xs transition flex flex-col items-center justify-center cursor-pointer text-center"
-                        >
-                          <span className="flex items-center gap-1 text-sm font-black">
-                            <span>👍</span>
-                            <span>ಒಪ್ಪಿದ್ದಾರೆ</span>
-                          </span>
-                          <span className="text-[10px] text-teal-950/80 font-bold uppercase tracking-wider">Interested</span>
-                        </button>
+                      <div className="space-y-2">
+                        {/* Row 1: Primary Conversions & Reschedules */}
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                          {/* 1. WARM / INTERESTED */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPendingConfirmation({
+                                leadId: currentFocusLead.leadId,
+                                leadName: currentFocusLead.name,
+                                phone: currentFocusLead.phone,
+                                disposition: "Interested",
+                                labelKannada: "ಒಪ್ಪಿದ್ದಾರೆ (Interested)",
+                                icon: "👍",
+                                notes: cardNoteInput.trim() || undefined,
+                                reason: selectedDispositionReason || undefined,
+                              });
+                            }}
+                            className="min-h-[56px] p-2 rounded-2xl bg-amber-500 hover:bg-amber-600 active:scale-95 text-teal-950 font-black shadow-xs transition flex flex-col items-center justify-center cursor-pointer text-center border border-amber-600/30"
+                          >
+                            <span className="flex items-center gap-1 text-sm font-black">
+                              <span>👍</span>
+                              <span>ಒಪ್ಪಿದ್ದಾರೆ</span>
+                            </span>
+                            <span className="text-[10px] text-teal-950/80 font-bold uppercase tracking-wider">Interested</span>
+                          </button>
 
-                        {/* BUSY / NO ANSWER */}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const twoHoursLater = new Date(Date.now() + 2 * 3600 * 1000).toISOString();
-                            const note = cardNoteInput.trim() || "Auto-rescheduled +2 hours";
-                            void handleFocusDisposition(currentFocusLead.leadId, "No_Answer", note, twoHoursLater);
-                            setCardNoteInput("");
-                          }}
-                          className="min-h-[54px] p-2 rounded-2xl bg-slate-700 hover:bg-slate-800 active:scale-95 text-white font-black shadow-xs transition flex flex-col items-center justify-center cursor-pointer text-center"
-                        >
-                          <span className="flex items-center gap-1 text-sm font-black">
-                            <span>⏳</span>
-                            <span>ಬಿಜಿಯಿದ್ದಾರೆ</span>
-                          </span>
-                          <span className="text-[10px] text-slate-300 font-bold uppercase tracking-wider">Busy / +2h</span>
-                        </button>
+                          {/* 2. BUSY / +2h */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const twoHoursLater = new Date(Date.now() + 2 * 3600 * 1000).toISOString();
+                              setPendingConfirmation({
+                                leadId: currentFocusLead.leadId,
+                                leadName: currentFocusLead.name,
+                                phone: currentFocusLead.phone,
+                                disposition: "Busy",
+                                labelKannada: "ಬಿಜಿಯಿದ್ದಾರೆ (Busy / +2h)",
+                                icon: "⏳",
+                                notes: cardNoteInput.trim() || "Auto-rescheduled +2 hours",
+                                callbackTime: twoHoursLater,
+                                reason: selectedDispositionReason || "🏢 ಆಫೀಸ್‌ನಲ್ಲಿ ಬಿಜಿ (Busy in office)",
+                              });
+                            }}
+                            className="min-h-[56px] p-2 rounded-2xl bg-slate-700 hover:bg-slate-800 active:scale-95 text-white font-black shadow-xs transition flex flex-col items-center justify-center cursor-pointer text-center border border-slate-600"
+                          >
+                            <span className="flex items-center gap-1 text-sm font-black">
+                              <span>⏳</span>
+                              <span>ಬಿಜಿಯಿದ್ದಾರೆ</span>
+                            </span>
+                            <span className="text-[10px] text-slate-300 font-bold uppercase tracking-wider">Busy / +2h</span>
+                          </button>
 
-                        {/* CALLBACK LATER */}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setActiveNotesLead(currentFocusLead);
-                            setNotesText(cardNoteInput.trim() || currentFocusLead.notes || "");
-                            setCallbackDateTime("");
-                          }}
-                          className="min-h-[54px] p-2 rounded-2xl bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-black shadow-xs transition flex flex-col items-center justify-center cursor-pointer text-center"
-                        >
-                          <span className="flex items-center gap-1 text-sm font-black">
-                            <span>📅</span>
-                            <span>ನಂತರ ಕರೆ</span>
-                          </span>
-                          <span className="text-[10px] text-blue-200 font-bold uppercase tracking-wider">Callback</span>
-                        </button>
+                          {/* 3. CALLBACK LATER */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setActiveNotesLead(currentFocusLead);
+                              setNotesText(cardNoteInput.trim() || currentFocusLead.notes || "");
+                              setCallbackDateTime("");
+                            }}
+                            className="min-h-[56px] p-2 rounded-2xl bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-black shadow-xs transition flex flex-col items-center justify-center cursor-pointer text-center border border-blue-500"
+                          >
+                            <span className="flex items-center gap-1 text-sm font-black">
+                              <span>📅</span>
+                              <span>ನಂತರ ಕರೆ</span>
+                            </span>
+                            <span className="text-[10px] text-blue-200 font-bold uppercase tracking-wider">Callback</span>
+                          </button>
 
-                        {/* PAID / LOG DONATION */}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setActiveDonationLead(currentFocusLead);
-                            setLoggedDonationAmount(selectedSevaAmount || (isTodayBirthday ? 2500 : 1500));
-                            setLoggedDonationUtr("");
-                          }}
-                          className="min-h-[54px] p-2 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-black shadow-xs transition flex flex-col items-center justify-center cursor-pointer text-center"
-                        >
-                          <span className="flex items-center gap-1 text-sm font-black">
-                            <span>🎉</span>
-                            <span>ಹಣ ನೀಡಿದ್ದಾರೆ</span>
-                          </span>
-                          <span className="text-[10px] text-emerald-200 font-bold uppercase tracking-wider">Log Paid ₹</span>
-                        </button>
+                          {/* 4. PAID / LOG DONATION */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setActiveDonationLead(currentFocusLead);
+                              setLoggedDonationAmount(selectedSevaAmount || (isTodayBirthday ? 2500 : 1500));
+                              setLoggedDonationUtr("");
+                            }}
+                            className="min-h-[56px] p-2 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-black shadow-xs transition flex flex-col items-center justify-center cursor-pointer text-center border border-emerald-500"
+                          >
+                            <span className="flex items-center gap-1 text-sm font-black">
+                              <span>🎉</span>
+                              <span>ಹಣ ನೀಡಿದ್ದಾರೆ</span>
+                            </span>
+                            <span className="text-[10px] text-emerald-200 font-bold uppercase tracking-wider">Log Paid ₹</span>
+                          </button>
+                        </div>
 
-                        {/* NOT INTERESTED */}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const note = cardNoteInput.trim() || undefined;
-                            void handleFocusDisposition(currentFocusLead.leadId, "Rejected", note);
-                            setCardNoteInput("");
-                          }}
-                          className="min-h-[54px] p-2 rounded-2xl bg-rose-50 hover:bg-rose-100 active:scale-95 text-rose-800 border border-rose-200 font-black transition flex flex-col items-center justify-center cursor-pointer text-center"
-                        >
-                          <span className="flex items-center gap-1 text-sm font-black">
-                            <span>✕</span>
-                            <span>ಆಸಕ್ತಿಯಿಲ್ಲ</span>
-                          </span>
-                          <span className="text-[10px] text-rose-600 font-bold uppercase tracking-wider">Reject</span>
-                        </button>
+                        {/* Row 2: Floor Telephony Outcomes & Call Exceptions */}
+                        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                          {/* 5. RINGING NO ANSWER (RNR) */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPendingConfirmation({
+                                leadId: currentFocusLead.leadId,
+                                leadName: currentFocusLead.name,
+                                phone: currentFocusLead.phone,
+                                disposition: "No_Answer",
+                                labelKannada: "ರಿಂಗ್ ಆಗಿ ಕಟ್ (RNR)",
+                                icon: "📳",
+                                notes: cardNoteInput.trim() || "Ringing but no answer",
+                                reason: selectedDispositionReason || "📳 ರಿಂಗ್ ಆಗಿದೆ, ಉತ್ತರಿಸಿಲ್ಲ",
+                              });
+                            }}
+                            className="min-h-[52px] p-2 rounded-2xl bg-amber-700/90 hover:bg-amber-800 active:scale-95 text-white font-black shadow-xs transition flex flex-col items-center justify-center cursor-pointer text-center border border-amber-600"
+                            title="Ringing no answer / call disconnected"
+                          >
+                            <span className="flex items-center gap-1 text-xs font-black">
+                              <span>📳</span>
+                              <span>ರಿಂಗ್ ಆಗಿ ಕಟ್</span>
+                            </span>
+                            <span className="text-[9px] text-amber-200 font-bold uppercase tracking-wider">RNR / No Ans</span>
+                          </button>
 
-                        {/* SKIP LEAD */}
-                        <button
-                          type="button"
-                          onClick={() => handleSkipFocusLead(currentFocusLead)}
-                          className="min-h-[54px] p-2 rounded-2xl bg-amber-50 hover:bg-amber-100 active:scale-95 text-amber-900 border border-amber-300 font-black transition flex flex-col items-center justify-center cursor-pointer text-center"
-                          title="Skip to next number without repeating today"
-                        >
-                          <span className="flex items-center gap-1 text-sm font-black">
-                            <span>⏭️</span>
-                            <span>ದಾಟಿಸಿ</span>
-                          </span>
-                          <span className="text-[10px] text-amber-700 font-bold uppercase tracking-wider">Skip Card</span>
-                        </button>
+                          {/* 6. CALL NOT GOING / NOT REACHABLE / SWITCHED OFF */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPendingConfirmation({
+                                leadId: currentFocusLead.leadId,
+                                leadName: currentFocusLead.name,
+                                phone: currentFocusLead.phone,
+                                disposition: "Not_Reachable",
+                                labelKannada: "ಸಂಪರ್ಕವಿಲ್ಲ / ಆಫ್",
+                                icon: "📵",
+                                notes: cardNoteInput.trim() || "Call not connecting or switched off",
+                                reason: selectedDispositionReason || "📵 ಸಂಪರ್ಕಕ್ಕೆ ಸಿಗುತ್ತಿಲ್ಲ / ಸ್ವಿಚ್ಡ್ ಆಫ್",
+                              });
+                            }}
+                            className="min-h-[52px] p-2 rounded-2xl bg-indigo-900 hover:bg-indigo-950 active:scale-95 text-white font-black shadow-xs transition flex flex-col items-center justify-center cursor-pointer text-center border border-indigo-700"
+                            title="Call not connecting, network out of reach, or phone switched off"
+                          >
+                            <span className="flex items-center gap-1 text-xs font-black">
+                              <span>📵</span>
+                              <span>ಸಂಪರ್ಕವಿಲ್ಲ</span>
+                            </span>
+                            <span className="text-[9px] text-indigo-200 font-bold uppercase tracking-wider">Not Reachable</span>
+                          </button>
+
+                          {/* 7. WRONG / INVALID NUMBER */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPendingConfirmation({
+                                leadId: currentFocusLead.leadId,
+                                leadName: currentFocusLead.name,
+                                phone: currentFocusLead.phone,
+                                disposition: "Wrong_Number",
+                                labelKannada: "ತಪ್ಪು ನಂಬರ್ (Invalid)",
+                                icon: "❌",
+                                notes: cardNoteInput.trim() || "Wrong number reported by telecaller",
+                                reason: selectedDispositionReason || "❌ ತಪ್ಪು ನಂಬರ್ / ಅಮಾನ್ಯ ಸಂಖ್ಯೆ",
+                              });
+                            }}
+                            className="min-h-[52px] p-2 rounded-2xl bg-rose-700 hover:bg-rose-800 active:scale-95 text-white font-black shadow-xs transition flex flex-col items-center justify-center cursor-pointer text-center border border-rose-600"
+                            title="Wrong number or invalid telephone number"
+                          >
+                            <span className="flex items-center gap-1 text-xs font-black">
+                              <span>❌</span>
+                              <span>ತಪ್ಪು ನಂಬರ್</span>
+                            </span>
+                            <span className="text-[9px] text-rose-200 font-bold uppercase tracking-wider">Invalid No</span>
+                          </button>
+
+                          {/* 8. REJECT / NOT INTERESTED */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPendingConfirmation({
+                                leadId: currentFocusLead.leadId,
+                                leadName: currentFocusLead.name,
+                                phone: currentFocusLead.phone,
+                                disposition: "Rejected",
+                                labelKannada: "ಆಸಕ್ತಿಯಿಲ್ಲ (Reject)",
+                                icon: "🛑",
+                                notes: cardNoteInput.trim() || undefined,
+                                reason: selectedDispositionReason || undefined,
+                              });
+                            }}
+                            className="min-h-[52px] p-2 rounded-2xl bg-rose-50 hover:bg-rose-100 active:scale-95 text-rose-900 border border-rose-300 font-black transition flex flex-col items-center justify-center cursor-pointer text-center"
+                          >
+                            <span className="flex items-center gap-1 text-xs font-black">
+                              <span>🛑</span>
+                              <span>ಆಸಕ್ತಿಯಿಲ್ಲ</span>
+                            </span>
+                            <span className="text-[9px] text-rose-600 font-bold uppercase tracking-wider">Reject</span>
+                          </button>
+
+                          {/* 9. SKIP CARD */}
+                          <button
+                            type="button"
+                            onClick={() => handleSkipFocusLead(currentFocusLead)}
+                            className="min-h-[52px] p-2 rounded-2xl bg-sand hover:bg-amber-100 active:scale-95 text-amber-950 border border-amber-300 font-black transition flex flex-col items-center justify-center cursor-pointer text-center"
+                            title="Skip to next number without repeating today"
+                          >
+                            <span className="flex items-center gap-1 text-xs font-black">
+                              <span>⏭️</span>
+                              <span>ದಾಟಿಸಿ</span>
+                            </span>
+                            <span className="text-[9px] text-amber-800 font-bold uppercase tracking-wider">Skip Card</span>
+                          </button>
+                        </div>
                       </div>
                     </div>
 
@@ -4010,14 +4629,29 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                           </span>
 
                           {!eodStatus?.isSubmitted && (
-                            <button
-                              type="button"
-                              onClick={() => handleOpenEdit(log)}
-                              className="text-xs font-bold text-teal-950 bg-sand/60 hover:bg-sand border border-teal-900/15 px-2 py-0.5 rounded-lg cursor-pointer"
-                              title="Edit this entry"
-                            >
-                              ✏️ Edit
-                            </button>
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEdit(log)}
+                                className="text-xs font-bold text-teal-950 bg-sand/60 hover:bg-sand border border-teal-900/15 px-2 py-0.5 rounded-lg cursor-pointer"
+                                title="Edit this entry"
+                              >
+                                ✏️ Edit
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (confirm(`Revert lead #${log.leadId} (${log.leadName}) back to fresh pending queue?`)) {
+                                    void handleRevertToPending(log.leadId);
+                                    void loadDailyLogs();
+                                  }
+                                }}
+                                className="text-xs font-bold text-amber-950 bg-amber-100 hover:bg-amber-200 border border-amber-300 px-2 py-0.5 rounded-lg cursor-pointer"
+                                title="Revert to Pending"
+                              >
+                                ↩️ Revert
+                              </button>
+                            </div>
                           )}
                         </div>
                       </div>
@@ -4466,6 +5100,222 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                 className="text-[11px] font-black bg-amber-400 hover:bg-amber-300 text-teal-950 px-2.5 py-1 rounded-lg cursor-pointer transition shadow-2xs"
               >
                 OK / Continue ▶
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── EDIT CONTACT NUMBERS & ALTERNATE WHATSAPP MODAL (CASE 1) ── */}
+      {editContactLead && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn"
+          onClick={() => setEditContactLead(null)}
+        >
+          <div
+            className="relative w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl border border-teal-900/15 text-teal-950 space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-teal-900/10 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-2xl">📱</span>
+                <div>
+                  <h3 className="font-display font-black text-base text-teal-950">
+                    ಸಂಪರ್ಕ ಸಂಖ್ಯೆ ಬದಲಾವಣೆ (Edit Phone Numbers)
+                  </h3>
+                  <p className="text-[11px] text-teal-950/60 font-mono">
+                    Lead #{editContactLead.leadId}: {editContactLead.name}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditContactLead(null)}
+                className="text-teal-950/60 hover:text-teal-950 text-sm font-bold p-1 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="bg-amber-50 border border-amber-300 rounded-2xl p-3 text-xs text-amber-950 space-y-1">
+              <p className="font-bold">💡 Case 1: WhatsApp ಬೇರೆ ಸಂಖ್ಯೆ ಹೊಂದಿದ್ದರೆ (Alternate WhatsApp)</p>
+              <p className="text-[11px] text-amber-900 leading-relaxed">
+                ದಾನಿಗಳು ಕರೆ ಸಂಖ್ಯೆಗಿಂತ ಬೇರೆ WhatsApp ಸಂಖ್ಯೆ ಬಳಸುತ್ತಿದ್ದರೆ ಇಲ್ಲಿ ನಮೂದಿಸಿ. 1-ಕ್ಲಿಕ್ WhatsApp ಮತ್ತು QR ಸಂದೇಶಗಳು ಸ್ವಯಂಚಾಲಿತವಾಗಿ ಆ ಸಂಖ್ಯೆಗೆ ತಲುಪುತ್ತವೆ.
+              </p>
+            </div>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!editCallingPhone.trim()) {
+                  alert("Calling phone number cannot be empty.");
+                  return;
+                }
+                void handleSaveContactUpdate(editContactLead.leadId, {
+                  phone: editCallingPhone.trim(),
+                  whatsappPhone: editWhatsAppPhone.trim() || null,
+                });
+              }}
+              className="space-y-3"
+            >
+              <div>
+                <label className="block text-xs font-bold text-teal-950 mb-1">
+                  📞 Calling Phone Number (ಕರೆ ಮಾಡುವ ಸಂಖ್ಯೆ):
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editCallingPhone}
+                  onChange={(e) => setEditCallingPhone(e.target.value)}
+                  placeholder="e.g. 9845012345"
+                  className="w-full rounded-xl border border-teal-900/20 px-3 py-2 text-xs font-mono font-bold text-teal-950 bg-white focus:ring-2 focus:ring-amber-400 outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-teal-950 mb-1">
+                  🟢 Alternate WhatsApp Number (WhatsApp ಬೇರೆ ಸಂಖ್ಯೆ - ಐಚ್ಛಿಕ):
+                </label>
+                <input
+                  type="text"
+                  value={editWhatsAppPhone}
+                  onChange={(e) => setEditWhatsAppPhone(e.target.value)}
+                  placeholder="e.g. 9880011223 (ಖಾಲಿ ಬಿಟ್ಟರೆ ಕರೆ ಸಂಖ್ಯೆಯೇ ಬಳಸಲಾಗುತ್ತದೆ)"
+                  className="w-full rounded-xl border border-teal-900/20 px-3 py-2 text-xs font-mono font-bold text-teal-950 bg-white focus:ring-2 focus:ring-emerald-400 outline-none"
+                />
+                <p className="text-[10px] text-teal-950/60 mt-1">
+                  Leave blank if WhatsApp is on the same calling number.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 pt-2 border-t border-teal-900/10">
+                <button
+                  type="button"
+                  onClick={() => setEditContactLead(null)}
+                  className="py-2.5 px-3 rounded-xl border border-teal-900/20 text-xs font-bold text-teal-950 hover:bg-cream transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingContact || !editCallingPhone.trim()}
+                  className="py-2.5 px-3 rounded-xl bg-teal-950 hover:bg-teal-900 active:scale-95 text-gold font-black text-xs shadow-md transition cursor-pointer disabled:opacity-50"
+                >
+                  {savingContact ? "Saving..." : "💾 Save Numbers"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── 1-TAP DISPOSITION CONFIRMATION MODAL (Prevents accidental clicks & mobile scroll jumping) ── */}
+      {pendingConfirmation && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-teal-950/70 backdrop-blur-xs animate-in fade-in duration-150">
+          <div
+            className="w-full max-w-md bg-white rounded-3xl shadow-2xl border-2 border-teal-900/20 p-5 space-y-4 animate-in zoom-in-95 duration-150"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="confirm-dialog-title"
+          >
+            {/* Header */}
+            <div className="flex items-start justify-between gap-3 border-b border-teal-900/10 pb-3">
+              <div className="flex items-center gap-2.5">
+                <span className="text-3xl p-2 rounded-2xl bg-amber-100 border border-amber-300 shadow-2xs">
+                  {pendingConfirmation.icon}
+                </span>
+                <div>
+                  <h3 id="confirm-dialog-title" className="font-display font-black text-base text-teal-950">
+                    ಖಚಿತಪಡಿಸಿ (Confirm Action)
+                  </h3>
+                  <p className="text-xs text-teal-950/70 font-semibold">
+                    ಫಲಿತಾಂಶ ದಾಖಲಿಸಿ ಮುಂದಿನ ಸಂಖ್ಯೆಗೆ ಹೋಗಿ
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPendingConfirmation(null)}
+                className="text-teal-950/50 hover:text-teal-950 text-lg font-bold p-1 cursor-pointer"
+                title="Cancel"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Lead & Disposition Details Card */}
+            <div className="rounded-2xl bg-sand/30 border border-teal-900/15 p-3.5 space-y-2 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-teal-950/60 uppercase">ದಾನಿ / ವ್ಯಕ್ತಿ (Lead):</span>
+                <span className="font-black text-teal-950 text-sm">
+                  {pendingConfirmation.leadName} (#{pendingConfirmation.leadId})
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-teal-950/60 uppercase">ಸಂಪರ್ಕ ಸಂಖ್ಯೆ (Phone):</span>
+                <span className="font-mono font-bold text-teal-950">
+                  +91 {pendingConfirmation.phone}
+                </span>
+              </div>
+              <div className="flex items-center justify-between pt-1 border-t border-teal-900/10">
+                <span className="text-[11px] font-bold text-teal-950/60 uppercase">ಆಯ್ಕೆಮಾಡಿದ ಫಲಿತಾಂಶ:</span>
+                <span className="inline-flex items-center gap-1 font-black text-amber-900 bg-amber-100 px-2.5 py-1 rounded-xl text-xs border border-amber-300">
+                  <span>{pendingConfirmation.icon}</span>
+                  <span>{pendingConfirmation.labelKannada}</span>
+                </span>
+              </div>
+              {pendingConfirmation.reason && (
+                <div className="flex items-center justify-between pt-1 border-t border-teal-900/10">
+                  <span className="text-[11px] font-bold text-teal-950/60 uppercase">ಕಾರಣ (Reason):</span>
+                  <span className="font-bold text-teal-950 text-[11px]">
+                    {pendingConfirmation.reason}
+                  </span>
+                </div>
+              )}
+              {pendingConfirmation.notes && (
+                <div className="pt-1 border-t border-teal-900/10 text-[11px]">
+                  <span className="font-bold text-teal-950/60 uppercase block">ಟಿಪ್ಪಣಿ (Note):</span>
+                  <p className="font-semibold text-teal-950 italic mt-0.5 bg-white/70 p-1.5 rounded-lg border border-teal-900/10">
+                    &ldquo;{pendingConfirmation.notes}&rdquo;
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Micro Safe Notice */}
+            <p className="text-[11px] text-teal-950/70 text-center font-medium">
+              ಖಚಿತಪಡಿಸಿದ ನಂತರ, ಈ ಡೇಟಾ ಉಳಿದು ಮುಂದಿನ ದಾನಿಯ ವಿವರಗಳು ತಕ್ಷಣವೇ ತೆರೆಯಲ್ಪಡುತ್ತವೆ.
+            </p>
+
+            {/* Action Buttons: 2 large touch-friendly buttons */}
+            <div className="grid grid-cols-2 gap-3 pt-1">
+              <button
+                type="button"
+                onClick={() => setPendingConfirmation(null)}
+                className="py-3 px-4 rounded-2xl border-2 border-teal-900/20 text-teal-950 font-bold text-xs hover:bg-cream active:scale-98 transition cursor-pointer text-center"
+              >
+                ✕ ರದ್ದು (Cancel)
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  const toConfirm = pendingConfirmation;
+                  setPendingConfirmation(null);
+                  if (!toConfirm) return;
+                  await handleFocusDisposition(
+                    toConfirm.leadId,
+                    toConfirm.disposition,
+                    toConfirm.notes,
+                    toConfirm.callbackTime,
+                    toConfirm.reason
+                  );
+                  setCardNoteInput("");
+                  setSelectedDispositionReason("");
+                }}
+                className="py-3 px-4 rounded-2xl bg-teal-950 hover:bg-teal-900 active:scale-98 text-gold font-black text-xs shadow-lg transition cursor-pointer flex items-center justify-center gap-1.5 text-center ring-2 ring-amber-400"
+              >
+                <span>✅ ಖಚಿತ &amp; ಮುಂದಕ್ಕೆ</span>
+                <span>▶</span>
               </button>
             </div>
           </div>

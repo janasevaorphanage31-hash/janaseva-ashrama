@@ -127,10 +127,10 @@ export async function ensureTelecallersAndSeedData(forceCheck = false) {
       console.error("[CRM] Auto-repair student names notice:", e);
     }
   }
-  const existing = await db.select({ count: sql<number>`count(*)` }).from(agTelecallers);
-  const count = Number(existing[0]?.count || 0);
+  const existingCallers = await db.select({ count: sql<number>`count(*)` }).from(agTelecallers);
+  const callersCount = Number(existingCallers[0]?.count || 0);
 
-  if (count === 0) {
+  if (callersCount === 0) {
     const defaultHash = hashPassword("ashrama@123");
 
     const callersData = [
@@ -149,6 +149,7 @@ export async function ensureTelecallersAndSeedData(forceCheck = false) {
       { id: "TC13", name: "Aishwarya Shenoy", phone: "9845011013", email: "tc13@janaseva.org" },
       { id: "TC14", name: "Raghavendra Joshi", phone: "9845011014", email: "tc14@janaseva.org" },
       { id: "TC15", name: "Meenakshi Iyengar", phone: "9845011015", email: "tc15@janaseva.org" },
+      { id: "TC16", name: "Prashanth Kumar", phone: "8123665335", email: "pkr@janaseva.org" },
       { id: "ADMIN", name: "Ashrama Admin / Supervisor", phone: "9980359595", email: "admin@janaseva.org" },
     ];
 
@@ -163,52 +164,105 @@ export async function ensureTelecallersAndSeedData(forceCheck = false) {
         isActive: true,
       });
     }
+  }
 
-    // Seed realistic birthday leads matching today, tomorrow, and upcoming days
+  // INDEPENDENT CHECK: Ensure ag_leads are always populated in PostgreSQL
+  const existingLeads = await db.select({ count: sql<number>`count(*)` }).from(agLeads);
+  const leadsCount = Number(existingLeads[0]?.count || 0);
+
+  if (leadsCount === 0) {
+    const activeCallers = await db
+      .select({ callerId: agTelecallers.callerId })
+      .from(agTelecallers)
+      .where(eq(agTelecallers.isActive, true))
+      .orderBy(agTelecallers.callerId);
+
+    const callerIds = activeCallers.map((c) => c.callerId);
+    if (callerIds.length === 0) callerIds.push("ADMIN");
+
     const now = new Date();
     const todayDay = now.getDate();
     const todayMonth = now.getMonth() + 1;
 
-    const tomorrow = new Date(now);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrow = new Date(now.getTime() + 24 * 3600 * 1000);
     const tomDay = tomorrow.getDate();
     const tomMonth = tomorrow.getMonth() + 1;
 
-    const dayAfter = new Date(now);
-    dayAfter.setDate(dayAfter.getDate() + 2);
+    const dayAfter = new Date(now.getTime() + 2 * 24 * 3600 * 1000);
     const dayAfterDay = dayAfter.getDate();
     const dayAfterMonth = dayAfter.getMonth() + 1;
 
-    const sampleLeads = [
-      { name: "Vijayendra Patil", phone: "9980123456", day: todayDay, month: todayMonth },
-      { name: "Dr. Rohini Deshmukh", phone: "9886234567", day: todayDay, month: todayMonth },
-      { name: "Srinivas Murthy", phone: "9448345678", day: todayDay, month: todayMonth },
-      { name: "Ashok Sundaram", phone: "9845456789", day: todayDay, month: todayMonth },
-      { name: "Lakshmi Narayana", phone: "9900567890", day: todayDay, month: todayMonth },
-      { name: "Chandrashekar H.", phone: "9741678901", day: tomDay, month: tomMonth },
-      { name: "Gayatri Ramanathan", phone: "9844789012", day: tomDay, month: tomMonth },
-      { name: "Karthik Vaidyanathan", phone: "9611890123", day: tomDay, month: tomMonth },
-      { name: "Nirmala Someshwar", phone: "9945901234", day: tomDay, month: tomMonth },
-      { name: "Praveen Jagadish", phone: "9880012345", day: dayAfterDay, month: dayAfterMonth },
-      { name: "Shashikala Rao", phone: "9845123456", day: dayAfterDay, month: dayAfterMonth },
-      { name: "Harishchandra Shetty", phone: "9731234567", day: dayAfterDay, month: dayAfterMonth },
-      { name: "Bhavani Shankar", phone: "9986345678", day: dayAfterDay, month: dayAfterMonth },
-      { name: "Rajshekar Alva", phone: "9449456789", day: dayAfterDay, month: dayAfterMonth },
-      { name: "Vidya Prasanna", phone: "9901567890", day: dayAfterDay, month: dayAfterMonth },
+    const slotT3 = new Date(now.getTime() + 3 * 24 * 3600 * 1000);
+    const t3Day = slotT3.getDate();
+    const t3Month = slotT3.getMonth() + 1;
+
+    const sampleParents = [
+      { child: "ಆರವ್ ಶರ್ಮಾ (Aarav Sharma)", parent: "ಮಹೇಶ್ ಶರ್ಮಾ (Mahesh Sharma)", phone: "9845012301" },
+      { child: "ಅನ್ವಿತಾ ಗೌಡ (Anvitha Gowda)", parent: "ರಮೇಶ್ ಗೌಡ (Ramesh Gowda)", phone: "9845012302" },
+      { child: "ಧ್ರುವ್ ಕುಮಾರ್ (Dhruv Kumar)", parent: "ಸುರೇಶ್ ಕುಮಾರ್ (Suresh Kumar)", phone: "9845012303" },
+      { child: "ದಿಯಾ ಭಟ್ (Diya Bhat)", parent: "ವೆಂಕಟೇಶ್ ಭಟ್ (Venkatesh Bhat)", phone: "9845012304" },
+      { child: "ಇಶಾನ್ ಹೆಗಡೆ (Ishaan Hegde)", parent: "ಶ್ರೀನಿವಾಸ್ ಹೆಗಡೆ (Srinivas Hegde)", phone: "9845012305" },
+      { child: "ಕಾವ್ಯ ನಾರಾಯಣ್ (Kavya Narayan)", parent: "ನಾರಾಯಣ ಸ್ವಾಮಿ (Narayana Swamy)", phone: "9845012306" },
+      { child: "ಪ್ರಣವ್ ದೇಶ್‌ಮುಖ್ (Pranav Deshmukh)", parent: "ಸಂಜಯ್ ದೇಶ್‌ಮುಖ್ (Sanjay Deshmukh)", phone: "9845012307" },
+      { child: "ಸಾನ್ವಿ ಶೆಟ್ಟಿ (Sanvi Shetty)", parent: "ಪ್ರಭಾಕರ್ ಶೆಟ್ಟಿ (Prabhakar Shetty)", phone: "9845012308" },
+      { child: "ತೇಜಸ್ ರಾವ್ (Tejas Rao)", parent: "ವಿಜಯ್ ರಾವ್ (Vijay Rao)", phone: "9845012309" },
+      { child: "ಅನನ್ಯ ಕುಲಕರ್ಣಿ (Ananya Kulkarni)", parent: "ದತ್ತಾತ್ರೇಯ ಕುಲಕರ್ಣಿ (Dattatreya Kulkarni)", phone: "9845012310" },
     ];
 
-    for (const l of sampleLeads) {
-      await db.insert(agLeads).values({
-        name: l.name,
-        phone: l.phone,
-        dobDay: l.day,
-        dobMonth: l.month,
-        status: "Pending",
-      });
-    }
+    const sampleDonors = [
+      { name: "ಡಾ. ಚಂದ್ರಶೇಖರ್ ಎಚ್. (Dr. Chandrashekar H.)", phone: "9980124001" },
+      { name: "ಗಾಯತ್ರಿ ರಾಮನಾಥನ್ (Gayatri Ramanathan)", phone: "9980124002" },
+      { name: "ಕಾರ್ತಿಕ್ ವೈದ್ಯನಾಥನ್ (Karthik Vaidyanathan)", phone: "9980124003" },
+      { name: "ನಿರ್ಮಲಾ ಸೋಮೇಶ್ವರ್ (Nirmala Someshwar)", phone: "9980124004" },
+      { name: "ಪ್ರವೀಣ್ ಜಗದೀಶ್ (Praveen Jagadish)", phone: "9980124005" },
+      { name: "ಶಶಿಕಲಾ ರಾವ್ (Shashikala Rao)", phone: "9980124006" },
+      { name: "ಹರೀಶ್ಚಂದ್ರ ಶೆಟ್ಟಿ (Harishchandra Shetty)", phone: "9980124007" },
+      { name: "ಭವಾನಿ ಶಂಕರ್ (Bhavani Shankar)", phone: "9980124008" },
+      { name: "ರಾಜಶೇಖರ್ ಅಳ್ವ (Rajshekar Alva)", phone: "9980124009" },
+      { name: "ವಿದ್ಯಾ ಪ್ರಸನ್ನ (Vidya Prasanna)", phone: "9980124010" },
+    ];
 
-    // Automatically trigger initial round-robin routing
-    await distributeBirthdayLeads();
+    const dates = [
+      { day: todayDay, month: todayMonth },
+      { day: tomDay, month: tomMonth },
+      { day: dayAfterDay, month: dayAfterMonth },
+      { day: t3Day, month: t3Month },
+    ];
+
+    let callerIdx = 0;
+    for (let round = 0; round < dates.length; round++) {
+      const d = dates[round];
+      for (const p of sampleParents) {
+        const assigned = callerIds[callerIdx % callerIds.length];
+        callerIdx++;
+        await db.insert(agLeads).values({
+          name: p.child,
+          parentName: p.parent,
+          childName: p.child,
+          phone: `${p.phone.slice(0, 8)}${String(round).padStart(2, "0")}`,
+          dobDay: d.day,
+          dobMonth: d.month,
+          stream: "PARENTS",
+          assignedCallerId: assigned,
+          status: "Pending",
+          validationStatus: "UNVERIFIED",
+        });
+      }
+      for (const don of sampleDonors) {
+        const assigned = callerIds[callerIdx % callerIds.length];
+        callerIdx++;
+        await db.insert(agLeads).values({
+          name: don.name,
+          phone: `${don.phone.slice(0, 8)}${String(round).padStart(2, "0")}`,
+          dobDay: d.day,
+          dobMonth: d.month,
+          stream: "DIRECT_DONORS",
+          assignedCallerId: assigned,
+          status: "Pending",
+          validationStatus: "UNVERIFIED",
+        });
+      }
+    }
   }
   telecallersSeeded = true;
 }
@@ -344,6 +398,125 @@ export async function distributeBirthdayLeads() {
 }
 
 /**
+ * Distribute Day After Tomorrow's Birthday Leads (T+2 Stream) with 50/50 Dual-Stream Balancing:
+ */
+export async function distributeT2BirthdayLeads(mode: "balanced" | "round_robin" = "balanced") {
+  await ensureTelecallersAndSeedData();
+  const now = new Date();
+  const t2 = new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000);
+  const targetDay = t2.getDate();
+  const targetMonth = t2.getMonth() + 1;
+
+  const activeCallers = await db
+    .select({ callerId: agTelecallers.callerId })
+    .from(agTelecallers)
+    .where(eq(agTelecallers.isActive, true))
+    .orderBy(agTelecallers.callerId);
+
+  const K = activeCallers.length;
+  if (K === 0) {
+    return { distributed: 0, parentsDistributed: 0, donorsDistributed: 0, callersCount: 0, perCaller: {} };
+  }
+
+  // 1. Fetch unassigned Pending leads for Parents (Child Birthday Day After Tomorrow)
+  const parentsLeads = await db
+    .select({ leadId: agLeads.leadId })
+    .from(agLeads)
+    .where(
+      and(
+        eq(agLeads.stream, "PARENTS"),
+        eq(agLeads.dobDay, targetDay),
+        eq(agLeads.dobMonth, targetMonth),
+        isNull(agLeads.assignedCallerId),
+        or(eq(agLeads.status, "Pending"), isNull(agLeads.status))
+      )
+    )
+    .orderBy(desc(agLeads.leadId));
+
+  // 2. Fetch unassigned Pending leads for Direct Donors (Donor Birthday Day After Tomorrow)
+  const donorLeads = await db
+    .select({ leadId: agLeads.leadId })
+    .from(agLeads)
+    .where(
+      and(
+        or(eq(agLeads.stream, "DIRECT_DONOR"), eq(agLeads.stream, "DIRECT_DONORS"), isNull(agLeads.stream)),
+        eq(agLeads.dobDay, targetDay),
+        eq(agLeads.dobMonth, targetMonth),
+        isNull(agLeads.assignedCallerId),
+        or(eq(agLeads.status, "Pending"), isNull(agLeads.status))
+      )
+    )
+    .orderBy(desc(agLeads.leadId));
+
+  const perCaller: Record<string, number> = {};
+  for (const c of activeCallers) {
+    perCaller[c.callerId] = 0;
+  }
+
+  const updates: Array<{ leadId: number; callerId: string }> = [];
+
+  const P = parentsLeads.length;
+  if (P > 0) {
+    const qP = Math.floor(P / K);
+    const rP = P % K;
+    let pIdx = 0;
+    for (let i = 0; i < K; i++) {
+      const callerId = activeCallers[i].callerId;
+      const count = qP + (i < rP ? 1 : 0);
+      for (let j = 0; j < count && pIdx < P; j++) {
+        updates.push({ leadId: parentsLeads[pIdx].leadId, callerId });
+        perCaller[callerId] = (perCaller[callerId] || 0) + 1;
+        pIdx++;
+      }
+    }
+  }
+
+  const D = donorLeads.length;
+  if (D > 0) {
+    const qD = Math.floor(D / K);
+    const rD = D % K;
+    let dIdx = 0;
+    for (let i = 0; i < K; i++) {
+      const callerId = activeCallers[i].callerId;
+      const count = qD + (i < rD ? 1 : 0);
+      for (let j = 0; j < count && dIdx < D; j++) {
+        updates.push({ leadId: donorLeads[dIdx].leadId, callerId });
+        perCaller[callerId] = (perCaller[callerId] || 0) + 1;
+        dIdx++;
+      }
+    }
+  }
+
+  if (updates.length > 0) {
+    const callerToLeadIds = new Map<string, number[]>();
+    for (const u of updates) {
+      if (!callerToLeadIds.has(u.callerId)) callerToLeadIds.set(u.callerId, []);
+      callerToLeadIds.get(u.callerId)!.push(u.leadId);
+    }
+
+    for (const [callerId, ids] of callerToLeadIds.entries()) {
+      for (let i = 0; i < ids.length; i += 200) {
+        const chunk = ids.slice(i, i + 200);
+        await db
+          .update(agLeads)
+          .set({ assignedCallerId: callerId, updatedAt: new Date() })
+          .where(inArray(agLeads.leadId, chunk));
+      }
+    }
+  }
+
+  return {
+    distributed: updates.length,
+    parentsDistributed: P,
+    donorsDistributed: D,
+    callersCount: K,
+    perCaller,
+    targetDay,
+    targetMonth,
+  };
+}
+
+/**
  * 3. Fetch Assigned Leads for a Telecaller (or All Leads if callerId === "ALL" or empty)
  * Guaranteed priority ordering:
  * 1. Rescheduled Callbacks due today or earlier (pinned to top)
@@ -361,10 +534,15 @@ export async function getAssignedLeads(callerId?: string | null, limit = 10000, 
   const targetDay = tomorrow.getDate();
   const targetMonth = tomorrow.getMonth() + 1;
 
+  const t2 = new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000);
+  const t2Day = t2.getDate();
+  const t2Month = t2.getMonth() + 1;
+
   const orderClauses = [
     sql`case when ${agLeads.status} = 'Reschedule' and ${agLeads.rescheduleDate} <= ${now} then 0 else 1 end`,
     sql`case when ${agLeads.status} = 'Pending' or ${agLeads.status} is null then 0 else 1 end`,
     sql`case when ${agLeads.dobMonth} = ${targetMonth} and ${agLeads.dobDay} = ${targetDay} then 0 else 1 end`,
+    sql`case when ${agLeads.dobMonth} = ${t2Month} and ${agLeads.dobDay} = ${t2Day} then 0 else 1 end`,
     sql`case when ${agLeads.dobMonth} = ${todayMonth} and ${agLeads.dobDay} = ${todayDay} then 0 else 1 end`,
     agLeads.dobMonth,
     agLeads.dobDay,
@@ -378,6 +556,9 @@ export async function getAssignedLeads(callerId?: string | null, limit = 10000, 
     parentName: agLeads.parentName,
     childName: agLeads.childName,
     phone: agLeads.phone,
+    whatsappPhone: agLeads.whatsappPhone,
+    dispositionReason: agLeads.dispositionReason,
+    preferredLanguage: agLeads.preferredLanguage,
     email: agLeads.email,
     dobDay: agLeads.dobDay,
     dobMonth: agLeads.dobMonth,
@@ -551,7 +732,13 @@ export async function logCallDisposition(
   notes?: string,
   callbackTime?: string | null,
   amount?: number | null,
-  utr?: string | null
+  utr?: string | null,
+  extra?: {
+    whatsappPhone?: string | null;
+    phone?: string | null;
+    dispositionReason?: string | null;
+    preferredLanguage?: string | null;
+  }
 ) {
   await ensureDbSchema();
   // Insert call history log safely without blocking lead status updates
@@ -565,6 +752,7 @@ export async function logCallDisposition(
       leadId,
       callerId,
       disposition,
+      reason: extra?.dispositionReason?.trim() || null,
       notes: notes?.trim() || null,
       callbackTime: validCallbackDate,
       amount: amount ? Math.round(Number(amount)) : null,
@@ -586,22 +774,38 @@ export async function logCallDisposition(
     validationStatus = "SOFT_REJECT";
   } else if (
     disposition === "Wrong_Number" ||
+    disposition === "Invalid_Number" ||
     disposition === "Junk" ||
     disposition === "Invalid"
   ) {
     validationStatus = "JUNK_INVALID";
   }
 
-  // Update lead current status
+  // Update lead current status and contact details
+  const leadUpdates: Record<string, any> = {
+    status: disposition,
+    validationStatus,
+    rescheduleDate: callbackTime ? new Date(callbackTime) : null,
+    lastContactedAt: new Date(),
+    updatedAt: new Date(),
+  };
+
+  if (extra?.whatsappPhone !== undefined) {
+    leadUpdates.whatsappPhone = extra.whatsappPhone?.trim() || null;
+  }
+  if (extra?.phone !== undefined && extra.phone?.trim()) {
+    leadUpdates.phone = extra.phone.trim();
+  }
+  if (extra?.dispositionReason !== undefined) {
+    leadUpdates.dispositionReason = extra.dispositionReason?.trim() || null;
+  }
+  if (extra?.preferredLanguage !== undefined) {
+    leadUpdates.preferredLanguage = extra.preferredLanguage?.trim() || null;
+  }
+
   await db
     .update(agLeads)
-    .set({
-      status: disposition,
-      validationStatus,
-      rescheduleDate: callbackTime ? new Date(callbackTime) : null,
-      lastContactedAt: new Date(),
-      updatedAt: new Date(),
-    })
+    .set(leadUpdates)
     .where(eq(agLeads.leadId, leadId));
 
   return { success: true, validationStatus };
@@ -634,7 +838,8 @@ export async function generateWhatsAppLink(
   const callerName = caller?.name || "Janaseva Ashrama Volunteer";
   const callerWhatsApp = caller?.whatsappNumber ? caller.whatsappNumber.replace(/\D/g, "").slice(-10) : "";
 
-  const customerPhoneInfo = parseCustomerPhone(lead.phone);
+  const effectiveTargetPhone = lead.whatsappPhone || lead.phone;
+  const customerPhoneInfo = parseCustomerPhone(effectiveTargetPhone);
   const formattedPhone = customerPhoneInfo.waNumber;
   const siteUrl = baseUrl || process.env.NEXT_PUBLIC_SITE_URL || "https://www.janasevaorphanage.org";
 
@@ -2870,6 +3075,10 @@ export async function editCallDispositionLog(params: {
   utr?: string | null;
   callbackTime?: string | null;
   paymentMode?: string | null;
+  whatsappPhone?: string | null;
+  phone?: string | null;
+  dispositionReason?: string | null;
+  preferredLanguage?: string | null;
 }) {
   await ensureDbSchema();
 
@@ -2909,7 +3118,8 @@ export async function editCallDispositionLog(params: {
     .update(agCallLogs)
     .set({
       disposition: params.disposition,
-      notes: params.notes?.trim() || null,
+      notes: params.notes !== undefined ? (params.notes?.trim() || null) : existingLog.notes,
+      reason: params.dispositionReason !== undefined ? (params.dispositionReason?.trim() || null) : existingLog.reason,
       callbackTime: validCallbackDate,
       amount: newAmount,
       utr: params.utr?.trim() || null,
@@ -2925,17 +3135,33 @@ export async function editCallDispositionLog(params: {
   if (params.disposition === "Donated") validationStatus = "VALID_DONATED";
   else if (params.disposition === "Interested") validationStatus = "VALID_INTERESTED";
   else if (params.disposition === "Reschedule") validationStatus = "VALID_CALLBACK";
-  else if (params.disposition === "Rejected") validationStatus = "SOFT_REJECT";
-  else if (params.disposition === "Wrong_Number") validationStatus = "JUNK_INVALID";
+  else if (params.disposition === "Rejected" || params.disposition === "Not Interested") validationStatus = "SOFT_REJECT";
+  else if (params.disposition === "Wrong_Number" || params.disposition === "Invalid_Number") validationStatus = "JUNK_INVALID";
+  else if (params.disposition === "Pending") validationStatus = "UNVERIFIED";
+
+  const leadUpdates: Record<string, any> = {
+    status: params.disposition,
+    validationStatus,
+    rescheduleDate: validCallbackDate,
+    updatedAt: new Date(),
+  };
+
+  if (params.whatsappPhone !== undefined) {
+    leadUpdates.whatsappPhone = params.whatsappPhone?.trim() || null;
+  }
+  if (params.phone !== undefined && params.phone?.trim()) {
+    leadUpdates.phone = params.phone.trim();
+  }
+  if (params.dispositionReason !== undefined) {
+    leadUpdates.dispositionReason = params.dispositionReason?.trim() || null;
+  }
+  if (params.preferredLanguage !== undefined) {
+    leadUpdates.preferredLanguage = params.preferredLanguage?.trim() || null;
+  }
 
   await db
     .update(agLeads)
-    .set({
-      status: params.disposition,
-      validationStatus,
-      rescheduleDate: validCallbackDate,
-      updatedAt: new Date(),
-    })
+    .set(leadUpdates)
     .where(eq(agLeads.leadId, params.leadId));
 
   // 3. Update or manage donation record
@@ -3012,6 +3238,96 @@ export async function editCallDispositionLog(params: {
 }
 
 /**
+ * Update lead phone, WhatsApp number, or contact info directly from workspace
+ */
+export async function updateLeadContactInfo(params: {
+  leadId: number;
+  callerId: string;
+  phone?: string | null;
+  whatsappPhone?: string | null;
+  preferredLanguage?: string | null;
+  name?: string | null;
+  parentName?: string | null;
+  childName?: string | null;
+}) {
+  await ensureDbSchema();
+  const updates: Record<string, any> = { updatedAt: new Date() };
+
+  if (params.phone !== undefined && params.phone?.trim()) {
+    updates.phone = params.phone.trim();
+  }
+  if (params.whatsappPhone !== undefined) {
+    updates.whatsappPhone = params.whatsappPhone?.trim() || null;
+  }
+  if (params.preferredLanguage !== undefined) {
+    updates.preferredLanguage = params.preferredLanguage?.trim() || null;
+  }
+  if (params.name !== undefined && params.name?.trim()) {
+    updates.name = params.name.trim();
+  }
+  if (params.parentName !== undefined) {
+    updates.parentName = params.parentName?.trim() || null;
+  }
+  if (params.childName !== undefined) {
+    updates.childName = params.childName?.trim() || null;
+  }
+
+  await db.update(agLeads).set(updates).where(eq(agLeads.leadId, params.leadId));
+  return { success: true, leadId: params.leadId, updates };
+}
+
+/**
+ * 1-Tap Undo / Revert accidental attended lead back to Pending queue
+ */
+export async function revertLeadToPending(leadId: number, callerId: string) {
+  await ensureDbSchema();
+
+  // Reset lead status to Pending and validation to UNVERIFIED
+  await db
+    .update(agLeads)
+    .set({
+      status: "Pending",
+      validationStatus: "UNVERIFIED",
+      rescheduleDate: null,
+      updatedAt: new Date(),
+    })
+    .where(eq(agLeads.leadId, leadId));
+
+  // Mark latest call log as reverted with audit trail
+  const recentLogs = await db
+    .select()
+    .from(agCallLogs)
+    .where(and(eq(agCallLogs.leadId, leadId), eq(agCallLogs.callerId, callerId)))
+    .orderBy(desc(agCallLogs.createdAt))
+    .limit(1);
+
+  if (recentLogs.length > 0) {
+    const existing = recentLogs[0];
+    await db
+      .update(agCallLogs)
+      .set({
+        disposition: "Pending",
+        notes: [existing.notes, "[Reverted to Pending by caller]"].filter(Boolean).join(" "),
+        isEdited: true,
+        editedAt: new Date(),
+      })
+      .where(eq(agCallLogs.logId, existing.logId));
+  }
+
+  // Cancel any pending donation if previously logged
+  await db
+    .update(agDonations)
+    .set({
+      paymentStatus: "cancelled",
+      verificationStatus: "REJECTED",
+      rejectionReason: "Reverted to Pending by telecaller",
+    })
+    .where(and(eq(agDonations.leadId, leadId), eq(agDonations.callerRefId, callerId)));
+
+  return { success: true, message: "Lead successfully reverted to Pending queue." };
+}
+
+/**
  * Get all calls logged by a telecaller today (for shift review and editing).
  */
 export async function getCallerDailyLogs(callerId: string) {
@@ -3025,6 +3341,7 @@ export async function getCallerDailyLogs(callerId: string) {
       leadId: agCallLogs.leadId,
       callerId: agCallLogs.callerId,
       disposition: agCallLogs.disposition,
+      reason: agCallLogs.reason,
       notes: agCallLogs.notes,
       amount: agCallLogs.amount,
       utr: agCallLogs.utr,
@@ -3039,10 +3356,11 @@ export async function getCallerDailyLogs(callerId: string) {
       parentName: agLeads.parentName,
       childName: agLeads.childName,
       phone: agLeads.phone,
+      whatsappPhone: agLeads.whatsappPhone,
       stream: agLeads.stream,
     })
     .from(agCallLogs)
-    .innerJoin(agLeads, eq(agCallLogs.leadId, agLeads.leadId))
+    .leftJoin(agLeads, eq(agCallLogs.leadId, agLeads.leadId))
     .where(
       and(
         eq(agCallLogs.callerId, callerId),

@@ -6,6 +6,7 @@ import { clientIp } from "@/lib/server-utils";
 import {
   getAdminLeaderboard,
   distributeBirthdayLeads,
+  distributeT2BirthdayLeads,
   bulkReassignLeads,
   ensureTelecallersAndSeedData,
   addTelecaller,
@@ -75,6 +76,25 @@ export async function POST(req: Request) {
       return NextResponse.json({
         success: true,
         message: `Distributed ${result.distributed} tomorrow's advance leads (${result.parentsDistributed || 0} Parents + ${result.donorsDistributed || 0} Donors) across ${result.callersCount} active telecallers.`,
+        distributionResult: result,
+        ...updatedLeaderboard,
+      });
+    }
+
+    if (action === "distribute_t2_leads" || action === "distribute_t2_mix") {
+      const result = await distributeT2BirthdayLeads();
+      await writeAudit({
+        actorAdminUserId: session.user.id ?? null,
+        action: "crm.distribute_t2_birthday_leads",
+        entity: "ag_leads",
+        afterState: result,
+        ipAddress: ip,
+      });
+
+      const updatedLeaderboard = await getAdminLeaderboard();
+      return NextResponse.json({
+        success: true,
+        message: `Distributed ${result.distributed} Day-After-Tomorrow (T+2) advance leads (${result.parentsDistributed || 0} Parents + ${result.donorsDistributed || 0} Donors) across ${result.callersCount} active telecallers.`,
         distributionResult: result,
         ...updatedLeaderboard,
       });

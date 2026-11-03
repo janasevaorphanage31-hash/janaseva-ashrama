@@ -1,5 +1,13 @@
 import { NextResponse } from "next/server";
-import { logCallDisposition, recordPaymentAttribution, editCallDispositionLog, validateIndianUtr, checkUtrAvailability } from "@/lib/antigravity-crm";
+import {
+  logCallDisposition,
+  recordPaymentAttribution,
+  editCallDispositionLog,
+  updateLeadContactInfo,
+  revertLeadToPending,
+  checkUtrAvailability,
+} from "@/lib/antigravity-crm";
+import { validateIndianUtr } from "@/lib/crm-validators";
 import { authenticateCallerOrAdmin } from "@/lib/caller-auth";
 import { db, ensureDbSchema } from "@/db";
 import { agLeads } from "@/db/schema";
@@ -57,6 +65,10 @@ export async function POST(
     const amount = body.amount ? Number(body.amount) : null;
     const rawUtr = body.utr ? clean(body.utr, 50) : null;
     const paymentMode = body.paymentMode ? clean(body.paymentMode, 30) : "UPI";
+    const rawWhatsappPhone = body.whatsappPhone ? clean(body.whatsappPhone, 30) : null;
+    const rawPhone = body.phone ? clean(body.phone, 30) : null;
+    const rawReason = body.dispositionReason ? clean(body.dispositionReason, 250) : null;
+    const rawLang = body.preferredLanguage ? clean(body.preferredLanguage, 15) : null;
 
     let cleanUtr: string | null = null;
     if (rawUtr) {
@@ -83,6 +95,9 @@ export async function POST(
       "Contacted",
       "Busy",
       "Invalid_Number",
+      "Wrong_Number",
+      "Not_Reachable",
+      "RNR",
     ];
     if (!VALID_DISPOSITIONS.includes(rawDisposition)) {
       return NextResponse.json(
@@ -92,7 +107,21 @@ export async function POST(
     }
 
     try {
-      await logCallDisposition(leadId, auth.callerId, rawDisposition, notes, callbackTime, amount, cleanUtr);
+      await logCallDisposition(
+        leadId,
+        auth.callerId,
+        rawDisposition,
+        notes,
+        callbackTime,
+        amount,
+        cleanUtr,
+        {
+          whatsappPhone: rawWhatsappPhone,
+          phone: rawPhone,
+          dispositionReason: rawReason,
+          preferredLanguage: rawLang,
+        }
+      );
     } catch (logErr: any) {
       console.error(`[CRM] logCallDisposition non-fatal fallback for lead ${leadId}:`, logErr);
       try {
@@ -100,6 +129,8 @@ export async function POST(
           .update(agLeads)
           .set({
             status: rawDisposition,
+            dispositionReason: rawReason,
+            whatsappPhone: rawWhatsappPhone,
             lastContactedAt: new Date(),
             updatedAt: new Date(),
           })
@@ -165,12 +196,48 @@ export async function PATCH(
     }
 
     const body = await req.json().catch(() => ({}));
+
+    // 1. Direct Revert to Pending Action (Human floor mistake undo)
+    if (body.action === "revert_to_pending" || body.disposition === "Pending") {
+      const result = await revertLeadToPending(leadId, auth.callerId);
+      return NextResponse.json({
+        success: true,
+        message: result.message,
+        leadId,
+        disposition: "Pending",
+      });
+    }
+
+    // 2. Direct Contact Update Action (Add/Change Phone or WhatsApp number)
+    if (body.action === "update_contact") {
+      const result = await updateLeadContactInfo({
+        leadId,
+        callerId: auth.callerId,
+        phone: body.phone ? clean(body.phone, 30) : undefined,
+        whatsappPhone: body.whatsappPhone !== undefined ? (body.whatsappPhone ? clean(body.whatsappPhone, 30) : null) : undefined,
+        preferredLanguage: body.preferredLanguage ? clean(body.preferredLanguage, 15) : undefined,
+        name: body.name ? clean(body.name, 100) : undefined,
+        parentName: body.parentName ? clean(body.parentName, 100) : undefined,
+        childName: body.childName ? clean(body.childName, 100) : undefined,
+      });
+      return NextResponse.json({
+        success: true,
+        message: "Contact details updated successfully.",
+        leadId,
+        updates: result.updates,
+      });
+    }
+
     const disposition = clean(body.disposition, 40);
     const notes = clean(body.notes, 1000);
     const amount = body.amount != null ? Number(body.amount) : null;
     const rawUtr = body.utr ? clean(body.utr, 50) : null;
     const callbackTime = body.callbackTime ? String(body.callbackTime).slice(0, 50) : null;
     const paymentMode = body.paymentMode ? clean(body.paymentMode, 30) : "UPI";
+    const rawWhatsappPhone = body.whatsappPhone !== undefined ? (body.whatsappPhone ? clean(body.whatsappPhone, 30) : null) : undefined;
+    const rawPhone = body.phone ? clean(body.phone, 30) : undefined;
+    const rawReason = body.dispositionReason ? clean(body.dispositionReason, 250) : undefined;
+    const rawLang = body.preferredLanguage ? clean(body.preferredLanguage, 15) : undefined;
 
     let cleanUtr: string | null = null;
     if (rawUtr) {
@@ -191,6 +258,9 @@ export async function PATCH(
       "Contacted",
       "Busy",
       "Invalid_Number",
+      "Wrong_Number",
+      "Not_Reachable",
+      "RNR",
     ];
     if (!VALID_DISPOSITIONS.includes(disposition)) {
       return NextResponse.json(
@@ -208,6 +278,10 @@ export async function PATCH(
       utr: cleanUtr,
       callbackTime,
       paymentMode,
+      whatsappPhone: rawWhatsappPhone,
+      phone: rawPhone,
+      dispositionReason: rawReason,
+      preferredLanguage: rawLang,
     });
 
     return NextResponse.json({

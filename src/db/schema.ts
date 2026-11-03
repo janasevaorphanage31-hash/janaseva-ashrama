@@ -547,11 +547,14 @@ export const agLeads = pgTable(
     parentName: text("parent_name"), // For PARENTS stream
     childName: text("child_name"), // For PARENTS stream
     phone: text("phone").notNull(),
+    whatsappPhone: text("whatsapp_phone"), // Alternate WhatsApp number if different from calling SIM
     email: text("email"),
     dobDay: integer("dob_day").notNull(), // 1 - 31
     dobMonth: integer("dob_month").notNull(), // 1 - 12 (leap-year agnostic)
     assignedCallerId: text("assigned_caller_id").references(() => agTelecallers.callerId, { onDelete: "set null" }),
     status: text("status").notNull().default("Pending"), // Pending | Interested | Rejected | Reschedule | Donated
+    dispositionReason: text("disposition_reason"), // Structured reason for disposition (cross-caller visibility)
+    preferredLanguage: text("preferred_language"), // Donor language preference (kn | en | hi | te | ta)
     validationStatus: text("validation_status").notNull().default("UNVERIFIED"), // UNVERIFIED | VALID_INTERESTED | VALID_DONATED | VALID_CALLBACK | SOFT_REJECT | JUNK_INVALID
     lastDonationYear: integer("last_donation_year"),
     lifetimeDonations: integer("lifetime_donations").notNull().default(0),
@@ -576,6 +579,7 @@ export const agCallLogs = pgTable(
     leadId: integer("lead_id").notNull().references(() => agLeads.leadId, { onDelete: "cascade" }),
     callerId: text("caller_id").notNull(),
     disposition: text("disposition").notNull(), // Interested | Rejected | Reschedule | No_Answer | Wrong_Number | Donated
+    reason: text("reason"), // Structured reason for disposition
     callbackTime: timestamp("callback_time"),
     notes: text("notes"),
     amount: integer("amount"), // Optional donation amount in INR

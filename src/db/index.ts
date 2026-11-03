@@ -320,11 +320,17 @@ export async function ensureDbSchema(): Promise<void> {
           -- Add new columns to ag_call_logs for edit tracking and EOD submission
           ALTER TABLE ag_call_logs ADD COLUMN IF NOT EXISTS amount INTEGER;
           ALTER TABLE ag_call_logs ADD COLUMN IF NOT EXISTS utr TEXT;
+          ALTER TABLE ag_call_logs ADD COLUMN IF NOT EXISTS reason TEXT;
           ALTER TABLE ag_call_logs ADD COLUMN IF NOT EXISTS is_edited BOOLEAN NOT NULL DEFAULT FALSE;
           ALTER TABLE ag_call_logs ADD COLUMN IF NOT EXISTS edited_at TIMESTAMP;
           ALTER TABLE ag_call_logs ADD COLUMN IF NOT EXISTS original_disposition TEXT;
           ALTER TABLE ag_call_logs ADD COLUMN IF NOT EXISTS original_amount INTEGER;
           ALTER TABLE ag_call_logs ADD COLUMN IF NOT EXISTS eod_submitted BOOLEAN NOT NULL DEFAULT FALSE;
+
+          -- Add new columns to ag_leads for secondary numbers, disposition reasons, and language preference
+          ALTER TABLE ag_leads ADD COLUMN IF NOT EXISTS whatsapp_phone TEXT;
+          ALTER TABLE ag_leads ADD COLUMN IF NOT EXISTS disposition_reason TEXT;
+          ALTER TABLE ag_leads ADD COLUMN IF NOT EXISTS preferred_language TEXT;
 
           -- Add new columns to ag_donations for Admin Payment Verification and Approvals
           ALTER TABLE ag_donations ADD COLUMN IF NOT EXISTS verification_status TEXT NOT NULL DEFAULT 'PENDING_APPROVAL';
