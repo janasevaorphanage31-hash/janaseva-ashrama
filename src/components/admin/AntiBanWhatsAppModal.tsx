@@ -54,7 +54,7 @@ export interface OutreachTemplate {
 export const OUTREACH_TEMPLATES: OutreachTemplate[] = [
   {
     id: "birthday_wishes",
-    name: "Birthday Seva",
+    name: "🎂 ಹುಟ್ಟುಹಬ್ಬ ಸೇವೆ (Birthday)",
     shortLabel: "Birthday",
     icon: "🎂",
     badge: "Direct Donor",
@@ -65,7 +65,7 @@ export const OUTREACH_TEMPLATES: OutreachTemplate[] = [
   },
   {
     id: "child_blessing",
-    name: "Child Blessing",
+    name: "👶 ಮಕ್ಕಳ ಆಶೀರ್ವಾದ (Child Blessing)",
     shortLabel: "Child Blessing",
     icon: "👶",
     badge: "Parents Sheet",
@@ -76,7 +76,7 @@ export const OUTREACH_TEMPLATES: OutreachTemplate[] = [
   },
   {
     id: "annadana_meals",
-    name: "Annadana Feast",
+    name: "🍲 ಅನ್ನದಾನ ಸೇವೆ (Annadana)",
     shortLabel: "Annadana",
     icon: "🍲",
     badge: "Popular",
@@ -87,7 +87,7 @@ export const OUTREACH_TEMPLATES: OutreachTemplate[] = [
   },
   {
     id: "upi_qr_standee",
-    name: "Axis Bank UPI QR",
+    name: "💳 ಬ್ಯಾಂಕ್ ಕ್ಯೂಆರ್ (Bank QR)",
     shortLabel: "Bank QR",
     icon: "💳",
     badge: "Instant Scan",
@@ -98,7 +98,7 @@ export const OUTREACH_TEMPLATES: OutreachTemplate[] = [
   },
   {
     id: "tax_80g_receipt",
-    name: "80G Tax Exemption",
+    name: "📜 80G ತೆರಿಗೆ (80G Tax)",
     shortLabel: "80G Tax",
     icon: "📜",
     badge: "50% Rebate",
@@ -109,7 +109,7 @@ export const OUTREACH_TEMPLATES: OutreachTemplate[] = [
   },
   {
     id: "polite_callback",
-    name: "Polite Followup",
+    name: "⏰ ಮರುಕರೆ ನೆನಪೋಲೆ (Followup)",
     shortLabel: "Followup",
     icon: "⏰",
     badge: "Callback",
@@ -887,8 +887,8 @@ export function AntiBanWhatsAppModal({
               </span>
             </div>
 
-            {/* 6 Responsive Grid Cards */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 sm:gap-2">
+            {/* 6 Responsive Grid Cards (Medium-Size Buttons for Easy Touch) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
               {OUTREACH_TEMPLATES.map((tmpl) => {
                 const isSelected = activeTemplateId === tmpl.id;
                 return (
@@ -896,21 +896,21 @@ export function AntiBanWhatsAppModal({
                     key={tmpl.id}
                     type="button"
                     onClick={() => handleSelectTemplate(tmpl)}
-                    className={`p-2 sm:p-2.5 rounded-xl border text-left transition cursor-pointer flex flex-col justify-between gap-1 relative ${
+                    className={`min-h-[56px] p-3 rounded-2xl border text-left transition cursor-pointer flex flex-col justify-between gap-1 relative ${
                       isSelected
                         ? "bg-teal-950 text-white border-teal-950 shadow-md ring-2 ring-amber-400"
                         : "bg-white text-teal-950 border-teal-900/15 hover:bg-cream"
                     }`}
                   >
                     <div className="flex items-start justify-between gap-1 w-full">
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <span className="text-base sm:text-lg shrink-0">{tmpl.icon}</span>
-                        <span className="font-black text-xs truncate">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-xl shrink-0">{tmpl.icon}</span>
+                        <span className="font-black text-xs sm:text-sm truncate">
                           {tmpl.name}
                         </span>
                       </div>
                       {tmpl.badge && (
-                        <span className={`text-[9px] font-black uppercase px-1.5 py-0.2 rounded shrink-0 ${
+                        <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full shrink-0 ${
                           isSelected
                             ? "bg-amber-400 text-teal-950"
                             : "bg-teal-950/10 text-teal-950"
@@ -919,13 +919,13 @@ export function AntiBanWhatsAppModal({
                         </span>
                       )}
                     </div>
-                    <p className={`text-[10px] line-clamp-1 leading-tight ${
-                      isSelected ? "text-amber-200" : "text-teal-950/65"
+                    <p className={`text-[11px] line-clamp-1 leading-tight font-medium ${
+                      isSelected ? "text-amber-200" : "text-teal-950/70"
                     }`}>
                       {tmpl.description}
                     </p>
                     {isSelected && (
-                      <div className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-amber-400 text-teal-950 text-[10px] font-black">
+                      <div className="absolute top-2 right-2 flex h-5 w-5 items-center justify-center rounded-full bg-amber-400 text-teal-950 text-xs font-black shadow-xs">
                         ✓
                       </div>
                     )}

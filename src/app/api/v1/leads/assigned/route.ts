@@ -23,7 +23,7 @@ export async function GET(req: Request) {
     const paramPage = url.searchParams.get("page");
     const paramRefresh = url.searchParams.get("refresh");
     const page = paramPage ? Math.max(1, parseInt(paramPage, 10)) : 1;
-    const limit = paramLimit ? Math.min(parseInt(paramLimit, 10), 10000) : (paramPage ? 100 : 2500);
+    const limit = paramLimit ? Math.min(parseInt(paramLimit, 10), 10000) : (paramPage ? 100 : 400);
     const offset = (page - 1) * limit;
 
     // On-demand explicit refresh: harvest absentee advance leads and distribute unassigned T+1/T+2 leads

@@ -713,50 +713,45 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Real-Time Background Heartbeat Polling (every 45s for mobile battery and data savings)
+  // Lightweight Background Polling (Only when tab is active; polls lightweight daily logs instead of re-downloading hundreds of DB leads)
   useEffect(() => {
     if (!isLoggedIn || !callerProfile) return;
 
     let isMounted = true;
     const heartbeat = async () => {
+      // Emergency resource guard: Never poll if tab is hidden or phone screen is off
+      if (typeof document !== "undefined" && document.visibilityState !== "visible") {
+        return;
+      }
+
       try {
-        const res = await fetch(`/api/v1/leads/assigned?callerId=${encodeURIComponent(callerProfile.callerId)}`, {
-          cache: "no-store",
-        });
+        // Poll lightweight daily logs (~1KB) instead of re-downloading all leads (~2MB)
+        const res = await fetch(`/api/v1/telecaller/daily-logs?callerId=${encodeURIComponent(callerProfile.callerId)}&limit=20`);
         const data = await res.json();
-        if (!isMounted || !data.success || !Array.isArray(data.leads)) return;
+        if (!isMounted || !data.success) return;
 
-        const newLeads = data.leads;
-
-        setLeads((prevLeads) => {
-          // Detect newly converted lead
-          const newlyConverted = newLeads.find((nl: any) => {
-            const old = prevLeads.find((ol: any) => ol.leadId === nl.leadId);
-            return nl.status === "Donated" && old && old.status !== "Donated";
-          });
-
-          if (newlyConverted) {
-            playCelebrationChime();
-            showToast(`🎉 LIVE CONVERSION! ${newlyConverted.name} completed donation! Attributed to ${callerProfile.callerId}`);
-          }
-
-          return newLeads;
-        });
-
-        if (data.callerStats) {
-          setStats(data.callerStats);
-        } else {
-          computeStats(newLeads, callerProfile.callerId);
+        if (Array.isArray(data.logs)) {
+          setDailyLogs(data.logs);
         }
       } catch {
         // Silent catch for background polling
       }
     };
 
-    const interval = setInterval(heartbeat, 45000);
+    // Poll every 3 minutes (180s) instead of 45s, saving 95%+ of Neon egress and Vercel Fluid CPU
+    const interval = setInterval(heartbeat, 180000);
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        void heartbeat();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
     return () => {
       isMounted = false;
       clearInterval(interval);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [isLoggedIn, callerProfile]);
 
@@ -3592,166 +3587,12 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                       </div>
                     </div>
 
-                    {/* ── 1-TAP OUTREACH LANGUAGE SELECTOR (KANGLISH / KANNADA / ENGLISH) ── */}
-                    <div className="rounded-2xl bg-cream/70 border border-teal-900/15 p-2.5 flex items-center justify-between flex-wrap gap-2">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-sm">🌐</span>
-                        <span className="text-[11px] font-black uppercase text-teal-950 tracking-wider">
-                          ಸಂದೇಶ ಭಾಷೆ (Language):
-                        </span>
-                      </div>
-                      <div className="inline-flex rounded-xl bg-white p-0.5 border border-teal-900/15 shadow-2xs">
-                        <button
-                          type="button"
-                          onClick={() => setPreferredLanguage("kanglish")}
-                          className={`rounded-lg px-2.5 py-1 text-xs font-bold transition cursor-pointer ${
-                            preferredLanguage === "kanglish"
-                              ? "bg-teal-950 text-white shadow-2xs font-black ring-1 ring-teal-950"
-                              : "text-teal-950/70 hover:text-teal-950"
-                          }`}
-                        >
-                          🔤 Kanglish
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setPreferredLanguage("kn")}
-                          className={`rounded-lg px-2.5 py-1 text-xs font-bold transition cursor-pointer ${
-                            preferredLanguage === "kn"
-                              ? "bg-teal-950 text-gold shadow-2xs font-black ring-2 ring-amber-400"
-                              : "text-teal-950/70 hover:text-teal-950"
-                          }`}
-                        >
-                          🇮🇳 ಕನ್ನಡ (Kannada)
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setPreferredLanguage("en")}
-                          className={`rounded-lg px-2.5 py-1 text-xs font-bold transition cursor-pointer ${
-                            preferredLanguage === "en"
-                              ? "bg-teal-950 text-white shadow-2xs font-black ring-1 ring-teal-950"
-                              : "text-teal-950/70 hover:text-teal-950"
-                          }`}
-                        >
-                          🇬🇧 English
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* ── 1-TAP SEVA TIER SELECTOR PILLS ── */}
-                    <div className="rounded-2xl bg-sand/40 border border-teal-900/15 p-3 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[11px] font-black uppercase text-teal-950 tracking-wider">
-                          🎯 Select Seva Tier (Sets WhatsApp &amp; UPI Links):
-                        </span>
-                        <span className="text-xs font-black text-emerald-800">
-                          Selected: ₹{formatINR(selectedSevaAmount)}
-                        </span>
-                      </div>
-                      <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
-                        {[
-                          { amt: 501, label: "₹501 Milk / Starter" },
-                          { amt: 1500, label: "₹1,500 Breakfast" },
-                          { amt: 2500, label: "₹2,500 Feast" },
-                          { amt: 4500, label: "₹4,500 Full Day" },
-                          { amt: 6000, label: "₹6,000 Ration" },
-                        ].map((tier) => (
-                          <button
-                            key={tier.amt}
-                            type="button"
-                            onClick={() => setSelectedSevaAmount(tier.amt)}
-                            className={`py-2 px-2 rounded-xl text-xs font-bold transition cursor-pointer text-center border ${
-                              selectedSevaAmount === tier.amt
-                                ? "bg-teal-950 text-gold border-teal-950 shadow-xs font-black"
-                                : "bg-white text-teal-950 border-teal-900/15 hover:bg-sand"
-                            }`}
-                          >
-                            {tier.label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* ── AUXILIARY WHATSAPP QUICK-REPLY TEMPLATE SELECTOR ── */}
-                    <div className="rounded-2xl bg-amber-50/60 border border-amber-300/60 p-3 space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[11px] font-black uppercase text-amber-950 tracking-wider flex items-center gap-1">
-                          <span>⚡</span>
-                          <span>WhatsApp Template (ತ್ವರಿತ ಸಂದೇಶ ಮಾದರಿ):</span>
-                        </span>
-                        <span className="text-[10px] font-mono text-amber-900 font-bold bg-amber-200/60 px-2 py-0.5 rounded-full">
-                          {selectedNarrativeAngle === "birthday"
-                            ? "🎂 Birthday Seva"
-                            : selectedNarrativeAngle === "trust_80g"
-                            ? "📜 80G Tax Exemption"
-                            : selectedNarrativeAngle === "location_visit"
-                            ? "📍 Campus Visit & Map"
-                            : selectedNarrativeAngle === "provisions_inkind"
-                            ? "🍚 Groceries & Rice"
-                            : "🍲 Daily Annadana"}
-                        </span>
-                      </div>
-
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => setSelectedNarrativeAngle("birthday")}
-                          className={`py-1.5 px-2 rounded-xl text-xs font-bold transition cursor-pointer text-center flex items-center justify-center gap-1 border ${
-                            selectedNarrativeAngle === "birthday"
-                              ? "bg-amber-500 text-teal-950 border-amber-600 shadow-xs font-black"
-                              : "bg-white text-teal-950 border-amber-200 hover:bg-amber-100/50"
-                          }`}
-                        >
-                          <span>🎂</span>
-                          <span>Birthday Wish</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => setSelectedNarrativeAngle("trust_80g")}
-                          className={`py-1.5 px-2 rounded-xl text-xs font-bold transition cursor-pointer text-center flex items-center justify-center gap-1 border ${
-                            selectedNarrativeAngle === "trust_80g"
-                              ? "bg-indigo-950 text-amber-300 border-indigo-950 shadow-xs font-black"
-                              : "bg-white text-teal-950 border-amber-200 hover:bg-amber-100/50"
-                          }`}
-                        >
-                          <span>📜</span>
-                          <span>80G Tax Info</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => setSelectedNarrativeAngle("location_visit")}
-                          className={`py-1.5 px-2 rounded-xl text-xs font-bold transition cursor-pointer text-center flex items-center justify-center gap-1 border ${
-                            selectedNarrativeAngle === "location_visit"
-                              ? "bg-teal-950 text-gold border-teal-950 shadow-xs font-black"
-                              : "bg-white text-teal-950 border-amber-200 hover:bg-amber-100/50"
-                          }`}
-                        >
-                          <span>📍</span>
-                          <span>Map &amp; Video</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => setSelectedNarrativeAngle("provisions_inkind")}
-                          className={`py-1.5 px-2 rounded-xl text-xs font-bold transition cursor-pointer text-center flex items-center justify-center gap-1 border ${
-                            selectedNarrativeAngle === "provisions_inkind"
-                              ? "bg-amber-800 text-white border-amber-900 shadow-xs font-black"
-                              : "bg-white text-teal-950 border-amber-200 hover:bg-amber-100/50"
-                          }`}
-                        >
-                          <span>🍚</span>
-                          <span>Rice / In-Kind</span>
-                        </button>
-                      </div>
-                    </div>
-
                     {/* Active In-Call Talk Time Live Timer */}
                     {callStartTime && currentlyDialedLeadId === currentFocusLead.leadId && (
-                      <div className="bg-emerald-600 text-white px-3.5 py-2 rounded-2xl flex items-center justify-between text-xs font-black shadow-md border border-emerald-400 animate-pulse">
+                      <div className="bg-emerald-600 text-white px-3.5 py-2.5 rounded-2xl flex items-center justify-between text-xs font-black shadow-md border border-emerald-400 animate-pulse">
                         <span className="flex items-center gap-2">
                           <span className="w-2.5 h-2.5 rounded-full bg-white animate-ping" />
-                          <span>📞 LIVE CALL IN PROGRESS WITH {currentFocusLead.name.toUpperCase()}</span>
+                          <span>📞 LIVE CALL: {currentFocusLead.name.toUpperCase()}</span>
                         </span>
                         <span className="font-mono text-sm tracking-widest bg-emerald-800/90 px-2.5 py-0.5 rounded-lg border border-white/20">
                           ⏱️ {String(Math.floor(callElapsedSeconds / 60)).padStart(2, "0")}:{String(callElapsedSeconds % 60).padStart(2, "0")}
@@ -3759,20 +3600,20 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                       </div>
                     )}
 
-                    {/* ── PRIMARY TELECALLER ACTIONS (Bilingual, Ultra Simple & Direct) ── */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {/* ── STEP 1: PRIMARY TELECALLER ACTIONS (Bilingual, Ultra Simple & Direct) ── */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                       {/* ACTION 1: Dial Customer Now */}
                       <button
                         type="button"
                         onClick={() => handleCallLead(currentFocusLead)}
-                        className="p-3.5 rounded-2xl bg-teal-950 hover:bg-teal-900 active:scale-95 text-white font-black text-sm sm:text-base shadow-md transition flex items-center justify-center gap-2.5 cursor-pointer min-h-[56px]"
+                        className="p-3.5 rounded-2xl bg-teal-950 hover:bg-teal-900 active:scale-95 text-white font-black text-sm sm:text-base shadow-md transition flex items-center justify-center gap-2.5 cursor-pointer min-h-[58px]"
                       >
                         <span className="text-2xl">📞</span>
                         <div className="text-left">
                           <span className="block leading-tight font-black text-gold">
                             {isParentLead ? "ಪೋಷಕರಿಗೆ ಕರೆ ಮಾಡಿ (Call Parent)" : "ದಾನಿಗಳಿಗೆ ಕರೆ ಮಾಡಿ (Call Donor)"}
                           </span>
-                          <span className="block text-[11px] font-mono text-white/80">{phoneInfo.display}</span>
+                          <span className="block text-xs font-mono text-white/90 font-bold">{phoneInfo.display}</span>
                         </div>
                       </button>
 
@@ -3781,7 +3622,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                         type="button"
                         onClick={() => handleDirectWhatsAppChat(currentFocusLead, selectedSevaAmount)}
                         disabled={waPacingSeconds > 0}
-                        className={`p-3.5 rounded-2xl text-white font-black text-sm sm:text-base shadow-md transition flex items-center justify-center gap-2 cursor-pointer min-h-[56px] ${
+                        className={`p-3.5 rounded-2xl text-white font-black text-sm sm:text-base shadow-md transition flex items-center justify-center gap-2 cursor-pointer min-h-[58px] ${
                           waPacingSeconds > 0
                             ? "bg-amber-600 cursor-not-allowed opacity-90"
                             : "bg-[#25D366] hover:brightness-105 active:scale-95"
@@ -3802,24 +3643,24 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                                 ? `👶 ${selectedNarrativeAngle === "trust_80g" ? "80G Tax ಸಂದೇಶ" : selectedNarrativeAngle === "location_visit" ? "ಆಶ್ರಮ ಲೊಕೇಶನ್ & ವಿಡಿಯೋ" : selectedNarrativeAngle === "provisions_inkind" ? "ದಿನಸಿ & ಅಕ್ಕಿ ಪಟ್ಟಿ" : "ಶುಭಾಶಯ ಸಂದೇಶ"}`
                                 : `WhatsApp ಸಂದೇಶ (${selectedNarrativeAngle === "trust_80g" ? "80G Tax" : selectedNarrativeAngle === "location_visit" ? "Map/Video" : selectedNarrativeAngle === "provisions_inkind" ? "Groceries" : `₹${formatINR(selectedSevaAmount)}`})`}
                             </span>
-                            <span className="block text-[11px] text-white/90">Send Seva Details &amp; Pay Link</span>
+                            <span className="block text-xs text-white/90 font-medium">Send Message &amp; Pay Link</span>
                           </div>
                         )}
                       </button>
                     </div>
 
-                    {/* Secondary Actions Row */}
-                    <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-xs">
+                    {/* Secondary Quick Share Strip */}
+                    <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
                       <button
                         type="button"
                         onClick={() => handleDirectSharePaymentQr(currentFocusLead, selectedSevaAmount)}
-                        className="rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-950 border border-amber-500/30 px-3.5 py-2 font-black transition flex items-center gap-1.5 cursor-pointer text-xs"
+                        className="rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-950 border border-amber-500/30 px-3 py-1.5 font-black transition flex items-center gap-1.5 cursor-pointer text-xs"
                       >
                         <span className="text-base">📷</span>
                         <span>QR ಸ್ಕ್ಯಾನರ್ ಫೋಟೋ ಕಳುಹಿಸಿ (Share Bank QR)</span>
                       </button>
 
-                      <div className="flex items-center gap-2 text-teal-950/60">
+                      <div className="flex items-center gap-2 text-teal-950/70">
                         <button
                           type="button"
                           onClick={() => {
@@ -3844,87 +3685,385 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                       </div>
                     </div>
 
-                    {/* ── FEATURE 2: 1-TAP QUICK NOTE CHIPS & INLINE NOTES ── */}
-                    <div className="rounded-2xl border border-teal-900/15 bg-sand/20 p-3 space-y-2 text-xs">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[11px] font-black uppercase text-teal-950 tracking-wider flex items-center gap-1.5">
+                    {/* ── STEP 2: 🔥 MID-TOP 1-TAP CALL RESULT & AUTO-ADVANCE STRIP ── */}
+                    {/* Placed prominently right under Call & WhatsApp buttons so 10th-grade telecallers never need to scroll! */}
+                    <div className="rounded-3xl bg-sand/35 border-2 border-teal-900/15 p-3 sm:p-4 space-y-2.5 shadow-xs">
+                      <div className="flex items-center justify-between flex-wrap gap-1">
+                        <span className="text-xs sm:text-sm font-black uppercase text-teal-950 tracking-wider flex items-center gap-1.5">
                           <span>⚡</span>
-                          <span>1-Tap Quick Note Chips:</span>
+                          <span>1-ಟ್ಯಾಪ್ ಕರೆ ಫಲಿತಾಂಶ (1-Tap Call Result):</span>
                         </span>
-                        <span className="text-[10px] text-teal-950/60 font-semibold">
-                          Tap chip to add to notes
+                        <span className="text-[11px] text-teal-950/70 font-bold">
+                          ಟ್ಯಾಪ್ ಮಾಡಿ ಸೇವ್ ಮಾಡಿ &amp; ಮುಂದಿನ ಲೀಡ್‌ಗೆ ಹೋಗಿ
                         </span>
                       </div>
 
-                      <div className="flex flex-wrap gap-1.5">
-                        {[
-                          isParentLead ? "👶 ತಂದೆ ಮಾತನಾಡಿದ್ದಾರೆ (Father answered)" : "👤 ದಾನಿ ಮಾತನಾಡಿದ್ದಾರೆ (Donor answered)",
-                          isParentLead ? "👩 ತಾಯಿ ಮಾತನಾಡಿದ್ದಾರೆ (Mother answered)" : "🤝 ಒಪ್ಪಿದ್ದಾರೆ (Agreed to donate)",
-                          `🎂 ₹${formatINR(selectedSevaAmount)} ಅನ್ನದಾನಕ್ಕೆ ಒಪ್ಪಿದ್ದಾರೆ`,
-                          "📲 WhatsApp QR ಕಳುಹಿಸಲಾಗಿದೆ",
-                          "🏛️ ಆಶ್ರಮಕ್ಕೆ ಭೇಟಿ ನೀಡುತ್ತಾರೆ",
-                          "📜 80G ರಶೀದಿ ಕೇಳಿದ್ದಾರೆ",
-                          "🗣️ ಕನ್ನಡದಲ್ಲಿ ಮಾತ್ರ",
-                          "⏳ ಸಂಜೆ ಕರೆ (Call evening)",
-                          "📵 ಕರೆ ಸ್ವೀಕರಿಸಿಲ್ಲ (RNR)",
-                          "❌ ನಂಬರ್ ಬದಲಾಗಿದೆ",
-                        ].map((chip) => (
+                      <div className="space-y-2">
+                        {/* Row 1: Primary Conversions & Reschedules (Large & High Contrast) */}
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                          {/* 1. WARM / INTERESTED */}
                           <button
-                            key={chip}
                             type="button"
                             onClick={() => {
-                              const cleanCurrent = (cardNoteInput || currentFocusLead.notes || "").trim();
-                              const newNote = cleanCurrent ? `${cleanCurrent} · ${chip}` : chip;
-                              setCardNoteInput(newNote);
-                              showToast(`Added: ${chip}`);
+                              setPendingConfirmation({
+                                leadId: currentFocusLead.leadId,
+                                leadName: currentFocusLead.name,
+                                phone: currentFocusLead.phone,
+                                disposition: "Interested",
+                                labelKannada: "ಒಪ್ಪಿದ್ದಾರೆ (Interested)",
+                                icon: "👍",
+                                notes: cardNoteInput.trim() || undefined,
+                                reason: selectedDispositionReason || undefined,
+                              });
                             }}
-                            className="text-[10px] bg-white hover:bg-amber-100/80 border border-teal-900/15 text-teal-950 px-2 py-1 rounded-lg font-bold transition cursor-pointer shadow-2xs"
+                            className="min-h-[58px] p-2.5 rounded-2xl bg-amber-500 hover:bg-amber-600 active:scale-95 text-teal-950 font-black shadow-xs transition flex flex-col items-center justify-center cursor-pointer text-center border-2 border-amber-600/40"
                           >
-                            + {chip}
+                            <span className="flex items-center gap-1 text-sm sm:text-base font-black">
+                              <span>👍</span>
+                              <span>ಒಪ್ಪಿದ್ದಾರೆ</span>
+                            </span>
+                            <span className="text-[10px] text-teal-950/80 font-bold uppercase tracking-wider">Interested / Callback</span>
                           </button>
-                        ))}
-                      </div>
 
-                      {/* Note Input Field with 1-Tap Save */}
-                      <div className="flex items-center gap-2 pt-1">
-                        <input
-                          type="text"
-                          value={cardNoteInput}
-                          onChange={(e) => setCardNoteInput(e.target.value)}
-                          placeholder={currentFocusLead.notes ? `Current: ${currentFocusLead.notes}` : "Type custom note or tap chips above..."}
-                          className="flex-1 rounded-xl border border-teal-900/20 px-3 py-1.5 text-xs text-teal-950 bg-white focus:ring-2 focus:ring-amber-400 outline-none"
-                        />
+                          {/* 2. BUSY / +2h */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const twoHoursLater = new Date(Date.now() + 2 * 3600 * 1000).toISOString();
+                              setPendingConfirmation({
+                                leadId: currentFocusLead.leadId,
+                                leadName: currentFocusLead.name,
+                                phone: currentFocusLead.phone,
+                                disposition: "Busy",
+                                labelKannada: "ಬಿಜಿಯಿದ್ದಾರೆ (Busy / +2h)",
+                                icon: "⏳",
+                                notes: cardNoteInput.trim() || "Auto-rescheduled +2 hours",
+                                callbackTime: twoHoursLater,
+                                reason: selectedDispositionReason || "🏢 ಆಫೀಸ್‌ನಲ್ಲಿ ಬಿಜಿ (Busy in office)",
+                              });
+                            }}
+                            className="min-h-[58px] p-2.5 rounded-2xl bg-slate-700 hover:bg-slate-800 active:scale-95 text-white font-black shadow-xs transition flex flex-col items-center justify-center cursor-pointer text-center border-2 border-slate-600"
+                          >
+                            <span className="flex items-center gap-1 text-sm sm:text-base font-black">
+                              <span>⏳</span>
+                              <span>ಬಿಜಿಯಿದ್ದಾರೆ</span>
+                            </span>
+                            <span className="text-[10px] text-slate-300 font-bold uppercase tracking-wider">Busy (+2 Hours)</span>
+                          </button>
+
+                          {/* 3. CALLBACK LATER */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setActiveNotesLead(currentFocusLead);
+                              setNotesText(cardNoteInput.trim() || currentFocusLead.notes || "");
+                              setCallbackDateTime("");
+                            }}
+                            className="min-h-[58px] p-2.5 rounded-2xl bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-black shadow-xs transition flex flex-col items-center justify-center cursor-pointer text-center border-2 border-blue-500"
+                          >
+                            <span className="flex items-center gap-1 text-sm sm:text-base font-black">
+                              <span>📅</span>
+                              <span>ನಂತರ ಕರೆ</span>
+                            </span>
+                            <span className="text-[10px] text-blue-200 font-bold uppercase tracking-wider">Reschedule Date</span>
+                          </button>
+
+                          {/* 4. PAID / LOG DONATION */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setActiveDonationLead(currentFocusLead);
+                              setLoggedDonationAmount(selectedSevaAmount || (isTodayBirthday ? 2500 : 1500));
+                              setLoggedDonationUtr("");
+                            }}
+                            className="min-h-[58px] p-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-black shadow-xs transition flex flex-col items-center justify-center cursor-pointer text-center border-2 border-emerald-500"
+                          >
+                            <span className="flex items-center gap-1 text-sm sm:text-base font-black">
+                              <span>🎉</span>
+                              <span>ಹಣ ನೀಡಿದ್ದಾರೆ</span>
+                            </span>
+                            <span className="text-[10px] text-emerald-200 font-bold uppercase tracking-wider">Log Paid ₹</span>
+                          </button>
+                        </div>
+
+                        {/* Row 2: Floor Telephony Outcomes & Call Exceptions */}
+                        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                          {/* 5. RINGING NO ANSWER (RNR) */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPendingConfirmation({
+                                leadId: currentFocusLead.leadId,
+                                leadName: currentFocusLead.name,
+                                phone: currentFocusLead.phone,
+                                disposition: "No_Answer",
+                                labelKannada: "ರಿಂಗ್ ಆಗಿ ಕಟ್ (RNR)",
+                                icon: "📳",
+                                notes: cardNoteInput.trim() || "Ringing but no answer",
+                                reason: selectedDispositionReason || "📳 ರಿಂಗ್ ಆಗಿದೆ, ಉತ್ತರಿಸಿಲ್ಲ",
+                              });
+                            }}
+                            className="min-h-[52px] p-2 rounded-2xl bg-amber-700/90 hover:bg-amber-800 active:scale-95 text-white font-black shadow-xs transition flex flex-col items-center justify-center cursor-pointer text-center border border-amber-600"
+                            title="Ringing no answer / call disconnected"
+                          >
+                            <span className="flex items-center gap-1 text-xs sm:text-sm font-black">
+                              <span>📳</span>
+                              <span>ರಿಂಗ್ ಆಗಿ ಕಟ್</span>
+                            </span>
+                            <span className="text-[9px] text-amber-200 font-bold uppercase tracking-wider">No Answer (RNR)</span>
+                          </button>
+
+                          {/* 6. CALL NOT GOING / NOT REACHABLE / SWITCHED OFF */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPendingConfirmation({
+                                leadId: currentFocusLead.leadId,
+                                leadName: currentFocusLead.name,
+                                phone: currentFocusLead.phone,
+                                disposition: "Not_Reachable",
+                                labelKannada: "ಸಂಪರ್ಕವಿಲ್ಲ / ಆಫ್",
+                                icon: "📵",
+                                notes: cardNoteInput.trim() || "Call not connecting or switched off",
+                                reason: selectedDispositionReason || "📵 ಸಂಪರ್ಕಕ್ಕೆ ಸಿಗುತ್ತಿಲ್ಲ / ಸ್ವಿಚ್ಡ್ ಆಫ್",
+                              });
+                            }}
+                            className="min-h-[52px] p-2 rounded-2xl bg-indigo-900 hover:bg-indigo-950 active:scale-95 text-white font-black shadow-xs transition flex flex-col items-center justify-center cursor-pointer text-center border border-indigo-700"
+                            title="Call not connecting, network out of reach, or phone switched off"
+                          >
+                            <span className="flex items-center gap-1 text-xs sm:text-sm font-black">
+                              <span>📵</span>
+                              <span>ಸಂಪರ್ಕವಿಲ್ಲ</span>
+                            </span>
+                            <span className="text-[9px] text-indigo-200 font-bold uppercase tracking-wider">Not Reachable</span>
+                          </button>
+
+                          {/* 7. WRONG / INVALID NUMBER */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPendingConfirmation({
+                                leadId: currentFocusLead.leadId,
+                                leadName: currentFocusLead.name,
+                                phone: currentFocusLead.phone,
+                                disposition: "Wrong_Number",
+                                labelKannada: "ತಪ್ಪು ನಂಬರ್ (Invalid)",
+                                icon: "❌",
+                                notes: cardNoteInput.trim() || "Wrong number reported by telecaller",
+                                reason: selectedDispositionReason || "❌ ತಪ್ಪು ನಂಬರ್ / ಅಮಾನ್ಯ ಸಂಖ್ಯೆ",
+                              });
+                            }}
+                            className="min-h-[52px] p-2 rounded-2xl bg-rose-700 hover:bg-rose-800 active:scale-95 text-white font-black shadow-xs transition flex flex-col items-center justify-center cursor-pointer text-center border border-rose-600"
+                            title="Wrong number or invalid telephone number"
+                          >
+                            <span className="flex items-center gap-1 text-xs sm:text-sm font-black">
+                              <span>❌</span>
+                              <span>ತಪ್ಪು ನಂಬರ್</span>
+                            </span>
+                            <span className="text-[9px] text-rose-200 font-bold uppercase tracking-wider">Invalid Number</span>
+                          </button>
+
+                          {/* 8. REJECT / NOT INTERESTED */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPendingConfirmation({
+                                leadId: currentFocusLead.leadId,
+                                leadName: currentFocusLead.name,
+                                phone: currentFocusLead.phone,
+                                disposition: "Rejected",
+                                labelKannada: "ಆಸಕ್ತಿಯಿಲ್ಲ (Reject)",
+                                icon: "🛑",
+                                notes: cardNoteInput.trim() || undefined,
+                                reason: selectedDispositionReason || undefined,
+                              });
+                            }}
+                            className="min-h-[52px] p-2 rounded-2xl bg-rose-50 hover:bg-rose-100 active:scale-95 text-rose-900 border border-rose-300 font-black transition flex flex-col items-center justify-center cursor-pointer text-center"
+                          >
+                            <span className="flex items-center gap-1 text-xs sm:text-sm font-black">
+                              <span>🛑</span>
+                              <span>ಆಸಕ್ತಿಯಿಲ್ಲ</span>
+                            </span>
+                            <span className="text-[9px] text-rose-600 font-bold uppercase tracking-wider">Not Interested</span>
+                          </button>
+
+                          {/* 9. SKIP CARD */}
+                          <button
+                            type="button"
+                            onClick={() => handleSkipFocusLead(currentFocusLead)}
+                            className="min-h-[52px] p-2 rounded-2xl bg-sand hover:bg-amber-100 active:scale-95 text-amber-950 border border-amber-300 font-black transition flex flex-col items-center justify-center cursor-pointer text-center"
+                            title="Skip to next number without repeating today"
+                          >
+                            <span className="flex items-center gap-1 text-xs sm:text-sm font-black">
+                              <span>⏭️</span>
+                              <span>ದಾಟಿಸಿ</span>
+                            </span>
+                            <span className="text-[9px] text-amber-800 font-bold uppercase tracking-wider">Skip Card</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* ── STEP 3: MANAGE WHATSAPP TEMPLATES (Medium-Size Buttons for 10th-Grade Telecallers) ── */}
+                    <div className="rounded-3xl bg-amber-50/70 border border-amber-300/80 p-3 sm:p-4 space-y-2">
+                      <div className="flex items-center justify-between flex-wrap gap-1">
+                        <span className="text-xs sm:text-sm font-black uppercase text-amber-950 tracking-wider flex items-center gap-1.5">
+                          <span>💬</span>
+                          <span>WhatsApp ಸಂದೇಶ ಮಾದರಿಗಳು (Message Templates):</span>
+                        </span>
                         <button
                           type="button"
-                          disabled={savingCardNote || !cardNoteInput.trim()}
-                          onClick={async () => {
-                            if (!callerProfile || !cardNoteInput.trim()) return;
-                            setSavingCardNote(true);
-                            try {
-                              await handleUpdateDisposition(
-                                currentFocusLead.leadId,
-                                currentFocusLead.status || "Contacted",
-                                cardNoteInput.trim()
-                              );
-                              setCardNoteInput("");
-                              showToast("✓ Note saved to lead record!");
-                            } finally {
-                              setSavingCardNote(false);
-                            }
-                          }}
-                          className="rounded-xl bg-teal-950 text-gold hover:bg-teal-900 px-3 py-1.5 text-xs font-black shadow-xs cursor-pointer disabled:opacity-40 shrink-0"
+                          onClick={() => handleOpenWhatsAppModal(currentFocusLead)}
+                          className="text-xs font-black text-teal-950 bg-amber-200/80 hover:bg-amber-300 px-3 py-1.5 rounded-xl transition cursor-pointer flex items-center gap-1 shadow-2xs"
                         >
-                          {savingCardNote ? "Saving..." : "💾 Save Note"}
+                          <span>⚙️</span>
+                          <span>ಎಲ್ಲಾ ಮಾದರಿಗಳು (Manage All)</span>
+                        </button>
+                      </div>
+
+                      {/* Medium-Size Template Choice Buttons */}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedNarrativeAngle("birthday")}
+                          className={`min-h-[48px] py-2 px-3 rounded-2xl text-xs sm:text-sm font-black transition cursor-pointer text-center flex items-center justify-center gap-1.5 border shadow-2xs ${
+                            selectedNarrativeAngle === "birthday"
+                              ? "bg-amber-500 text-teal-950 border-amber-600 ring-2 ring-amber-400 shadow-sm"
+                              : "bg-white text-teal-950 border-amber-200 hover:bg-amber-100/60"
+                          }`}
+                        >
+                          <span className="text-base">🎂</span>
+                          <span>ಹುಟ್ಟುಹಬ್ಬ (Birthday)</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setSelectedNarrativeAngle("trust_80g")}
+                          className={`min-h-[48px] py-2 px-3 rounded-2xl text-xs sm:text-sm font-black transition cursor-pointer text-center flex items-center justify-center gap-1.5 border shadow-2xs ${
+                            selectedNarrativeAngle === "trust_80g"
+                              ? "bg-indigo-950 text-amber-300 border-indigo-950 ring-2 ring-amber-400 shadow-sm"
+                              : "bg-white text-teal-950 border-amber-200 hover:bg-amber-100/60"
+                          }`}
+                        >
+                          <span className="text-base">📜</span>
+                          <span>80G ತೆರಿಗೆ (80G Tax)</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setSelectedNarrativeAngle("location_visit")}
+                          className={`min-h-[48px] py-2 px-3 rounded-2xl text-xs sm:text-sm font-black transition cursor-pointer text-center flex items-center justify-center gap-1.5 border shadow-2xs ${
+                            selectedNarrativeAngle === "location_visit"
+                              ? "bg-teal-950 text-gold border-teal-950 ring-2 ring-amber-400 shadow-sm"
+                              : "bg-white text-teal-950 border-amber-200 hover:bg-amber-100/60"
+                          }`}
+                        >
+                          <span className="text-base">📍</span>
+                          <span>ಆಶ್ರಮ ನಕ್ಷೆ (Map &amp; Video)</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setSelectedNarrativeAngle("provisions_inkind")}
+                          className={`min-h-[48px] py-2 px-3 rounded-2xl text-xs sm:text-sm font-black transition cursor-pointer text-center flex items-center justify-center gap-1.5 border shadow-2xs ${
+                            selectedNarrativeAngle === "provisions_inkind"
+                              ? "bg-amber-800 text-white border-amber-900 ring-2 ring-amber-400 shadow-sm"
+                              : "bg-white text-teal-950 border-amber-200 hover:bg-amber-100/60"
+                          }`}
+                        >
+                          <span className="text-base">🍚</span>
+                          <span>ಅಕ್ಕಿ &amp; ದಿನಸಿ (Groceries)</span>
                         </button>
                       </div>
                     </div>
 
-                    {/* ── CROSS-CALLER DISPOSITION REASON CHIPS (Visible to all callers) ── */}
-                    <div className="rounded-2xl border border-teal-900/15 bg-sand/30 p-2.5 space-y-1.5 text-xs">
+                    {/* ── STEP 4: OUTREACH LANGUAGE & SEVA TIER SELECTOR ── */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {/* Language Selector */}
+                      <div className="rounded-2xl bg-cream/70 border border-teal-900/15 p-3 flex flex-col justify-between gap-2">
+                        <span className="text-[11px] font-black uppercase text-teal-950 tracking-wider flex items-center gap-1">
+                          <span>🌐</span>
+                          <span>ಸಂದೇಶ ಭಾಷೆ (Language):</span>
+                        </span>
+                        <div className="grid grid-cols-3 gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setPreferredLanguage("kanglish")}
+                            className={`min-h-[40px] rounded-xl px-2 py-1.5 text-xs font-bold transition cursor-pointer text-center ${
+                              preferredLanguage === "kanglish"
+                                ? "bg-teal-950 text-white shadow-2xs font-black ring-1 ring-teal-950"
+                                : "bg-white text-teal-950 border border-teal-900/15 hover:bg-sand"
+                            }`}
+                          >
+                            🔤 ಕಂಗ್ಲಿಷ್ (Kanglish)
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setPreferredLanguage("kn")}
+                            className={`min-h-[40px] rounded-xl px-2 py-1.5 text-xs font-bold transition cursor-pointer text-center ${
+                              preferredLanguage === "kn"
+                                ? "bg-teal-950 text-gold shadow-2xs font-black ring-2 ring-amber-400"
+                                : "bg-white text-teal-950 border border-teal-900/15 hover:bg-sand"
+                            }`}
+                          >
+                            🇮🇳 ಕನ್ನಡ (Pure)
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setPreferredLanguage("en")}
+                            className={`min-h-[40px] rounded-xl px-2 py-1.5 text-xs font-bold transition cursor-pointer text-center ${
+                              preferredLanguage === "en"
+                                ? "bg-teal-950 text-white shadow-2xs font-black ring-1 ring-teal-950"
+                                : "bg-white text-teal-950 border border-teal-900/15 hover:bg-sand"
+                            }`}
+                          >
+                            🇬🇧 English
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Seva Tier Selector */}
+                      <div className="rounded-2xl bg-sand/40 border border-teal-900/15 p-3 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-black uppercase text-teal-950 tracking-wider">
+                            🎯 ಸೇವಾ ಮೊತ್ತ (Amount):
+                          </span>
+                          <span className="text-xs font-black text-emerald-800">
+                            ಆಯ್ಕೆ: ₹{formatINR(selectedSevaAmount)}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-5 gap-1">
+                          {[
+                            { amt: 501, label: "₹501" },
+                            { amt: 1500, label: "₹1,500" },
+                            { amt: 2500, label: "₹2,500" },
+                            { amt: 4500, label: "₹4,500" },
+                            { amt: 6000, label: "₹6,000" },
+                          ].map((tier) => (
+                            <button
+                              key={tier.amt}
+                              type="button"
+                              onClick={() => setSelectedSevaAmount(tier.amt)}
+                              className={`min-h-[38px] py-1 px-1 rounded-xl text-xs font-bold transition cursor-pointer text-center border ${
+                                selectedSevaAmount === tier.amt
+                                  ? "bg-teal-950 text-gold border-teal-950 shadow-xs font-black"
+                                  : "bg-white text-teal-950 border-teal-900/15 hover:bg-sand"
+                              }`}
+                            >
+                              {tier.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* ── STEP 5: QUICK REASONS & NOTES (ಐಚ್ಛಿಕ - Optional) ── */}
+                    {/* Reason Chips */}
+                    <div className="rounded-2xl border border-teal-900/15 bg-sand/30 p-3 space-y-1.5 text-xs">
                       <div className="flex items-center justify-between">
                         <span className="text-[11px] font-black uppercase text-teal-950 tracking-wider flex items-center gap-1">
                           <span>🏷️</span>
-                          <span>ಕಾರಣ ಆಯ್ಕೆಮಾಡಿ (Select Reason - Stored in Database for All Telecallers):</span>
+                          <span>ಕರೆ ಕಾರಣ (Call Reason - ಎಲ್ಲರಿಗೂ ಕಾಣಿಸುತ್ತದೆ):</span>
                         </span>
                         {selectedDispositionReason && (
                           <button
@@ -3955,7 +4094,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                               key={reasonItem}
                               type="button"
                               onClick={() => setSelectedDispositionReason(isPicked ? "" : reasonItem)}
-                              className={`text-[10px] px-2 py-1 rounded-lg font-bold transition cursor-pointer border ${
+                              className={`text-xs px-2.5 py-1 rounded-xl font-bold transition cursor-pointer border ${
                                 isPicked
                                   ? "bg-teal-950 text-gold border-teal-950 shadow-xs ring-2 ring-amber-400"
                                   : "bg-white text-teal-950 border-teal-900/15 hover:bg-amber-50"
@@ -3968,220 +4107,78 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                       </div>
                     </div>
 
-                    {/* ── 1-TAP DISPOSITION & AUTO-ADVANCE STRIP ── */}
-                    <div className="space-y-2 pt-2 border-t border-teal-900/10">
+                    {/* Quick Note Chips & Custom Note Input */}
+                    <div className="rounded-2xl border border-teal-900/15 bg-sand/20 p-3 space-y-2 text-xs">
                       <div className="flex items-center justify-between">
-                        <span className="text-[11px] font-black uppercase text-teal-950 tracking-wider">
-                          ⚡ 1-Tap Result &amp; Auto-Advance:
+                        <span className="text-[11px] font-black uppercase text-teal-950 tracking-wider flex items-center gap-1.5">
+                          <span>⚡</span>
+                          <span>1-ಟ್ಯಾಪ್ ಟಿಪ್ಪಣಿಗಳು (Quick Note Chips):</span>
                         </span>
                         <span className="text-[10px] text-teal-950/60 font-semibold">
-                          Tap any pill below to save &amp; advance to next lead
+                          ಟ್ಯಾಪ್ ಮಾಡಿ ಸೇರಿಸಿ
                         </span>
                       </div>
 
-                      <div className="space-y-2">
-                        {/* Row 1: Primary Conversions & Reschedules */}
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                          {/* 1. WARM / INTERESTED */}
+                      <div className="flex flex-wrap gap-1.5">
+                        {[
+                          isParentLead ? "👶 ತಂದೆ ಮಾತನಾಡಿದ್ದಾರೆ" : "👤 ದಾನಿ ಮಾತನಾಡಿದ್ದಾರೆ",
+                          isParentLead ? "👩 ತಾಯಿ ಮಾತನಾಡಿದ್ದಾರೆ" : "🤝 ಒಪ್ಪಿದ್ದಾರೆ",
+                          `🎂 ₹${formatINR(selectedSevaAmount)} ಅನ್ನದಾನಕ್ಕೆ ಒಪ್ಪಿದ್ದಾರೆ`,
+                          "📲 WhatsApp QR ಕಳುಹಿಸಲಾಗಿದೆ",
+                          "🏛️ ಆಶ್ರಮಕ್ಕೆ ಭೇಟಿ ನೀಡುತ್ತಾರೆ",
+                          "📜 80G ರಶೀದಿ ಕೇಳಿದ್ದಾರೆ",
+                          "🗣️ ಕನ್ನಡದಲ್ಲಿ ಮಾತ್ರ",
+                          "⏳ ಸಂಜೆ ಕರೆ ಮಾಡಿ",
+                          "📵 ಕರೆ ಸ್ವೀಕರಿಸಿಲ್ಲ (RNR)",
+                          "❌ ನಂಬರ್ ಬದಲಾಗಿದೆ",
+                        ].map((chip) => (
                           <button
+                            key={chip}
                             type="button"
                             onClick={() => {
-                              setPendingConfirmation({
-                                leadId: currentFocusLead.leadId,
-                                leadName: currentFocusLead.name,
-                                phone: currentFocusLead.phone,
-                                disposition: "Interested",
-                                labelKannada: "ಒಪ್ಪಿದ್ದಾರೆ (Interested)",
-                                icon: "👍",
-                                notes: cardNoteInput.trim() || undefined,
-                                reason: selectedDispositionReason || undefined,
-                              });
+                              const cleanCurrent = (cardNoteInput || currentFocusLead.notes || "").trim();
+                              const newNote = cleanCurrent ? `${cleanCurrent} · ${chip}` : chip;
+                              setCardNoteInput(newNote);
+                              showToast(`Added: ${chip}`);
                             }}
-                            className="min-h-[56px] p-2 rounded-2xl bg-amber-500 hover:bg-amber-600 active:scale-95 text-teal-950 font-black shadow-xs transition flex flex-col items-center justify-center cursor-pointer text-center border border-amber-600/30"
+                            className="text-xs bg-white hover:bg-amber-100/80 border border-teal-900/15 text-teal-950 px-2.5 py-1 rounded-xl font-bold transition cursor-pointer shadow-2xs"
                           >
-                            <span className="flex items-center gap-1 text-sm font-black">
-                              <span>👍</span>
-                              <span>ಒಪ್ಪಿದ್ದಾರೆ</span>
-                            </span>
-                            <span className="text-[10px] text-teal-950/80 font-bold uppercase tracking-wider">Interested</span>
+                            + {chip}
                           </button>
+                        ))}
+                      </div>
 
-                          {/* 2. BUSY / +2h */}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const twoHoursLater = new Date(Date.now() + 2 * 3600 * 1000).toISOString();
-                              setPendingConfirmation({
-                                leadId: currentFocusLead.leadId,
-                                leadName: currentFocusLead.name,
-                                phone: currentFocusLead.phone,
-                                disposition: "Busy",
-                                labelKannada: "ಬಿಜಿಯಿದ್ದಾರೆ (Busy / +2h)",
-                                icon: "⏳",
-                                notes: cardNoteInput.trim() || "Auto-rescheduled +2 hours",
-                                callbackTime: twoHoursLater,
-                                reason: selectedDispositionReason || "🏢 ಆಫೀಸ್‌ನಲ್ಲಿ ಬಿಜಿ (Busy in office)",
-                              });
-                            }}
-                            className="min-h-[56px] p-2 rounded-2xl bg-slate-700 hover:bg-slate-800 active:scale-95 text-white font-black shadow-xs transition flex flex-col items-center justify-center cursor-pointer text-center border border-slate-600"
-                          >
-                            <span className="flex items-center gap-1 text-sm font-black">
-                              <span>⏳</span>
-                              <span>ಬಿಜಿಯಿದ್ದಾರೆ</span>
-                            </span>
-                            <span className="text-[10px] text-slate-300 font-bold uppercase tracking-wider">Busy / +2h</span>
-                          </button>
-
-                          {/* 3. CALLBACK LATER */}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setActiveNotesLead(currentFocusLead);
-                              setNotesText(cardNoteInput.trim() || currentFocusLead.notes || "");
-                              setCallbackDateTime("");
-                            }}
-                            className="min-h-[56px] p-2 rounded-2xl bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-black shadow-xs transition flex flex-col items-center justify-center cursor-pointer text-center border border-blue-500"
-                          >
-                            <span className="flex items-center gap-1 text-sm font-black">
-                              <span>📅</span>
-                              <span>ನಂತರ ಕರೆ</span>
-                            </span>
-                            <span className="text-[10px] text-blue-200 font-bold uppercase tracking-wider">Callback</span>
-                          </button>
-
-                          {/* 4. PAID / LOG DONATION */}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setActiveDonationLead(currentFocusLead);
-                              setLoggedDonationAmount(selectedSevaAmount || (isTodayBirthday ? 2500 : 1500));
-                              setLoggedDonationUtr("");
-                            }}
-                            className="min-h-[56px] p-2 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-black shadow-xs transition flex flex-col items-center justify-center cursor-pointer text-center border border-emerald-500"
-                          >
-                            <span className="flex items-center gap-1 text-sm font-black">
-                              <span>🎉</span>
-                              <span>ಹಣ ನೀಡಿದ್ದಾರೆ</span>
-                            </span>
-                            <span className="text-[10px] text-emerald-200 font-bold uppercase tracking-wider">Log Paid ₹</span>
-                          </button>
-                        </div>
-
-                        {/* Row 2: Floor Telephony Outcomes & Call Exceptions */}
-                        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                          {/* 5. RINGING NO ANSWER (RNR) */}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setPendingConfirmation({
-                                leadId: currentFocusLead.leadId,
-                                leadName: currentFocusLead.name,
-                                phone: currentFocusLead.phone,
-                                disposition: "No_Answer",
-                                labelKannada: "ರಿಂಗ್ ಆಗಿ ಕಟ್ (RNR)",
-                                icon: "📳",
-                                notes: cardNoteInput.trim() || "Ringing but no answer",
-                                reason: selectedDispositionReason || "📳 ರಿಂಗ್ ಆಗಿದೆ, ಉತ್ತರಿಸಿಲ್ಲ",
-                              });
-                            }}
-                            className="min-h-[52px] p-2 rounded-2xl bg-amber-700/90 hover:bg-amber-800 active:scale-95 text-white font-black shadow-xs transition flex flex-col items-center justify-center cursor-pointer text-center border border-amber-600"
-                            title="Ringing no answer / call disconnected"
-                          >
-                            <span className="flex items-center gap-1 text-xs font-black">
-                              <span>📳</span>
-                              <span>ರಿಂಗ್ ಆಗಿ ಕಟ್</span>
-                            </span>
-                            <span className="text-[9px] text-amber-200 font-bold uppercase tracking-wider">RNR / No Ans</span>
-                          </button>
-
-                          {/* 6. CALL NOT GOING / NOT REACHABLE / SWITCHED OFF */}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setPendingConfirmation({
-                                leadId: currentFocusLead.leadId,
-                                leadName: currentFocusLead.name,
-                                phone: currentFocusLead.phone,
-                                disposition: "Not_Reachable",
-                                labelKannada: "ಸಂಪರ್ಕವಿಲ್ಲ / ಆಫ್",
-                                icon: "📵",
-                                notes: cardNoteInput.trim() || "Call not connecting or switched off",
-                                reason: selectedDispositionReason || "📵 ಸಂಪರ್ಕಕ್ಕೆ ಸಿಗುತ್ತಿಲ್ಲ / ಸ್ವಿಚ್ಡ್ ಆಫ್",
-                              });
-                            }}
-                            className="min-h-[52px] p-2 rounded-2xl bg-indigo-900 hover:bg-indigo-950 active:scale-95 text-white font-black shadow-xs transition flex flex-col items-center justify-center cursor-pointer text-center border border-indigo-700"
-                            title="Call not connecting, network out of reach, or phone switched off"
-                          >
-                            <span className="flex items-center gap-1 text-xs font-black">
-                              <span>📵</span>
-                              <span>ಸಂಪರ್ಕವಿಲ್ಲ</span>
-                            </span>
-                            <span className="text-[9px] text-indigo-200 font-bold uppercase tracking-wider">Not Reachable</span>
-                          </button>
-
-                          {/* 7. WRONG / INVALID NUMBER */}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setPendingConfirmation({
-                                leadId: currentFocusLead.leadId,
-                                leadName: currentFocusLead.name,
-                                phone: currentFocusLead.phone,
-                                disposition: "Wrong_Number",
-                                labelKannada: "ತಪ್ಪು ನಂಬರ್ (Invalid)",
-                                icon: "❌",
-                                notes: cardNoteInput.trim() || "Wrong number reported by telecaller",
-                                reason: selectedDispositionReason || "❌ ತಪ್ಪು ನಂಬರ್ / ಅಮಾನ್ಯ ಸಂಖ್ಯೆ",
-                              });
-                            }}
-                            className="min-h-[52px] p-2 rounded-2xl bg-rose-700 hover:bg-rose-800 active:scale-95 text-white font-black shadow-xs transition flex flex-col items-center justify-center cursor-pointer text-center border border-rose-600"
-                            title="Wrong number or invalid telephone number"
-                          >
-                            <span className="flex items-center gap-1 text-xs font-black">
-                              <span>❌</span>
-                              <span>ತಪ್ಪು ನಂಬರ್</span>
-                            </span>
-                            <span className="text-[9px] text-rose-200 font-bold uppercase tracking-wider">Invalid No</span>
-                          </button>
-
-                          {/* 8. REJECT / NOT INTERESTED */}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setPendingConfirmation({
-                                leadId: currentFocusLead.leadId,
-                                leadName: currentFocusLead.name,
-                                phone: currentFocusLead.phone,
-                                disposition: "Rejected",
-                                labelKannada: "ಆಸಕ್ತಿಯಿಲ್ಲ (Reject)",
-                                icon: "🛑",
-                                notes: cardNoteInput.trim() || undefined,
-                                reason: selectedDispositionReason || undefined,
-                              });
-                            }}
-                            className="min-h-[52px] p-2 rounded-2xl bg-rose-50 hover:bg-rose-100 active:scale-95 text-rose-900 border border-rose-300 font-black transition flex flex-col items-center justify-center cursor-pointer text-center"
-                          >
-                            <span className="flex items-center gap-1 text-xs font-black">
-                              <span>🛑</span>
-                              <span>ಆಸಕ್ತಿಯಿಲ್ಲ</span>
-                            </span>
-                            <span className="text-[9px] text-rose-600 font-bold uppercase tracking-wider">Reject</span>
-                          </button>
-
-                          {/* 9. SKIP CARD */}
-                          <button
-                            type="button"
-                            onClick={() => handleSkipFocusLead(currentFocusLead)}
-                            className="min-h-[52px] p-2 rounded-2xl bg-sand hover:bg-amber-100 active:scale-95 text-amber-950 border border-amber-300 font-black transition flex flex-col items-center justify-center cursor-pointer text-center"
-                            title="Skip to next number without repeating today"
-                          >
-                            <span className="flex items-center gap-1 text-xs font-black">
-                              <span>⏭️</span>
-                              <span>ದಾಟಿಸಿ</span>
-                            </span>
-                            <span className="text-[9px] text-amber-800 font-bold uppercase tracking-wider">Skip Card</span>
-                          </button>
-                        </div>
+                      {/* Note Input Field with 1-Tap Save */}
+                      <div className="flex items-center gap-2 pt-1">
+                        <input
+                          type="text"
+                          value={cardNoteInput}
+                          onChange={(e) => setCardNoteInput(e.target.value)}
+                          placeholder={currentFocusLead.notes ? `ಪ್ರಸ್ತುತ: ${currentFocusLead.notes}` : "ಟಿಪ್ಪಣಿ ಬರೆಯಿರಿ ಅಥವಾ ಮೇಲಿನ ಚಿಪ್ಸ್ ಟ್ಯಾಪ್ ಮಾಡಿ..."}
+                          className="flex-1 rounded-xl border border-teal-900/20 px-3 py-2 text-xs text-teal-950 bg-white focus:ring-2 focus:ring-amber-400 outline-none"
+                        />
+                        <button
+                          type="button"
+                          disabled={savingCardNote || !cardNoteInput.trim()}
+                          onClick={async () => {
+                            if (!callerProfile || !cardNoteInput.trim()) return;
+                            setSavingCardNote(true);
+                            try {
+                              await handleUpdateDisposition(
+                                currentFocusLead.leadId,
+                                currentFocusLead.status || "Contacted",
+                                cardNoteInput.trim()
+                              );
+                              setCardNoteInput("");
+                              showToast("✓ ಟಿಪ್ಪಣಿ ಉಳಿಸಲಾಗಿದೆ!");
+                            } finally {
+                              setSavingCardNote(false);
+                            }
+                          }}
+                          className="rounded-xl bg-teal-950 text-gold hover:bg-teal-900 px-3.5 py-2 text-xs font-black shadow-xs cursor-pointer disabled:opacity-40 shrink-0"
+                        >
+                          {savingCardNote ? "Saving..." : "💾 ಸೇವ್ (Save)"}
+                        </button>
                       </div>
                     </div>
 
@@ -5280,6 +5277,82 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
         </div>
       )}
 
+      {/* ── MOBILE STICKY BOTTOM NAVIGATION BAR (Thumb-friendly 1-Tap Navigation for Telecallers) ── */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-teal-900/15 shadow-2xl px-2 py-1.5 flex items-center justify-around">
+        <button
+          type="button"
+          onClick={() => {
+            setViewMode("focus");
+            scrollToCallingCard();
+          }}
+          className={`flex-1 flex flex-col items-center justify-center py-1.5 rounded-xl transition cursor-pointer ${
+            viewMode === "focus"
+              ? "bg-teal-950 text-gold font-black shadow-xs ring-1 ring-amber-400/50"
+              : "text-teal-950/70 hover:bg-sand/40"
+          }`}
+        >
+          <span className="text-lg">⚡</span>
+          <span className="text-[10px] font-bold">ಕಾರ್ಡ್ (Card)</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setViewMode("queue")}
+          className={`flex-1 flex flex-col items-center justify-center py-1.5 rounded-xl transition cursor-pointer ${
+            viewMode === "queue"
+              ? "bg-teal-950 text-white font-black shadow-xs ring-1 ring-teal-800"
+              : "text-teal-950/70 hover:bg-sand/40"
+          }`}
+        >
+          <span className="text-lg">📋</span>
+          <span className="text-[10px] font-bold">ಕ್ಯೂ ({filteredLeads.length})</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setShowShiftDrawer(true);
+            void loadDailyLogs();
+          }}
+          className="flex-1 flex flex-col items-center justify-center py-1.5 rounded-xl text-teal-950/70 hover:bg-sand/40 transition cursor-pointer"
+        >
+          <span className="text-lg">📝</span>
+          <span className="text-[10px] font-bold">ಕರೆಗಳು ({dailyLogs.length})</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            if (currentFocusLead) {
+              handleOpenWhatsAppModal(currentFocusLead);
+            } else {
+              setIsAntiBanModalOpen(true);
+            }
+          }}
+          className="flex-1 flex flex-col items-center justify-center py-1.5 rounded-xl text-emerald-800 hover:bg-emerald-50 transition cursor-pointer"
+        >
+          <span className="text-lg">💬</span>
+          <span className="text-[10px] font-bold">ಮೆಸೇಜ್ (WA)</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setShowEodModal(true);
+            void loadDailyLogs();
+            void loadEodStatus();
+          }}
+          className={`flex-1 flex flex-col items-center justify-center py-1.5 rounded-xl transition cursor-pointer ${
+            eodStatus?.isSubmitted
+              ? "bg-emerald-100 text-emerald-950 font-black border border-emerald-300"
+              : "text-amber-900 hover:bg-amber-50"
+          }`}
+        >
+          <span className="text-lg">{eodStatus?.isSubmitted ? "✅" : "📤"}</span>
+          <span className="text-[10px] font-bold">ವರದಿ (EOD)</span>
+        </button>
+      </div>
+
       {/* ── 1-TAP DISPOSITION CONFIRMATION MODAL (Prevents accidental clicks & mobile scroll jumping) ── */}
       {pendingConfirmation && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-teal-950/70 backdrop-blur-xs animate-in fade-in duration-150">
@@ -5363,9 +5436,9 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
               <button
                 type="button"
                 onClick={() => setPendingConfirmation(null)}
-                className="py-3 px-4 rounded-2xl border-2 border-teal-900/20 text-teal-950 font-bold text-xs hover:bg-cream active:scale-98 transition cursor-pointer text-center"
+                className="py-3.5 px-4 rounded-2xl border-2 border-slate-300 bg-slate-100 hover:bg-slate-200 text-slate-800 font-black text-xs sm:text-sm active:scale-98 transition cursor-pointer text-center"
               >
-                ✕ ರದ್ದು (Cancel)
+                ✕ ಬೇಡ / ರದ್ದು (Cancel)
               </button>
               <button
                 type="button"
@@ -5384,9 +5457,9 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                   setSelectedDispositionReason("");
                   scrollToCallingCard();
                 }}
-                className="py-3 px-4 rounded-2xl bg-teal-950 hover:bg-teal-900 active:scale-98 text-gold font-black text-xs shadow-lg transition cursor-pointer flex items-center justify-center gap-1.5 text-center ring-2 ring-amber-400"
+                className="py-3.5 px-4 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white font-black text-xs sm:text-sm shadow-lg transition cursor-pointer flex items-center justify-center gap-1.5 text-center ring-2 ring-emerald-400"
               >
-                <span>✅ ಖಚಿತ &amp; ಮುಂದಕ್ಕೆ</span>
+                <span>✅ ಹೌದು, ಸೇವ್ ಮಾಡಿ</span>
                 <span>▶</span>
               </button>
             </div>
