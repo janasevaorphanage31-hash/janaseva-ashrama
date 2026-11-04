@@ -14,6 +14,7 @@ export function AdminTelecallerCRM() {
   const [totalLeads, setTotalLeads] = useState(0);
   const [totalDonations, setTotalDonations] = useState(0);
   const [totalRevenue, setTotalRevenue] = useState(0);
+  const [streamCounts, setStreamCounts] = useState<{ DIRECT_DONOR: number; PARENTS: number }>({ DIRECT_DONOR: 0, PARENTS: 0 });
 
   // Bulk Reassignment State
   const [selectedCallerForLeads, setSelectedCallerForLeads] = useState<string>("ALL");
@@ -278,6 +279,9 @@ export function AdminTelecallerCRM() {
         setTotalLeads(data.totalLeads || 0);
         setTotalDonations(data.totalDonations || 0);
         setTotalRevenue(data.totalRevenue || 0);
+        if (data.streamCounts) {
+          setStreamCounts(data.streamCounts);
+        }
 
         if (data.crmWhatsAppSettings) {
           setCrmSettings(data.crmWhatsAppSettings);
@@ -699,6 +703,105 @@ export function AdminTelecallerCRM() {
     const curDay = now.getDate();
     const curMonth = now.getMonth() + 1;
 
+    // ── FAST PATH: Detect known exact Excel formats and skip fuzzy header scan ──
+    const headerRow0 = (grid[0] || []).map((c: any) => String(c || "").trim());
+
+    // DIRECT DONOR FORMAT: ["Name", "Mobile No.", "Date of Birth ", "", "", ""]
+    // Layout: 2 donors per row — cols 0,1,2 = person 1; cols 3,4,5 = person 2
+    const isDirectDonorPairedFormat =
+      headerRow0.length >= 3 &&
+      /^name$/i.test(headerRow0[0]) &&
+      /mobile/i.test(headerRow0[1]) &&
+      /date.{0,5}birth/i.test(headerRow0[2]) &&
+      (headerRow0[3] === "" || headerRow0[3] === undefined || /^name$/i.test(headerRow0[3]));
+
+    if (isDirectDonorPairedFormat) {
+      // Paired-column Direct Donor ingestion — emit 2 leads per data row
+      const leads: Array<{
+        stream: "DIRECT_DONOR";
+        name: string;
+        phone: string;
+        dobDay: number;
+        dobMonth: number;
+        email?: string;
+      }> = [];
+
+      for (let r = 1; r < grid.length; r++) {
+        const cells = grid[r] || [];
+        // Person 1: cols 0, 1, 2
+        const p1Name = String(cells[0] || "").trim();
+        const p1Phone = normalizePhoneNumber(cells[1]);
+        const p1Dob = parseBirthdayCell(cells[2], curDay, curMonth);
+        if (p1Phone.length === 10 && p1Name) {
+          leads.push({ stream: "DIRECT_DONOR", name: p1Name, phone: p1Phone, dobDay: p1Dob.day, dobMonth: p1Dob.month });
+        }
+        // Person 2: cols 3, 4, 5 (if present)
+        if (cells.length > 3) {
+          const p2Name = String(cells[3] || "").trim();
+          const p2Phone = normalizePhoneNumber(cells[4]);
+          const p2Dob = parseBirthdayCell(cells[5], curDay, curMonth);
+          if (p2Phone.length === 10 && p2Name) {
+            leads.push({ stream: "DIRECT_DONOR", name: p2Name, phone: p2Phone, dobDay: p2Dob.day, dobMonth: p2Dob.month });
+          }
+        }
+      }
+      setParsedLeads(leads);
+      return;
+    }
+
+    // PARENTS FORMAT: ["STUDENT NAME", "FATHER NAME", "MOTHER NAME", "MOBILE", "DOB"]
+    const isParentsExactFormat =
+      headerRow0.length >= 4 &&
+      /student.{0,4}name/i.test(headerRow0[0]) &&
+      /father.{0,4}name/i.test(headerRow0[1]) &&
+      /mobile|phone/i.test(headerRow0[3]);
+
+    if (isParentsExactFormat) {
+      const leads: Array<{
+        stream: "PARENTS";
+        name: string;
+        childName: string;
+        parentName: string;
+        phone: string;
+        dobDay: number;
+        dobMonth: number;
+      }> = [];
+
+      for (let r = 1; r < grid.length; r++) {
+        const cells = grid[r] || [];
+        const studentName = String(cells[0] || "").trim();
+        const fatherName = String(cells[1] || "").trim();
+        const motherName = String(cells[2] || "").trim();
+        const phone = normalizePhoneNumber(cells[3]);
+        const dob = parseBirthdayCell(cells[4], curDay, curMonth);
+
+        if (phone.length !== 10) continue;
+
+        // Primary parent = father if available, else mother
+        const primaryParent = fatherName || motherName || "Parent";
+        // Display name: "StudentName (FatherName)"
+        const displayName = studentName
+          ? primaryParent && primaryParent !== "Parent"
+            ? `${studentName} (${primaryParent})`
+            : `${studentName} (ಮಗು)`
+          : primaryParent;
+
+        leads.push({
+          stream: "PARENTS",
+          name: displayName,
+          childName: studentName,
+          parentName: primaryParent,
+          phone,
+          dobDay: dob.day,
+          dobMonth: dob.month,
+        });
+      }
+      setParsedLeads(leads);
+      return;
+    }
+
+    // ── GENERAL FUZZY PATH (CSV paste / other formats) ──
+
     // Multi-row header detection: scan up to the first 6 rows for donor/name/phone/dob columns
     let headerRowIdx = -1;
     let nameCol = -1;
@@ -1034,7 +1137,8 @@ export function AdminTelecallerCRM() {
             if (parentSheet) targetSheetName = parentSheet;
           }
           const worksheet = workbook.Sheets[targetSheetName];
-          const grid = XLSX.utils.sheet_to_json<any[]>(worksheet, { header: 1, raw: false, defval: "" });
+          // raw: true preserves Excel serial date numbers so parseBirthdayCell() can convert them correctly
+          const grid = XLSX.utils.sheet_to_json<any[]>(worksheet, { header: 1, raw: true, defval: "" });
           // Generate clean CSV preview for textarea
           const csvPreview = grid.slice(0, 50).map((r) => r.map((c: any) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
           setPastedText(csvPreview);
@@ -1418,6 +1522,7 @@ export function AdminTelecallerCRM() {
       showToast(`✓ ${data.message}`);
       setCallers(data.callers || []);
       setTotalLeads(data.totalLeads || 0);
+      if (data.streamCounts) setStreamCounts(data.streamCounts);
       await loadLeadsForReassignment("TC01");
     } catch (err: any) {
       showToast("Distribution failed: " + err.message);
@@ -1441,6 +1546,7 @@ export function AdminTelecallerCRM() {
       showToast(`✓ ${data.message}`);
       setCallers(data.callers || []);
       setTotalLeads(data.totalLeads || 0);
+      if (data.streamCounts) setStreamCounts(data.streamCounts);
       await loadLeadsForReassignment("TC01");
     } catch (err: any) {
       showToast("Distribution failed: " + err.message);
@@ -2056,15 +2162,25 @@ export function AdminTelecallerCRM() {
         </div>
 
         <div className="rounded-2xl bg-white p-4 shadow-sm border border-teal-900/10">
-          <span className="text-[10px] font-black uppercase tracking-wider text-teal-950/60 block">
-            Managed Leads
-          </span>
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-black uppercase tracking-wider text-teal-950/60 block">
+              Managed Leads
+            </span>
+            <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-md bg-teal-50 text-teal-800 border border-teal-200">
+              Dual Stream
+            </span>
+          </div>
           <p className="mt-1 font-display text-xl sm:text-2xl font-black text-teal-950">
-            {totalLeads} Leads
+            {totalLeads.toLocaleString()} Leads
           </p>
-          <span className="text-[10px] text-amber-700 font-bold mt-0.5 block">
-            ≈ {equalQuotaPerCaller} leads / caller
-          </span>
+          <div className="flex flex-wrap items-center gap-1.5 text-[10px] font-bold mt-1">
+            <span className="text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+              🎂 Donors: {streamCounts.DIRECT_DONOR.toLocaleString()}
+            </span>
+            <span className="text-indigo-800 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-200">
+              👨‍👩‍👧 Parents: {streamCounts.PARENTS.toLocaleString()}
+            </span>
+          </div>
         </div>
 
         <div className="rounded-2xl bg-white p-4 shadow-sm border border-teal-900/10">
@@ -2410,7 +2526,12 @@ export function AdminTelecallerCRM() {
                       </div>
                     </td>
                     <td className="p-3 font-semibold">{c.assignedCount}</td>
-                    <td className="p-3 text-teal-950/70">{c.contactedCount}</td>
+                    <td className="p-3">
+                      <div className="font-semibold text-teal-950">{c.contactedCount}</div>
+                      <div className="text-[10px] text-amber-700 font-bold whitespace-nowrap">
+                        🎯 {c.todayContactedCount ?? 0} today
+                      </div>
+                    </td>
                     <td className="p-3 text-emerald-700 font-bold">{c.convertedCount}</td>
                     <td className="p-3">
                       <span className="rounded-md bg-emerald-50 text-emerald-800 px-2 py-0.5 text-[10px] font-black">
@@ -2563,6 +2684,7 @@ export function AdminTelecallerCRM() {
                 <div className="rounded-xl bg-slate-50 p-2 border border-slate-200/60">
                   <span className="block text-[10px] text-teal-950/60 uppercase">Contacted</span>
                   <span className="font-bold text-teal-950 text-xs">{c.contactedCount}</span>
+                  <span className="block text-[9px] text-amber-700 font-bold whitespace-nowrap">🎯 {c.todayContactedCount ?? 0} today</span>
                 </div>
                 <div className="rounded-xl bg-emerald-50 p-2 border border-emerald-200/60">
                   <span className="block text-[10px] text-emerald-800 uppercase">Converted</span>

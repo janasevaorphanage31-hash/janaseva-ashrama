@@ -103,6 +103,7 @@ export interface TelecallerStats {
   dailyQuota: number;
   assignedCount: number;
   contactedCount: number;
+  todayContactedCount?: number;
   convertedCount: number;
   conversionRate: number;
   totalDonationAmount: number;
@@ -1448,6 +1449,27 @@ export async function recordPaymentAttribution(data: {
     }
   }
 
+  // 6. Record into referral_attributions table for permanent attribution auditing
+  if (cleanRef) {
+    try {
+      await db.execute(sql`
+        INSERT INTO referral_attributions (ref_id, lead_id, payment_id, amount_paise, utm_source, caller_name, donor_name, verified_at)
+        VALUES (
+          ${cleanRef},
+          ${effectiveLeadId},
+          ${data.txnId},
+          ${roundedAmount * 100},
+          ${data.metadata?.utm_source || 'whatsapp'},
+          ${cleanRef},
+          ${data.donorName || null},
+          ${verifiedAt || new Date()}
+        )
+      `);
+    } catch (refErr) {
+      console.warn("[CRM] referral_attributions insert notice:", refErr);
+    }
+  }
+
   return { success: true, txnId: data.txnId, callerRefId: cleanRef, primaryDonationId };
 }
 
@@ -1460,6 +1482,7 @@ export async function getAdminLeaderboard(): Promise<{
   totalLeads: number;
   totalDonations: number;
   totalRevenue: number;
+  streamCounts?: { DIRECT_DONOR: number; PARENTS: number };
   crmWhatsAppSettings: CrmWhatsAppSettings;
 }> {
   // Ensure tables and telecallers exist
@@ -1472,6 +1495,24 @@ export async function getAdminLeaderboard(): Promise<{
     .select({ count: sql<number>`count(*)` })
     .from(agLeads);
   const totalLeads = Number(totalLeadsResult?.count || 0);
+
+  // 1b. Stream counts (DIRECT_DONOR vs PARENTS)
+  const streamCountsRows = await db
+    .select({
+      stream: agLeads.stream,
+      count: sql<number>`count(*)`,
+    })
+    .from(agLeads)
+    .groupBy(agLeads.stream);
+
+  const streamCounts = {
+    DIRECT_DONOR: 0,
+    PARENTS: 0,
+  };
+  for (const r of streamCountsRows) {
+    if (r.stream === "PARENTS") streamCounts.PARENTS = Number(r.count || 0);
+    else if (r.stream === "DIRECT_DONOR") streamCounts.DIRECT_DONOR = Number(r.count || 0);
+  }
 
   // 2. Lead counts grouped by assignedCallerId and status (Index Scan)
   const leadStatsRows = await db
@@ -1527,7 +1568,21 @@ export async function getAdminLeaderboard(): Promise<{
     }
   }
 
-  const { dateStr: todayISTStr } = getISTDateBounds();
+  // 5. Today's calls per caller directly from agCallLogs (IST bounds)
+  const { todayStart, todayEnd, dateStr: todayISTStr } = getISTDateBounds();
+  const todayCallRows = await db
+    .select({
+      callerId: agCallLogs.callerId,
+      count: sql<number>`count(*)`,
+    })
+    .from(agCallLogs)
+    .where(and(gte(agCallLogs.createdAt, todayStart), lte(agCallLogs.createdAt, todayEnd)))
+    .groupBy(agCallLogs.callerId);
+
+  const todayCallsByCaller: Record<string, number> = {};
+  for (const r of todayCallRows) {
+    if (r.callerId) todayCallsByCaller[r.callerId] = Number(r.count || 0);
+  }
 
   const statsList: TelecallerStats[] = allCallers.map((c) => {
     const assigned = assignedByCaller[c.callerId] || 0;
@@ -1549,6 +1604,7 @@ export async function getAdminLeaderboard(): Promise<{
       dailyQuota: c.dailyQuota,
       assignedCount: assigned,
       contactedCount: contacted,
+      todayContactedCount: todayCallsByCaller[c.callerId] || 0,
       convertedCount: converted,
       conversionRate: Math.round(rate * 10) / 10,
       totalDonationAmount: totalAmount,
@@ -1570,6 +1626,7 @@ export async function getAdminLeaderboard(): Promise<{
     totalLeads,
     totalDonations,
     totalRevenue,
+    streamCounts,
     crmWhatsAppSettings,
   };
 }

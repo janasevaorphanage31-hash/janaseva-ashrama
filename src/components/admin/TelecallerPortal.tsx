@@ -669,6 +669,36 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
     }
   };
 
+  // ── EOD CSV Auto-Download (Google Drive Manual Upload Fallback) ──
+  const generateEodCsvAndDownload = () => {
+    if (!callerProfile || dailyLogs.length === 0) return;
+    const todayStr = new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }).split(",")[0].replace(/\//g, "-");
+    const BOM = "\uFEFF";
+    const headers = [
+      "Lead ID", "Name", "Stream", "Phone", "DOB Day", "DOB Month",
+      "Disposition", "Amount (₹)", "Notes", "Callback Date", "Called At (IST)", "Caller ID"
+    ];
+    const esc = (v: any) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+    const rows = dailyLogs.map(l => [
+      esc(l.leadId), esc(l.leadName || l.donorName || ""), esc(l.stream || ""),
+      esc(l.phone || ""), esc(l.dobDay || ""), esc(l.dobMonth || ""),
+      esc(l.disposition || ""), esc(l.effectiveAmount || 0), esc(l.notes || ""),
+      esc(l.rescheduleDate || ""),
+      esc(l.createdAt ? new Date(l.createdAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }) : ""),
+      esc(callerProfile.callerId),
+    ].join(","));
+    const csv = BOM + [headers.map(esc).join(","), ...rows].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `EOD_${callerProfile.callerId}_${todayStr}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   const handleSubmitEOD = async () => {
     setSubmittingEod(true);
     try {
@@ -679,7 +709,9 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to submit EOD report");
-      showToast("🎉 Shift submitted to Supervisor successfully!");
+      // Auto-download CSV for Google Drive upload
+      generateEodCsvAndDownload();
+      showToast("🎉 Shift submitted! CSV downloaded — please upload to shared Drive folder.");
       setShowEodModal(false);
       void loadEodStatus();
       void loadDailyLogs();
@@ -5117,6 +5149,31 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
               >
                 {submittingEod ? "Submitting..." : "Confirm & Submit Shift"}
               </button>
+            </div>
+            {/* Google Drive Upload Guidance */}
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-xs text-blue-900 space-y-2">
+              <p className="font-bold flex items-center gap-1.5">📂 After submission — save to Google Drive:</p>
+              <ol className="list-decimal pl-4 space-y-1 text-blue-800">
+                <li>Your CSV is auto-downloaded when you submit.</li>
+                <li>Open the shared Drive folder below and upload it.</li>
+              </ol>
+              <div className="flex gap-2 mt-1">
+                <button
+                  type="button"
+                  onClick={generateEodCsvAndDownload}
+                  className="flex-1 py-2 rounded-lg bg-blue-100 hover:bg-blue-200 text-blue-900 font-bold text-xs transition cursor-pointer"
+                >
+                  📥 Download Report CSV
+                </button>
+                <a
+                  href="https://drive.google.com/drive/folders/root"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 py-2 rounded-lg bg-emerald-100 hover:bg-emerald-200 text-emerald-900 font-bold text-xs text-center transition"
+                >
+                  ☁️ Open Drive Folder
+                </a>
+              </div>
             </div>
           </div>
         </div>
