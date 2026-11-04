@@ -353,7 +353,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
 
     setStats((prev: any) => ({
       ...prev,
-      totalAssigned: leadItems.length,
+      totalAssigned: typeof prev?.totalAssigned === "number" && prev.totalAssigned >= leadItems.length ? prev.totalAssigned : leadItems.length,
       contactedCount: contacted,
       convertedCount: converted,
       todayContactedCount: typeof prev?.todayContactedCount === "number" ? Math.max(prev.todayContactedCount, contacted) : contacted,
@@ -2219,8 +2219,8 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
     );
   }
 
-  // Daily target for high-volume telecaller (user indicated 300 to 500 dispatches)
-  const dailyTarget = callerProfile.dailyQuota && callerProfile.dailyQuota >= 100 ? callerProfile.dailyQuota : 400;
+  // Daily target: use caller profile quota if configured; fallback to reasonable floor quota (50 calls)
+  const dailyTarget = callerProfile.dailyQuota && callerProfile.dailyQuota > 0 ? callerProfile.dailyQuota : 50;
   const todayCallsCount = typeof (stats as any).todayContactedCount === "number" ? (stats as any).todayContactedCount : stats.contactedCount;
   const progressPercent = Math.min(100, Math.round((todayCallsCount / dailyTarget) * 100));
   const remainingCalls = Math.max(0, dailyTarget - todayCallsCount);

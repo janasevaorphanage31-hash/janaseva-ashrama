@@ -37,12 +37,11 @@ export async function GET(req: Request) {
     const t2Day = t2.getUTCDate();
     const t2Month = t2.getUTCMonth() + 1;
 
-    // Automatic clean-slate equal division of T+1 and T+2 leads on first access of the day or explicit refresh
-    const shouldReallocate = paramRefresh === "true" || paramRefresh === "1" || globalForSync.__arenaAdvanceLeadSyncDate !== dateStr;
+    // Lead redistribution is protected from GET race conditions; only triggered on explicit admin rebalance
+    const shouldReallocate = auth.isAdmin && (paramRefresh === "rebalance" || paramRefresh === "redistribute");
     if (shouldReallocate) {
       try {
         await reallocateAbsenteeAdvanceLeads({ includeT2: true });
-        globalForSync.__arenaAdvanceLeadSyncDate = dateStr;
       } catch (e) {
         console.warn("Advance lead reallocate skipped:", e);
       }

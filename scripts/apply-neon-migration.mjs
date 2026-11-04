@@ -1,11 +1,13 @@
-import "dotenv/config";
 import fs from "fs";
 import pg from "pg";
 
 const { Pool } = pg;
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const NEON_URL = "postgresql://neondb_owner:npg_GuTZAkScv8m7@ep-purple-feather-b3n7wkj0-pooler.c-4.ap-southeast-1.aws.neon.tech/neondb?sslmode=require";
+
+const pool = new Pool({ connectionString: NEON_URL });
 
 async function run() {
+  console.log("Connecting directly to Neon database:", NEON_URL.replace(/:[^:@]+@/, ":***@"));
   const content = fs.readFileSync("drizzle/0000_right_bedlam.sql", "utf8");
   // Split on statement breakpoint "--> statement-breakpoint"
   const statements = content.split("--> statement-breakpoint");
@@ -29,7 +31,7 @@ async function run() {
     }
   }
 
-  console.log(`Migration complete! Applied: ${applied}, Skipped existing: ${skipped}`);
+  console.log(`Migration complete on Neon! Applied: ${applied}, Skipped: ${skipped}`);
   await pool.end();
 }
 

@@ -1,7 +1,8 @@
 import "dotenv/config";
 import pg from "pg";
 
-const client = new pg.Client({ connectionString: process.env.DATABASE_URL });
+const NEON_URL = "postgresql://neondb_owner:npg_GuTZAkScv8m7@ep-purple-feather-b3n7wkj0-pooler.c-4.ap-southeast-1.aws.neon.tech/neondb?sslmode=require";
+const client = new pg.Client({ connectionString: NEON_URL });
 
 async function seedDatabase() {
   await client.connect();
@@ -15,9 +16,41 @@ async function seedDatabase() {
   `);
 
   console.log("2. Checking existing telecallers...");
-  const callersRes = await client.query("SELECT caller_id FROM ag_telecallers WHERE is_active = true ORDER BY caller_id");
-  const callerIds = callersRes.rows.map(r => r.caller_id);
-  console.log("Active callers found:", callerIds);
+  let callersRes = await client.query("SELECT caller_id FROM ag_telecallers WHERE is_active = true ORDER BY caller_id");
+  let callerIds = callersRes.rows.map(r => r.caller_id);
+
+  if (callerIds.length === 0) {
+    console.log("No telecallers found, creating telecallers on Neon...");
+    const defaultHash = "scrypt:dummy:dummy";
+    const callers = [
+      { id: "ADMIN", name: "Ashrama Admin / Supervisor", phone: "9980359595", email: "admin@janaseva.org" },
+      { id: "TC01", name: "Ananya Sharma", phone: "9845011001", email: "tc01@janaseva.org" },
+      { id: "TC02", name: "Ramesh Hegde", phone: "9845011002", email: "tc02@janaseva.org" },
+      { id: "TC03", name: "Kavitha Rao", phone: "9845011003", email: "tc03@janaseva.org" },
+      { id: "TC04", name: "Suresh Gowda", phone: "9845011004", email: "tc04@janaseva.org" },
+      { id: "TC05", name: "Pooja Kulkarni", phone: "9845011005", email: "tc05@janaseva.org" },
+      { id: "TC06", name: "Venkatesh Prasad", phone: "9845011006", email: "tc06@janaseva.org" },
+      { id: "TC07", name: "Divya Nair", phone: "9845011007", email: "tc07@janaseva.org" },
+      { id: "TC08", name: "Manjunath Swamy", phone: "9845011008", email: "tc08@janaseva.org" },
+      { id: "TC09", name: "Sowmya Bhat", phone: "9845011009", email: "tc09@janaseva.org" },
+      { id: "TC10", name: "Girish Kumar", phone: "9845011010", email: "tc10@janaseva.org" },
+      { id: "TC11", name: "Deepa Narayan", phone: "9845011011", email: "tc11@janaseva.org" },
+      { id: "TC12", name: "Chethan Reddy", phone: "9845011012", email: "tc12@janaseva.org" },
+      { id: "TC13", name: "Aishwarya Shenoy", phone: "9845011013", email: "tc13@janaseva.org" },
+      { id: "TC14", name: "Raghavendra Joshi", phone: "9845011014", email: "tc14@janaseva.org" },
+      { id: "TC15", name: "Meenakshi Iyengar", phone: "9845011015", email: "tc15@janaseva.org" },
+      { id: "TC16", name: "Prashanth Kumar", phone: "8123665335", email: "pkr@janaseva.org" },
+    ];
+    for (const c of callers) {
+      await client.query(
+        "INSERT INTO ag_telecallers (caller_id, name, whatsapp_number, email, password_hash, is_active) VALUES ($1, $2, $3, $4, $5, true) ON CONFLICT (caller_id) DO NOTHING",
+        [c.id, c.name, c.phone, c.email, defaultHash]
+      );
+    }
+    callersRes = await client.query("SELECT caller_id FROM ag_telecallers WHERE is_active = true ORDER BY caller_id");
+    callerIds = callersRes.rows.map(r => r.caller_id);
+  }
+  console.log("Active callers ready:", callerIds);
 
   console.log("3. Populating ag_leads...");
   const now = new Date();
