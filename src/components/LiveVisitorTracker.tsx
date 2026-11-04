@@ -89,39 +89,19 @@ function VisitorBeaconInner() {
 
     lastPath.current = currentPath;
 
-    // Setup 15-second active heartbeat
+    // In zero-resource mode: send 1 page view ping per navigation.
+    // Removed continuous 15s interval heartbeat to prevent Vercel Fluid CPU exhaustion
+    // and protect Neon database network transfer allowance on free tier.
     if (heartbeatTimer.current) clearInterval(heartbeatTimer.current);
-
-    heartbeatTimer.current = setInterval(() => {
-      if (typeof document !== "undefined" && document.visibilityState === "visible") {
-        sendVisitorPing({
-          path: window.location.pathname,
-          pageTitle: document.title,
-          isHeartbeat: true,
-        });
-      }
-    }, 15000);
 
     return () => {
       if (heartbeatTimer.current) clearInterval(heartbeatTimer.current);
     };
   }, [pathname, searchParams]);
 
-  // Wakeup ping when tab regains visibility
+  // Tab visibility: no extra network pings needed on tab switches
   useEffect(() => {
-    const handleVisibility = () => {
-      if (document.visibilityState === "visible") {
-        sendVisitorPing({
-          path: window.location.pathname,
-          pageTitle: document.title,
-          isHeartbeat: true,
-          action: "tab_focus",
-        });
-      }
-    };
-
-    document.addEventListener("visibilitychange", handleVisibility);
-    return () => document.removeEventListener("visibilitychange", handleVisibility);
+    return () => {};
   }, []);
 
   return null;

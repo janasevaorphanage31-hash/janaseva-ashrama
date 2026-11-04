@@ -11,8 +11,11 @@ export const metadata: Metadata = {
 export default function PortalPage() {
   return (
     <div className="min-h-screen bg-sand/30 font-sans text-teal-950 flex flex-col">
-      <TelecallerNavbar />
-      <main className="flex-1 max-w-7xl w-full mx-auto py-2 sm:py-6 px-2 sm:px-6 lg:px-8">
+      {/* Hide bulky desktop navbar on mobile to give telecallers 100% zero-scroll screen space */}
+      <div className="hidden lg:block">
+        <TelecallerNavbar />
+      </div>
+      <main className="flex-1 max-w-7xl w-full mx-auto p-0 sm:py-4 sm:px-4 lg:py-6 lg:px-8">
         <TelecallerPortal />
       </main>
     </div>

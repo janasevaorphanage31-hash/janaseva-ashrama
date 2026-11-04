@@ -54,11 +54,14 @@ export async function POST(req: Request) {
       action: action === "heartbeat" ? undefined : action,
     });
 
-    // 2. Persist page views & milestone actions to PostgreSQL analyticsEvents (skip repetitive heartbeats)
-    if (action !== "heartbeat") {
+    // 2. In Zero-Resource Free Tier mode: only persist high-value milestone actions to PostgreSQL
+    // (e.g. donation_started, donation_success, form_submit), skipping raw anonymous page_view inserts.
+    // This preserves Neon 5 GiB monthly allowance and prevents database suspension.
+    const isHighValueMilestone = action !== "heartbeat" && action !== "page_view" && action !== "tab_focus";
+    if (isHighValueMilestone) {
       db.insert(analyticsEvents)
         .values({
-          event: action === "page_view" ? "visit" : action,
+          event: action,
           sessionId: session.sessionId,
           meta: {
             path: session.currentPath,
