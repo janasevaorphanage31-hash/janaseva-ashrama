@@ -7,6 +7,15 @@ import { formatINR } from "@/lib/site";
 import { LogoMark } from "@/components/Logo";
 import type { TelecallerStats, CrmWhatsAppSettings, InfluencerStats } from "@/lib/antigravity-crm";
 import { AntiBanWhatsAppModal } from "@/components/admin/AntiBanWhatsAppModal";
+import { validateIndianMobile } from "@/lib/indian-phone-validator";
+import {
+  saveActiveUploadJob,
+  getActiveUploadJob,
+  clearActiveUploadJob,
+  acquireWakeLock,
+  releaseWakeLock,
+  type PersistedUploadJob,
+} from "@/lib/upload-manager";
 
 export function AdminTelecallerCRM() {
   const [loading, setLoading] = useState(true);
@@ -74,6 +83,8 @@ export function AdminTelecallerCRM() {
       email?: string;
     }>
   >([]);
+  const [parsedJunkCount, setParsedJunkCount] = useState<number>(0);
+  const [activeResumableJob, setActiveResumableJob] = useState<PersistedUploadJob | null>(null);
   const [autoDistributeOnUpload, setAutoDistributeOnUpload] = useState(true);
   const [distributionMode, setDistributionMode] = useState<"balanced" | "round_robin">("balanced");
   const [uploadProgress, setUploadProgress] = useState<{
@@ -88,6 +99,7 @@ export function AdminTelecallerCRM() {
     insertedTotal: number;
     duplicatesTotal: number;
     enrichedTotal?: number;
+    junkTotal?: number;
   } | null>(null);
 
   // 4. Export Menu State
@@ -428,6 +440,14 @@ export function AdminTelecallerCRM() {
   useEffect(() => {
     queueMicrotask(() => {
       void loadAdminData();
+      const savedJob = getActiveUploadJob();
+      if (
+        savedJob &&
+        (savedJob.status === "in_progress" || savedJob.status === "paused") &&
+        savedJob.currentChunk < savedJob.totalChunks
+      ) {
+        setActiveResumableJob(savedJob);
+      }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -696,12 +716,14 @@ export function AdminTelecallerCRM() {
   const parse2DGrid = (grid: any[][], streamOverride?: "PARENTS" | "DIRECT_DONOR") => {
     if (!grid || grid.length === 0) {
       setParsedLeads([]);
+      setParsedJunkCount(0);
       return;
     }
 
     const now = new Date();
     const curDay = now.getDate();
     const curMonth = now.getMonth() + 1;
+    let junkCount = 0;
 
     // ── FAST PATH: Detect known exact Excel formats and skip fuzzy header scan ──
     const headerRow0 = (grid[0] || []).map((c: any) => String(c || "").trim());
@@ -730,22 +752,27 @@ export function AdminTelecallerCRM() {
         const cells = grid[r] || [];
         // Person 1: cols 0, 1, 2
         const p1Name = String(cells[0] || "").trim();
-        const p1Phone = normalizePhoneNumber(cells[1]);
+        const p1Check = validateIndianMobile(cells[1]);
         const p1Dob = parseBirthdayCell(cells[2], curDay, curMonth);
-        if (p1Phone.length === 10 && p1Name) {
-          leads.push({ stream: "DIRECT_DONOR", name: p1Name, phone: p1Phone, dobDay: p1Dob.day, dobMonth: p1Dob.month });
+        if (p1Check.isValid && p1Name) {
+          leads.push({ stream: "DIRECT_DONOR", name: p1Name, phone: p1Check.phone10, dobDay: p1Dob.day, dobMonth: p1Dob.month });
+        } else if (p1Name && cells[1]) {
+          junkCount++;
         }
         // Person 2: cols 3, 4, 5 (if present)
         if (cells.length > 3) {
           const p2Name = String(cells[3] || "").trim();
-          const p2Phone = normalizePhoneNumber(cells[4]);
+          const p2Check = validateIndianMobile(cells[4]);
           const p2Dob = parseBirthdayCell(cells[5], curDay, curMonth);
-          if (p2Phone.length === 10 && p2Name) {
-            leads.push({ stream: "DIRECT_DONOR", name: p2Name, phone: p2Phone, dobDay: p2Dob.day, dobMonth: p2Dob.month });
+          if (p2Check.isValid && p2Name) {
+            leads.push({ stream: "DIRECT_DONOR", name: p2Name, phone: p2Check.phone10, dobDay: p2Dob.day, dobMonth: p2Dob.month });
+          } else if (p2Name && cells[4]) {
+            junkCount++;
           }
         }
       }
       setParsedLeads(leads);
+      setParsedJunkCount(junkCount);
       return;
     }
 
@@ -772,10 +799,13 @@ export function AdminTelecallerCRM() {
         const studentName = String(cells[0] || "").trim();
         const fatherName = String(cells[1] || "").trim();
         const motherName = String(cells[2] || "").trim();
-        const phone = normalizePhoneNumber(cells[3]);
+        const pCheck = validateIndianMobile(cells[3]);
         const dob = parseBirthdayCell(cells[4], curDay, curMonth);
 
-        if (phone.length !== 10) continue;
+        if (!pCheck.isValid) {
+          if (cells[3]) junkCount++;
+          continue;
+        }
 
         // Primary parent = father if available, else mother
         const primaryParent = fatherName || motherName || "Parent";
@@ -791,12 +821,13 @@ export function AdminTelecallerCRM() {
           name: displayName,
           childName: studentName,
           parentName: primaryParent,
-          phone,
+          phone: pCheck.phone10,
           dobDay: dob.day,
           dobMonth: dob.month,
         });
       }
       setParsedLeads(leads);
+      setParsedJunkCount(junkCount);
       return;
     }
 
@@ -1066,21 +1097,25 @@ export function AdminTelecallerCRM() {
             : (finalParentName && finalParentName !== "Parent" ? `Parent (${finalParentName})` : (leadName || "Child")))
         : (leadName || `Well-wisher (${leadPhone.slice(-4)})`);
 
-      if (leadPhone.length === 10) {
+      const pVal = validateIndianMobile(leadPhone);
+      if (pVal.isValid) {
         leads.push({
           stream: activeStream,
           name: finalDisplayName.replace(/^["']|["']$/g, "").trim(),
           parentName: finalParentName ? finalParentName.replace(/^["']|["']$/g, "").trim() : undefined,
           childName: finalChildName ? finalChildName.replace(/^["']|["']$/g, "").trim() : undefined,
-          phone: leadPhone,
+          phone: pVal.phone10,
           dobDay: leadDay,
           dobMonth: leadMonth,
           email: leadEmail,
         });
+      } else if (leadPhone) {
+        junkCount++;
       }
     }
 
     setParsedLeads(leads);
+    setParsedJunkCount(junkCount);
   };
 
   const parseCSVLine = (line: string): string[] => {
@@ -1340,12 +1375,47 @@ export function AdminTelecallerCRM() {
     }
   };
 
-  const handleExecuteLeadUpload = async () => {
-    if (parsedLeads.length === 0) {
-      return alert("No valid leads detected. Please paste or upload data containing Name and Phone.");
-    }
+  // ── RESUME INCOMPLETE BACKGROUND UPLOAD ──
+  const handleResumeUpload = async () => {
+    if (!activeResumableJob) return;
+    setIsUploadModalOpen(true);
+    await runChunkedUploadEngine({
+      jobId: activeResumableJob.jobId,
+      chunks: activeResumableJob.chunks,
+      startChunkIndex: activeResumableJob.currentChunk,
+      totalLeadsCount: activeResumableJob.totalLeads,
+      stream: activeResumableJob.stream,
+      fileName: activeResumableJob.fileName,
+      autoDistribute: activeResumableJob.autoDistribute,
+      mode: activeResumableJob.distributionMode,
+      initialStats: activeResumableJob.stats,
+    });
+  };
 
+  const handleDismissResumableJob = () => {
+    clearActiveUploadJob();
+    setActiveResumableJob(null);
+  };
+
+  const runChunkedUploadEngine = async (params: {
+    jobId?: string;
+    chunks: any[][];
+    startChunkIndex: number;
+    totalLeadsCount: number;
+    stream: "PARENTS" | "DIRECT_DONOR";
+    fileName: string;
+    autoDistribute: boolean;
+    mode: "balanced" | "round_robin";
+    initialStats?: {
+      insertedTotal: number;
+      duplicatesTotal: number;
+      enrichedTotal: number;
+      junkTotal?: number;
+    };
+  }) => {
     setActionLoading(true);
+    void acquireWakeLock();
+
     const beforeUnloadHandler = (e: BeforeUnloadEvent) => {
       e.preventDefault();
       e.returnValue = "Lead upload is currently in progress. Navigating away will pause the upload.";
@@ -1353,35 +1423,44 @@ export function AdminTelecallerCRM() {
     };
     window.addEventListener("beforeunload", beforeUnloadHandler);
 
-    const totalLeadsCount = parsedLeads.length;
-    // Chunk size 1,000 ensures each JSON payload is ~80KB, completely avoiding HTTP 413 "Request Entity Too Large"
-    const CHUNK_SIZE = 1000;
-    const chunks: typeof parsedLeads[] = [];
-    for (let i = 0; i < totalLeadsCount; i += CHUNK_SIZE) {
-      chunks.push(parsedLeads.slice(i, i + CHUNK_SIZE));
-    }
+    const {
+      chunks,
+      startChunkIndex,
+      totalLeadsCount,
+      stream,
+      fileName,
+      autoDistribute,
+      mode,
+    } = params;
+
     const totalChunks = chunks.length;
+    const CHUNK_SIZE = 1000;
+    const jobId = params.jobId || `job_${Date.now()}`;
+
+    let cumInserted = params.initialStats?.insertedTotal || 0;
+    let cumDuplicates = params.initialStats?.duplicatesTotal || 0;
+    let cumEnriched = params.initialStats?.enrichedTotal || 0;
+    let cumJunk = params.initialStats?.junkTotal || parsedJunkCount || 0;
 
     setUploadProgress({
       inProgress: true,
-      currentChunk: 0,
+      currentChunk: startChunkIndex,
       totalChunks,
-      processedLeads: 0,
+      processedLeads: Math.min(startChunkIndex * CHUNK_SIZE, totalLeadsCount),
       totalLeads: totalLeadsCount,
-      percent: 0,
+      percent: Math.min(95, Math.max(1, Math.round((startChunkIndex / totalChunks) * 95))),
       stage: "uploading",
-      statusMessage: `Preparing chunked upload of ${totalLeadsCount.toLocaleString()} leads in ${totalChunks} chunks...`,
-      insertedTotal: 0,
-      duplicatesTotal: 0,
-      enrichedTotal: 0,
+      statusMessage: startChunkIndex > 0
+        ? `Resuming ingestion from chunk ${startChunkIndex + 1} of ${totalChunks}...`
+        : `Preparing chunked upload of ${totalLeadsCount.toLocaleString()} leads in ${totalChunks} chunks...`,
+      insertedTotal: cumInserted,
+      duplicatesTotal: cumDuplicates,
+      enrichedTotal: cumEnriched,
+      junkTotal: cumJunk,
     });
 
-    let cumInserted = 0;
-    let cumDuplicates = 0;
-    let cumEnriched = 0;
-
     try {
-      for (let i = 0; i < totalChunks; i++) {
+      for (let i = startChunkIndex; i < totalChunks; i++) {
         const chunk = chunks[i];
         const chunkNum = i + 1;
         const processedSoFar = Math.min((i * CHUNK_SIZE) + chunk.length, totalLeadsCount);
@@ -1398,6 +1477,7 @@ export function AdminTelecallerCRM() {
           insertedTotal: cumInserted,
           duplicatesTotal: cumDuplicates,
           enrichedTotal: cumEnriched,
+          junkTotal: cumJunk,
         });
 
         let attempts = 0;
@@ -1413,8 +1493,8 @@ export function AdminTelecallerCRM() {
               body: JSON.stringify({
                 action: "upload_chunk",
                 leads: chunk,
-                autoDistribute: autoDistributeOnUpload,
-                mode: distributionMode,
+                autoDistribute,
+                mode,
               }),
             });
 
@@ -1440,6 +1520,9 @@ export function AdminTelecallerCRM() {
                 Number(data.uploadResult.alreadyInDbSkipped || 0) +
                 Number(data.uploadResult.internalDuplicatesSkipped || 0);
               cumEnriched += Number(data.uploadResult.enrichedUpdatedCount || 0);
+              if (data.uploadResult.junkFilteredCount) {
+                cumJunk += Number(data.uploadResult.junkFilteredCount);
+              }
             }
             success = true;
           } catch (err: any) {
@@ -1453,7 +1536,38 @@ export function AdminTelecallerCRM() {
         if (!success) {
           throw new Error(`Failed on chunk ${chunkNum}/${totalChunks}: ${lastErr}`);
         }
+
+        // Persist progress to localStorage on each completed chunk
+        saveActiveUploadJob({
+          jobId,
+          createdAt: Date.now(),
+          lastActiveAt: Date.now(),
+          fileName,
+          stream,
+          totalLeads: totalLeadsCount,
+          totalChunks,
+          currentChunk: chunkNum,
+          chunks,
+          autoDistribute,
+          distributionMode: mode,
+          status: "in_progress",
+          statusMessage: `Uploaded chunk ${chunkNum} of ${totalChunks}`,
+          stats: {
+            insertedTotal: cumInserted,
+            duplicatesTotal: cumDuplicates,
+            enrichedTotal: cumEnriched,
+            junkTotal: cumJunk,
+          },
+        });
+
+        // 200ms pause between chunks to protect Neon connection pool & prevent CPU spikes
+        await new Promise((r) => setTimeout(r, 200));
       }
+
+      // Upload finished successfully
+      clearActiveUploadJob();
+      releaseWakeLock();
+      setActiveResumableJob(null);
 
       setUploadProgress({
         inProgress: false,
@@ -1463,15 +1577,16 @@ export function AdminTelecallerCRM() {
         totalLeads: totalLeadsCount,
         percent: 100,
         stage: "done",
-        statusMessage: `✓ Import complete! ${cumInserted.toLocaleString()} unique leads added (${cumEnriched} updated with Student Names, ${cumDuplicates.toLocaleString()} duplicates filtered).`,
+        statusMessage: `✓ Import complete! ${cumInserted.toLocaleString()} unique leads added (${cumEnriched} updated with Student Names, ${cumDuplicates.toLocaleString()} duplicates skipped, ${cumJunk.toLocaleString()} junk filtered).`,
         insertedTotal: cumInserted,
         duplicatesTotal: cumDuplicates,
         enrichedTotal: cumEnriched,
+        junkTotal: cumJunk,
       });
 
-      const enrichNote = cumEnriched > 0 ? `, ${cumEnriched} existing student names updated` : "";
+      const enrichNote = cumEnriched > 0 ? `, ${cumEnriched} student names updated` : "";
       showToast(
-        `✓ Successfully imported ${cumInserted.toLocaleString()} leads! (${cumDuplicates.toLocaleString()} duplicates filtered out${enrichNote}). Distributed across callers.`
+        `✓ Successfully imported ${cumInserted.toLocaleString()} leads! (${cumDuplicates.toLocaleString()} duplicates & ${cumJunk.toLocaleString()} junk filtered${enrichNote}).`
       );
 
       // Refresh admin data and lead view
@@ -1484,9 +1599,33 @@ export function AdminTelecallerCRM() {
         setUploadProgress(null);
         setPastedText("");
         setParsedLeads([]);
+        setParsedJunkCount(0);
         setUploadedFileName("");
       }, 1800);
     } catch (err: any) {
+      releaseWakeLock();
+      saveActiveUploadJob({
+        jobId,
+        createdAt: Date.now(),
+        lastActiveAt: Date.now(),
+        fileName,
+        stream,
+        totalLeads: totalLeadsCount,
+        totalChunks,
+        currentChunk: uploadProgress?.currentChunk || 0,
+        chunks,
+        autoDistribute,
+        distributionMode: mode,
+        status: "paused",
+        statusMessage: err.message,
+        stats: {
+          insertedTotal: cumInserted,
+          duplicatesTotal: cumDuplicates,
+          enrichedTotal: cumEnriched,
+          junkTotal: cumJunk,
+        },
+      });
+
       setUploadProgress((prev) => ({
         inProgress: false,
         currentChunk: prev?.currentChunk || 0,
@@ -1495,16 +1634,46 @@ export function AdminTelecallerCRM() {
         totalLeads: totalLeadsCount,
         percent: prev?.percent || 0,
         stage: "error",
-        statusMessage: `Upload paused/interrupted: ${err.message}. You can re-upload anytime; existing records are safe and will not be duplicated.`,
+        statusMessage: `Upload paused: ${err.message}. Your progress is saved and will resume automatically without duplicates.`,
         insertedTotal: cumInserted,
         duplicatesTotal: cumDuplicates,
         enrichedTotal: cumEnriched,
+        junkTotal: cumJunk,
       }));
-      alert("Upload notice: " + err.message + "\n\nAny leads already processed in earlier chunks are safely saved in the database without duplicates.");
+      alert("Upload notice: " + err.message + "\n\nProgress is saved. Any leads already processed in earlier chunks are safely in the database and will not be re-inserted.");
     } finally {
       window.removeEventListener("beforeunload", beforeUnloadHandler);
       setActionLoading(false);
     }
+  };
+
+  const handleExecuteLeadUpload = async () => {
+    if (parsedLeads.length === 0) {
+      return alert("No valid leads detected. Please paste or upload data containing Name and Phone.");
+    }
+
+    const totalLeadsCount = parsedLeads.length;
+    const CHUNK_SIZE = 1000;
+    const chunks: typeof parsedLeads[] = [];
+    for (let i = 0; i < totalLeadsCount; i += CHUNK_SIZE) {
+      chunks.push(parsedLeads.slice(i, i + CHUNK_SIZE));
+    }
+
+    await runChunkedUploadEngine({
+      chunks,
+      startChunkIndex: 0,
+      totalLeadsCount,
+      stream: uploadStream,
+      fileName: uploadedFileName || "leads.xlsx",
+      autoDistribute: autoDistributeOnUpload,
+      mode: distributionMode,
+      initialStats: {
+        insertedTotal: 0,
+        duplicatesTotal: 0,
+        enrichedTotal: 0,
+        junkTotal: parsedJunkCount,
+      },
+    });
   };
 
   // ── EQUAL DISTRIBUTION ENGINE ──
@@ -1874,6 +2043,44 @@ export function AdminTelecallerCRM() {
           <button onClick={() => setToastMessage("")} className="text-white hover:text-gold ml-3 cursor-pointer">
             ✕
           </button>
+        </div>
+      )}
+
+      {/* ── PERSISTENT BACKGROUND UPLOAD RESUME BANNER ── */}
+      {activeResumableJob && (
+        <div className="rounded-2xl bg-amber-500/15 border-2 border-amber-500/40 p-4 text-amber-950 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md animate-in slide-in-from-top duration-300">
+          <div className="flex items-center gap-3">
+            <span className="text-3xl animate-pulse shrink-0">⏳</span>
+            <div>
+              <p className="font-display font-black text-xs sm:text-sm text-amber-950 flex items-center gap-2">
+                <span>Unfinished Lead Ingestion Job Detected</span>
+                <span className="rounded-full bg-amber-950 text-gold px-2 py-0.5 text-[10px] font-mono font-bold">
+                  {activeResumableJob.fileName}
+                </span>
+              </p>
+              <p className="text-[11px] text-amber-900 mt-0.5 leading-snug">
+                Chunk {activeResumableJob.currentChunk} of {activeResumableJob.totalChunks} completed (
+                {Math.min(activeResumableJob.currentChunk * 1000, activeResumableJob.totalLeads).toLocaleString()} / {activeResumableJob.totalLeads.toLocaleString()} leads).
+                You can resume safely without creating duplicate leads.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+            <button
+              type="button"
+              onClick={handleResumeUpload}
+              className="px-4 py-2 rounded-xl bg-teal-950 hover:bg-teal-900 active:scale-95 text-gold font-black text-xs shadow-md transition cursor-pointer flex items-center gap-1.5"
+            >
+              <span>▶ Resume Ingestion</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleDismissResumableJob}
+              className="px-3 py-2 rounded-xl bg-white/80 hover:bg-white text-amber-950 font-bold text-xs border border-amber-900/20 transition cursor-pointer"
+            >
+              ✕ Dismiss
+            </button>
+          </div>
         </div>
       )}
 
@@ -3355,104 +3562,192 @@ export function AdminTelecallerCRM() {
                 🎉 All caught up! No pending payment claims waiting for verification.
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs text-teal-950">
-                  <thead className="bg-sand/40 border-b border-teal-900/10 text-[11px] uppercase tracking-wider font-extrabold text-teal-950/70">
-                    <tr>
-                      <th className="py-2.5 px-3">Date &amp; Time</th>
-                      <th className="py-2.5 px-3">Telecaller</th>
-                      <th className="py-2.5 px-3">Donor Name &amp; Phone</th>
-                      <th className="py-2.5 px-3">Claimed Amount</th>
-                      <th className="py-2.5 px-3">Mode &amp; UTR</th>
-                      <th className="py-2.5 px-3">Notes</th>
-                      <th className="py-2.5 px-3 text-right">Verification Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-teal-900/5 font-medium">
-                    {finStats.pendingApprovals.map((p: any) => {
-                      const dateDisplay = new Date(p.createdAt).toLocaleDateString("en-IN", {
-                        day: "numeric",
-                        month: "short",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      });
-                      const isActing = actionInProgress === p.txnId;
+              <>
+                {/* Desktop View Table */}
+                <div className="hidden md:block overflow-x-auto">
+                  <table className="w-full text-left text-xs text-teal-950">
+                    <thead className="bg-sand/40 border-b border-teal-900/10 text-[11px] uppercase tracking-wider font-extrabold text-teal-950/70">
+                      <tr>
+                        <th className="py-2.5 px-3">Date &amp; Time</th>
+                        <th className="py-2.5 px-3">Telecaller</th>
+                        <th className="py-2.5 px-3">Donor Name &amp; Phone</th>
+                        <th className="py-2.5 px-3">Claimed Amount</th>
+                        <th className="py-2.5 px-3">Mode &amp; UTR</th>
+                        <th className="py-2.5 px-3">Notes</th>
+                        <th className="py-2.5 px-3 text-right">Verification Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-teal-900/5 font-medium">
+                      {finStats.pendingApprovals.map((p: any) => {
+                        const dateDisplay = new Date(p.createdAt).toLocaleDateString("en-IN", {
+                          day: "numeric",
+                          month: "short",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        });
+                        const isActing = actionInProgress === p.txnId;
 
-                      return (
-                        <tr key={p.txnId} className="hover:bg-amber-50/30 transition">
-                          <td className="py-3 px-3 text-[11px] text-teal-950/70 whitespace-nowrap">
-                            {dateDisplay}
-                          </td>
-                          <td className="py-3 px-3">
-                            <span className="font-bold text-teal-950 block">{p.callerName}</span>
-                            <span className="text-[10px] font-mono text-teal-950/60">{p.callerRefId}</span>
-                          </td>
-                          <td className="py-3 px-3">
-                            <span className="font-bold text-teal-950 block">{p.donorName || "Anonymous Donor"}</span>
-                            <span className="text-[10px] font-mono text-teal-950/60">{p.donorPhone}</span>
-                          </td>
-                          <td className="py-3 px-3">
-                            <span className="font-display font-black text-sm text-emerald-900 bg-emerald-100 px-2.5 py-0.5 rounded-lg border border-emerald-300">
-                              ₹{formatINR(p.amount)}
-                            </span>
-                          </td>
-                          <td className="py-3 px-3">
-                            <span className="font-bold text-[11px] block">{p.paymentMode || "UPI"}</span>
-                            {p.utr ? (
-                              <span className="font-mono text-[10px] text-teal-950/70 bg-sand/60 px-1 rounded">
-                                {p.utr}
+                        return (
+                          <tr key={p.txnId} className="hover:bg-amber-50/30 transition">
+                            <td className="py-3 px-3 text-[11px] text-teal-950/70 whitespace-nowrap">
+                              {dateDisplay}
+                            </td>
+                            <td className="py-3 px-3">
+                              <span className="font-bold text-teal-950 block">{p.callerName}</span>
+                              <span className="text-[10px] font-mono text-teal-950/60">{p.callerRefId}</span>
+                            </td>
+                            <td className="py-3 px-3">
+                              <span className="font-bold text-teal-950 block">{p.donorName || "Anonymous Donor"}</span>
+                              <span className="text-[10px] font-mono text-teal-950/60">{p.donorPhone}</span>
+                            </td>
+                            <td className="py-3 px-3">
+                              <span className="font-display font-black text-sm text-emerald-900 bg-emerald-100 px-2.5 py-0.5 rounded-lg border border-emerald-300">
+                                ₹{formatINR(p.amount)}
                               </span>
-                            ) : (
-                              <span className="text-[10px] text-amber-800 italic">No UTR provided</span>
-                            )}
-                          </td>
-                          <td className="py-3 px-3 max-w-[200px] truncate text-[11px] text-teal-950/70">
-                            {p.notes || "—"}
-                          </td>
-                          <td className="py-3 px-3 text-right">
-                            <div className="flex items-center justify-end gap-1.5">
-                              <button
-                                type="button"
-                                onClick={() => handleApproveDonation(p.txnId)}
-                                disabled={isActing}
-                                className="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs cursor-pointer disabled:opacity-50"
-                                title="Approve full claimed amount"
-                              >
-                                {isActing ? "..." : "✓ Approve"}
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setAdjustingDonation(p);
-                                  setAdjustedAmountInput(p.amount);
-                                  setAdjustNoteInput("");
-                                }}
-                                disabled={isActing}
-                                className="px-2.5 py-1.5 rounded-lg bg-sand hover:bg-cream border border-teal-900/20 text-teal-950 font-bold text-xs cursor-pointer disabled:opacity-50"
-                                title="Correct amount and approve"
-                              >
-                                ✏️ Adjust
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setRejectingDonation(p);
-                                  setRejectionReasonInput("");
-                                }}
-                                disabled={isActing}
-                                className="px-2.5 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 border border-rose-300 text-rose-800 font-bold text-xs cursor-pointer disabled:opacity-50"
-                                title="Reject payment claim"
-                              >
-                                ✕ Reject
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                            </td>
+                            <td className="py-3 px-3">
+                              <span className="font-bold text-[11px] block">{p.paymentMode || "UPI"}</span>
+                              {p.utr ? (
+                                <span className="font-mono text-[10px] text-teal-950/70 bg-sand/60 px-1 rounded">
+                                  {p.utr}
+                                </span>
+                              ) : (
+                                <span className="text-[10px] text-amber-800 italic">No UTR provided</span>
+                              )}
+                            </td>
+                            <td className="py-3 px-3 max-w-[200px] truncate text-[11px] text-teal-950/70">
+                              {p.notes || "—"}
+                            </td>
+                            <td className="py-3 px-3 text-right">
+                              <div className="flex items-center justify-end gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => handleApproveDonation(p.txnId)}
+                                  disabled={isActing}
+                                  className="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs cursor-pointer disabled:opacity-50"
+                                  title="Approve full claimed amount"
+                                >
+                                  {isActing ? "..." : "✓ Approve"}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setAdjustingDonation(p);
+                                    setAdjustedAmountInput(p.amount);
+                                    setAdjustNoteInput("");
+                                  }}
+                                  disabled={isActing}
+                                  className="px-2.5 py-1.5 rounded-lg bg-sand hover:bg-cream border border-teal-900/20 text-teal-950 font-bold text-xs cursor-pointer disabled:opacity-50"
+                                  title="Correct amount and approve"
+                                >
+                                  ✏️ Adjust
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setRejectingDonation(p);
+                                    setRejectionReasonInput("");
+                                  }}
+                                  disabled={isActing}
+                                  className="px-2.5 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 border border-rose-300 text-rose-800 font-bold text-xs cursor-pointer disabled:opacity-50"
+                                  title="Reject payment claim"
+                                >
+                                  ✕ Reject
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Mobile Touch-Friendly Card Stack */}
+                <div className="md:hidden space-y-3">
+                  {finStats.pendingApprovals.map((p: any) => {
+                    const dateDisplay = new Date(p.createdAt).toLocaleDateString("en-IN", {
+                      day: "numeric",
+                      month: "short",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    });
+                    const isActing = actionInProgress === p.txnId;
+
+                    return (
+                      <div
+                        key={p.txnId}
+                        className="rounded-2xl border border-teal-900/15 p-4 bg-white shadow-xs space-y-3 text-xs"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <span className="font-display font-bold text-teal-950 text-sm block">
+                              {p.donorName || "Anonymous Donor"}
+                            </span>
+                            <span className="font-mono text-xs text-teal-900 font-semibold block">
+                              📞 {p.donorPhone}
+                            </span>
+                            <span className="text-[10px] text-teal-950/60 block mt-0.5">
+                              Caller: {p.callerName} ({p.callerRefId}) · {dateDisplay}
+                            </span>
+                          </div>
+                          <span className="font-display font-black text-sm text-emerald-950 bg-emerald-100 border border-emerald-300 px-2.5 py-1 rounded-xl shrink-0">
+                            ₹{formatINR(p.amount)}
+                          </span>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-1.5 text-[11px] bg-sand/40 p-2 rounded-xl">
+                          <span className="font-bold text-teal-950">Mode: {p.paymentMode || "UPI"}</span>
+                          {p.utr && (
+                            <span className="font-mono font-bold text-teal-900 bg-white px-1.5 py-0.5 rounded border border-teal-900/10">
+                              UTR: {p.utr}
+                            </span>
+                          )}
+                          {p.notes && (
+                            <p className="w-full text-teal-950/70 italic text-[11px] mt-1 border-t border-teal-900/10 pt-1">
+                              &ldquo;{p.notes}&rdquo;
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-2 pt-1">
+                          <button
+                            type="button"
+                            onClick={() => handleApproveDonation(p.txnId)}
+                            disabled={isActing}
+                            className="py-2.5 px-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs text-center cursor-pointer disabled:opacity-50"
+                          >
+                            {isActing ? "..." : "✓ Approve"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setAdjustingDonation(p);
+                              setAdjustedAmountInput(p.amount);
+                              setAdjustNoteInput("");
+                            }}
+                            disabled={isActing}
+                            className="py-2.5 px-2 rounded-xl bg-sand hover:bg-cream border border-teal-900/20 text-teal-950 font-bold text-xs text-center cursor-pointer disabled:opacity-50"
+                          >
+                            ✏️ Adjust
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setRejectingDonation(p);
+                              setRejectionReasonInput("");
+                            }}
+                            disabled={isActing}
+                            className="py-2.5 px-2 rounded-xl bg-rose-50 hover:bg-rose-100 border border-rose-300 text-rose-800 font-bold text-xs text-center cursor-pointer disabled:opacity-50"
+                          >
+                            ✕ Reject
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
             )}
           </div>
 
@@ -3472,7 +3767,8 @@ export function AdminTelecallerCRM() {
               </div>
             </div>
 
-            <div className="overflow-x-auto">
+            {/* Desktop Table View */}
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-left text-xs text-teal-950">
                 <thead className="bg-sand/40 border-b border-teal-900/10 text-[11px] uppercase tracking-wider font-extrabold text-teal-950/70">
                   <tr>
@@ -3568,6 +3864,81 @@ export function AdminTelecallerCRM() {
                   })}
                 </tbody>
               </table>
+            </div>
+
+            {/* Mobile Card Stack */}
+            <div className="md:hidden space-y-3">
+              {finStats?.callers?.map((c: any, idx: number) => {
+                const isSubmitted = c.shiftStatus === "SUBMITTED";
+
+                return (
+                  <div
+                    key={c.callerId}
+                    className="rounded-2xl border border-teal-900/15 p-4 bg-white shadow-xs space-y-3 text-xs"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-xs font-black text-amber-900 bg-amber-100 rounded px-2 py-0.5 border border-amber-300">
+                          #{idx + 1}
+                        </span>
+                        <div>
+                          <span className="font-bold text-teal-950 block text-sm">{c.name}</span>
+                          <span className="text-[10px] font-mono text-teal-950/60">
+                            {c.callerId} · +91 {c.whatsappNumber}
+                          </span>
+                        </div>
+                      </div>
+                      {isSubmitted ? (
+                        <span className="rounded-full bg-emerald-100 text-emerald-950 border border-emerald-300 px-2 py-0.5 text-[10px] font-black shrink-0">
+                          ✓ Submitted
+                        </span>
+                      ) : (
+                        <span className="rounded-full bg-amber-50 text-amber-900 border border-amber-200 px-2 py-0.5 text-[10px] font-bold shrink-0">
+                          ⏳ Active
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 bg-sand/30 p-2.5 rounded-xl text-xs">
+                      <div>
+                        <span className="text-[10px] text-teal-950/60 block">Calls Today:</span>
+                        <span className="font-bold text-teal-950">{c.todayCalls}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-teal-950/60 block">Verified Today:</span>
+                        <span className="font-bold text-emerald-800">₹{formatINR(c.todayVerifiedAmount)}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-teal-950/60 block">Claimed Today:</span>
+                        <span className="font-semibold text-teal-950">₹{formatINR(c.todayClaimedAmount)}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-teal-950/60 block">Approval Accuracy:</span>
+                        <span className="font-bold text-teal-950">{c.approvalRate}%</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-end gap-2 pt-1 border-t border-teal-900/10">
+                      <button
+                        type="button"
+                        onClick={() => handleViewCallerLedger(c)}
+                        className="flex-1 py-2 rounded-xl bg-sand hover:bg-cream border border-teal-900/15 text-teal-950 text-xs font-bold text-center cursor-pointer"
+                      >
+                        📋 View Ledger
+                      </button>
+                      {isSubmitted && (
+                        <button
+                          type="button"
+                          onClick={() => handleUnlockCallerShift(c.callerId)}
+                          className="py-2 px-3 rounded-xl bg-purple-50 hover:bg-purple-100 border border-purple-300 text-purple-950 text-xs font-bold text-center cursor-pointer"
+                        >
+                          🔓 Unlock
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -3825,8 +4196,9 @@ export function AdminTelecallerCRM() {
           MODAL 1: ADD NEW TELECALLER
       ══════════════════════════════════════════════════════════════════ */}
       {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-teal-950/60 backdrop-blur-xs animate-fadeIn">
-          <div className="w-full max-w-md bg-white rounded-3xl p-6 shadow-2xl border border-teal-900/10">
+        <div className="fixed inset-0 z-50 flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/70 backdrop-blur-xs animate-fadeIn">
+          <div className="w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-3xl p-4 sm:p-6 shadow-2xl border-t-4 border-teal-800 sm:border border-teal-900/10 max-h-[92vh] sm:max-h-[85vh] overflow-y-auto animate-in slide-in-from-bottom sm:zoom-in-95 duration-200">
+            <div className="sm:hidden mx-auto w-12 h-1.5 rounded-full bg-teal-900/20 mb-2 shrink-0" />
             <div className="flex items-center justify-between pb-4 border-b border-teal-900/10">
               <div className="flex items-center gap-2.5">
                 <div className="h-9 w-9 rounded-xl bg-teal-950 text-gold flex items-center justify-center font-black">
@@ -3949,8 +4321,9 @@ export function AdminTelecallerCRM() {
           MODAL 2: DELETE TELECALLER CONFIRMATION
       ══════════════════════════════════════════════════════════════════ */}
       {isDeleteModalOpen && callerToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-teal-950/60 backdrop-blur-xs animate-fadeIn">
-          <div className="w-full max-w-md bg-white rounded-3xl p-6 shadow-2xl border border-rose-200">
+        <div className="fixed inset-0 z-50 flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/70 backdrop-blur-xs animate-fadeIn">
+          <div className="w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-3xl p-4 sm:p-6 shadow-2xl border-t-4 border-rose-600 sm:border border-rose-200 max-h-[92vh] sm:max-h-[85vh] overflow-y-auto animate-in slide-in-from-bottom sm:zoom-in-95 duration-200">
+            <div className="sm:hidden mx-auto w-12 h-1.5 rounded-full bg-rose-900/20 mb-2 shrink-0" />
             <div className="flex items-center gap-3 text-rose-700 pb-3 border-b border-rose-100">
               <span className="text-2xl">⚠️</span>
               <div>
@@ -4004,8 +4377,9 @@ export function AdminTelecallerCRM() {
           MODAL 2B: DELETE ALL LEADS CONFIRMATION
       ══════════════════════════════════════════════════════════════════ */}
       {isDeleteAllModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-teal-950/70 backdrop-blur-xs animate-fadeIn">
-          <div className="w-full max-w-md bg-white rounded-3xl p-6 shadow-2xl border-2 border-rose-300">
+        <div className="fixed inset-0 z-50 flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/70 backdrop-blur-xs animate-fadeIn">
+          <div className="w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-3xl p-4 sm:p-6 shadow-2xl border-t-4 border-rose-600 sm:border-2 border-rose-300 max-h-[92vh] sm:max-h-[85vh] overflow-y-auto animate-in slide-in-from-bottom sm:zoom-in-95 duration-200">
+            <div className="sm:hidden mx-auto w-12 h-1.5 rounded-full bg-rose-900/20 mb-2 shrink-0" />
             <div className="flex items-center gap-3 text-rose-700 pb-3 border-b border-rose-100">
               <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-rose-100 text-rose-700 text-2xl font-bold">
                 🗑️
@@ -4061,8 +4435,9 @@ export function AdminTelecallerCRM() {
           MODAL 2C: RESET DAILY LIMIT & REBALANCE QUEUE
       ══════════════════════════════════════════════════════════════════ */}
       {isResetDailyModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-teal-950/70 backdrop-blur-xs animate-fadeIn">
-          <div className="w-full max-w-md bg-white rounded-3xl p-6 shadow-2xl border-2 border-amber-300">
+        <div className="fixed inset-0 z-50 flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/70 backdrop-blur-xs animate-fadeIn">
+          <div className="w-full max-w-md bg-white rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 shadow-2xl border-2 border-amber-300 max-h-[92vh] overflow-y-auto">
+            <div className="sm:hidden mx-auto w-12 h-1.5 rounded-full bg-teal-900/20 mb-3 shrink-0" />
             <div className="flex items-center gap-3 text-amber-800 pb-3 border-b border-amber-100">
               <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-100 text-amber-800 text-2xl font-bold">
                 🔄
@@ -4153,8 +4528,9 @@ export function AdminTelecallerCRM() {
           MODAL 3: BULK LEAD UPLOAD & EQUAL DISTRIBUTION
       ══════════════════════════════════════════════════════════════════ */}
       {isUploadModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-teal-950/60 backdrop-blur-xs animate-fadeIn">
-          <div className="w-full max-w-2xl bg-white rounded-3xl p-6 shadow-2xl border border-teal-900/10 max-h-[90vh] flex flex-col">
+        <div className="fixed inset-0 z-50 flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/60 backdrop-blur-xs animate-fadeIn">
+          <div className="w-full max-w-2xl bg-white rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 shadow-2xl border border-teal-900/10 max-h-[92vh] flex flex-col">
+            <div className="sm:hidden mx-auto w-12 h-1.5 rounded-full bg-teal-900/20 mb-2 shrink-0" />
             <div className="flex items-center justify-between pb-4 border-b border-teal-900/10 shrink-0">
               <div className="flex items-center gap-2.5">
                 <div className="h-9 w-9 rounded-xl bg-teal-950 text-gold flex items-center justify-center font-black">
@@ -4366,14 +4742,19 @@ export function AdminTelecallerCRM() {
 
                   {/* Dynamic Status Pill */}
                   {uploadedFileName && (
-                    <div className="mt-3">
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
                       {parsedLeads.length > 0 ? (
                         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold border border-emerald-300">
-                          <span>✓ Successfully detected {parsedLeads.length} leads ready for import</span>
+                          <span>✓ Detected {parsedLeads.length.toLocaleString()} Valid Indian Mobile Leads</span>
                         </div>
                       ) : (
                         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-100 text-rose-800 text-xs font-bold border border-rose-300">
-                          <span>⚠️ No valid 10-digit phone numbers detected in this file yet</span>
+                          <span>⚠️ No valid Indian mobile numbers detected in this file yet</span>
+                        </div>
+                      )}
+                      {parsedJunkCount > 0 && (
+                        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 text-amber-900 text-xs font-bold border border-amber-300">
+                          <span>🛡️ {parsedJunkCount.toLocaleString()} junk / landline numbers filtered out</span>
                         </div>
                       )}
                     </div>
@@ -4385,7 +4766,12 @@ export function AdminTelecallerCRM() {
               {parsedLeads.length > 0 && (
                 <div className="space-y-2">
                   <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-bold text-teal-950">
-                    <span className="text-emerald-700">✓ Detected {parsedLeads.length} Valid Leads Ready for Distribution</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-emerald-700">✓ Detected {parsedLeads.length.toLocaleString()} Valid Leads Ready for Distribution</span>
+                      {parsedJunkCount > 0 && (
+                        <span className="text-amber-800 text-[11px] font-semibold">({parsedJunkCount.toLocaleString()} junk dropped)</span>
+                      )}
+                    </div>
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
@@ -4586,8 +4972,9 @@ export function AdminTelecallerCRM() {
 
       {/* ── 5. TELECALLER CREDENTIALS & ACCESS MODAL ── */}
       {isAccessModalOpen && selectedCallerForAccess && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-teal-950/60 backdrop-blur-xs p-4 animate-fadeIn">
-          <div className="w-full max-w-lg rounded-3xl bg-white p-6 sm:p-7 shadow-2xl border border-teal-900/10 text-teal-950 space-y-5">
+        <div className="fixed inset-0 z-50 flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/60 backdrop-blur-xs animate-fadeIn">
+          <div className="w-full max-w-lg rounded-t-3xl sm:rounded-3xl bg-white p-5 sm:p-7 shadow-2xl border border-teal-900/10 text-teal-950 space-y-4 sm:space-y-5 max-h-[92vh] overflow-y-auto">
+            <div className="sm:hidden mx-auto w-12 h-1.5 rounded-full bg-teal-900/20 mb-2 shrink-0" />
             <div className="flex items-center justify-between border-b border-teal-900/10 pb-4">
               <div className="flex items-center gap-3">
                 <div className="grid h-10 w-10 place-items-center rounded-xl bg-teal-950 text-gold font-display font-black text-sm">
@@ -4707,8 +5094,9 @@ export function AdminTelecallerCRM() {
           MODAL 6: EDIT TELECALLER DETAILS & INDIVIDUAL WHATSAPP NUMBER
       ══════════════════════════════════════════════════════════════════ */}
       {isEditModalOpen && editingCaller && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-teal-950/60 backdrop-blur-xs animate-fadeIn">
-          <div className="w-full max-w-md bg-white rounded-3xl p-6 shadow-2xl border border-teal-900/10">
+        <div className="fixed inset-0 z-50 flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/60 backdrop-blur-xs animate-fadeIn">
+          <div className="w-full max-w-md bg-white rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 shadow-2xl border border-teal-900/10 max-h-[92vh] overflow-y-auto">
+            <div className="sm:hidden mx-auto w-12 h-1.5 rounded-full bg-teal-900/20 mb-2 shrink-0" />
             <div className="flex items-center justify-between pb-4 border-b border-teal-900/10">
               <div className="flex items-center gap-2.5">
                 <span className="flex h-9 w-9 items-center justify-center rounded-2xl bg-teal-50 text-teal-950 font-bold text-sm">
@@ -4883,8 +5271,9 @@ export function AdminTelecallerCRM() {
           MODAL 9: ADD / EDIT INFLUENCER PARTNER
       ══════════════════════════════════════════════════════════════════ */}
       {isInfluencerModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-teal-950/60 backdrop-blur-xs animate-fadeIn">
-          <div className="w-full max-w-md bg-white rounded-3xl p-6 shadow-2xl border border-teal-900/10">
+        <div className="fixed inset-0 z-50 flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/60 backdrop-blur-xs animate-fadeIn">
+          <div className="w-full max-w-md bg-white rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 shadow-2xl border border-teal-900/10 max-h-[92vh] overflow-y-auto">
+            <div className="sm:hidden mx-auto w-12 h-1.5 rounded-full bg-teal-900/20 mb-2 shrink-0" />
             <div className="flex items-center justify-between pb-4 border-b border-teal-900/10">
               <div className="flex items-center gap-2.5">
                 <div className="h-9 w-9 rounded-xl bg-teal-950 text-gold flex items-center justify-center font-black">
@@ -5014,13 +5403,14 @@ export function AdminTelecallerCRM() {
       {/* ── MODAL: ADJUST DONATION AMOUNT & APPROVE ── */}
       {adjustingDonation && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-teal-950/60 backdrop-blur-xs animate-fadeIn"
+          className="fixed inset-0 z-50 flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/60 backdrop-blur-xs animate-fadeIn"
           onClick={() => setAdjustingDonation(null)}
         >
           <div
-            className="w-full max-w-md bg-white rounded-3xl p-6 shadow-2xl border border-teal-900/10 space-y-4"
+            className="w-full max-w-md bg-white rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 shadow-2xl border border-teal-900/10 space-y-4 max-h-[92vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
+            <div className="sm:hidden mx-auto w-12 h-1.5 rounded-full bg-teal-900/20 mb-2 shrink-0" />
             <div className="flex items-center justify-between border-b border-teal-900/10 pb-3">
               <div className="flex items-center gap-2">
                 <span className="text-xl">✏️</span>
@@ -5095,13 +5485,14 @@ export function AdminTelecallerCRM() {
       {/* ── MODAL: REJECT DONATION CLAIM ── */}
       {rejectingDonation && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-teal-950/60 backdrop-blur-xs animate-fadeIn"
+          className="fixed inset-0 z-50 flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/60 backdrop-blur-xs animate-fadeIn"
           onClick={() => setRejectingDonation(null)}
         >
           <div
-            className="w-full max-w-md bg-white rounded-3xl p-6 shadow-2xl border border-teal-900/10 space-y-4"
+            className="w-full max-w-md bg-white rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 shadow-2xl border border-teal-900/10 space-y-4 max-h-[92vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
+            <div className="sm:hidden mx-auto w-12 h-1.5 rounded-full bg-teal-900/20 mb-2 shrink-0" />
             <div className="flex items-center justify-between border-b border-teal-900/10 pb-3">
               <div className="flex items-center gap-2">
                 <span className="text-xl">❌</span>
@@ -5163,13 +5554,14 @@ export function AdminTelecallerCRM() {
       {/* ── MODAL: TELECALLER DONATION AUDIT LEDGER ── */}
       {selectedCallerForLedger && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-teal-950/60 backdrop-blur-xs animate-fadeIn"
+          className="fixed inset-0 z-50 flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/60 backdrop-blur-xs animate-fadeIn"
           onClick={() => setSelectedCallerForLedger(null)}
         >
           <div
-            className="w-full max-w-3xl max-h-[90vh] bg-white rounded-3xl p-6 shadow-2xl border border-teal-900/10 space-y-4 flex flex-col"
+            className="w-full max-w-3xl max-h-[92vh] bg-white rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 shadow-2xl border border-teal-900/10 space-y-4 flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
+            <div className="sm:hidden mx-auto w-12 h-1.5 rounded-full bg-teal-900/20 mb-2 shrink-0" />
             <div className="flex items-center justify-between border-b border-teal-900/10 pb-3">
               <div>
                 <h3 className="font-display font-black text-lg text-teal-950 flex items-center gap-2">

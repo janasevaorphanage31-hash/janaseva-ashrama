@@ -4,6 +4,7 @@ import { eq, and, or, sql, desc, inArray, isNull, like, gte, lte } from "drizzle
 import { hashPassword } from "@/lib/admin-auth";
 import { parseCustomerPhone } from "@/lib/whatsapp-phone";
 import { signCallerToken } from "@/lib/caller-auth";
+import { validateIndianMobile } from "@/lib/indian-phone-validator";
 import { randomUUID } from "node:crypto";
 import {
   generateAntiBanMessage,
@@ -1848,12 +1849,12 @@ export async function uploadBulkLeads(
   const currentDay = now.getDate();
   const currentMonth = now.getMonth() + 1;
 
-  // 1. Extract 10-digit candidate phone numbers from this batch
+  // 1. Extract 10-digit candidate phone numbers from this batch using DoT Indian mobile validator
   const candidatePhones = new Set<string>();
   for (const item of rawLeads) {
-    const rawDigits = (item.phone || "").replace(/\D/g, "");
-    if (rawDigits.length >= 10) {
-      candidatePhones.add(rawDigits.slice(-10));
+    const val = validateIndianMobile(item.phone);
+    if (val.isValid) {
+      candidatePhones.add(val.phone10);
     }
   }
 
@@ -1899,11 +1900,15 @@ export async function uploadBulkLeads(
   let internalDuplicatesSkipped = 0;
   let alreadyInDbSkipped = 0;
   let enrichedUpdatedCount = 0;
+  let junkFilteredCount = 0;
 
   for (const item of rawLeads) {
-    const rawDigits = (item.phone || "").replace(/\D/g, "");
-    if (rawDigits.length < 10) continue;
-    const phone10 = rawDigits.slice(-10);
+    const phoneCheck = validateIndianMobile(item.phone);
+    if (!phoneCheck.isValid) {
+      junkFilteredCount++;
+      continue;
+    }
+    const phone10 = phoneCheck.phone10;
 
     let day = parseInt(String(item.dobDay || currentDay), 10);
     if (isNaN(day) || day < 1 || day > 31) day = currentDay;
@@ -2058,13 +2063,14 @@ export async function uploadBulkLeads(
       internalDuplicatesSkipped,
       alreadyInDbSkipped,
       enrichedUpdatedCount,
+      junkFilteredCount,
       validInserted: 0,
       distributed: 0,
       perCaller: {},
       insertedLeadIds: [] as number[],
       message: enrichedUpdatedCount > 0
-        ? `Successfully enriched and updated ${enrichedUpdatedCount} existing leads with Student Names & Details! (${alreadyInDbSkipped} unchanged duplicates skipped).`
-        : `No new leads to import. ${alreadyInDbSkipped} numbers already exist in database, and ${internalDuplicatesSkipped} duplicates were skipped.`,
+        ? `Successfully enriched and updated ${enrichedUpdatedCount} existing leads with Student Names & Details! (${alreadyInDbSkipped} unchanged duplicates skipped, ${junkFilteredCount} invalid/junk numbers filtered).`
+        : `No new leads to import. ${alreadyInDbSkipped} numbers already exist in database, ${internalDuplicatesSkipped} duplicates skipped, and ${junkFilteredCount} invalid/junk numbers filtered.`,
     };
   }
 
@@ -2095,8 +2101,9 @@ export async function uploadBulkLeads(
     insertedLeadIds: autoDistribute ? [] : insertedLeadIds,
     message: enrichedUpdatedCount > 0
       ? `Successfully uploaded ${validLeads.length} leads and updated ${enrichedUpdatedCount} existing leads with Student Names!`
-      : `Successfully uploaded ${validLeads.length} unique leads (${alreadyInDbSkipped} already in database skipped, ${internalDuplicatesSkipped} file duplicates skipped).`,
+      : `Successfully uploaded ${validLeads.length} unique leads (${alreadyInDbSkipped} already in database skipped, ${internalDuplicatesSkipped} file duplicates skipped, ${junkFilteredCount} invalid/junk filtered).`,
     enrichedUpdatedCount,
+    junkFilteredCount,
   };
 }
 
