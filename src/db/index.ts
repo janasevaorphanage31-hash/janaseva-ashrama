@@ -65,18 +65,20 @@ export async function ensureDbSchema(): Promise<void> {
 
           DO $$
           BEGIN
-            IF NOT EXISTS (
-              SELECT 1 FROM information_schema.columns 
-              WHERE table_name = 'donations' AND column_name = 'subscription_id'
-            ) THEN
-              ALTER TABLE donations ADD COLUMN subscription_id INTEGER REFERENCES recurring_subscriptions(id) ON DELETE SET NULL;
-            END IF;
+            IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'donations') THEN
+              IF NOT EXISTS (
+                SELECT 1 FROM information_schema.columns 
+                WHERE table_name = 'donations' AND column_name = 'subscription_id'
+              ) THEN
+                ALTER TABLE donations ADD COLUMN subscription_id INTEGER REFERENCES recurring_subscriptions(id) ON DELETE SET NULL;
+              END IF;
 
-            IF NOT EXISTS (
-              SELECT 1 FROM information_schema.columns 
-              WHERE table_name = 'donations' AND column_name = 'recurring_cycle'
-            ) THEN
-              ALTER TABLE donations ADD COLUMN recurring_cycle INTEGER;
+              IF NOT EXISTS (
+                SELECT 1 FROM information_schema.columns 
+                WHERE table_name = 'donations' AND column_name = 'recurring_cycle'
+              ) THEN
+                ALTER TABLE donations ADD COLUMN recurring_cycle INTEGER;
+              END IF;
             END IF;
           END $$;
 
