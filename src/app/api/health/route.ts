@@ -8,8 +8,8 @@ export async function GET() {
   const maskedUrl = rawUrl.replace(/:[^:@]+@/, ":***@");
 
   try {
-    const dbInfoRes = await pool.query("SELECT current_database(), current_user");
-    const tablesRes = await pool.query("SELECT count(*)::int as count FROM information_schema.tables WHERE table_schema='public'");
+    const dbInfoRes = await pool.query("SELECT current_database(), current_user, current_schema()");
+    const tablesRes = await pool.query("SELECT table_name FROM information_schema.tables WHERE table_schema='public' ORDER BY table_name");
     
     await ensureDbSchema();
     await db.execute(sql`select 1`);
@@ -19,15 +19,22 @@ export async function GET() {
       migrated: true,
       databaseUrl: maskedUrl,
       dbInfo: dbInfoRes.rows[0],
-      tableCount: tablesRes.rows[0]?.count,
+      tables: tablesRes.rows.map(r => r.table_name),
       timestamp: new Date().toISOString()
     });
   } catch (err: any) {
+    let tables: string[] = [];
+    try {
+      const res = await pool.query("SELECT table_name FROM information_schema.tables WHERE table_schema='public' ORDER BY table_name");
+      tables = res.rows.map(r => r.table_name);
+    } catch {}
+
     console.error("Health check / schema migration failed:", err);
     return Response.json({
       ok: false,
       error: err?.message || String(err),
       databaseUrl: maskedUrl,
+      tablesInDb: tables,
     }, { status: 500 });
   }
 }

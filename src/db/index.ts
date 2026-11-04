@@ -120,12 +120,15 @@ export async function ensureDbSchema(): Promise<void> {
             created_at TIMESTAMP NOT NULL DEFAULT NOW()
           );
 
-          ALTER TABLE celebration_bookings ADD COLUMN IF NOT EXISTS wish_video_url TEXT;
-          ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS video_url TEXT;
-          ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS end_date TIMESTAMP;
-          ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS is_sample BOOLEAN NOT NULL DEFAULT FALSE;
-          ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS paused_at TIMESTAMP;
-          ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP NOT NULL DEFAULT NOW();
+          DO $$ BEGIN
+            ALTER TABLE celebration_bookings ADD COLUMN IF NOT EXISTS wish_video_url TEXT;
+            ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS video_url TEXT;
+            ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS end_date TIMESTAMP;
+            ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS is_sample BOOLEAN NOT NULL DEFAULT FALSE;
+            ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS paused_at TIMESTAMP;
+            ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP NOT NULL DEFAULT NOW();
+          EXCEPTION WHEN undefined_table THEN NULL;
+          END $$;
 
           CREATE TABLE IF NOT EXISTS community_members (
             id SERIAL PRIMARY KEY,
@@ -149,9 +152,12 @@ export async function ensureDbSchema(): Promise<void> {
           CREATE INDEX IF NOT EXISTS comm_mem_status_idx ON community_members(status);
           CREATE INDEX IF NOT EXISTS comm_mem_phone_idx ON community_members(phone);
 
-          CREATE INDEX IF NOT EXISTS don_lines_donation_idx ON donation_lines(donation_id);
-          CREATE INDEX IF NOT EXISTS donations_paid_at_idx ON donations(paid_at);
-          CREATE INDEX IF NOT EXISTS donations_created_at_idx ON donations(created_at);
+          DO $$ BEGIN
+            CREATE INDEX IF NOT EXISTS don_lines_donation_idx ON donation_lines(donation_id);
+            CREATE INDEX IF NOT EXISTS donations_paid_at_idx ON donations(paid_at);
+            CREATE INDEX IF NOT EXISTS donations_created_at_idx ON donations(created_at);
+          EXCEPTION WHEN undefined_table THEN NULL;
+          END $$;
           CREATE INDEX IF NOT EXISTS celebration_date_idx ON celebration_bookings(celebration_date);
           CREATE INDEX IF NOT EXISTS celebration_status_idx ON celebration_bookings(celebration_status);
 
