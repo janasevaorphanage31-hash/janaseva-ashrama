@@ -318,9 +318,11 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
     amount?: number;
   } | null>(null);
 
-  // Mobile Slide-up Bottom Sheets (Phase 1 Zero-Scroll Architecture)
+  // Mobile Slide-up Bottom Sheets (Phase 1 & 2 Zero-Scroll Architecture)
   const [isMobileFilterSheetOpen, setIsMobileFilterSheetOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isMobileWhatsAppSheetOpen, setIsMobileWhatsAppSheetOpen] = useState(false);
+  const [showMobileMoreOptions, setShowMobileMoreOptions] = useState(false);
 
   const showStampConfirmation = (info: {
     leadId: number;
@@ -565,12 +567,21 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
     const handleOnline = () => {
       void syncOfflineQueue();
     };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        void syncOfflineQueue();
+      }
+    };
     window.addEventListener("online", handleOnline);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
     const interval = setInterval(() => {
+      // Zero-resource guard: only run sync if tab is visible and screen is on
+      if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
       void syncOfflineQueue();
-    }, 25000);
+    }, 60000);
     return () => {
       window.removeEventListener("online", handleOnline);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
       clearInterval(interval);
     };
   }, []);
@@ -1280,7 +1291,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
     showToast(`✓ Opened WhatsApp directly to ${phoneInfo.display}!`);
   };
 
-  // 1-Click CSV Export for Staff & Supervisor
+  // 1-Click Agency-Grade CSV Export for Staff & Supervisor
   const handleExportCsv = () => {
     if (!callerProfile || leads.length === 0) {
       showToast("No leads in queue to export.");
@@ -1290,14 +1301,20 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
     const todayStr = new Date().toISOString().slice(0, 10);
     const headers = [
       "Lead ID",
-      "Donor Name",
-      "Phone",
+      "Data Stream",
+      "Child Name (Student)",
+      "Parent Name",
+      "Full Display Name",
+      "Calling Phone",
+      "WhatsApp Phone",
       "Birthday Day",
       "Birthday Month",
-      "Status",
+      "Current Status",
+      "Disposition Reason",
       "Notes",
       "Scheduled Callback",
-      "Assigned Caller",
+      "Assigned Caller ID",
+      "Last Contacted At",
     ];
 
     const escapeCsv = (val: any) => {
@@ -1309,14 +1326,20 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
     const exportData = filteredLeads.length > 0 ? filteredLeads : leads;
     const rows = exportData.map((l) => [
       escapeCsv(l.leadId),
+      escapeCsv(l.stream || "DIRECT_DONOR"),
+      escapeCsv(cleanChildName(l)),
+      escapeCsv(cleanParentName(l)),
       escapeCsv(l.name),
       escapeCsv(parseCustomerPhone(l.phone).display),
+      escapeCsv(l.whatsappPhone ? parseCustomerPhone(l.whatsappPhone).display : ""),
       escapeCsv(l.dobDay || ""),
       escapeCsv(l.dobMonth || ""),
       escapeCsv(l.status || "Pending"),
+      escapeCsv(l.dispositionReason || ""),
       escapeCsv(l.notes || ""),
       escapeCsv(l.rescheduleDate ? new Date(l.rescheduleDate).toLocaleString("en-IN") : ""),
       escapeCsv(callerProfile.callerId),
+      escapeCsv(l.lastContactedAt ? new Date(l.lastContactedAt).toLocaleString("en-IN") : ""),
     ]);
 
     const csvContent = [headers.join(","), ...rows.map((r) => r.join(","))].join("\r\n");
@@ -3146,62 +3169,56 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
 
                 return (
                   <div
-                    className={`rounded-3xl bg-white p-5 sm:p-7 border shadow-md space-y-5 transition ${
+                    className={`rounded-2xl sm:rounded-3xl bg-white p-3 sm:p-7 border shadow-md space-y-3 sm:space-y-5 transition ${
                       isTomorrowBirthday || isTodayBirthday
-                        ? "border-amber-400 ring-4 ring-amber-400/20 bg-gradient-to-b from-amber-50/30 to-white"
+                        ? "border-amber-400 ring-2 sm:ring-4 ring-amber-400/20 bg-gradient-to-b from-amber-50/30 to-white"
                         : "border-teal-900/15"
                     }`}
                   >
-                    {/* Top Status & Queue Index Bar */}
-                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-teal-900/10 pb-3">
-                      <div className="flex items-center gap-2 flex-wrap">
+                    {/* Top Status & Queue Index Bar (Ultra-Compact on Mobile) */}
+                    <div className="flex flex-wrap items-center justify-between gap-1.5 border-b border-teal-900/10 pb-2 sm:pb-3">
+                      <div className="flex items-center gap-1.5 flex-wrap min-w-0">
                         {/* 1-Tap Mobile Return to Queue button */}
                         <button
                           type="button"
                           onClick={() => setViewMode("queue")}
-                          className="lg:hidden rounded-xl bg-sand/80 hover:bg-sand border border-teal-900/20 px-2.5 py-1 text-xs font-black text-teal-950 transition cursor-pointer flex items-center gap-1 shadow-2xs active:scale-95"
+                          className="lg:hidden rounded-lg bg-sand/80 hover:bg-sand border border-teal-900/20 px-2 py-0.5 text-[11px] font-black text-teal-950 transition cursor-pointer flex items-center gap-1 shadow-2xs active:scale-95"
                           title="Back to All Leads Queue"
                         >
-                          <span>◀ Queue ({filteredLeads.length})</span>
+                          <span>◀ ಕ್ಯೂ ({filteredLeads.length})</span>
                         </button>
-                        <span className="text-xs font-mono font-black bg-teal-950 text-gold px-2.5 py-1 rounded-xl shadow-xs">
-                          LEAD {safeFocusIndex + 1} OF {filteredLeads.length}
+                        <span className="text-[11px] sm:text-xs font-mono font-black bg-teal-950 text-gold px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg sm:rounded-xl shadow-xs">
+                          {safeFocusIndex + 1}/{filteredLeads.length}
                         </span>
                         {isParentLead ? (
-                          <span className="rounded-full bg-indigo-950 text-amber-300 px-3 py-1 text-xs font-black uppercase shadow-xs flex items-center gap-1.5 flex-wrap">
+                          <span className="rounded-full bg-indigo-950 text-amber-300 px-2 py-0.5 text-[10px] sm:text-xs font-black uppercase shadow-xs flex items-center gap-1">
                             <span>👶</span>
-                            <span>1. Parents Sheet:</span>
-                            <span className="text-white">🎓 ಮಗು: <strong>{cleanChildName(currentFocusLead)}</strong></span>
-                            <span className="text-amber-400/80">•</span>
-                            <span className="text-white">👨‍👩‍👧 ಪೋಷಕರು: <strong>{cleanParentName(currentFocusLead)}</strong></span>
+                            <span>ಪೋಷಕರು</span>
                           </span>
                         ) : (
-                          <span className="rounded-full bg-teal-950 text-emerald-300 px-3 py-1 text-xs font-black uppercase shadow-xs flex items-center gap-1">
+                          <span className="rounded-full bg-teal-950 text-emerald-300 px-2 py-0.5 text-[10px] sm:text-xs font-black uppercase shadow-xs flex items-center gap-1">
                             <span>🎂</span>
-                            <span>2. Direct Donor Sheet</span>
-                          </span>
-                        )}
-                        {isT2Birthday && (
-                          <span className="rounded-full bg-indigo-600 text-white px-3 py-1 text-xs font-black uppercase shadow-xs animate-pulse flex items-center gap-1">
-                            <span>🌟</span>
-                            <span>ನಾಡಿದ್ದು ಹುಟ್ಟುಹಬ್ಬ (T+2 Advance Seva)</span>
+                            <span>ದಾನಿ</span>
                           </span>
                         )}
                         {isTomorrowBirthday && (
-                          <span className="rounded-full bg-purple-600 text-white px-3 py-1 text-xs font-black uppercase shadow-xs animate-pulse flex items-center gap-1">
-                            <span>🎂</span>
-                            <span>Tomorrow&apos;s Birthday! (Advance Wish)</span>
+                          <span className="rounded-full bg-purple-600 text-white px-2 py-0.5 text-[10px] sm:text-xs font-black uppercase shadow-xs animate-pulse">
+                            🎂 ನಾಳೆ
                           </span>
                         )}
                         {isTodayBirthday && (
-                          <span className="rounded-full bg-amber-500 text-teal-950 px-3 py-1 text-xs font-black uppercase shadow-xs animate-pulse flex items-center gap-1">
-                            <span>🎉</span>
-                            <span>Today&apos;s Birthday!</span>
+                          <span className="rounded-full bg-amber-500 text-teal-950 px-2 py-0.5 text-[10px] sm:text-xs font-black uppercase shadow-xs animate-pulse">
+                            🎉 ಇಂದು
+                          </span>
+                        )}
+                        {isT2Birthday && (
+                          <span className="rounded-full bg-indigo-600 text-white px-2 py-0.5 text-[10px] sm:text-xs font-black uppercase shadow-xs animate-pulse">
+                            🌟 ನಾಡಿದ್ದು
                           </span>
                         )}
                         {currentFocusLead.status && currentFocusLead.status !== "Pending" ? (
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="rounded-full bg-emerald-100 text-emerald-900 px-2.5 py-0.5 text-xs font-bold border border-emerald-300">
+                          <div className="flex items-center gap-1">
+                            <span className="rounded-full bg-emerald-100 text-emerald-900 px-2 py-0.5 text-[10px] font-bold border border-emerald-300">
                               ✓ {currentFocusLead.status}
                             </span>
                             <button
@@ -3212,44 +3229,47 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                                   void handleRevertToPending(currentFocusLead.leadId);
                                 }
                               }}
-                              className="rounded-full bg-amber-100 hover:bg-amber-200 text-amber-950 border border-amber-300 px-2 py-0.5 text-[10px] font-black transition cursor-pointer shadow-2xs flex items-center gap-1"
-                              title="Accidentally marked? Revert back to Pending queue"
+                              className="rounded-full bg-amber-100 hover:bg-amber-200 text-amber-950 border border-amber-300 px-1.5 py-0.5 text-[9px] font-black transition cursor-pointer shadow-2xs"
+                              title="Revert back to Pending queue"
                             >
-                              <span>↩️ Revert</span>
+                              ↩️
                             </button>
                           </div>
                         ) : (
-                          <span className="rounded-full bg-amber-100 text-amber-900 px-2.5 py-0.5 text-xs font-bold border border-amber-300">
-                            ⏳ Pending
+                          <span className="rounded-full bg-amber-100 text-amber-900 px-2 py-0.5 text-[10px] font-bold border border-amber-300">
+                            ⏳ ಬಾಕಿ
                           </span>
                         )}
                       </div>
 
                       {/* Navigation Prev / Next buttons */}
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-1 shrink-0">
                         <button
                           type="button"
                           onClick={handlePrevFocusLead}
                           disabled={safeFocusIndex === 0}
-                          className="rounded-xl bg-cream hover:bg-sand disabled:opacity-30 border border-teal-900/15 px-2.5 py-1.5 text-xs font-bold transition cursor-pointer"
+                          className="rounded-lg sm:rounded-xl bg-cream hover:bg-sand disabled:opacity-30 border border-teal-900/15 px-2 py-1 text-xs font-bold transition cursor-pointer"
+                          title="Previous Lead"
                         >
-                          ◀ Prev
+                          ◀
                         </button>
                         <button
                           type="button"
                           onClick={handleNextFocusLead}
                           disabled={safeFocusIndex >= filteredLeads.length - 1}
-                          className="rounded-xl bg-teal-950 text-white hover:bg-teal-900 disabled:opacity-30 px-2.5 py-1.5 text-xs font-bold transition cursor-pointer shadow-2xs"
+                          className="rounded-lg sm:rounded-xl bg-teal-950 text-white hover:bg-teal-900 disabled:opacity-30 px-2 py-1 text-xs font-bold transition cursor-pointer shadow-2xs"
+                          title="Next Lead"
                         >
-                          Next ▶
+                          ▶
                         </button>
                         <button
                           type="button"
                           onClick={handleJumpToNextPending}
                           title="Jump to the next fresh pending lead in queue"
-                          className="rounded-xl bg-amber-500 hover:bg-amber-600 text-teal-950 px-2.5 py-1.5 text-xs font-black transition cursor-pointer shadow-2xs flex items-center gap-1"
+                          className="rounded-lg sm:rounded-xl bg-amber-500 hover:bg-amber-600 text-teal-950 px-2 sm:px-2.5 py-1 text-xs font-black transition cursor-pointer shadow-2xs flex items-center gap-1"
                         >
-                          <span>⏭️ Fresh</span>
+                          <span>⏭️</span>
+                          <span className="text-[10px] hidden xs:inline">ಹೊಸದು</span>
                         </button>
                       </div>
                     </div>
@@ -3329,19 +3349,35 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                     )}
 
                     {/* Donor Details Strip */}
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-sand/25 p-4 rounded-2xl border border-teal-900/10">
-                      <div>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 bg-sand/25 p-2.5 sm:p-4 rounded-xl sm:rounded-2xl border border-teal-900/10">
+                      <div className="w-full">
                         {isParentLead ? (
-                          <div className="space-y-2.5">
-                            <div className="flex items-center gap-2">
-                              <span className="text-[10px] font-black uppercase tracking-wider bg-indigo-950 text-amber-300 px-2.5 py-0.5 rounded-lg">
-                                👶 1. ಪೋಷಕರ ಶೀಟ್ (Parents / Child Birthday)
-                              </span>
-                              <span className="text-xs font-mono text-teal-950/50">#{currentFocusLead.leadId}</span>
+                          <div className="space-y-1.5 sm:space-y-2.5">
+                            {/* Mobile compact single-card layout (Zero-Scroll for Low-End Android) */}
+                            <div className="sm:hidden space-y-1">
+                              <div className="bg-white/95 p-2.5 rounded-xl border border-indigo-200/90 shadow-2xs">
+                                <span className="text-[10px] font-extrabold text-indigo-900 flex items-center gap-1 uppercase tracking-wide">
+                                  <span>🎓</span>
+                                  <span>ಮಗು (Student):</span>
+                                </span>
+                                <h2 className="font-display text-base font-black text-indigo-950 leading-tight">
+                                  {cleanChildName(currentFocusLead)}
+                                </h2>
+                                <p className="text-xs font-bold text-teal-950 mt-1 flex items-center gap-1">
+                                  <span>👨‍👩‍👧</span>
+                                  <span>ಪೋಷಕರು:</span>
+                                  <span className="font-black text-teal-900">{cleanParentName(currentFocusLead)}</span>
+                                </p>
+                                {currentFocusLead.dobDay && currentFocusLead.dobMonth && (
+                                  <p className="text-[11px] font-bold text-purple-900 mt-1">
+                                    🎂 ಹುಟ್ಟುಹಬ್ಬ: <strong>{currentFocusLead.dobDay}/{currentFocusLead.dobMonth}</strong> {isTomorrowBirthday ? "(ನಾಳೆ!)" : (isTodayBirthday ? "(ಇಂದು!)" : (isT2Birthday ? "(ನಾಡಿದ್ದು!)" : ""))}
+                                  </p>
+                                )}
+                              </div>
                             </div>
 
-                            {/* Prominent Dual Box: Both Child Name AND Parent Name */}
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-0.5">
+                            {/* Desktop Prominent Dual Box: Both Child Name AND Parent Name */}
+                            <div className="hidden sm:grid grid-cols-2 gap-2.5 pt-0.5">
                               {/* 1. Student / Child Block */}
                               <div className="bg-white/95 p-3 rounded-xl border border-indigo-200/90 shadow-2xs">
                                 <span className="text-[11px] font-extrabold text-indigo-900 flex items-center gap-1 uppercase tracking-wide">
@@ -3365,7 +3401,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                               </div>
                             </div>
 
-                            <div className="flex items-center gap-2 text-xs text-teal-950/80 flex-wrap pt-0.5">
+                            <div className="flex items-center gap-1.5 sm:gap-2 text-xs text-teal-950/80 flex-wrap pt-0.5">
                               <span className="font-mono text-xs font-bold text-teal-950 bg-white px-2 py-0.5 rounded-lg border border-teal-900/15 flex items-center gap-1">
                                 <span>📱 Call:</span>
                                 <strong>{phoneInfo.display}</strong>
@@ -3393,7 +3429,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                                 title="Add alternate WhatsApp number or update calling number"
                               >
                                 <span>✏️</span>
-                                <span>Add / Change Numbers</span>
+                                <span>ತಿದ್ದು (Edit)</span>
                               </button>
 
                               {currentFocusLead.whatsappPhone && (
@@ -3419,12 +3455,11 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
 
                               {currentFocusLead.lastContactedAt && (Date.now() - new Date(currentFocusLead.lastContactedAt).getTime()) < 4 * 60 * 60 * 1000 && (
                                 <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-lg border border-amber-300 flex items-center gap-1">
-                                  <span>⚠️</span>
-                                  <span>Already dialed today — Avoid repeated call</span>
+                                  <span>⚠️ Already dialed</span>
                                 </span>
                               )}
                               {currentFocusLead.dobDay && currentFocusLead.dobMonth && (
-                                <span className="font-bold text-purple-900 bg-purple-100 px-2 py-0.5 rounded-lg">
+                                <span className="hidden sm:inline font-bold text-purple-900 bg-purple-100 px-2 py-0.5 rounded-lg">
                                   🎂 ಮಗುವಿನ ಹುಟ್ಟುಹಬ್ಬ: {currentFocusLead.dobDay}/{currentFocusLead.dobMonth} {isTomorrowBirthday ? " (ನಾಳೆ / Tomorrow!)" : (isTodayBirthday ? " (ಇಂದು / Today!)" : "")}
                                 </span>
                               )}
@@ -3432,16 +3467,37 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                           </div>
                         ) : (
                           <div className="space-y-1">
-                            <div className="flex items-center gap-2">
-                              <span className="text-[10px] font-black uppercase tracking-wider bg-teal-950 text-emerald-300 px-2.5 py-0.5 rounded-lg">
-                                🎂 2. ನೇರ ದಾನಿಗಳ ಶೀಟ್ (Direct Donor Birthday)
-                              </span>
-                              <span className="text-xs font-mono text-teal-950/50">#{currentFocusLead.leadId}</span>
+                            {/* Mobile compact single-card layout */}
+                            <div className="sm:hidden space-y-1">
+                              <div className="bg-white/95 p-2.5 rounded-xl border border-teal-200/90 shadow-2xs">
+                                <span className="text-[10px] font-extrabold text-teal-900 flex items-center gap-1 uppercase tracking-wide">
+                                  <span>🎂</span>
+                                  <span>ನೇರ ದಾನಿ (Direct Donor):</span>
+                                </span>
+                                <h2 className="font-display text-base font-black text-teal-950 leading-tight">
+                                  {currentFocusLead.name}
+                                </h2>
+                                {currentFocusLead.dobDay && currentFocusLead.dobMonth && (
+                                  <p className="text-[11px] font-bold text-amber-900 mt-1">
+                                    🎂 ಹುಟ್ಟುಹಬ್ಬ: <strong>{currentFocusLead.dobDay}/{currentFocusLead.dobMonth}</strong> {isTomorrowBirthday ? "(ನಾಳೆ!)" : (isTodayBirthday ? "(ಇಂದು!)" : (isT2Birthday ? "(ನಾಡಿದ್ದು!)" : ""))}
+                                  </p>
+                                )}
+                              </div>
                             </div>
-                            <h2 className="font-display text-xl sm:text-2xl font-black text-teal-950">
-                              {currentFocusLead.name}
-                            </h2>
-                            <div className="flex items-center gap-2 text-xs text-teal-950/80 flex-wrap pt-0.5">
+
+                            <div className="hidden sm:block">
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-black uppercase tracking-wider bg-teal-950 text-emerald-300 px-2.5 py-0.5 rounded-lg">
+                                  🎂 2. ನೇರ ದಾನಿಗಳ ಶೀಟ್ (Direct Donor Birthday)
+                                </span>
+                                <span className="text-xs font-mono text-teal-950/50">#{currentFocusLead.leadId}</span>
+                              </div>
+                              <h2 className="font-display text-xl sm:text-2xl font-black text-teal-950">
+                                {currentFocusLead.name}
+                              </h2>
+                            </div>
+
+                            <div className="flex items-center gap-1.5 sm:gap-2 text-xs text-teal-950/80 flex-wrap pt-0.5">
                               <span className="font-mono text-xs font-bold text-teal-950 bg-white px-2 py-0.5 rounded-lg border border-teal-900/15 flex items-center gap-1">
                                 <span>📱 Call:</span>
                                 <strong>{phoneInfo.display}</strong>
@@ -3469,7 +3525,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                                 title="Add alternate WhatsApp number or update calling number"
                               >
                                 <span>✏️</span>
-                                <span>Add / Change Numbers</span>
+                                <span>ತಿದ್ದು (Edit)</span>
                               </button>
 
                               {currentFocusLead.whatsappPhone && (
@@ -3495,12 +3551,11 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
 
                               {currentFocusLead.lastContactedAt && (Date.now() - new Date(currentFocusLead.lastContactedAt).getTime()) < 4 * 60 * 60 * 1000 && (
                                 <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-lg border border-amber-300 flex items-center gap-1">
-                                  <span>⚠️</span>
-                                  <span>Already dialed today — Avoid repeated call</span>
+                                  <span>⚠️ Already dialed</span>
                                 </span>
                               )}
                               {currentFocusLead.dobDay && currentFocusLead.dobMonth && (
-                                <span className="font-bold text-amber-900 bg-amber-100 px-2 py-0.5 rounded-lg">
+                                <span className="hidden sm:inline font-bold text-amber-900 bg-amber-100 px-2 py-0.5 rounded-lg">
                                   🎂 ದಾನಿಗಳ ಹುಟ್ಟುಹಬ್ಬ: {currentFocusLead.dobDay}/{currentFocusLead.dobMonth} {isTomorrowBirthday ? " (ನಾಳೆ / Tomorrow!)" : (isTodayBirthday ? " (ಇಂದು / Today!)" : "")}
                                 </span>
                               )}
@@ -3829,7 +3884,27 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                       </div>
                     </div>
 
-                    {/* ── STEP 3: MANAGE WHATSAPP TEMPLATES (Medium-Size Buttons for 10th-Grade Telecallers) ── */}
+                    {/* Mobile Quick Options Toggle (Zero-Scroll Cockpit: Hides Secondary Clutter by Default on Budget Phones) */}
+                    <div className="lg:hidden flex items-center justify-between pt-0.5">
+                      <button
+                        type="button"
+                        onClick={() => setShowMobileMoreOptions(!showMobileMoreOptions)}
+                        className="text-[11px] font-bold text-teal-950/70 hover:text-teal-950 flex items-center gap-1 cursor-pointer bg-sand/40 px-2.5 py-1 rounded-lg border border-teal-900/10 active:scale-95"
+                      >
+                        <span>{showMobileMoreOptions ? "▲ ಮುಚ್ಚಿ (Hide Details)" : "▼ ಹೆಚ್ಚಿನ ವಿವರ & ಟಿಪ್ಪಣಿ (More & Notes)"}</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setIsMobileWhatsAppSheetOpen(true)}
+                        className="text-[11px] font-black text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-300 flex items-center gap-1 cursor-pointer shadow-2xs active:scale-95"
+                      >
+                        <span>💬 ಸಂದೇಶ ಮಾದರಿ (Templates)</span>
+                      </button>
+                    </div>
+
+                    {/* Secondary Options Strip (Always Visible on Desktop; Toggleable on Mobile) */}
+                    <div className={`${showMobileMoreOptions ? "block" : "hidden lg:block"} space-y-3 sm:space-y-4`}>
+                      {/* ── STEP 3: MANAGE WHATSAPP TEMPLATES (Medium-Size Buttons for 10th-Grade Telecallers) ── */}
                     <div className="rounded-3xl bg-amber-50/70 border border-amber-300/80 p-3 sm:p-4 space-y-2">
                       <div className="flex items-center justify-between flex-wrap gap-1">
                         <span className="text-xs sm:text-sm font-black uppercase text-amber-950 tracking-wider flex items-center gap-1.5">
@@ -4106,6 +4181,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                         </button>
                       </div>
                     </div>
+                  </div>
 
                     {/* Bottom Utility Strip */}
                     <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-teal-900/10 text-[11px] text-teal-950/60">
@@ -5249,12 +5325,12 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
           type="button"
           onClick={() => {
             if (currentFocusLead) {
-              handleOpenWhatsAppModal(currentFocusLead);
+              setIsMobileWhatsAppSheetOpen(true);
             } else {
               setIsAntiBanModalOpen(true);
             }
           }}
-          className="flex-1 flex flex-col items-center justify-center py-1.5 rounded-xl text-emerald-800 hover:bg-emerald-50 transition cursor-pointer"
+          className="flex-1 flex flex-col items-center justify-center py-1.5 rounded-xl text-emerald-800 hover:bg-emerald-50 transition cursor-pointer active:scale-95"
         >
           <span className="text-lg">💬</span>
           <span className="text-[10px] font-bold">ಮೆಸೇಜ್ (WA)</span>
@@ -5742,6 +5818,173 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                   className="w-full py-2.5 px-3 rounded-xl bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 font-black text-xs flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <span>🚪 ಲಾಗ್‌ಔಟ್ (Sign Out)</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── MOBILE BOTTOM SHEET 3: WHATSAPP TEMPLATES & OUTREACH (Zero-Scroll Slide-Up Drawer) ── */}
+      {isMobileWhatsAppSheetOpen && currentFocusLead && (
+        <div className="fixed inset-0 z-50 flex flex-col justify-end">
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-teal-950/70 backdrop-blur-xs transition-opacity animate-in fade-in"
+            onClick={() => setIsMobileWhatsAppSheetOpen(false)}
+          />
+
+          {/* Slide-Up Drawer */}
+          <div className="relative z-10 bg-white rounded-t-3xl max-h-[88vh] overflow-y-auto shadow-2xl p-4 sm:p-6 space-y-4 border-t-4 border-emerald-500 animate-in slide-in-from-bottom duration-200">
+            {/* Grab handle */}
+            <div className="mx-auto w-12 h-1.5 rounded-full bg-teal-900/20" />
+
+            {/* Header */}
+            <div className="flex items-center justify-between pb-2 border-b border-teal-900/10">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">💬</span>
+                <div>
+                  <h3 className="font-display font-black text-sm text-teal-950">
+                    WhatsApp ಸಂದೇಶ ಆಯ್ಕೆ (Templates)
+                  </h3>
+                  <p className="text-[10px] text-teal-950/60 font-semibold truncate max-w-[240px]">
+                    {currentFocusLead.name} ({parseCustomerPhone(currentFocusLead.phone).display})
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsMobileWhatsAppSheetOpen(false)}
+                className="h-8 w-8 rounded-full bg-sand/80 hover:bg-sand flex items-center justify-center text-teal-950 font-bold text-sm cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* 4 Quick Template Choices */}
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-black uppercase tracking-wider text-teal-950/70 block">
+                ಸಂದೇಶದ ವಿಷಯ (Template Topic):
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { id: "birthday", icon: "🎂", title: "ಹುಟ್ಟುಹಬ್ಬ", sub: "Birthday Wish & Seva" },
+                  { id: "trust_80g", icon: "📜", title: "80G ತೆರಿಗೆ", sub: "Tax Exemption Receipt" },
+                  { id: "location_visit", icon: "📍", title: "ಆಶ್ರಮ ನಕ್ಷೆ", sub: "Location Map & Video" },
+                  { id: "provisions_inkind", icon: "🍚", title: "ಅಕ್ಕಿ & ದಿನಸಿ", sub: "Grocery Donation" },
+                ].map((tpl) => (
+                  <button
+                    key={tpl.id}
+                    type="button"
+                    onClick={() => setSelectedNarrativeAngle(tpl.id as any)}
+                    className={`p-2.5 rounded-xl text-left border transition cursor-pointer active:scale-98 ${
+                      selectedNarrativeAngle === tpl.id
+                        ? "bg-emerald-50 border-emerald-500 ring-2 ring-emerald-400 shadow-xs"
+                        : "bg-sand/30 border-teal-900/10 hover:bg-sand"
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-base">{tpl.icon}</span>
+                      <span className="font-display font-black text-xs text-teal-950">{tpl.title}</span>
+                    </div>
+                    <span className="text-[10px] text-teal-950/60 block mt-0.5">{tpl.sub}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Seva Amount Selection */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="text-[11px] font-black uppercase tracking-wider text-teal-950/70">
+                  ಸೇವಾ ಮೊತ್ತ (Amount):
+                </label>
+                <span className="font-mono text-xs font-black text-emerald-800">
+                  ₹{formatINR(selectedSevaAmount)}
+                </span>
+              </div>
+              <div className="grid grid-cols-5 gap-1.5">
+                {[501, 1500, 2500, 4500, 6000].map((amt) => (
+                  <button
+                    key={amt}
+                    type="button"
+                    onClick={() => setSelectedSevaAmount(amt)}
+                    className={`py-1.5 rounded-lg text-xs font-bold border transition cursor-pointer text-center ${
+                      selectedSevaAmount === amt
+                        ? "bg-teal-950 text-gold border-teal-950 font-black shadow-xs"
+                        : "bg-white text-teal-950 border-teal-900/15"
+                    }`}
+                  >
+                    ₹{amt}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Language Selection */}
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-black uppercase tracking-wider text-teal-950/70 block">
+                ಭಾಷೆ (Language):
+              </label>
+              <div className="grid grid-cols-3 gap-1.5">
+                {[
+                  { id: "kn", label: "🇮🇳 ಕನ್ನಡ (Pure)" },
+                  { id: "kanglish", label: "🔤 ಕಂಗ್ಲಿಷ್" },
+                  { id: "en", label: "🇬🇧 English" },
+                ].map((lang) => (
+                  <button
+                    key={lang.id}
+                    type="button"
+                    onClick={() => setPreferredLanguage(lang.id as any)}
+                    className={`py-1.5 rounded-lg text-xs font-bold border transition cursor-pointer text-center ${
+                      preferredLanguage === lang.id
+                        ? "bg-teal-950 text-gold border-teal-950 font-black"
+                        : "bg-white text-teal-950 border-teal-900/15"
+                    }`}
+                  >
+                    {lang.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Primary Action Buttons */}
+            <div className="space-y-2 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsMobileWhatsAppSheetOpen(false);
+                  handleDirectWhatsAppChat(currentFocusLead, selectedSevaAmount);
+                }}
+                className="w-full py-3 rounded-2xl bg-[#25D366] hover:brightness-105 active:scale-98 text-white font-black text-sm shadow-md transition cursor-pointer flex items-center justify-center gap-2"
+              >
+                <span className="text-xl">💬</span>
+                <span>WhatsApp ನಲ್ಲಿ ಸಂದೇಶ ಕಳುಹಿಸಿ (Send)</span>
+              </button>
+
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsMobileWhatsAppSheetOpen(false);
+                    handleDirectSharePaymentQr(currentFocusLead, selectedSevaAmount);
+                  }}
+                  className="py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-teal-950 font-black text-xs transition cursor-pointer flex items-center justify-center gap-1.5 border border-amber-600/30 active:scale-98"
+                >
+                  <span>📷</span>
+                  <span>QR ಸ್ಕ್ಯಾನರ್ ಫೋಟೋ</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsMobileWhatsAppSheetOpen(false);
+                    handleOpenWhatsAppModal(currentFocusLead);
+                  }}
+                  className="py-2.5 rounded-xl bg-sand/80 hover:bg-sand text-teal-950 font-bold text-xs transition cursor-pointer flex items-center justify-center gap-1 border border-teal-900/20 active:scale-98"
+                >
+                  <span>⚙️</span>
+                  <span>ಪೂರ್ಣ ಕಸ್ಟಮೈಜರ್</span>
                 </button>
               </div>
             </div>
