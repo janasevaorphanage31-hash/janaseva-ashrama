@@ -631,6 +631,22 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
       setLeads((prev) =>
         prev.map((l) => (l.leadId === editingLog.leadId ? { ...l, status: editDisposition } : l))
       );
+      // Optimistically update dailyLogs for zero-lag UI
+      setDailyLogs((prev) =>
+        prev.map((l) =>
+          l.leadId === editingLog.leadId
+            ? {
+                ...l,
+                disposition: editDisposition,
+                effectiveAmount: editAmount ? Number(editAmount) : 0,
+                notes: editNotes,
+                utr: editUtr.trim() || undefined,
+                paymentMode: editPaymentMode,
+                isEdited: true,
+              }
+            : l
+        )
+      );
       void loadDailyLogs();
       void loadEodStatus();
       if (callerProfile) {
@@ -956,6 +972,23 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
           todayContactedCount: ((prev && prev.todayContactedCount) || 0) + 1,
           contactedCount: ((prev && prev.contactedCount) || 0) + 1,
         }));
+        setDailyLogs((prev) => [
+          {
+            logId: Date.now(),
+            leadId,
+            leadName: displayName,
+            phone: currentLead?.phone || "",
+            disposition,
+            effectiveAmount: 0,
+            notes: effectiveNotes,
+            createdAt: nowIso,
+            callerId: callerProfile.callerId,
+            stream: currentLead?.stream,
+            parentName: currentLead?.parentName,
+            childName: currentLead?.childName,
+          },
+          ...prev.filter((l) => l.leadId !== leadId),
+        ]);
         computeStats(updatedList, callerProfile.callerId);
 
         showStampConfirmation({
@@ -1028,9 +1061,10 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
         setLeads(updatedList);
         setStats((prev: any) => ({
           ...prev,
-          todayContactedCount: ((prev && prev.todayContactedCount) || 0) + 1,
-          contactedCount: ((prev && prev.contactedCount) || 0) + 1,
+          todayContactedCount: Math.max(0, ((prev && prev.todayContactedCount) || 1) - 1),
+          contactedCount: Math.max(0, ((prev && prev.contactedCount) || 1) - 1),
         }));
+        setDailyLogs((prev) => prev.filter((l) => l.leadId !== leadId));
         computeStats(updatedList, callerProfile.callerId);
         setSessionContactedIds((prev) => {
           const next = new Set(prev);
@@ -1344,7 +1378,8 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
     ]);
 
     const csvContent = [headers.join(","), ...rows.map((r) => r.join(","))].join("\r\n");
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    // Prepend UTF-8 BOM (\uFEFF) so Microsoft Excel & Sheets open Kannada characters cleanly without corruption
+    const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
@@ -2251,7 +2286,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
 
   // ── AUTHENTICATED STATE: DEDICATED TELECALLER WORKSPACE ──
   return (
-    <div className="space-y-2 sm:space-y-4 animate-fadeIn max-w-4xl mx-auto px-1 sm:px-6 pt-[52px] lg:pt-0 py-1 sm:py-4 pb-24 md:pb-8 overscroll-y-contain">
+    <div className="space-y-1.5 sm:space-y-4 max-w-4xl mx-auto px-1 sm:px-6 pt-[52px] lg:pt-0 py-1 sm:py-4 pb-24 md:pb-8 overscroll-none">
       {/* Toast Notification (Floating above viewport so it never shifts the layout) */}
       {toastMsg && (
         <div className="fixed top-14 left-2 right-2 sm:left-auto sm:right-6 sm:w-auto z-50 rounded-2xl bg-teal-950 text-gold px-4 py-2.5 shadow-2xl border border-amber-400/60 text-xs font-bold flex items-center justify-between gap-3 animate-in slide-in-from-top duration-150">
@@ -3349,36 +3384,83 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                       </div>
                     )}
 
-                    {/* Donor Details Strip */}
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 bg-sand/25 p-2.5 sm:p-4 rounded-xl sm:rounded-2xl border border-teal-900/10">
+                    {/* ── MOBILE ULTRA-SLIM CONSOLIDATED CARD (Zero-Scroll Guarantee for Budget Android) ── */}
+                    <div className="sm:hidden bg-white/95 p-2 rounded-xl border border-teal-900/15 shadow-2xs space-y-1">
+                      {/* Context Strip: Birthday timing + Stream + Suggested Seva */}
+                      <div className="flex items-center justify-between text-[10px] font-bold border-b border-teal-900/10 pb-0.5">
+                        <span className="flex items-center gap-1 text-purple-900 font-extrabold truncate">
+                          <span>🎂</span>
+                          <span>
+                            {isTomorrowBirthday ? "ನಾಳೆ ಹುಟ್ಟುಹಬ್ಬ" : isTodayBirthday ? "ಇಂದು ಹುಟ್ಟುಹಬ್ಬ" : isT2Birthday ? "ನಾಡಿದ್ದು ಹುಟ್ಟುಹಬ್ಬ" : "ಹುಟ್ಟುಹಬ್ಬ"}
+                            {currentFocusLead.dobDay && currentFocusLead.dobMonth ? ` (${currentFocusLead.dobDay}/${currentFocusLead.dobMonth})` : ""}
+                          </span>
+                        </span>
+                        <span className="text-emerald-800 font-black shrink-0">
+                          ಸೇವೆ: {isTomorrowBirthday || isTodayBirthday ? "₹2,500" : "₹1,500"}
+                        </span>
+                      </div>
+
+                      {/* Names & Contact */}
+                      {isParentLead ? (
+                        <div>
+                          <div className="flex items-baseline justify-between gap-1">
+                            <span className="text-[9px] font-black text-indigo-900 uppercase">🎓 ಮಗು (Student):</span>
+                            <span className="text-[9px] text-teal-950/60 font-mono">#{currentFocusLead.leadId}</span>
+                          </div>
+                          <h2 className="font-display text-base font-black text-indigo-950 leading-tight truncate">
+                            {cleanChildName(currentFocusLead)}
+                          </h2>
+                          <div className="text-xs font-bold text-teal-950 flex items-center gap-1 mt-0.5 truncate">
+                            <span className="text-teal-950/70 text-[10px]">👨‍👩‍👧 ಪೋಷಕರು:</span>
+                            <span className="font-black text-teal-900 truncate">{cleanParentName(currentFocusLead)}</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div>
+                          <div className="flex items-baseline justify-between gap-1">
+                            <span className="text-[9px] font-black text-teal-900 uppercase">🎂 ನೇರ ದಾನಿ (Donor):</span>
+                            <span className="text-[9px] text-teal-950/60 font-mono">#{currentFocusLead.leadId}</span>
+                          </div>
+                          <h2 className="font-display text-base font-black text-teal-950 leading-tight truncate">
+                            {currentFocusLead.name}
+                          </h2>
+                        </div>
+                      )}
+
+                      {/* Phone strip with 1-tap Edit */}
+                      <div className="flex items-center justify-between gap-1 text-xs pt-0.5">
+                        <div className="flex items-center gap-1 flex-wrap">
+                          <span className="font-mono text-xs font-bold text-teal-950 bg-sand/40 px-1.5 py-0.5 rounded border border-teal-900/10">
+                            📱 {phoneInfo.display}
+                          </span>
+                          {currentFocusLead.whatsappPhone && (
+                            <span className="font-mono text-[11px] font-bold text-emerald-950 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-300">
+                              🟢 WA: {currentFocusLead.whatsappPhone}
+                            </span>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditContactLead(currentFocusLead);
+                            setEditCallingPhone(currentFocusLead.phone || "");
+                            setEditWhatsAppPhone(currentFocusLead.whatsappPhone || "");
+                          }}
+                          className="rounded bg-sand/80 hover:bg-amber-100 text-teal-950 border border-teal-900/20 px-2 py-0.5 text-[10px] font-bold cursor-pointer shrink-0"
+                          title="Edit calling or WhatsApp number"
+                        >
+                          ✏️ ತಿದ್ದು
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Desktop Rich Donor Details Strip */}
+                    <div className="hidden sm:flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 bg-sand/25 p-2.5 sm:p-4 rounded-xl sm:rounded-2xl border border-teal-900/10">
                       <div className="w-full">
                         {isParentLead ? (
                           <div className="space-y-1.5 sm:space-y-2.5">
-                            {/* Mobile compact single-card layout (Zero-Scroll for Low-End Android) */}
-                            <div className="sm:hidden space-y-1">
-                              <div className="bg-white/95 p-2.5 rounded-xl border border-indigo-200/90 shadow-2xs">
-                                <span className="text-[10px] font-extrabold text-indigo-900 flex items-center gap-1 uppercase tracking-wide">
-                                  <span>🎓</span>
-                                  <span>ಮಗು (Student):</span>
-                                </span>
-                                <h2 className="font-display text-base font-black text-indigo-950 leading-tight">
-                                  {cleanChildName(currentFocusLead)}
-                                </h2>
-                                <p className="text-xs font-bold text-teal-950 mt-1 flex items-center gap-1">
-                                  <span>👨‍👩‍👧</span>
-                                  <span>ಪೋಷಕರು:</span>
-                                  <span className="font-black text-teal-900">{cleanParentName(currentFocusLead)}</span>
-                                </p>
-                                {currentFocusLead.dobDay && currentFocusLead.dobMonth && (
-                                  <p className="text-[11px] font-bold text-purple-900 mt-1">
-                                    🎂 ಹುಟ್ಟುಹಬ್ಬ: <strong>{currentFocusLead.dobDay}/{currentFocusLead.dobMonth}</strong> {isTomorrowBirthday ? "(ನಾಳೆ!)" : (isTodayBirthday ? "(ಇಂದು!)" : (isT2Birthday ? "(ನಾಡಿದ್ದು!)" : ""))}
-                                  </p>
-                                )}
-                              </div>
-                            </div>
-
                             {/* Desktop Prominent Dual Box: Both Child Name AND Parent Name */}
-                            <div className="hidden sm:grid grid-cols-2 gap-2.5 pt-0.5">
+                            <div className="grid grid-cols-2 gap-2.5 pt-0.5">
                               {/* 1. Student / Child Block */}
                               <div className="bg-white/95 p-3 rounded-xl border border-indigo-200/90 shadow-2xs">
                                 <span className="text-[11px] font-extrabold text-indigo-900 flex items-center gap-1 uppercase tracking-wide">
@@ -3460,7 +3542,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                                 </span>
                               )}
                               {currentFocusLead.dobDay && currentFocusLead.dobMonth && (
-                                <span className="hidden sm:inline font-bold text-purple-900 bg-purple-100 px-2 py-0.5 rounded-lg">
+                                <span className="font-bold text-purple-900 bg-purple-100 px-2 py-0.5 rounded-lg">
                                   🎂 ಮಗುವಿನ ಹುಟ್ಟುಹಬ್ಬ: {currentFocusLead.dobDay}/{currentFocusLead.dobMonth} {isTomorrowBirthday ? " (ನಾಳೆ / Tomorrow!)" : (isTodayBirthday ? " (ಇಂದು / Today!)" : "")}
                                 </span>
                               )}
@@ -3468,25 +3550,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                           </div>
                         ) : (
                           <div className="space-y-1">
-                            {/* Mobile compact single-card layout */}
-                            <div className="sm:hidden space-y-1">
-                              <div className="bg-white/95 p-2.5 rounded-xl border border-teal-200/90 shadow-2xs">
-                                <span className="text-[10px] font-extrabold text-teal-900 flex items-center gap-1 uppercase tracking-wide">
-                                  <span>🎂</span>
-                                  <span>ನೇರ ದಾನಿ (Direct Donor):</span>
-                                </span>
-                                <h2 className="font-display text-base font-black text-teal-950 leading-tight">
-                                  {currentFocusLead.name}
-                                </h2>
-                                {currentFocusLead.dobDay && currentFocusLead.dobMonth && (
-                                  <p className="text-[11px] font-bold text-amber-900 mt-1">
-                                    🎂 ಹುಟ್ಟುಹಬ್ಬ: <strong>{currentFocusLead.dobDay}/{currentFocusLead.dobMonth}</strong> {isTomorrowBirthday ? "(ನಾಳೆ!)" : (isTodayBirthday ? "(ಇಂದು!)" : (isT2Birthday ? "(ನಾಡಿದ್ದು!)" : ""))}
-                                  </p>
-                                )}
-                              </div>
-                            </div>
-
-                            <div className="hidden sm:block">
+                            <div>
                               <div className="flex items-center gap-2">
                                 <span className="text-[10px] font-black uppercase tracking-wider bg-teal-950 text-emerald-300 px-2.5 py-0.5 rounded-lg">
                                   🎂 2. ನೇರ ದಾನಿಗಳ ಶೀಟ್ (Direct Donor Birthday)
@@ -3556,7 +3620,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                                 </span>
                               )}
                               {currentFocusLead.dobDay && currentFocusLead.dobMonth && (
-                                <span className="hidden sm:inline font-bold text-amber-900 bg-amber-100 px-2 py-0.5 rounded-lg">
+                                <span className="font-bold text-amber-900 bg-amber-100 px-2 py-0.5 rounded-lg">
                                   🎂 ದಾನಿಗಳ ಹುಟ್ಟುಹಬ್ಬ: {currentFocusLead.dobDay}/{currentFocusLead.dobMonth} {isTomorrowBirthday ? " (ನಾಳೆ / Tomorrow!)" : (isTodayBirthday ? " (ಇಂದು / Today!)" : "")}
                                 </span>
                               )}
@@ -3673,19 +3737,19 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                     </div>
 
                     {/* ── STEP 2: 🔥 MID-TOP 1-TAP CALL RESULT & AUTO-ADVANCE STRIP (3x3 Grid on Mobile) ── */}
-                    <div className="rounded-2xl sm:rounded-3xl bg-sand/35 border-2 border-teal-900/15 p-2 sm:p-4 space-y-2 shadow-xs">
+                    <div className="rounded-xl sm:rounded-3xl bg-sand/35 border-2 border-teal-900/15 p-1.5 sm:p-4 space-y-1 sm:space-y-2 shadow-xs">
                       <div className="flex items-center justify-between flex-wrap gap-1">
-                        <span className="text-xs sm:text-sm font-black uppercase text-teal-950 tracking-wider flex items-center gap-1.5">
+                        <span className="text-[11px] sm:text-sm font-black uppercase text-teal-950 tracking-wider flex items-center gap-1">
                           <span>⚡</span>
                           <span>1-ಟ್ಯಾಪ್ ಫಲಿತಾಂಶ (1-Tap Call Result):</span>
                         </span>
-                        <span className="text-[10px] sm:text-[11px] text-teal-950/70 font-bold">
+                        <span className="text-[9px] sm:text-[11px] text-teal-950/70 font-bold hidden xs:inline">
                           ಟ್ಯಾಪ್ ಮಾಡಿ ಸೇವ್ ಮಾಡಿ &amp; ಮುಂದಿನ ಲೀಡ್‌ಗೆ ಹೋಗಿ
                         </span>
                       </div>
 
                       {/* Unified 9-Button Touch Grid (3 columns on mobile, 5 on tablet, 9 on desktop) */}
-                      <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-9 gap-1.5 sm:gap-2">
+                      <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-9 gap-1 sm:gap-2">
                         {/* 1. WARM / INTERESTED */}
                         <button
                           type="button"
@@ -3701,7 +3765,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                               reason: selectedDispositionReason || undefined,
                             });
                           }}
-                          className="min-h-[46px] sm:min-h-[56px] p-1.5 sm:p-2 rounded-xl sm:rounded-2xl bg-amber-500 hover:bg-amber-600 active:scale-95 text-teal-950 font-black shadow-xs transition flex flex-col items-center justify-center cursor-pointer text-center border-2 border-amber-600/40"
+                          className="min-h-[40px] sm:min-h-[56px] p-1 sm:p-2 rounded-xl sm:rounded-2xl bg-amber-500 hover:bg-amber-600 active:scale-95 text-teal-950 font-black shadow-xs transition flex flex-col items-center justify-center cursor-pointer text-center border-2 border-amber-600/40"
                         >
                           <span className="flex items-center gap-1 text-xs sm:text-sm font-black">
                             <span>👍</span>
@@ -3727,7 +3791,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                               reason: selectedDispositionReason || "🏢 ಆಫೀಸ್‌ನಲ್ಲಿ ಬಿಜಿ (Busy in office)",
                             });
                           }}
-                          className="min-h-[46px] sm:min-h-[56px] p-1.5 sm:p-2 rounded-xl sm:rounded-2xl bg-slate-700 hover:bg-slate-800 active:scale-95 text-white font-black shadow-xs transition flex flex-col items-center justify-center cursor-pointer text-center border-2 border-slate-600"
+                          className="min-h-[40px] sm:min-h-[56px] p-1 sm:p-2 rounded-xl sm:rounded-2xl bg-slate-700 hover:bg-slate-800 active:scale-95 text-white font-black shadow-xs transition flex flex-col items-center justify-center cursor-pointer text-center border-2 border-slate-600"
                         >
                           <span className="flex items-center gap-1 text-xs sm:text-sm font-black">
                             <span>⏳</span>
@@ -3744,7 +3808,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                             setNotesText(cardNoteInput.trim() || currentFocusLead.notes || "");
                             setCallbackDateTime("");
                           }}
-                          className="min-h-[46px] sm:min-h-[56px] p-1.5 sm:p-2 rounded-xl sm:rounded-2xl bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-black shadow-xs transition flex flex-col items-center justify-center cursor-pointer text-center border-2 border-blue-500"
+                          className="min-h-[40px] sm:min-h-[56px] p-1 sm:p-2 rounded-xl sm:rounded-2xl bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-black shadow-xs transition flex flex-col items-center justify-center cursor-pointer text-center border-2 border-blue-500"
                         >
                           <span className="flex items-center gap-1 text-xs sm:text-sm font-black">
                             <span>📅</span>
@@ -3761,7 +3825,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                             setLoggedDonationAmount(selectedSevaAmount || (isTodayBirthday ? 2500 : 1500));
                             setLoggedDonationUtr("");
                           }}
-                          className="min-h-[46px] sm:min-h-[56px] p-1.5 sm:p-2 rounded-xl sm:rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-black shadow-xs transition flex flex-col items-center justify-center cursor-pointer text-center border-2 border-emerald-500"
+                          className="min-h-[40px] sm:min-h-[56px] p-1 sm:p-2 rounded-xl sm:rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-black shadow-xs transition flex flex-col items-center justify-center cursor-pointer text-center border-2 border-emerald-500"
                         >
                           <span className="flex items-center gap-1 text-xs sm:text-sm font-black">
                             <span>🎉</span>
@@ -3785,7 +3849,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                               reason: selectedDispositionReason || "📳 ರಿಂಗ್ ಆಗಿದೆ, ಉತ್ತರಿಸಿಲ್ಲ",
                             });
                           }}
-                          className="min-h-[46px] sm:min-h-[56px] p-1.5 sm:p-2 rounded-xl sm:rounded-2xl bg-amber-700/90 hover:bg-amber-800 active:scale-95 text-white font-black shadow-xs transition flex flex-col items-center justify-center cursor-pointer text-center border border-amber-600"
+                          className="min-h-[40px] sm:min-h-[56px] p-1 sm:p-2 rounded-xl sm:rounded-2xl bg-amber-700/90 hover:bg-amber-800 active:scale-95 text-white font-black shadow-xs transition flex flex-col items-center justify-center cursor-pointer text-center border border-amber-600"
                           title="Ringing no answer / call disconnected"
                         >
                           <span className="flex items-center gap-1 text-xs sm:text-sm font-black">
@@ -3810,7 +3874,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                               reason: selectedDispositionReason || "📵 ಸಂಪರ್ಕಕ್ಕೆ ಸಿಗುತ್ತಿಲ್ಲ / ಸ್ವಿಚ್ಡ್ ಆಫ್",
                             });
                           }}
-                          className="min-h-[46px] sm:min-h-[56px] p-1.5 sm:p-2 rounded-xl sm:rounded-2xl bg-indigo-900 hover:bg-indigo-950 active:scale-95 text-white font-black shadow-xs transition flex flex-col items-center justify-center cursor-pointer text-center border border-indigo-700"
+                          className="min-h-[40px] sm:min-h-[56px] p-1 sm:p-2 rounded-xl sm:rounded-2xl bg-indigo-900 hover:bg-indigo-950 active:scale-95 text-white font-black shadow-xs transition flex flex-col items-center justify-center cursor-pointer text-center border border-indigo-700"
                           title="Call not connecting, network out of reach, or phone switched off"
                         >
                           <span className="flex items-center gap-1 text-xs sm:text-sm font-black">
@@ -3835,7 +3899,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                               reason: selectedDispositionReason || "❌ ತಪ್ಪು ನಂಬರ್ / ಅಮಾನ್ಯ ಸಂಖ್ಯೆ",
                             });
                           }}
-                          className="min-h-[46px] sm:min-h-[56px] p-1.5 sm:p-2 rounded-xl sm:rounded-2xl bg-rose-700 hover:bg-rose-800 active:scale-95 text-white font-black shadow-xs transition flex flex-col items-center justify-center cursor-pointer text-center border border-rose-600"
+                          className="min-h-[40px] sm:min-h-[56px] p-1 sm:p-2 rounded-xl sm:rounded-2xl bg-rose-700 hover:bg-rose-800 active:scale-95 text-white font-black shadow-xs transition flex flex-col items-center justify-center cursor-pointer text-center border border-rose-600"
                           title="Wrong number or invalid telephone number"
                         >
                           <span className="flex items-center gap-1 text-xs sm:text-sm font-black">
@@ -3860,7 +3924,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                               reason: selectedDispositionReason || undefined,
                             });
                           }}
-                          className="min-h-[46px] sm:min-h-[56px] p-1.5 sm:p-2 rounded-xl sm:rounded-2xl bg-rose-50 hover:bg-rose-100 active:scale-95 text-rose-900 border border-rose-300 font-black transition flex flex-col items-center justify-center cursor-pointer text-center"
+                          className="min-h-[40px] sm:min-h-[56px] p-1 sm:p-2 rounded-xl sm:rounded-2xl bg-rose-50 hover:bg-rose-100 active:scale-95 text-rose-900 border border-rose-300 font-black transition flex flex-col items-center justify-center cursor-pointer text-center"
                         >
                           <span className="flex items-center gap-1 text-xs sm:text-sm font-black">
                             <span>🛑</span>
@@ -3873,7 +3937,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                         <button
                           type="button"
                           onClick={() => handleSkipFocusLead(currentFocusLead)}
-                          className="min-h-[46px] sm:min-h-[56px] p-1.5 sm:p-2 rounded-xl sm:rounded-2xl bg-sand hover:bg-amber-100 active:scale-95 text-amber-950 border border-amber-300 font-black transition flex flex-col items-center justify-center cursor-pointer text-center"
+                          className="min-h-[40px] sm:min-h-[56px] p-1 sm:p-2 rounded-xl sm:rounded-2xl bg-sand hover:bg-amber-100 active:scale-95 text-amber-950 border border-amber-300 font-black transition flex flex-col items-center justify-center cursor-pointer text-center"
                           title="Skip to next number without repeating today"
                         >
                           <span className="flex items-center gap-1 text-xs sm:text-sm font-black">
@@ -4184,13 +4248,13 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                     </div>
                   </div>
 
-                    {/* Bottom Utility Strip */}
-                    <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-teal-900/10 text-[11px] text-teal-950/60">
+                    {/* Bottom Utility Strip (Desktop only to prevent mobile vertical overflow) */}
+                    <div className="hidden sm:flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-teal-900/10 text-[11px] text-teal-950/60">
                       <span className="font-semibold text-emerald-800">
                         ✓ Master-Detail Safe Mode: Leads stay firmly in queue when dialed
                       </span>
 
-                      <div className="hidden sm:flex items-center gap-2 text-[10px] font-mono text-teal-950/50">
+                      <div className="flex items-center gap-2 text-[10px] font-mono text-teal-950/50">
                         <span>Shortcuts: [C] Call · [W] WhatsApp · [Q] QR · [1] Interested · [2] Busy · [N] Next</span>
                       </div>
                     </div>
