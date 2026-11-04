@@ -5,11 +5,17 @@ export const dynamic = "force-dynamic";
 
 async function submit(formData: FormData) {
   "use server";
-  const email = String(formData.get("email") || "");
-  const password = String(formData.get("password") || "");
-  const ok = await loginAdmin(email, password);
-  if (!ok) redirect("/admin/login?error=1");
-  redirect("/admin");
+  try {
+    const email = String(formData.get("email") || "");
+    const password = String(formData.get("password") || "");
+    const ok = await loginAdmin(email, password);
+    if (!ok) redirect("/admin/login?error=1");
+    redirect("/admin");
+  } catch (err: unknown) {
+    if ((err as { digest?: string })?.digest?.startsWith("NEXT_REDIRECT")) throw err;
+    console.error("Admin login failed:", err);
+    redirect("/admin/login?error=db");
+  }
 }
 
 export default async function AdminLogin({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
@@ -21,7 +27,8 @@ export default async function AdminLogin({ searchParams }: { searchParams: Promi
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-saffron-dark">Janaseva Admin</p>
         <h1 className="mt-2 font-display text-3xl font-bold text-teal-950">Secure sign in</h1>
         <p className="mt-2 text-sm text-teal-950/65">Admin portal access is protected. Authorized personnel only.</p>
-        {params.error && <p className="mt-4 rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-700">Sign in failed. Check your credentials.</p>}
+        {params.error === "1" && <p className="mt-4 rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-700">Sign in failed. Check your credentials.</p>}
+        {params.error === "db" && <p className="mt-4 rounded-xl bg-amber-50 p-3 text-sm font-semibold text-amber-800">Database connection pending. Please check database configuration.</p>}
         <form action={submit} className="mt-6 space-y-4">
           <label className="block text-sm font-semibold text-teal-950">
             Email

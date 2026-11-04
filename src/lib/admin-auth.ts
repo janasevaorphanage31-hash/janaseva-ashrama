@@ -47,18 +47,23 @@ export function verifyPassword(password: string, storedHash: string): boolean {
 }
 
 export async function getAdminSession() {
-  const jar = await cookies();
-  const token = jar.get(COOKIE)?.value;
-  if (!token) return null;
-  const id = verifyToken(token);
-  if (!id) return null;
-  const [row] = await db
-    .select({ session: adminSessions, user: adminUsers })
-    .from(adminSessions)
-    .innerJoin(adminUsers, eq(adminUsers.id, adminSessions.adminUserId))
-    .where(and(eq(adminSessions.id, id), gt(adminSessions.expiresAt, new Date()), eq(adminUsers.active, true)))
-    .limit(1);
-  return row ? row : null;
+  try {
+    const jar = await cookies();
+    const token = jar.get(COOKIE)?.value;
+    if (!token) return null;
+    const id = verifyToken(token);
+    if (!id) return null;
+    const [row] = await db
+      .select({ session: adminSessions, user: adminUsers })
+      .from(adminSessions)
+      .innerJoin(adminUsers, eq(adminUsers.id, adminSessions.adminUserId))
+      .where(and(eq(adminSessions.id, id), gt(adminSessions.expiresAt, new Date()), eq(adminUsers.active, true)))
+      .limit(1);
+    return row ? row : null;
+  } catch (error) {
+    console.error("Failed to query admin session from db:", error);
+    return null;
+  }
 }
 
 export async function requireAdminPage() {
