@@ -350,17 +350,8 @@ export async function distributeDatePartitionedBalanced(options?: {
     );
     conditions.push(or(isNull(agLeads.status), eq(agLeads.status, "Pending")));
   } else {
-    // Rebalance all pending or unassigned leads
-    conditions.push(
-      or(
-        isNull(agLeads.status),
-        eq(agLeads.status, "Pending"),
-        isNull(agLeads.assignedCallerId),
-        eq(agLeads.assignedCallerId, "ADMIN"),
-        eq(agLeads.assignedCallerId, ""),
-        eq(agLeads.assignedCallerId, "UNASSIGNED")
-      )
-    );
+    // Rebalance all pending leads (never touch completed, donated, interested, or rescheduled calls)
+    conditions.push(or(isNull(agLeads.status), eq(agLeads.status, "Pending")));
   }
 
   if (targetStream === "PARENTS") {
@@ -776,9 +767,9 @@ export async function reallocateAbsenteeAdvanceLeads(options?: {
     }
   }
 
-  // 4. Distribute any unassigned or harvested advance leads strictly to present floor callers
+  // 4. Distribute advance leads strictly to present floor callers with clean-slate equal division
   const resT1 = await distributeDatePartitionedBalanced({
-    unassignedOnly: true,
+    unassignedOnly: false,
     targetCallerIds: presentCallers,
     dateFilter: { month: t1Month, day: t1Day },
   });
@@ -788,7 +779,7 @@ export async function reallocateAbsenteeAdvanceLeads(options?: {
   let t2Donors = 0;
   if (includeT2) {
     const resT2 = await distributeDatePartitionedBalanced({
-      unassignedOnly: true,
+      unassignedOnly: false,
       targetCallerIds: presentCallers,
       dateFilter: { month: t2Month, day: t2Day },
     });

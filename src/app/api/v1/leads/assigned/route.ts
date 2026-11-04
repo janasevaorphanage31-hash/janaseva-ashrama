@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
-import { getCallerPortalData, reallocateAbsenteeAdvanceLeads } from "@/lib/antigravity-crm";
+import { getCallerPortalData, reallocateAbsenteeAdvanceLeads, getISTDateBounds } from "@/lib/antigravity-crm";
 import { authenticateCallerOrAdmin } from "@/lib/caller-auth";
 import { ensureDbSchema } from "@/db";
+
+const globalForSync = globalThis as unknown as { __arenaAdvanceLeadSyncDate?: string };
 
 export async function GET(req: Request) {
   try {
@@ -26,12 +28,23 @@ export async function GET(req: Request) {
     const limit = paramLimit ? Math.min(parseInt(paramLimit, 10), 10000) : (paramPage ? 100 : 400);
     const offset = (page - 1) * limit;
 
-    // On-demand explicit refresh: harvest absentee advance leads and distribute unassigned T+1/T+2 leads
-    if (paramRefresh === "true" || paramRefresh === "1") {
+    const { dateStr, year, month, day } = getISTDateBounds();
+    const nowIST = new Date(Date.UTC(year, month - 1, day));
+    const tomorrow = new Date(nowIST.getTime() + 24 * 60 * 60 * 1000);
+    const tomorrowDay = tomorrow.getUTCDate();
+    const tomorrowMonth = tomorrow.getUTCMonth() + 1;
+    const t2 = new Date(nowIST.getTime() + 2 * 24 * 60 * 60 * 1000);
+    const t2Day = t2.getUTCDate();
+    const t2Month = t2.getUTCMonth() + 1;
+
+    // Automatic clean-slate equal division of T+1 and T+2 leads on first access of the day or explicit refresh
+    const shouldReallocate = paramRefresh === "true" || paramRefresh === "1" || globalForSync.__arenaAdvanceLeadSyncDate !== dateStr;
+    if (shouldReallocate) {
       try {
         await reallocateAbsenteeAdvanceLeads({ includeT2: true });
+        globalForSync.__arenaAdvanceLeadSyncDate = dateStr;
       } catch (e) {
-        console.warn("Advance lead reallocate on refresh skipped:", e);
+        console.warn("Advance lead reallocate skipped:", e);
       }
     }
 
@@ -50,6 +63,16 @@ export async function GET(req: Request) {
       limit,
       count: leads.length,
       totalAssigned: stats.totalAssigned,
+      istDate: {
+        year,
+        month,
+        day,
+        dateStr,
+        tomorrowDay,
+        tomorrowMonth,
+        t2Day,
+        t2Month,
+      },
       leads,
       callerStats: stats,
     });

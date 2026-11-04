@@ -276,6 +276,16 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
   const [utrValidationError, setUtrValidationError] = useState<string>("");
   const [loggingDonation, setLoggingDonation] = useState<boolean>(false);
 
+  // Server-synchronized IST dates for accurate T+1/T+2 advance calling across all mobile timezones
+  const [serverDate, setServerDate] = useState<{
+    day: number;
+    month: number;
+    tomorrowDay: number;
+    tomorrowMonth: number;
+    t2Day: number;
+    t2Month: number;
+  } | null>(null);
+
   // Shift Activity & Edit Modal state
   const [dailyLogs, setDailyLogs] = useState<any[]>([]);
   const [loadingDailyLogs, setLoadingDailyLogs] = useState(false);
@@ -384,6 +394,9 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
       if (data.success) {
         const leadItems = data.leads || [];
         setLeads(leadItems);
+        if (data.istDate) {
+          setServerDate(data.istDate);
+        }
         if (data.callerStats) {
           setStats(data.callerStats);
         } else {
@@ -1652,15 +1665,13 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
   // Dynamic filter counter computation (stream-aware for zero count mismatch)
   const counts = useMemo(() => {
     const now = new Date();
-    const curDay = now.getDate();
-    const curMonth = now.getMonth() + 1;
-    const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-    const tomorrowDay = tomorrow.getDate();
-    const tomorrowMonth = tomorrow.getMonth() + 1;
+    const curDay = serverDate?.day ?? now.getDate();
+    const curMonth = serverDate?.month ?? (now.getMonth() + 1);
+    const tomorrowDay = serverDate?.tomorrowDay ?? (new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).getDate());
+    const tomorrowMonth = serverDate?.tomorrowMonth ?? (new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).getMonth() + 1);
 
-    const t2 = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 2);
-    const t2Day = t2.getDate();
-    const t2Month = t2.getMonth() + 1;
+    const t2Day = serverDate?.t2Day ?? (new Date(now.getFullYear(), now.getMonth(), now.getDate() + 2).getDate());
+    const t2Month = serverDate?.t2Month ?? (new Date(now.getFullYear(), now.getMonth(), now.getDate() + 2).getMonth() + 1);
 
     let pending = 0;
     let attended = 0;
@@ -1725,7 +1736,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
       donors,
       globalTotal: leads.length,
     };
-  }, [leads, streamFilter, sessionContactedIds]);
+  }, [leads, streamFilter, sessionContactedIds, serverDate]);
 
   // Due callback calculation (Scheduled callbacks that are due now or within next 10 minutes)
   const dueCallbacks = useMemo(() => {
@@ -1749,15 +1760,13 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
   // Filter & Search Leads with Date Sorting
   const filteredLeads = useMemo(() => {
     const now = new Date();
-    const curDay = now.getDate();
-    const curMonth = now.getMonth() + 1;
-    const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-    const tomorrowDay = tomorrow.getDate();
-    const tomorrowMonth = tomorrow.getMonth() + 1;
+    const curDay = serverDate?.day ?? now.getDate();
+    const curMonth = serverDate?.month ?? (now.getMonth() + 1);
+    const tomorrowDay = serverDate?.tomorrowDay ?? (new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).getDate());
+    const tomorrowMonth = serverDate?.tomorrowMonth ?? (new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).getMonth() + 1);
 
-    const t2 = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 2);
-    const t2Day = t2.getDate();
-    const t2Month = t2.getMonth() + 1;
+    const t2Day = serverDate?.t2Day ?? (new Date(now.getFullYear(), now.getMonth(), now.getDate() + 2).getDate());
+    const t2Month = serverDate?.t2Month ?? (new Date(now.getFullYear(), now.getMonth(), now.getDate() + 2).getMonth() + 1);
 
     // Strict phone number deduplication across cards to eliminate repetition within the filtered stream
     const seenPhones = new Set<string>();
@@ -1945,7 +1954,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
 
       return a.leadId - b.leadId;
     });
-  }, [leads, filter, searchQuery, dateSortOrder, streamFilter, sessionContactedIds]);
+  }, [leads, filter, searchQuery, dateSortOrder, streamFilter, sessionContactedIds, serverDate]);
 
   const filteredPendingCount = useMemo(() => {
     return filteredLeads.filter((l) => !l.status || l.status === "Pending").length;
