@@ -319,6 +319,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
   } | null>(null);
 
   // Mobile Slide-up Bottom Sheets (Phase 1 & 2 Zero-Scroll Architecture)
+  const [isMobileQueueSheetOpen, setIsMobileQueueSheetOpen] = useState(false);
   const [isMobileFilterSheetOpen, setIsMobileFilterSheetOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isMobileWhatsAppSheetOpen, setIsMobileWhatsAppSheetOpen] = useState(false);
@@ -2250,10 +2251,10 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
 
   // ── AUTHENTICATED STATE: DEDICATED TELECALLER WORKSPACE ──
   return (
-    <div className="space-y-2 sm:space-y-4 animate-fadeIn max-w-4xl mx-auto px-1 sm:px-6 py-1 sm:py-4 pb-28 md:pb-8">
-      {/* Toast Notification */}
+    <div className="space-y-2 sm:space-y-4 animate-fadeIn max-w-4xl mx-auto px-1 sm:px-6 pt-[52px] lg:pt-0 py-1 sm:py-4 pb-24 md:pb-8 overscroll-y-contain">
+      {/* Toast Notification (Floating above viewport so it never shifts the layout) */}
       {toastMsg && (
-        <div className="rounded-2xl bg-teal-950 text-gold px-4 py-2.5 shadow-lg border border-amber-400/40 text-xs font-bold flex items-center justify-between sticky top-2 z-40 animate-fadeIn">
+        <div className="fixed top-14 left-2 right-2 sm:left-auto sm:right-6 sm:w-auto z-50 rounded-2xl bg-teal-950 text-gold px-4 py-2.5 shadow-2xl border border-amber-400/60 text-xs font-bold flex items-center justify-between gap-3 animate-in slide-in-from-top duration-150">
           <span>{toastMsg}</span>
           <button
             type="button"
@@ -2265,8 +2266,8 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
         </div>
       )}
 
-      {/* ── MOBILE ULTRA-SLIM STICKY TOP BAR (Phase 1 Zero-Scroll Cockpit for Low-End Android Phones) ── */}
-      <div className="lg:hidden sticky top-0 z-30 bg-teal-950 text-white px-2.5 py-1.5 shadow-md border-b border-amber-400/30 flex items-center justify-between gap-1.5 -mx-1 -mt-1 mb-2 rounded-b-xl">
+      {/* ── MOBILE IMMOVABLE FIXED TOP BAR (Phase 2 Zero-Scroll Rigid Viewport Cockpit) ── */}
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-40 h-12 bg-teal-950 text-white px-2.5 shadow-md border-b border-amber-400/30 flex items-center justify-between gap-1.5">
         {/* Caller Avatar & Name */}
         <div className="flex items-center gap-1.5 min-w-0">
           <div className="grid h-7 w-7 place-items-center rounded-lg bg-gold text-teal-950 font-black text-xs shrink-0 shadow-2xs">
@@ -3178,14 +3179,14 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                     {/* Top Status & Queue Index Bar (Ultra-Compact on Mobile) */}
                     <div className="flex flex-wrap items-center justify-between gap-1.5 border-b border-teal-900/10 pb-2 sm:pb-3">
                       <div className="flex items-center gap-1.5 flex-wrap min-w-0">
-                        {/* 1-Tap Mobile Return to Queue button */}
+                        {/* 1-Tap Mobile Open Queue Sheet button (Phase 2 Bottom Sheet) */}
                         <button
                           type="button"
-                          onClick={() => setViewMode("queue")}
+                          onClick={() => setIsMobileQueueSheetOpen(true)}
                           className="lg:hidden rounded-lg bg-sand/80 hover:bg-sand border border-teal-900/20 px-2 py-0.5 text-[11px] font-black text-teal-950 transition cursor-pointer flex items-center gap-1 shadow-2xs active:scale-95"
-                          title="Back to All Leads Queue"
+                          title="Open Call Queue Bottom Sheet"
                         >
-                          <span>◀ ಕ್ಯೂ ({filteredLeads.length})</span>
+                          <span>📋 ಕ್ಯೂ ({filteredLeads.length})</span>
                         </button>
                         <span className="text-[11px] sm:text-xs font-mono font-black bg-teal-950 text-gold px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg sm:rounded-xl shadow-xs">
                           {safeFocusIndex + 1}/{filteredLeads.length}
@@ -4550,16 +4551,18 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
         </div>
       )}
 
-      {/* ── TODAY'S SHIFT ACTIVITY & SELF-CORRECTION (EDIT) DRAWER ── */}
+      {/* ── TODAY'S SHIFT ACTIVITY & SELF-CORRECTION (EDIT) DRAWER (Phase 2 Mobile Bottom Sheet / Desktop Drawer) ── */}
       {showShiftDrawer && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-end bg-black/60 backdrop-blur-xs"
+          className="fixed inset-0 z-50 flex flex-col justify-end sm:flex-row sm:items-center sm:justify-end bg-teal-950/70 backdrop-blur-xs animate-in fade-in"
           onClick={() => setShowShiftDrawer(false)}
         >
           <div
-            className="relative w-full max-w-2xl h-full bg-white shadow-2xl p-4 sm:p-6 overflow-y-auto space-y-4"
+            className="relative w-full sm:max-w-2xl rounded-t-3xl sm:rounded-none max-h-[88vh] sm:h-full bg-white shadow-2xl p-4 sm:p-6 overflow-y-auto space-y-4 border-t-4 border-teal-800 sm:border-t-0 sm:border-l animate-in slide-in-from-bottom sm:slide-in-from-right duration-200"
             onClick={(e) => e.stopPropagation()}
           >
+            {/* Grab handle for mobile */}
+            <div className="sm:hidden mx-auto w-12 h-1.5 rounded-full bg-teal-900/20 mb-1 shrink-0" />
             {/* Drawer Header */}
             <div className="flex items-center justify-between border-b border-teal-900/10 pb-3">
               <div>
@@ -4940,16 +4943,18 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
         </div>
       )}
 
-      {/* ── END OF DAY (EOD) SHIFT SUBMISSION MODAL ── */}
+      {/* ── END OF DAY (EOD) SHIFT SUBMISSION MODAL (Phase 2 Mobile Bottom Sheet / Desktop Modal) ── */}
       {showEodModal && callerProfile && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
+          className="fixed inset-0 z-50 flex flex-col justify-end sm:flex-row sm:items-center sm:justify-center p-0 sm:p-4 bg-teal-950/70 backdrop-blur-xs animate-in fade-in"
           onClick={() => setShowEodModal(false)}
         >
           <div
-            className="relative w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl border border-teal-900/15 text-teal-950 space-y-4"
+            className="relative w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl max-h-[90vh] overflow-y-auto bg-white p-5 sm:p-6 shadow-2xl border-t-4 border-teal-800 sm:border border-teal-900/15 text-teal-950 space-y-4 animate-in slide-in-from-bottom sm:zoom-in-95 duration-200"
             onClick={(e) => e.stopPropagation()}
           >
+            {/* Grab handle for mobile */}
+            <div className="sm:hidden mx-auto w-12 h-1.5 rounded-full bg-teal-900/20 mb-1 shrink-0" />
             <div className="flex items-center justify-between border-b border-teal-900/10 pb-3">
               <div className="flex items-center gap-2">
                 <span className="text-2xl">📋</span>
@@ -5278,49 +5283,74 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
         </div>
       )}
 
-      {/* ── MOBILE STICKY BOTTOM NAVIGATION BAR (Thumb-friendly 1-Tap Navigation for Telecallers) ── */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-teal-900/15 shadow-2xl px-2 py-1.5 flex items-center justify-around">
+      {/* ── MOBILE IMMOVABLE BOTTOM NAVIGATION BAR (Phase 2 Rigid Viewport Dock) ── */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 h-14 bg-white/95 backdrop-blur-md border-t border-teal-900/15 shadow-2xl px-1.5 flex items-center justify-around pb-[max(env(safe-area-inset-bottom),4px)]">
+        {/* Tab 1: Calling Card */}
         <button
           type="button"
           onClick={() => {
             setViewMode("focus");
-            scrollToCallingCard();
+            setIsMobileQueueSheetOpen(false);
+            setIsMobileFilterSheetOpen(false);
+            setShowShiftDrawer(false);
+            setIsMobileWhatsAppSheetOpen(false);
+            setShowEodModal(false);
+            setIsMobileMenuOpen(false);
           }}
-          className={`flex-1 flex flex-col items-center justify-center py-1.5 rounded-xl transition cursor-pointer ${
-            viewMode === "focus"
+          className={`flex-1 flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
+            viewMode === "focus" && !isMobileQueueSheetOpen && !showShiftDrawer && !isMobileWhatsAppSheetOpen && !showEodModal && !isMobileFilterSheetOpen
               ? "bg-teal-950 text-gold font-black shadow-xs ring-1 ring-amber-400/50"
               : "text-teal-950/70 hover:bg-sand/40"
           }`}
         >
-          <span className="text-lg">⚡</span>
-          <span className="text-[10px] font-bold">ಕಾರ್ಡ್ (Card)</span>
+          <span className="text-lg leading-none">⚡</span>
+          <span className="text-[10px] font-bold mt-0.5">ಕಾರ್ಡ್</span>
         </button>
 
+        {/* Tab 2: Queue Drawer (Opens slide-up bottom sheet without losing active card!) */}
         <button
           type="button"
-          onClick={() => setViewMode("queue")}
-          className={`flex-1 flex flex-col items-center justify-center py-1.5 rounded-xl transition cursor-pointer ${
-            viewMode === "queue"
+          onClick={() => {
+            setIsMobileQueueSheetOpen(true);
+            setIsMobileFilterSheetOpen(false);
+            setShowShiftDrawer(false);
+            setIsMobileWhatsAppSheetOpen(false);
+            setShowEodModal(false);
+            setIsMobileMenuOpen(false);
+          }}
+          className={`flex-1 flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
+            isMobileQueueSheetOpen
               ? "bg-teal-950 text-white font-black shadow-xs ring-1 ring-teal-800"
               : "text-teal-950/70 hover:bg-sand/40"
           }`}
         >
-          <span className="text-lg">📋</span>
-          <span className="text-[10px] font-bold">ಕ್ಯೂ ({filteredLeads.length})</span>
+          <span className="text-lg leading-none">📋</span>
+          <span className="text-[10px] font-bold mt-0.5">ಕ್ಯೂ ({filteredLeads.length})</span>
         </button>
 
+        {/* Tab 3: Shift Activity Logs Drawer */}
         <button
           type="button"
           onClick={() => {
             setShowShiftDrawer(true);
             void loadDailyLogs();
+            setIsMobileQueueSheetOpen(false);
+            setIsMobileFilterSheetOpen(false);
+            setIsMobileWhatsAppSheetOpen(false);
+            setShowEodModal(false);
+            setIsMobileMenuOpen(false);
           }}
-          className="flex-1 flex flex-col items-center justify-center py-1.5 rounded-xl text-teal-950/70 hover:bg-sand/40 transition cursor-pointer"
+          className={`flex-1 flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
+            showShiftDrawer
+              ? "bg-teal-950 text-white font-black shadow-xs ring-1 ring-teal-800"
+              : "text-teal-950/70 hover:bg-sand/40"
+          }`}
         >
-          <span className="text-lg">📝</span>
-          <span className="text-[10px] font-bold">ಕರೆಗಳು ({dailyLogs.length})</span>
+          <span className="text-lg leading-none">📝</span>
+          <span className="text-[10px] font-bold mt-0.5">ಲಾಗ್ಸ್ ({dailyLogs.length})</span>
         </button>
 
+        {/* Tab 4: WhatsApp Templates Drawer */}
         <button
           type="button"
           onClick={() => {
@@ -5329,28 +5359,45 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
             } else {
               setIsAntiBanModalOpen(true);
             }
+            setIsMobileQueueSheetOpen(false);
+            setIsMobileFilterSheetOpen(false);
+            setShowShiftDrawer(false);
+            setShowEodModal(false);
+            setIsMobileMenuOpen(false);
           }}
-          className="flex-1 flex flex-col items-center justify-center py-1.5 rounded-xl text-emerald-800 hover:bg-emerald-50 transition cursor-pointer active:scale-95"
+          className={`flex-1 flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer active:scale-95 ${
+            isMobileWhatsAppSheetOpen
+              ? "bg-emerald-700 text-white font-black shadow-xs ring-1 ring-emerald-500"
+              : "text-emerald-800 hover:bg-emerald-50"
+          }`}
         >
-          <span className="text-lg">💬</span>
-          <span className="text-[10px] font-bold">ಮೆಸೇಜ್ (WA)</span>
+          <span className="text-lg leading-none">💬</span>
+          <span className="text-[10px] font-bold mt-0.5">ಮೆಸೇಜ್</span>
         </button>
 
+        {/* Tab 5: EOD Report Drawer */}
         <button
           type="button"
           onClick={() => {
             setShowEodModal(true);
             void loadDailyLogs();
             void loadEodStatus();
+            setIsMobileQueueSheetOpen(false);
+            setIsMobileFilterSheetOpen(false);
+            setShowShiftDrawer(false);
+            setIsMobileWhatsAppSheetOpen(false);
+            setIsMobileMenuOpen(false);
           }}
-          className={`flex-1 flex flex-col items-center justify-center py-1.5 rounded-xl transition cursor-pointer ${
-            eodStatus?.isSubmitted
+          className={`flex-1 flex flex-col items-center justify-center py-1 rounded-xl transition cursor-pointer ${
+            showEodModal
+              ? "bg-teal-950 text-gold font-black shadow-xs ring-1 ring-amber-400"
+              : eodStatus?.isSubmitted
               ? "bg-emerald-100 text-emerald-950 font-black border border-emerald-300"
               : "text-amber-900 hover:bg-amber-50"
           }`}
         >
-          <span className="text-lg">{eodStatus?.isSubmitted ? "✅" : "📤"}</span>
-          <span className="text-[10px] font-bold">ವರದಿ (EOD)</span>
+          <span className="text-lg leading-none">{eodStatus?.isSubmitted ? "✅" : "📤"}</span>
+          <span className="text-[10px] font-bold mt-0.5">ವರದಿ</span>
         </button>
       </div>
 
@@ -5462,6 +5509,230 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
               >
                 <span>✅ ಹೌದು, ಸೇವ್ ಮಾಡಿ</span>
                 <span>▶</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── MOBILE BOTTOM SHEET: CALL QUEUE DRAWER (Phase 2 Zero-Scroll Architecture) ── */}
+      {isMobileQueueSheetOpen && (
+        <div className="lg:hidden fixed inset-0 z-50 flex flex-col justify-end">
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-teal-950/70 backdrop-blur-xs transition-opacity animate-in fade-in"
+            onClick={() => setIsMobileQueueSheetOpen(false)}
+          />
+
+          {/* Slide-Up Drawer */}
+          <div className="relative z-10 bg-white rounded-t-3xl max-h-[85vh] flex flex-col shadow-2xl border-t-4 border-teal-800 animate-in slide-in-from-bottom duration-200">
+            {/* Grab handle */}
+            <div className="mx-auto w-12 h-1.5 rounded-full bg-teal-900/20 my-2 shrink-0" />
+
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 pb-2.5 border-b border-teal-900/10 shrink-0">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">📋</span>
+                <div>
+                  <h3 className="font-display font-black text-sm text-teal-950 flex items-center gap-1.5">
+                    <span>ಕರೆಗಳ ಸರದಿ (Call Queue)</span>
+                    <span className="text-xs font-mono font-bold bg-cream px-2 py-0.5 rounded-full border border-teal-900/15">
+                      {filteredLeads.length}
+                    </span>
+                  </h3>
+                  <p className="text-[10px] text-teal-950/60">
+                    ದಾನಿಯ ಮೇಲೆ ಟ್ಯಾಪ್ ಮಾಡಿ ನೇರವಾಗಿ ಕಾರ್ಡ್‌ಗೆ ಲೋಡ್ ಮಾಡಿ
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => loadCallerLeads(callerProfile.callerId, true)}
+                  disabled={loadingLeads}
+                  className="p-1.5 rounded-lg bg-teal-50 hover:bg-teal-100 text-teal-950 text-xs font-bold border border-teal-900/15 cursor-pointer"
+                  title="ಕ್ಯೂ ನವೀಕರಿಸಿ (Refresh Queue)"
+                >
+                  <span className={loadingLeads ? "animate-spin inline-block" : ""}>🔄</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsMobileQueueSheetOpen(false)}
+                  className="h-8 w-8 rounded-full bg-sand/80 hover:bg-sand flex items-center justify-center text-teal-950 font-bold text-sm cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            {/* Quick Filter & Search Bar in Queue Sheet */}
+            <div className="px-4 py-2 bg-sand/30 border-b border-teal-900/10 space-y-1.5 shrink-0">
+              <div className="relative">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="ಹುಡುಕಾಟ (ಹೆಸರು, ಮೊಬೈಲ್)..."
+                  className="w-full rounded-xl border border-teal-900/20 px-3 py-1.5 text-xs bg-white text-teal-950 focus:ring-2 focus:ring-amber-400 outline-none pr-8"
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery("")}
+                    className="absolute right-2.5 top-1.5 text-teal-950/40 hover:text-teal-950 text-xs font-bold cursor-pointer"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+
+              {/* Stream Switcher Pills */}
+              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar text-xs">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setStreamFilter("ALL");
+                    setFocusIndex(0);
+                  }}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold shrink-0 transition ${
+                    streamFilter === "ALL"
+                      ? "bg-teal-950 text-gold font-black shadow-xs"
+                      : "bg-white text-teal-950 border border-teal-900/15"
+                  }`}
+                >
+                  🌟 ಎಲ್ಲಾ ({leads.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setStreamFilter("PARENTS");
+                    setFocusIndex(0);
+                  }}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold shrink-0 transition ${
+                    streamFilter === "PARENTS"
+                      ? "bg-indigo-950 text-amber-300 font-black shadow-xs"
+                      : "bg-indigo-50 text-indigo-950 border border-indigo-200"
+                  }`}
+                >
+                  👶 ಪೋಷಕರು ({counts.parents})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setStreamFilter("DIRECT_DONOR");
+                    setFocusIndex(0);
+                  }}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold shrink-0 transition ${
+                    streamFilter === "DIRECT_DONOR"
+                      ? "bg-teal-950 text-emerald-300 font-black shadow-xs"
+                      : "bg-emerald-50 text-emerald-950 border border-emerald-200"
+                  }`}
+                >
+                  🎂 ದಾನಿಗಳು ({counts.donors})
+                </button>
+              </div>
+            </div>
+
+            {/* Scrollable Leads List */}
+            <div className="flex-1 overflow-y-auto p-3 space-y-2">
+              {filteredLeads.length === 0 ? (
+                <div className="text-center py-8 text-teal-950/60 text-xs">
+                  ಯಾವುದೇ ಲೀಡ್ ಕಂಡುಬಂದಿಲ್ಲ (No leads matching filter)
+                </div>
+              ) : (
+                filteredLeads.map((lead, idx) => {
+                  const isCurrent = currentFocusLead?.leadId === lead.leadId;
+                  const phoneInfo = parseCustomerPhone(lead.phone);
+                  const isParent = lead.stream === "PARENTS" || Boolean(lead.parentName || lead.childName);
+
+                  return (
+                    <div
+                      key={lead.leadId}
+                      onClick={() => {
+                        setActiveFocusLeadId(lead.leadId);
+                        setFocusIndex(idx);
+                        setIsMobileQueueSheetOpen(false);
+                      }}
+                      className={`p-2.5 rounded-xl border transition cursor-pointer active:scale-98 flex items-center justify-between gap-2 ${
+                        isCurrent
+                          ? "bg-amber-500/15 border-amber-500 ring-2 ring-amber-400 shadow-xs"
+                          : "bg-white hover:bg-sand/30 border-teal-900/10"
+                      }`}
+                    >
+                      <div className="min-w-0 flex items-center gap-2">
+                        <span className="font-mono text-[10px] font-bold text-teal-950/60 shrink-0 w-6">
+                          #{idx + 1}
+                        </span>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="font-display font-black text-xs text-teal-950 truncate max-w-[140px]">
+                              {lead.name}
+                            </span>
+                            {isParent ? (
+                              <span className="text-[9px] font-bold bg-indigo-100 text-indigo-900 px-1.5 py-0.2 rounded">
+                                ಪೋಷಕರು
+                              </span>
+                            ) : (
+                              <span className="text-[9px] font-bold bg-teal-100 text-teal-900 px-1.5 py-0.2 rounded">
+                                ದಾನಿ
+                              </span>
+                            )}
+                            {lead.dobDay && lead.dobMonth && (
+                              <span className="text-[9px] font-bold bg-purple-100 text-purple-900 px-1 py-0.2 rounded font-mono">
+                                🎂 {lead.dobDay}/{lead.dobMonth}
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-[10px] font-mono text-teal-950/70 block truncate">
+                            📞 {phoneInfo.display}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="text-right shrink-0 flex items-center gap-1.5">
+                        <span
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                            lead.status === "Interested"
+                              ? "bg-amber-100 text-amber-900 border-amber-300"
+                              : lead.status === "Donated"
+                              ? "bg-emerald-100 text-emerald-900 border-emerald-300"
+                              : lead.status === "Busy"
+                              ? "bg-blue-50 text-blue-900 border-blue-200"
+                              : lead.status === "Not_Interested"
+                              ? "bg-rose-50 text-rose-900 border-rose-200"
+                              : "bg-sand text-teal-950/70 border-teal-900/10"
+                          }`}
+                        >
+                          {lead.status === "Interested"
+                            ? "👍 ಆಸಕ್ತರು"
+                            : lead.status === "Donated"
+                            ? "🎉 ದೇಣಿಗೆ"
+                            : lead.status === "Busy"
+                            ? "⏳ ಬಿಜಿ"
+                            : lead.status === "Reschedule"
+                            ? "📅 ಮರುಕರೆ"
+                            : lead.status === "Not_Interested"
+                            ? "🛑 ಬೇಡ"
+                            : lead.status || "⏳ ಬಾಕಿ"}
+                        </span>
+                        {isCurrent && (
+                          <span className="text-amber-500 text-xs font-black">👉</span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Bottom Close Button */}
+            <div className="p-3 border-t border-teal-900/10 shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsMobileQueueSheetOpen(false)}
+                className="w-full py-2.5 rounded-xl bg-teal-950 hover:bg-teal-900 text-gold font-black text-xs shadow-md transition cursor-pointer text-center"
+              >
+                ✕ ಮುಚ್ಚಿ ಮತ್ತು ಕಾರ್ಡ್‌ಗೆ ಹಿಂತಿರುಗಿ (Close &amp; Back to Card)
               </button>
             </div>
           </div>
@@ -5861,17 +6132,19 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
               </button>
             </div>
 
-            {/* 4 Quick Template Choices */}
+            {/* Quick Template Choices */}
             <div className="space-y-1.5">
               <label className="text-[11px] font-black uppercase tracking-wider text-teal-950/70 block">
                 ಸಂದೇಶದ ವಿಷಯ (Template Topic):
               </label>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {[
                   { id: "birthday", icon: "🎂", title: "ಹುಟ್ಟುಹಬ್ಬ", sub: "Birthday Wish & Seva" },
+                  { id: "annadana", icon: "🍲", title: "ಅನ್ನದಾನ", sub: "Daily Food Feeding" },
                   { id: "trust_80g", icon: "📜", title: "80G ತೆರಿಗೆ", sub: "Tax Exemption Receipt" },
-                  { id: "location_visit", icon: "📍", title: "ಆಶ್ರಮ ನಕ್ಷೆ", sub: "Location Map & Video" },
-                  { id: "provisions_inkind", icon: "🍚", title: "ಅಕ್ಕಿ & ದಿನಸಿ", sub: "Grocery Donation" },
+                  { id: "provisions_inkind", icon: "🍚", title: "ದಿನಸಿ & ಅಕ್ಕಿ", sub: "Grocery Donation" },
+                  { id: "location_visit", icon: "📍", title: "ಆಶ್ರಮ ಭೇಟಿ", sub: "Location Map & Video" },
+                  { id: "vidya", icon: "📚", title: "ವಿದ್ಯಾಭ್ಯಾಸ", sub: "Child Education Seva" },
                 ].map((tpl) => (
                   <button
                     key={tpl.id}
@@ -5887,7 +6160,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                       <span className="text-base">{tpl.icon}</span>
                       <span className="font-display font-black text-xs text-teal-950">{tpl.title}</span>
                     </div>
-                    <span className="text-[10px] text-teal-950/60 block mt-0.5">{tpl.sub}</span>
+                    <span className="text-[10px] text-teal-950/60 block mt-0.5 truncate">{tpl.sub}</span>
                   </button>
                 ))}
               </div>
