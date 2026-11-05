@@ -234,10 +234,10 @@ export function AdminTelecallerCRM() {
 
   const handleSaveInfluencer = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!influencerForm.displayName.trim()) return alert("Please enter the influencer display name.");
-    if (!influencerForm.influencerCode.trim()) return alert("Please enter a custom referral code (e.g. ROHIT_FIT).");
+    if (!influencerForm.displayName.trim()) return showToast("⚠️ Please enter the influencer display name.");
+    if (!influencerForm.influencerCode.trim()) return showToast("⚠️ Please enter a custom referral code (e.g. ROHIT_FIT).");
     if (influencerForm.whatsappNumber.replace(/\D/g, "").length < 10) {
-      return alert("Please enter a valid 10-digit WhatsApp number.");
+      return showToast("⚠️ Please enter a valid 10-digit WhatsApp number.");
     }
 
     setActionLoading(true);
@@ -264,7 +264,7 @@ export function AdminTelecallerCRM() {
       setTotalInfluencerDonors(data.totalDonors || 0);
       setIsInfluencerModalOpen(false);
     } catch (err: any) {
-      alert("Error saving influencer: " + err.message);
+      showToast("❌ Error saving influencer: " + err.message);
     } finally {
       setActionLoading(false);
     }
@@ -323,9 +323,11 @@ export function AdminTelecallerCRM() {
           setTargetCallerId(firstActive.callerId);
         }
       }
-      await loadLeadsForReassignment("ALL");
-      await loadInfluencers();
-      await loadFinancialData();
+      await Promise.all([
+        loadLeadsForReassignment(selectedCallerForLeads || "ALL"),
+        loadInfluencers(),
+        loadFinancialData(),
+      ]);
     } catch (err: any) {
       showToast("Error loading telecaller CRM data: " + err.message);
     } finally {
@@ -362,7 +364,7 @@ export function AdminTelecallerCRM() {
       await loadFinancialData();
       await loadAdminData();
     } catch (e: any) {
-      alert("Error approving donation: " + e.message);
+      showToast("❌ Error approving donation: " + e.message);
     } finally {
       setActionInProgress(null);
     }
@@ -389,7 +391,7 @@ export function AdminTelecallerCRM() {
       await loadFinancialData();
       await loadAdminData();
     } catch (e: any) {
-      alert("Error adjusting donation: " + e.message);
+      showToast("❌ Error adjusting donation: " + e.message);
     } finally {
       setActionInProgress(null);
     }
@@ -415,7 +417,7 @@ export function AdminTelecallerCRM() {
       await loadFinancialData();
       await loadAdminData();
     } catch (e: any) {
-      alert("Error rejecting donation: " + e.message);
+      showToast("❌ Error rejecting donation: " + e.message);
     } finally {
       setActionInProgress(null);
     }
@@ -435,7 +437,7 @@ export function AdminTelecallerCRM() {
       showToast(`✓ Shift unlocked for ${callerId}`);
       await loadFinancialData();
     } catch (e: any) {
-      alert("Error unlocking shift: " + e.message);
+      showToast("❌ Error unlocking shift: " + e.message);
     }
   };
 
@@ -493,9 +495,9 @@ export function AdminTelecallerCRM() {
 
   const handleCreateTelecaller = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!addCallerForm.name.trim()) return alert("Please enter the telecaller full name.");
+    if (!addCallerForm.name.trim()) return showToast("⚠️ Please enter the telecaller full name.");
     if (addCallerForm.whatsappNumber.replace(/\D/g, "").length < 10) {
-      return alert("Please enter a valid 10-digit WhatsApp phone number.");
+      return showToast("⚠️ Please enter a valid 10-digit WhatsApp phone number.");
     }
 
     setActionLoading(true);
@@ -520,7 +522,7 @@ export function AdminTelecallerCRM() {
       setCallers(data.callers || []);
       setIsAddModalOpen(false);
     } catch (err: any) {
-      alert("Error adding telecaller: " + err.message);
+      showToast("❌ Error adding telecaller: " + err.message);
     } finally {
       setActionLoading(false);
     }
@@ -555,7 +557,7 @@ export function AdminTelecallerCRM() {
       setIsDeleteModalOpen(false);
       setCallerToDelete(null);
     } catch (err: any) {
-      alert("Error deleting telecaller: " + err.message);
+      showToast("❌ Error deleting telecaller: " + err.message);
     } finally {
       setActionLoading(false);
     }
@@ -1198,7 +1200,7 @@ export function AdminTelecallerCRM() {
           setPastedText(csvPreview);
           parse2DGrid(grid, uploadStream);
         } catch (err: any) {
-          alert("Error parsing Excel file: " + err.message);
+          showToast("❌ Error parsing Excel file: " + err.message);
         }
       };
       reader.readAsArrayBuffer(file);
@@ -1538,7 +1540,7 @@ export function AdminTelecallerCRM() {
     } = params;
 
     const totalChunks = chunks.length;
-    const CHUNK_SIZE = chunks[0]?.length || 1000;
+    const CHUNK_SIZE = chunks[0]?.length || 500;
     const jobId = params.jobId || `job_${Date.now()}`;
     const uploadBatchId =
       params.uploadBatchId ||
@@ -1825,11 +1827,11 @@ export function AdminTelecallerCRM() {
 
   const handleExecuteLeadUpload = async () => {
     if (parsedLeads.length === 0) {
-      return alert("No valid leads detected. Please paste or upload data containing Name and Phone.");
+      return showToast("⚠️ No valid leads detected. Please paste or upload data containing Name and Phone.");
     }
 
     const totalLeadsCount = parsedLeads.length;
-    const CHUNK_SIZE = 1000;
+    const CHUNK_SIZE = 500;
     const chunks: typeof parsedLeads[] = [];
     for (let i = 0; i < totalLeadsCount; i += CHUNK_SIZE) {
       chunks.push(parsedLeads.slice(i, i + CHUNK_SIZE));
@@ -1930,7 +1932,7 @@ export function AdminTelecallerCRM() {
   // ── BULK REASSIGNMENT ──
   const handleBulkReassign = async () => {
     if (selectedLeadIds.length === 0) {
-      return alert("Please select at least one lead to re-assign.");
+      return showToast("⚠️ Please select at least one lead to re-assign.");
     }
     setActionLoading(true);
     try {
@@ -1998,7 +2000,7 @@ export function AdminTelecallerCRM() {
     e.preventDefault();
     if (!selectedCallerForAccess || !newPasswordInput.trim()) return;
     if (newPasswordInput.trim().length < 4) {
-      alert("New password must be at least 4 characters.");
+      showToast("⚠️ New password must be at least 4 characters.");
       return;
     }
     setResettingPassword(true);
@@ -2017,7 +2019,7 @@ export function AdminTelecallerCRM() {
       showToast(`✓ Password for ${selectedCallerForAccess.callerId} updated successfully!`);
       setNewPasswordInput("");
     } catch (err: any) {
-      alert("Error resetting password: " + err.message);
+      showToast("❌ Error resetting password: " + err.message);
     } finally {
       setResettingPassword(false);
     }
@@ -2324,8 +2326,8 @@ export function AdminTelecallerCRM() {
               <span>🎯 Distribute Tomorrow (50/50 Mix)</span>
             </button>
 
-            {/* Desktop Actions */}
-            <div className="hidden md:flex items-center gap-2 flex-wrap">
+            {/* Desktop Actions (Shown on XL screens) */}
+            <div className="hidden xl:flex items-center gap-2 flex-wrap">
               {/* Reset Daily Limit / Queue Button */}
               <button
                 type="button"
@@ -2404,8 +2406,8 @@ export function AdminTelecallerCRM() {
               </button>
             </div>
 
-            {/* Mobile Maintenance Button Drawer Trigger */}
-            <div className="md:hidden">
+            {/* Mobile / Tablet Maintenance Tools Drawer Trigger */}
+            <div className="xl:hidden">
               <button
                 type="button"
                 onClick={() => setIsToolsMenuOpen(true)}
@@ -2425,9 +2427,9 @@ export function AdminTelecallerCRM() {
                 <span>📥 Export CRM Data ▾</span>
               </button>
 
-              {/* Desktop Export Dropdown */}
+              {/* Desktop Export Dropdown (Anchored to right edge so it never overflows offscreen) */}
               {isExportMenuOpen && (
-                <div className="hidden md:block absolute left-0 mt-2 w-72 max-w-[calc(100vw-2rem)] rounded-2xl bg-white text-teal-950 shadow-2xl border border-teal-900/10 p-2 z-[150]">
+                <div className="hidden xl:block absolute right-0 mt-2 w-72 rounded-2xl bg-white text-teal-950 shadow-2xl border border-teal-900/10 p-2 z-[150]">
                   <div className="px-3 py-2 border-b border-teal-900/10 text-[10px] font-bold text-teal-950/60 uppercase tracking-wider">
                     Agency Campaign Reports (CSV)
                   </div>
@@ -2481,17 +2483,17 @@ export function AdminTelecallerCRM() {
               )}
             </div>
 
-            {/* Mobile Export Action Sheet Drawer (100% Mobile Friendly, No Cut-Off) */}
+            {/* Mobile / Tablet Export Action Sheet Modal (100% Mobile Friendly, Centered or Bottom Sheet, Never Cut Off) */}
             {isExportMenuOpen && (
               <div
-                className="md:hidden fixed inset-0 z-[200] flex flex-col justify-end bg-teal-950/70 backdrop-blur-xs animate-fadeIn pb-24 sm:pb-6 safe-area-pb"
+                className="xl:hidden fixed inset-0 z-[9999] flex flex-col justify-end sm:justify-center sm:items-center bg-teal-950/80 backdrop-blur-sm animate-fadeIn p-0 sm:p-4"
                 onClick={() => setIsExportMenuOpen(false)}
               >
                 <div
-                  className="w-full bg-white rounded-t-3xl p-5 shadow-2xl border-t border-teal-900/10 space-y-3 max-h-[85vh] overflow-y-auto"
+                  className="w-full max-w-md bg-white rounded-t-3xl sm:rounded-3xl p-5 shadow-2xl border border-teal-900/10 space-y-3 max-h-[85vh] overflow-y-auto pb-8 sm:pb-5 safe-area-pb"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <div className="w-12 h-1.5 rounded-full bg-teal-900/20 mx-auto mb-2 shrink-0" />
+                  <div className="w-12 h-1.5 rounded-full bg-teal-900/20 mx-auto mb-2 shrink-0 sm:hidden" />
                   <div className="flex items-center justify-between pb-2 border-b border-teal-900/10">
                     <div className="flex items-center gap-2">
                       <span className="text-xl">📥</span>
@@ -2581,14 +2583,14 @@ export function AdminTelecallerCRM() {
             {/* Mobile Maintenance Tools Action Sheet Drawer */}
             {isToolsMenuOpen && (
               <div
-                className="md:hidden fixed inset-0 z-[200] flex flex-col justify-end bg-teal-950/70 backdrop-blur-xs animate-fadeIn pb-24 sm:pb-6 safe-area-pb"
+                className="xl:hidden fixed inset-0 z-[9999] flex flex-col justify-end sm:justify-center sm:items-center bg-teal-950/80 backdrop-blur-sm animate-fadeIn p-0 sm:p-4"
                 onClick={() => setIsToolsMenuOpen(false)}
               >
                 <div
-                  className="w-full bg-white rounded-t-3xl p-5 shadow-2xl border-t border-teal-900/10 space-y-3 max-h-[85vh] overflow-y-auto"
+                  className="w-full max-w-md bg-white rounded-t-3xl sm:rounded-3xl p-5 shadow-2xl border border-teal-900/10 space-y-3 max-h-[85vh] overflow-y-auto pb-8 sm:pb-5 safe-area-pb"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <div className="w-12 h-1.5 rounded-full bg-teal-900/20 mx-auto mb-2 shrink-0" />
+                  <div className="w-12 h-1.5 rounded-full bg-teal-900/20 mx-auto mb-2 shrink-0 sm:hidden" />
                   <div className="flex items-center justify-between pb-2 border-b border-teal-900/10">
                     <div className="flex items-center gap-2">
                       <span className="text-xl">⚙️</span>
@@ -4642,8 +4644,8 @@ export function AdminTelecallerCRM() {
           MODAL 1: ADD NEW TELECALLER
       ══════════════════════════════════════════════════════════════════ */}
       {isAddModalOpen && (
-        <div className="fixed inset-0 z-[200] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/70 backdrop-blur-xs animate-fadeIn">
-          <div className="w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-3xl p-4 sm:p-6 shadow-2xl border-t-4 border-teal-800 sm:border border-teal-900/10 max-h-[92vh] sm:max-h-[85vh] overflow-y-auto animate-in slide-in-from-bottom sm:zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-[9999] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/80 backdrop-blur-sm animate-fadeIn">
+          <div className="w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-3xl p-4 sm:p-6 shadow-2xl border-t-4 border-teal-800 sm:border border-teal-900/10 max-h-[90vh] overflow-y-auto animate-in slide-in-from-bottom sm:zoom-in-95 duration-200 pb-8 sm:pb-6 safe-area-pb">
             <div className="sm:hidden mx-auto w-12 h-1.5 rounded-full bg-teal-900/20 mb-2 shrink-0" />
             <div className="flex items-center justify-between pb-4 border-b border-teal-900/10">
               <div className="flex items-center gap-2.5">
@@ -4767,8 +4769,8 @@ export function AdminTelecallerCRM() {
           MODAL 2: DELETE TELECALLER CONFIRMATION
       ══════════════════════════════════════════════════════════════════ */}
       {isDeleteModalOpen && callerToDelete && (
-        <div className="fixed inset-0 z-[200] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/70 backdrop-blur-xs animate-fadeIn">
-          <div className="w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-3xl p-4 sm:p-6 shadow-2xl border-t-4 border-rose-600 sm:border border-rose-200 max-h-[92vh] sm:max-h-[85vh] overflow-y-auto animate-in slide-in-from-bottom sm:zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-[9999] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/80 backdrop-blur-sm animate-fadeIn">
+          <div className="w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-3xl p-4 sm:p-6 shadow-2xl border-t-4 border-rose-600 sm:border border-rose-200 max-h-[90vh] overflow-y-auto animate-in slide-in-from-bottom sm:zoom-in-95 duration-200 pb-8 sm:pb-6 safe-area-pb">
             <div className="sm:hidden mx-auto w-12 h-1.5 rounded-full bg-rose-900/20 mb-2 shrink-0" />
             <div className="flex items-center gap-3 text-rose-700 pb-3 border-b border-rose-100">
               <span className="text-2xl">⚠️</span>
@@ -4823,8 +4825,8 @@ export function AdminTelecallerCRM() {
           MODAL 2B: DELETE ALL LEADS CONFIRMATION
       ══════════════════════════════════════════════════════════════════ */}
       {isDeleteAllModalOpen && (
-        <div className="fixed inset-0 z-[200] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/70 backdrop-blur-xs animate-fadeIn">
-          <div className="w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-3xl p-4 sm:p-6 shadow-2xl border-t-4 border-rose-600 sm:border-2 border-rose-300 max-h-[92vh] sm:max-h-[85vh] overflow-y-auto animate-in slide-in-from-bottom sm:zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-[9999] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/80 backdrop-blur-sm animate-fadeIn">
+          <div className="w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-3xl p-4 sm:p-6 shadow-2xl border-t-4 border-rose-600 sm:border-2 border-rose-300 max-h-[90vh] overflow-y-auto animate-in slide-in-from-bottom sm:zoom-in-95 duration-200 pb-8 sm:pb-6 safe-area-pb">
             <div className="sm:hidden mx-auto w-12 h-1.5 rounded-full bg-rose-900/20 mb-2 shrink-0" />
             <div className="flex items-center gap-3 text-rose-700 pb-3 border-b border-rose-100">
               <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-rose-100 text-rose-700 text-2xl font-bold">
@@ -4881,8 +4883,8 @@ export function AdminTelecallerCRM() {
           MODAL 2C: RESET DAILY LIMIT & REBALANCE QUEUE
       ══════════════════════════════════════════════════════════════════ */}
       {isResetDailyModalOpen && (
-        <div className="fixed inset-0 z-[200] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/70 backdrop-blur-xs animate-fadeIn">
-          <div className="w-full max-w-md bg-white rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 shadow-2xl border-2 border-amber-300 max-h-[92vh] overflow-y-auto">
+        <div className="fixed inset-0 z-[9999] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/80 backdrop-blur-sm animate-fadeIn">
+          <div className="w-full max-w-md bg-white rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 shadow-2xl border-2 border-amber-300 max-h-[90vh] overflow-y-auto pb-8 sm:pb-6 safe-area-pb">
             <div className="sm:hidden mx-auto w-12 h-1.5 rounded-full bg-teal-900/20 mb-3 shrink-0" />
             <div className="flex items-center gap-3 text-amber-800 pb-3 border-b border-amber-100">
               <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-100 text-amber-800 text-2xl font-bold">
@@ -4974,37 +4976,39 @@ export function AdminTelecallerCRM() {
           MODAL 3: BULK LEAD UPLOAD & EQUAL DISTRIBUTION
       ══════════════════════════════════════════════════════════════════ */}
       {isUploadModalOpen && (
-        <div className="fixed inset-0 z-[200] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/70 backdrop-blur-xs animate-fadeIn">
-          <div className="w-full max-w-2xl bg-white rounded-t-3xl sm:rounded-3xl p-4 sm:p-6 shadow-2xl border border-teal-900/10 h-[92vh] sm:h-auto sm:max-h-[88vh] flex flex-col pb-8 sm:pb-6 safe-area-pb">
-            <div className="sm:hidden mx-auto w-12 h-1.5 rounded-full bg-teal-900/20 mb-2 shrink-0" />
-            <div className="flex items-center justify-between pb-4 border-b border-teal-900/10 shrink-0">
-              <div className="flex items-center gap-2.5">
-                <div className="h-9 w-9 rounded-xl bg-teal-950 text-gold flex items-center justify-center font-black">
-                  📤
+        <div className="fixed inset-0 z-[9999] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/80 backdrop-blur-sm animate-fadeIn">
+          <div className="w-full max-w-2xl bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl border border-teal-900/10 h-[92vh] sm:h-auto sm:max-h-[88vh] flex flex-col overflow-hidden">
+            <div className="p-4 sm:p-5 border-b border-teal-900/10 shrink-0 bg-white">
+              <div className="sm:hidden mx-auto w-12 h-1.5 rounded-full bg-teal-900/20 mb-2 shrink-0" />
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="h-9 w-9 rounded-xl bg-teal-950 text-gold flex items-center justify-center font-black">
+                    📤
+                  </div>
+                  <div>
+                    <h3 className="font-display text-base font-bold text-teal-950">Bulk Upload Birthday Leads</h3>
+                    <p className="text-[11px] text-teal-950/60">
+                      Import leads from CSV or paste Excel sheets &amp; distribute equally to telecallers
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="font-display text-base font-bold text-teal-950">Bulk Upload Birthday Leads</h3>
-                  <p className="text-[11px] text-teal-950/60">
-                    Import leads from CSV or paste Excel sheets &amp; distribute equally to telecallers
-                  </p>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (uploadProgress?.inProgress || actionLoading) {
+                      setIsCancelConfirmOpen(true);
+                      return;
+                    }
+                    setIsUploadModalOpen(false);
+                  }}
+                  className="text-teal-950/40 hover:text-teal-950 text-sm font-bold p-1 cursor-pointer"
+                >
+                  ✕
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={() => {
-                  if (uploadProgress?.inProgress || actionLoading) {
-                    setIsCancelConfirmOpen(true);
-                    return;
-                  }
-                  setIsUploadModalOpen(false);
-                }}
-                className="text-teal-950/40 hover:text-teal-950 text-sm font-bold p-1 cursor-pointer"
-              >
-                ✕
-              </button>
             </div>
 
-            <div className="overflow-y-auto py-4 space-y-4">
+            <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-5 space-y-4 overscroll-contain">
               {/* Auto-Enrichment Notice */}
               <div className="bg-emerald-50 border border-emerald-300 rounded-2xl p-3 text-xs text-emerald-950 flex items-start gap-2.5">
                 <span className="text-base shrink-0">✨</span>
@@ -5390,7 +5394,7 @@ export function AdminTelecallerCRM() {
               )}
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-3 border-t border-teal-900/10 shrink-0 flex-wrap">
+            <div className="shrink-0 p-4 sm:p-5 border-t border-teal-900/10 bg-sand/20 flex items-center justify-end gap-2 pb-6 sm:pb-4 safe-area-pb flex-wrap">
               <button
                 type="button"
                 onClick={() => {
@@ -5450,8 +5454,8 @@ export function AdminTelecallerCRM() {
 
       {/* ── MODAL 3B: IN-FLIGHT CANCEL & SAFE ROLLBACK DIALOG ── */}
       {isCancelConfirmOpen && (
-        <div className="fixed inset-0 z-[210] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/80 backdrop-blur-xs animate-fadeIn pb-24 sm:pb-6 safe-area-pb">
-          <div className="w-full max-w-md bg-white rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 shadow-2xl border-2 border-rose-300 space-y-4">
+        <div className="fixed inset-0 z-[10000] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/80 backdrop-blur-sm animate-fadeIn">
+          <div className="w-full max-w-md bg-white rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 shadow-2xl border-2 border-rose-300 space-y-4 max-h-[90vh] overflow-y-auto pb-8 sm:pb-6 safe-area-pb">
             <div className="sm:hidden mx-auto w-12 h-1.5 rounded-full bg-rose-900/20 mb-2 shrink-0" />
             <div className="flex items-center gap-3 text-rose-700 pb-2 border-b border-rose-100">
               <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-rose-100 text-xl font-bold">🛑</span>
@@ -5507,8 +5511,8 @@ export function AdminTelecallerCRM() {
 
       {/* ── MODAL 3C: SAFE NON-DESTRUCTIVE BATCH ROLLBACK ── */}
       {isRollbackModalOpen && (
-        <div className="fixed inset-0 z-[200] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/70 backdrop-blur-xs animate-fadeIn pb-24 sm:pb-6 safe-area-pb">
-          <div className="w-full max-w-lg bg-white rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 shadow-2xl border-2 border-amber-400 max-h-[92vh] overflow-y-auto space-y-4">
+        <div className="fixed inset-0 z-[9999] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/80 backdrop-blur-sm animate-fadeIn">
+          <div className="w-full max-w-lg bg-white rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 shadow-2xl border-2 border-amber-400 max-h-[90vh] overflow-y-auto space-y-4 pb-8 sm:pb-6 safe-area-pb">
             <div className="sm:hidden mx-auto w-12 h-1.5 rounded-full bg-teal-900/20 mb-2 shrink-0" />
             <div className="flex items-center justify-between pb-3 border-b border-teal-900/10">
               <div className="flex items-center gap-3">
@@ -5608,8 +5612,8 @@ export function AdminTelecallerCRM() {
 
       {/* ── 5. TELECALLER CREDENTIALS & ACCESS MODAL ── */}
       {isAccessModalOpen && selectedCallerForAccess && (
-        <div className="fixed inset-0 z-[200] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/60 backdrop-blur-xs animate-fadeIn pb-24 sm:pb-6 safe-area-pb">
-          <div className="w-full max-w-lg rounded-t-3xl sm:rounded-3xl bg-white p-5 sm:p-7 shadow-2xl border border-teal-900/10 text-teal-950 space-y-4 sm:space-y-5 max-h-[92vh] overflow-y-auto">
+        <div className="fixed inset-0 z-[9999] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/80 backdrop-blur-sm animate-fadeIn">
+          <div className="w-full max-w-lg rounded-t-3xl sm:rounded-3xl bg-white p-5 sm:p-7 shadow-2xl border border-teal-900/10 text-teal-950 space-y-4 sm:space-y-5 max-h-[90vh] overflow-y-auto pb-8 sm:pb-6 safe-area-pb">
             <div className="sm:hidden mx-auto w-12 h-1.5 rounded-full bg-teal-900/20 mb-2 shrink-0" />
             <div className="flex items-center justify-between border-b border-teal-900/10 pb-4">
               <div className="flex items-center gap-3">
@@ -5730,8 +5734,8 @@ export function AdminTelecallerCRM() {
           MODAL 6: EDIT TELECALLER DETAILS & INDIVIDUAL WHATSAPP NUMBER
       ══════════════════════════════════════════════════════════════════ */}
       {isEditModalOpen && editingCaller && (
-        <div className="fixed inset-0 z-[200] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/60 backdrop-blur-xs animate-fadeIn pb-24 sm:pb-6 safe-area-pb">
-          <div className="w-full max-w-md bg-white rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 shadow-2xl border border-teal-900/10 max-h-[92vh] overflow-y-auto">
+        <div className="fixed inset-0 z-[9999] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/80 backdrop-blur-sm animate-fadeIn">
+          <div className="w-full max-w-md bg-white rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 shadow-2xl border border-teal-900/10 max-h-[90vh] overflow-y-auto pb-8 sm:pb-6 safe-area-pb">
             <div className="sm:hidden mx-auto w-12 h-1.5 rounded-full bg-teal-900/20 mb-2 shrink-0" />
             <div className="flex items-center justify-between pb-4 border-b border-teal-900/10">
               <div className="flex items-center gap-2.5">
@@ -5907,8 +5911,8 @@ export function AdminTelecallerCRM() {
           MODAL 9: ADD / EDIT INFLUENCER PARTNER
       ══════════════════════════════════════════════════════════════════ */}
       {isInfluencerModalOpen && (
-        <div className="fixed inset-0 z-[200] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/60 backdrop-blur-xs animate-fadeIn pb-24 sm:pb-6 safe-area-pb">
-          <div className="w-full max-w-md bg-white rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 shadow-2xl border border-teal-900/10 max-h-[92vh] overflow-y-auto">
+        <div className="fixed inset-0 z-[9999] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/80 backdrop-blur-sm animate-fadeIn">
+          <div className="w-full max-w-md bg-white rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 shadow-2xl border border-teal-900/10 max-h-[90vh] overflow-y-auto pb-8 sm:pb-6 safe-area-pb">
             <div className="sm:hidden mx-auto w-12 h-1.5 rounded-full bg-teal-900/20 mb-2 shrink-0" />
             <div className="flex items-center justify-between pb-4 border-b border-teal-900/10">
               <div className="flex items-center gap-2.5">
@@ -6039,11 +6043,11 @@ export function AdminTelecallerCRM() {
       {/* ── MODAL: ADJUST DONATION AMOUNT & APPROVE ── */}
       {adjustingDonation && (
         <div
-          className="fixed inset-0 z-[200] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/60 backdrop-blur-xs animate-fadeIn pb-24 sm:pb-6 safe-area-pb"
+          className="fixed inset-0 z-[9999] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/80 backdrop-blur-sm animate-fadeIn"
           onClick={() => setAdjustingDonation(null)}
         >
           <div
-            className="w-full max-w-md bg-white rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 shadow-2xl border border-teal-900/10 space-y-4 max-h-[92vh] overflow-y-auto"
+            className="w-full max-w-md bg-white rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 shadow-2xl border border-teal-900/10 space-y-4 max-h-[90vh] overflow-y-auto pb-8 sm:pb-6 safe-area-pb"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="sm:hidden mx-auto w-12 h-1.5 rounded-full bg-teal-900/20 mb-2 shrink-0" />
@@ -6121,11 +6125,11 @@ export function AdminTelecallerCRM() {
       {/* ── MODAL: REJECT DONATION CLAIM ── */}
       {rejectingDonation && (
         <div
-          className="fixed inset-0 z-[200] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/60 backdrop-blur-xs animate-fadeIn pb-24 sm:pb-6 safe-area-pb"
+          className="fixed inset-0 z-[9999] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/80 backdrop-blur-sm animate-fadeIn"
           onClick={() => setRejectingDonation(null)}
         >
           <div
-            className="w-full max-w-md bg-white rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 shadow-2xl border border-teal-900/10 space-y-4 max-h-[92vh] overflow-y-auto"
+            className="w-full max-w-md bg-white rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 shadow-2xl border border-teal-900/10 space-y-4 max-h-[90vh] overflow-y-auto pb-8 sm:pb-6 safe-area-pb"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="sm:hidden mx-auto w-12 h-1.5 rounded-full bg-teal-900/20 mb-2 shrink-0" />
@@ -6190,11 +6194,11 @@ export function AdminTelecallerCRM() {
       {/* ── MODAL: TELECALLER DONATION AUDIT LEDGER ── */}
       {selectedCallerForLedger && (
         <div
-          className="fixed inset-0 z-[200] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/60 backdrop-blur-xs animate-fadeIn pb-24 sm:pb-6 safe-area-pb"
+          className="fixed inset-0 z-[9999] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/80 backdrop-blur-sm animate-fadeIn"
           onClick={() => setSelectedCallerForLedger(null)}
         >
           <div
-            className="w-full max-w-3xl max-h-[92vh] bg-white rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 shadow-2xl border border-teal-900/10 space-y-4 flex flex-col"
+            className="w-full max-w-3xl max-h-[90vh] bg-white rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 shadow-2xl border border-teal-900/10 space-y-4 flex flex-col pb-8 sm:pb-6 safe-area-pb"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="sm:hidden mx-auto w-12 h-1.5 rounded-full bg-teal-900/20 mb-2 shrink-0" />
