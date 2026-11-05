@@ -12,6 +12,7 @@
 
 export interface PersistedUploadJob {
   jobId: string;
+  uploadBatchId?: string;
   createdAt: number;
   lastActiveAt: number;
   fileName: string;

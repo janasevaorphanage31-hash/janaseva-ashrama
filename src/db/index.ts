@@ -359,10 +359,11 @@ export async function ensureDbSchema(): Promise<void> {
           ALTER TABLE ag_call_logs ADD COLUMN IF NOT EXISTS original_amount INTEGER;
           ALTER TABLE ag_call_logs ADD COLUMN IF NOT EXISTS eod_submitted BOOLEAN NOT NULL DEFAULT FALSE;
 
-          -- Add new columns to ag_leads for secondary numbers, disposition reasons, and language preference
+          -- Add new columns to ag_leads for secondary numbers, disposition reasons, language preference, and upload batch tagging
           ALTER TABLE ag_leads ADD COLUMN IF NOT EXISTS whatsapp_phone TEXT;
           ALTER TABLE ag_leads ADD COLUMN IF NOT EXISTS disposition_reason TEXT;
           ALTER TABLE ag_leads ADD COLUMN IF NOT EXISTS preferred_language TEXT;
+          ALTER TABLE ag_leads ADD COLUMN IF NOT EXISTS upload_batch_id TEXT;
 
           -- Add new columns to ag_donations for Admin Payment Verification and Approvals
           ALTER TABLE ag_donations ADD COLUMN IF NOT EXISTS verification_status TEXT NOT NULL DEFAULT 'PENDING_APPROVAL';
@@ -401,6 +402,7 @@ export async function ensureDbSchema(): Promise<void> {
           CREATE INDEX IF NOT EXISTS ag_leads_phone_idx ON ag_leads(phone);
           CREATE INDEX IF NOT EXISTS ag_leads_stream_dob_idx ON ag_leads(stream, dob_month, dob_day, status);
           CREATE INDEX IF NOT EXISTS ag_leads_validation_idx ON ag_leads(validation_status);
+          CREATE INDEX IF NOT EXISTS ag_leads_batch_idx ON ag_leads(upload_batch_id);
           CREATE INDEX IF NOT EXISTS ag_call_logs_lead_idx ON ag_call_logs(lead_id);
           CREATE INDEX IF NOT EXISTS ag_call_logs_caller_idx ON ag_call_logs(caller_id, created_at);
           CREATE INDEX IF NOT EXISTS ag_donations_caller_idx ON ag_donations(caller_ref_id, created_at);

@@ -1827,6 +1827,7 @@ export interface LeadUploadItem {
   email?: string;
   dobDay?: number | string;
   dobMonth?: number | string;
+  uploadBatchId?: string;
 }
 
 /**
@@ -1834,11 +1835,13 @@ export interface LeadUploadItem {
  * - Supports dual streams: PARENTS (Child Birthday) and DIRECT_DONOR (Donor Birthday)
  * - Deduplicates within the uploaded payload (removes internal duplicate numbers)
  * - Deduplicates against existing database leads (prevents multiple telecallers contacting same donor)
+ * - Tags all inserted leads with uploadBatchId for atomic rollback capability
  */
 export async function uploadBulkLeads(
   rawLeads: LeadUploadItem[],
   autoDistribute = true,
-  mode: "balanced" | "round_robin" = "balanced"
+  mode: "balanced" | "round_robin" = "balanced",
+  uploadBatchId?: string
 ) {
   await ensureTelecallersAndSeedData();
   if (!rawLeads || rawLeads.length === 0) {
@@ -2049,6 +2052,7 @@ export async function uploadBulkLeads(
       dobMonth: month,
       status: "Pending",
       validationStatus: "UNVERIFIED",
+      uploadBatchId: uploadBatchId || item.uploadBatchId || null,
       lifetimeDonations: 0,
     };
     validLeads.push(newLeadItem);
@@ -2693,6 +2697,131 @@ export async function clearDemoLeads(onlySample = false) {
     )
   );
   return { success: true, message: "Sample test leads removed successfully." };
+}
+
+/**
+ * 14e. Atomic Non-Destructive Rollback of an Upload Batch
+ *
+ * Safely purges leads uploaded in a specific batch (or latest batch) WITHOUT disturbing:
+ * 1. Previously uploaded valid batches / leads
+ * 2. Any leads from this batch that telecallers have ALREADY contacted or attended
+ * 3. Any leads that have associated call logs or donation records
+ */
+export async function rollbackUploadBatch(batchId?: string) {
+  await ensureDbSchema();
+
+  // If no batchId is provided, find the most recently created batch
+  let targetBatchId = batchId?.trim();
+  if (!targetBatchId) {
+    const latest = await db
+      .select({ uploadBatchId: agLeads.uploadBatchId })
+      .from(agLeads)
+      .where(sql`${agLeads.uploadBatchId} IS NOT NULL`)
+      .orderBy(desc(agLeads.leadId))
+      .limit(1);
+
+    if (latest.length === 0 || !latest[0].uploadBatchId) {
+      return {
+        success: false,
+        error: "No uploaded batches found to roll back.",
+        deletedCount: 0,
+        preservedCount: 0,
+        totalInBatch: 0,
+      };
+    }
+    targetBatchId = latest[0].uploadBatchId;
+  }
+
+  // Count total leads in this batch
+  const batchStats = await db
+    .select({
+      total: sql<number>`count(*)`,
+    })
+    .from(agLeads)
+    .where(eq(agLeads.uploadBatchId, targetBatchId));
+
+  const totalInBatch = Number(batchStats[0]?.total || 0);
+  if (totalInBatch === 0) {
+    return {
+      success: false,
+      error: `Batch "${targetBatchId}" has no leads in database.`,
+      deletedCount: 0,
+      preservedCount: 0,
+      totalInBatch: 0,
+    };
+  }
+
+  // Find lead IDs that have call logs (must be protected)
+  const contactedLeadIds = await db
+    .select({ leadId: agCallLogs.leadId })
+    .from(agCallLogs);
+  const protectedIdSet = new Set(contactedLeadIds.map((r) => r.leadId));
+
+  // Fetch pending leads in this batch
+  const candidateLeads = await db
+    .select({ leadId: agLeads.leadId, status: agLeads.status, lifetimeDonations: agLeads.lifetimeDonations })
+    .from(agLeads)
+    .where(eq(agLeads.uploadBatchId, targetBatchId));
+
+  const idsToDelete: number[] = [];
+  let preservedCount = 0;
+
+  for (const l of candidateLeads) {
+    if (l.status === "Pending" && (l.lifetimeDonations || 0) === 0 && !protectedIdSet.has(l.leadId)) {
+      idsToDelete.push(l.leadId);
+    } else {
+      preservedCount++;
+    }
+  }
+
+  // Chunked deletion (500 per query) to prevent connection timeouts & Neon statement limits
+  let deletedCount = 0;
+  if (idsToDelete.length > 0) {
+    const CHUNK_DELETE = 500;
+    for (let i = 0; i < idsToDelete.length; i += CHUNK_DELETE) {
+      const slice = idsToDelete.slice(i, i + CHUNK_DELETE);
+      await db.delete(agLeads).where(inArray(agLeads.leadId, slice));
+      deletedCount += slice.length;
+    }
+  }
+
+  return {
+    success: true,
+    batchId: targetBatchId,
+    deletedCount,
+    preservedCount,
+    totalInBatch,
+    message: `Batch "${targetBatchId}" successfully rolled back: ${deletedCount.toLocaleString()} untouched pending leads removed.${preservedCount > 0 ? ` ${preservedCount.toLocaleString()} leads already contacted by telecallers were safely preserved.` : ""}`,
+  };
+}
+
+/**
+ * 14f. Get Recent Upload Batches for Admin Inspection & Rollback
+ */
+export async function getRecentUploadBatches(limit = 10) {
+  await ensureDbSchema();
+  const rows = await db
+    .select({
+      batchId: agLeads.uploadBatchId,
+      totalCount: sql<number>`count(*)`,
+      pendingCount: sql<number>`count(*) filter (where ${agLeads.status} = 'Pending')`,
+      contactedCount: sql<number>`count(*) filter (where ${agLeads.status} != 'Pending')`,
+      latestLeadId: sql<number>`max(${agLeads.leadId})`,
+      createdAt: sql<string>`min(${agLeads.createdAt})`,
+    })
+    .from(agLeads)
+    .where(sql`${agLeads.uploadBatchId} IS NOT NULL`)
+    .groupBy(agLeads.uploadBatchId)
+    .orderBy(desc(sql`max(${agLeads.leadId})`))
+    .limit(limit);
+
+  return rows.map((r) => ({
+    batchId: r.batchId!,
+    totalCount: Number(r.totalCount),
+    pendingCount: Number(r.pendingCount),
+    contactedCount: Number(r.contactedCount),
+    createdAt: r.createdAt,
+  }));
 }
 
 /**

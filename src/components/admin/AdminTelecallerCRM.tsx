@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import Link from "next/link";
 import * as XLSX from "xlsx";
 import { formatINR } from "@/lib/site";
@@ -101,6 +101,23 @@ export function AdminTelecallerCRM() {
     enrichedTotal?: number;
     junkTotal?: number;
   } | null>(null);
+
+  // 3b. Batch Rollback & In-Flight Cancel States
+  const cancelRequestedRef = useRef(false);
+  const currentUploadBatchIdRef = useRef<string | null>(null);
+  const [isCancelConfirmOpen, setIsCancelConfirmOpen] = useState(false);
+  const [cancellingUpload, setCancellingUpload] = useState(false);
+  const [isRollbackModalOpen, setIsRollbackModalOpen] = useState(false);
+  const [recentBatches, setRecentBatches] = useState<Array<{
+    batchId: string;
+    totalCount: number;
+    pendingCount: number;
+    contactedCount: number;
+    latestLeadId: number;
+    createdAt: string;
+  }>>([]);
+  const [selectedBatchForRollback, setSelectedBatchForRollback] = useState<string>("");
+  const [rollingBackBatch, setRollingBackBatch] = useState(false);
 
   // 4. Export & Maintenance Menu State
   const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
@@ -1382,6 +1399,7 @@ export function AdminTelecallerCRM() {
     setIsUploadModalOpen(true);
     await runChunkedUploadEngine({
       jobId: activeResumableJob.jobId,
+      uploadBatchId: activeResumableJob.uploadBatchId,
       chunks: activeResumableJob.chunks,
       startChunkIndex: activeResumableJob.currentChunk,
       totalLeadsCount: activeResumableJob.totalLeads,
@@ -1398,8 +1416,91 @@ export function AdminTelecallerCRM() {
     setActiveResumableJob(null);
   };
 
+  // ── IN-FLIGHT CANCEL & SAFE BATCH ROLLBACK HANDLERS ──
+  const handleCancelUpload = async (rollbackBatch = false) => {
+    cancelRequestedRef.current = true;
+    const batchIdToRollback = currentUploadBatchIdRef.current;
+    setIsCancelConfirmOpen(false);
+
+    if (rollbackBatch && batchIdToRollback) {
+      setCancellingUpload(true);
+      try {
+        const res = await fetch("/api/v1/admin/telecallers", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "rollback_upload_batch", batchId: batchIdToRollback }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast(`✓ Upload cancelled & batch rolled back: ${data.message}`);
+        } else {
+          showToast(`Upload stopped: ${data.error || "Rollback failed"}`);
+        }
+      } catch (err: any) {
+        showToast("Upload stopped: " + err.message);
+      } finally {
+        setCancellingUpload(false);
+      }
+    } else {
+      showToast("Upload paused. Partial progress saved in database.");
+    }
+
+    clearActiveUploadJob();
+    setActiveResumableJob(null);
+    setIsUploadModalOpen(false);
+    setUploadProgress(null);
+    await loadAdminData();
+    await loadLeadsForReassignment(selectedCallerForLeads || "ALL");
+  };
+
+  const handleOpenRollbackModal = async () => {
+    try {
+      const res = await fetch("/api/v1/admin/telecallers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "get_upload_batches" }),
+      });
+      const data = await res.json();
+      if (data.batches && Array.isArray(data.batches)) {
+        setRecentBatches(data.batches);
+        if (data.batches.length > 0) {
+          setSelectedBatchForRollback(data.batches[0].batchId);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to load upload batches:", err);
+    }
+    setIsRollbackModalOpen(true);
+  };
+
+  const handleExecuteRollback = async (targetBatchId?: string) => {
+    const batchId = targetBatchId || selectedBatchForRollback;
+    if (!batchId) return;
+    setRollingBackBatch(true);
+    try {
+      const res = await fetch("/api/v1/admin/telecallers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "rollback_upload_batch", batchId }),
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error || "Rollback failed");
+      showToast(`✓ Rollback complete: ${data.message}`);
+      setIsRollbackModalOpen(false);
+      clearActiveUploadJob();
+      setActiveResumableJob(null);
+      await loadAdminData();
+      await loadLeadsForReassignment(selectedCallerForLeads || "ALL");
+    } catch (err: any) {
+      showToast("Rollback error: " + err.message);
+    } finally {
+      setRollingBackBatch(false);
+    }
+  };
+
   const runChunkedUploadEngine = async (params: {
     jobId?: string;
+    uploadBatchId?: string;
     chunks: any[][];
     startChunkIndex: number;
     totalLeadsCount: number;
@@ -1415,6 +1516,7 @@ export function AdminTelecallerCRM() {
     };
   }) => {
     setActionLoading(true);
+    cancelRequestedRef.current = false;
     void acquireWakeLock();
 
     const beforeUnloadHandler = (e: BeforeUnloadEvent) => {
@@ -1437,11 +1539,45 @@ export function AdminTelecallerCRM() {
     const totalChunks = chunks.length;
     const CHUNK_SIZE = 1000;
     const jobId = params.jobId || `job_${Date.now()}`;
+    const uploadBatchId =
+      params.uploadBatchId ||
+      `BATCH_${new Date().toISOString().slice(0, 10).replace(/-/g, "")}_${Date.now().toString(36).toUpperCase()}_${fileName.replace(/[^a-zA-Z0-9]/g, "_").slice(0, 16)}`;
+    currentUploadBatchIdRef.current = uploadBatchId;
 
     let cumInserted = params.initialStats?.insertedTotal || 0;
     let cumDuplicates = params.initialStats?.duplicatesTotal || 0;
     let cumEnriched = params.initialStats?.enrichedTotal || 0;
     let cumJunk = params.initialStats?.junkTotal || parsedJunkCount || 0;
+
+    // Wake-up interruptible sleep mechanism for screen wake & tab visibility
+    let interruptSleep: (() => void) | null = null;
+    const onVisibilityOrOnline = () => {
+      if (typeof document !== "undefined" && document.visibilityState === "visible") {
+        void acquireWakeLock();
+        if (interruptSleep) {
+          interruptSleep();
+        }
+      }
+    };
+    if (typeof document !== "undefined") {
+      document.addEventListener("visibilitychange", onVisibilityOrOnline);
+    }
+    if (typeof window !== "undefined") {
+      window.addEventListener("online", onVisibilityOrOnline);
+    }
+
+    const waitWithInterrupt = (ms: number) => {
+      return new Promise<void>((resolve) => {
+        let timer: any = null;
+        const wake = () => {
+          if (timer) clearTimeout(timer);
+          interruptSleep = null;
+          resolve();
+        };
+        interruptSleep = wake;
+        timer = setTimeout(wake, ms);
+      });
+    };
 
     setUploadProgress({
       inProgress: true,
@@ -1462,6 +1598,10 @@ export function AdminTelecallerCRM() {
 
     try {
       for (let i = startChunkIndex; i < totalChunks; i++) {
+        if (cancelRequestedRef.current) {
+          break;
+        }
+
         const chunk = chunks[i];
         const chunkNum = i + 1;
         const processedSoFar = Math.min((i * CHUNK_SIZE) + chunk.length, totalLeadsCount);
@@ -1484,8 +1624,33 @@ export function AdminTelecallerCRM() {
         let attempts = 0;
         let success = false;
         let lastErr = "";
+        const MAX_RETRIES = 30;
 
-        while (attempts < 3 && !success) {
+        while (attempts < MAX_RETRIES && !success) {
+          if (cancelRequestedRef.current) break;
+
+          // If document is hidden (screen off or tab minimized), wait until visible before calling fetch
+          if (typeof document !== "undefined" && document.hidden) {
+            setUploadProgress((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    statusMessage: `📱 Phone screen off or tab hidden. Waiting for you to return to resume Chunk ${chunkNum}...`,
+                  }
+                : null
+            );
+            await new Promise<void>((resolve) => {
+              const onVis = () => {
+                if (document.visibilityState === "visible") {
+                  document.removeEventListener("visibilitychange", onVis);
+                  resolve();
+                }
+              };
+              document.addEventListener("visibilitychange", onVis);
+            });
+            void acquireWakeLock();
+          }
+
           attempts++;
           try {
             const res = await fetch("/api/v1/admin/telecallers", {
@@ -1496,6 +1661,7 @@ export function AdminTelecallerCRM() {
                 leads: chunk,
                 autoDistribute,
                 mode,
+                uploadBatchId,
               }),
             });
 
@@ -1528,19 +1694,33 @@ export function AdminTelecallerCRM() {
             success = true;
           } catch (err: any) {
             lastErr = err.message || "Network error";
-            if (attempts < 3) {
-              await new Promise((r) => setTimeout(r, 800));
+            if (cancelRequestedRef.current) break;
+
+            if (attempts < MAX_RETRIES) {
+              const backoffDelay = Math.min(1000 * Math.pow(1.3, attempts - 1), 12000);
+              setUploadProgress((prev) =>
+                prev
+                  ? {
+                      ...prev,
+                      statusMessage: `⚠️ Network paused on Chunk ${chunkNum}/${totalChunks} (${lastErr}). Auto-resuming in ${(backoffDelay / 1000).toFixed(0)}s (Attempt ${attempts}/${MAX_RETRIES}). Keep screen open or wake phone anytime.`,
+                    }
+                  : null
+              );
+              await waitWithInterrupt(backoffDelay);
             }
           }
         }
 
+        if (cancelRequestedRef.current) break;
+
         if (!success) {
-          throw new Error(`Failed on chunk ${chunkNum}/${totalChunks}: ${lastErr}`);
+          throw new Error(`Upload paused on chunk ${chunkNum}/${totalChunks}: ${lastErr}. You can tap Resume Upload anytime.`);
         }
 
         // Persist progress to localStorage on each completed chunk
         saveActiveUploadJob({
           jobId,
+          uploadBatchId,
           createdAt: Date.now(),
           lastActiveAt: Date.now(),
           fileName,
@@ -1561,8 +1741,13 @@ export function AdminTelecallerCRM() {
           },
         });
 
-        // 200ms pause between chunks to protect Neon connection pool & prevent CPU spikes
-        await new Promise((r) => setTimeout(r, 200));
+        // 150ms gentle breath between chunks
+        await new Promise((r) => setTimeout(r, 150));
+      }
+
+      if (cancelRequestedRef.current) {
+        // User requested cancellation
+        return;
       }
 
       // Upload finished successfully
@@ -1607,6 +1792,7 @@ export function AdminTelecallerCRM() {
       releaseWakeLock();
       saveActiveUploadJob({
         jobId,
+        uploadBatchId,
         createdAt: Date.now(),
         lastActiveAt: Date.now(),
         fileName,
@@ -1635,15 +1821,21 @@ export function AdminTelecallerCRM() {
         totalLeads: totalLeadsCount,
         percent: prev?.percent || 0,
         stage: "error",
-        statusMessage: `Upload paused: ${err.message}. Your progress is saved and will resume automatically without duplicates.`,
+        statusMessage: `Upload paused: ${err.message}. Progress is safely saved in database and can be resumed with 1 click.`,
         insertedTotal: cumInserted,
         duplicatesTotal: cumDuplicates,
         enrichedTotal: cumEnriched,
         junkTotal: cumJunk,
       }));
-      alert("Upload notice: " + err.message + "\n\nProgress is saved. Any leads already processed in earlier chunks are safely in the database and will not be re-inserted.");
+      // ZERO blocking alert() calls! The UI sticky banner informs the user clearly and cleanly.
     } finally {
       window.removeEventListener("beforeunload", beforeUnloadHandler);
+      if (typeof document !== "undefined") {
+        document.removeEventListener("visibilitychange", onVisibilityOrOnline);
+      }
+      if (typeof window !== "undefined") {
+        window.removeEventListener("online", onVisibilityOrOnline);
+      }
       setActionLoading(false);
     }
   };
@@ -1660,12 +1852,16 @@ export function AdminTelecallerCRM() {
       chunks.push(parsedLeads.slice(i, i + CHUNK_SIZE));
     }
 
+    const cleanFileName = uploadedFileName || (uploadStream === "PARENTS" ? "parents_leads.xlsx" : "direct_donor_leads.xlsx");
+    const uploadBatchId = `BATCH_${new Date().toISOString().slice(0, 10).replace(/-/g, "")}_${Date.now().toString(36).toUpperCase()}_${cleanFileName.replace(/[^a-zA-Z0-9]/g, "_").slice(0, 16)}`;
+
     await runChunkedUploadEngine({
       chunks,
       startChunkIndex: 0,
       totalLeadsCount,
       stream: uploadStream,
-      fileName: uploadedFileName || "leads.xlsx",
+      fileName: cleanFileName,
+      uploadBatchId,
       autoDistribute: autoDistributeOnUpload,
       mode: distributionMode,
       initialStats: {
@@ -2066,7 +2262,7 @@ export function AdminTelecallerCRM() {
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+          <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto flex-wrap">
             <button
               type="button"
               onClick={handleResumeUpload}
@@ -2074,6 +2270,16 @@ export function AdminTelecallerCRM() {
             >
               <span>▶ Resume Ingestion</span>
             </button>
+            {activeResumableJob.uploadBatchId && (
+              <button
+                type="button"
+                onClick={() => handleExecuteRollback(activeResumableJob.uploadBatchId)}
+                className="px-3.5 py-2 rounded-xl bg-rose-700 hover:bg-rose-800 text-white font-bold text-xs shadow-sm transition cursor-pointer flex items-center gap-1.5"
+                title="Rollback this unfinished file and delete untouched leads"
+              >
+                <span>⏪ Rollback This File</span>
+              </button>
+            )}
             <button
               type="button"
               onClick={handleDismissResumableJob}
@@ -2136,7 +2342,7 @@ export function AdminTelecallerCRM() {
             </button>
 
             {/* Desktop Actions */}
-            <div className="hidden sm:flex items-center gap-2 flex-wrap">
+            <div className="hidden md:flex items-center gap-2 flex-wrap">
               {/* Reset Daily Limit / Queue Button */}
               <button
                 type="button"
@@ -2146,6 +2352,17 @@ export function AdminTelecallerCRM() {
                 title="Reset non-donated leads to Pending and refresh daily quota across active callers"
               >
                 <span>🔄 Reset Daily Limit</span>
+              </button>
+
+              {/* Rollback Latest Batch Button */}
+              <button
+                type="button"
+                onClick={handleOpenRollbackModal}
+                disabled={actionLoading}
+                className="focus-ring tap-scale inline-flex items-center gap-1.5 rounded-xl bg-amber-800/80 hover:bg-amber-800 text-amber-200 border border-amber-700/60 px-3 py-2 text-xs font-bold shadow-xs transition cursor-pointer disabled:opacity-50"
+                title="Safely undo an accidental wrong file upload without deleting called leads"
+              >
+                <span>⏪ Rollback Batch</span>
               </button>
 
               {/* Equalize Pending Workload Button */}
@@ -2205,7 +2422,7 @@ export function AdminTelecallerCRM() {
             </div>
 
             {/* Mobile Maintenance Button Drawer Trigger */}
-            <div className="sm:hidden">
+            <div className="md:hidden">
               <button
                 type="button"
                 onClick={() => setIsToolsMenuOpen(true)}
@@ -2227,7 +2444,7 @@ export function AdminTelecallerCRM() {
 
               {/* Desktop Export Dropdown */}
               {isExportMenuOpen && (
-                <div className="hidden sm:block absolute right-0 mt-2 w-72 rounded-2xl bg-white text-teal-950 shadow-2xl border border-teal-900/10 p-2 z-[90]">
+                <div className="hidden md:block absolute right-0 sm:right-0 mt-2 w-72 max-w-[calc(100vw-2rem)] rounded-2xl bg-white text-teal-950 shadow-2xl border border-teal-900/10 p-2 z-[90]">
                   <div className="px-3 py-2 border-b border-teal-900/10 text-[10px] font-bold text-teal-950/60 uppercase tracking-wider">
                     Agency Campaign Reports (CSV)
                   </div>
@@ -2284,7 +2501,7 @@ export function AdminTelecallerCRM() {
             {/* Mobile Export Action Sheet Drawer (100% Mobile Friendly, No Cut-Off) */}
             {isExportMenuOpen && (
               <div
-                className="sm:hidden fixed inset-0 z-[100] flex flex-col justify-end bg-teal-950/70 backdrop-blur-xs animate-fadeIn"
+                className="md:hidden fixed inset-0 z-[100] flex flex-col justify-end bg-teal-950/70 backdrop-blur-xs animate-fadeIn"
                 onClick={() => setIsExportMenuOpen(false)}
               >
                 <div
@@ -2381,7 +2598,7 @@ export function AdminTelecallerCRM() {
             {/* Mobile Maintenance Tools Action Sheet Drawer */}
             {isToolsMenuOpen && (
               <div
-                className="sm:hidden fixed inset-0 z-[100] flex flex-col justify-end bg-teal-950/70 backdrop-blur-xs animate-fadeIn"
+                className="md:hidden fixed inset-0 z-[100] flex flex-col justify-end bg-teal-950/70 backdrop-blur-xs animate-fadeIn"
                 onClick={() => setIsToolsMenuOpen(false)}
               >
                 <div
@@ -2417,6 +2634,20 @@ export function AdminTelecallerCRM() {
                       <div>
                         <span className="font-bold text-xs text-amber-950 block">Reset Daily Limit &amp; Rebalance</span>
                         <span className="text-[11px] text-amber-900/80">Reset pending leads and divide equally across present callers</span>
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsToolsMenuOpen(false);
+                        void handleOpenRollbackModal();
+                      }}
+                      className="w-full p-3 rounded-2xl bg-amber-100/70 hover:bg-amber-100 border border-amber-300 text-left flex items-start gap-3 transition cursor-pointer"
+                    >
+                      <span className="text-xl">⏪</span>
+                      <div>
+                        <span className="font-bold text-xs text-amber-950 block">Rollback Recent Upload Batch</span>
+                        <span className="text-[11px] text-amber-900/80">Safely undo accidental wrong file upload without deleting called leads</span>
                       </div>
                     </button>
                     <button
@@ -4776,8 +5007,15 @@ export function AdminTelecallerCRM() {
                 </div>
               </div>
               <button
-                onClick={() => setIsUploadModalOpen(false)}
-                className="text-teal-950/40 hover:text-teal-950 text-sm font-bold"
+                type="button"
+                onClick={() => {
+                  if (uploadProgress?.inProgress || actionLoading) {
+                    setIsCancelConfirmOpen(true);
+                    return;
+                  }
+                  setIsUploadModalOpen(false);
+                }}
+                className="text-teal-950/40 hover:text-teal-950 text-sm font-bold p-1 cursor-pointer"
               >
                 ✕
               </button>
@@ -5169,33 +5407,216 @@ export function AdminTelecallerCRM() {
               )}
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-3 border-t border-teal-900/10 shrink-0">
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-teal-900/10 shrink-0 flex-wrap">
               <button
                 type="button"
                 onClick={() => {
-                  if (uploadProgress?.inProgress) {
-                    if (!confirm("Upload is currently in progress. Do you want to cancel?")) return;
+                  if (uploadProgress?.inProgress || actionLoading) {
+                    setIsCancelConfirmOpen(true);
+                    return;
                   }
                   setIsUploadModalOpen(false);
                   setUploadProgress(null);
                 }}
-                disabled={actionLoading}
-                className="rounded-xl px-4 py-2 text-xs font-bold text-teal-950/70 hover:bg-sand transition disabled:opacity-40"
+                className="rounded-xl px-4 py-2 text-xs font-bold text-teal-950/70 hover:bg-sand transition cursor-pointer"
+              >
+                {uploadProgress?.inProgress || actionLoading ? "Stop / Cancel" : "Cancel"}
+              </button>
+
+              {uploadProgress?.stage === "error" && (
+                <>
+                  {currentUploadBatchIdRef.current && (
+                    <button
+                      type="button"
+                      onClick={() => handleCancelUpload(true)}
+                      disabled={cancellingUpload}
+                      className="rounded-xl bg-rose-700 hover:bg-rose-800 text-white px-3.5 py-2 text-xs font-bold shadow-xs transition cursor-pointer flex items-center gap-1.5"
+                    >
+                      <span>⏪ Rollback File</span>
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={handleResumeUpload}
+                    className="rounded-xl bg-amber-500 hover:bg-amber-400 text-teal-950 px-4 py-2 text-xs font-black shadow-xs transition cursor-pointer flex items-center gap-1.5"
+                  >
+                    <span>▶ Resume Upload</span>
+                  </button>
+                </>
+              )}
+
+              {uploadProgress?.stage !== "error" && (
+                <button
+                  type="button"
+                  onClick={handleExecuteLeadUpload}
+                  disabled={actionLoading || parsedLeads.length === 0}
+                  className="rounded-xl bg-teal-950 hover:bg-teal-900 text-gold px-5 py-2 text-xs font-black shadow-xs transition cursor-pointer disabled:opacity-50 flex items-center gap-2"
+                >
+                  {actionLoading && <span className="animate-spin text-xs">⚙️</span>}
+                  <span>
+                    {actionLoading
+                      ? `Importing Chunk ${uploadProgress?.currentChunk || 1}/${uploadProgress?.totalChunks || 1}...`
+                      : `Import & Distribute ${parsedLeads.length.toLocaleString()} Leads`}
+                  </span>
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL 3B: IN-FLIGHT CANCEL & SAFE ROLLBACK DIALOG ── */}
+      {isCancelConfirmOpen && (
+        <div className="fixed inset-0 z-[110] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/80 backdrop-blur-xs animate-fadeIn">
+          <div className="w-full max-w-md bg-white rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 shadow-2xl border-2 border-rose-300 space-y-4">
+            <div className="sm:hidden mx-auto w-12 h-1.5 rounded-full bg-rose-900/20 mb-2 shrink-0" />
+            <div className="flex items-center gap-3 text-rose-700 pb-2 border-b border-rose-100">
+              <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-rose-100 text-xl font-bold">🛑</span>
+              <div>
+                <h3 className="font-display text-base font-bold text-teal-950">Stop Lead Upload?</h3>
+                <p className="text-xs text-rose-800">Chunk {uploadProgress?.currentChunk || 1} of {uploadProgress?.totalChunks || 1} is currently in progress.</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-teal-950/80 leading-relaxed">
+              Did you upload the wrong Excel file by mistake? You can either safely delete (rollback) this file, or stop and keep leads uploaded so far.
+            </p>
+
+            <div className="space-y-2 pt-1">
+              <button
+                type="button"
+                onClick={() => handleCancelUpload(true)}
+                disabled={cancellingUpload}
+                className="w-full p-3 rounded-2xl bg-rose-50 hover:bg-rose-100 border border-rose-300 text-left flex items-start gap-3 transition cursor-pointer"
+              >
+                <span className="text-xl">⏪</span>
+                <div>
+                  <span className="font-bold text-xs text-rose-950 block">Cancel &amp; Rollback This File</span>
+                  <span className="text-[11px] text-rose-800/80">Stops upload immediately and deletes untouched leads from this batch</span>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleCancelUpload(false)}
+                disabled={cancellingUpload}
+                className="w-full p-3 rounded-2xl bg-amber-50 hover:bg-amber-100 border border-amber-300 text-left flex items-start gap-3 transition cursor-pointer"
+              >
+                <span className="text-xl">💾</span>
+                <div>
+                  <span className="font-bold text-xs text-amber-950 block">Stop &amp; Keep Processed Leads</span>
+                  <span className="text-[11px] text-amber-800/80">Stops further chunks; keeps {uploadProgress?.insertedTotal?.toLocaleString() || 0} leads already saved in database</span>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsCancelConfirmOpen(false)}
+                disabled={cancellingUpload}
+                className="w-full py-2.5 rounded-xl bg-sand/60 hover:bg-sand text-center text-xs font-bold text-teal-950 transition cursor-pointer"
+              >
+                ▶ Continue Uploading
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL 3C: SAFE NON-DESTRUCTIVE BATCH ROLLBACK ── */}
+      {isRollbackModalOpen && (
+        <div className="fixed inset-0 z-[100] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/70 backdrop-blur-xs animate-fadeIn">
+          <div className="w-full max-w-lg bg-white rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 shadow-2xl border-2 border-amber-400 max-h-[92vh] overflow-y-auto space-y-4">
+            <div className="sm:hidden mx-auto w-12 h-1.5 rounded-full bg-teal-900/20 mb-2 shrink-0" />
+            <div className="flex items-center justify-between pb-3 border-b border-teal-900/10">
+              <div className="flex items-center gap-3">
+                <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-100 text-amber-900 text-xl font-bold">⏪</span>
+                <div>
+                  <h3 className="font-display text-base font-bold text-teal-950">Rollback Upload Batch</h3>
+                  <p className="text-xs text-amber-900">Safely undo an accidental wrong file upload</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsRollbackModalOpen(false)}
+                className="rounded-full bg-cream p-1.5 text-teal-950/60 hover:text-teal-950 font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="bg-emerald-50 border border-emerald-300 rounded-2xl p-3 text-xs text-emerald-950 space-y-1">
+              <div className="font-bold flex items-center gap-1.5 text-emerald-900">
+                <span>🛡️ Non-Destructive Protection Guarantee:</span>
+              </div>
+              <p className="text-[11px] text-emerald-900/90 leading-relaxed">
+                Only untouched, pending leads from the selected batch will be deleted. Any lead that a telecaller has already contacted, logged calls for, or collected a donation for is <strong>100% PROTECTED</strong> and will never be removed.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-xs font-bold text-teal-950">
+                Select Upload Batch to Rollback:
+              </label>
+              {recentBatches.length === 0 ? (
+                <div className="p-4 rounded-xl bg-sand/40 border border-teal-900/10 text-xs text-teal-950/70 text-center">
+                  No tagged upload batches found in database.
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                  {recentBatches.map((batch) => {
+                    const isSelected = (selectedBatchForRollback || recentBatches[0]?.batchId) === batch.batchId;
+                    return (
+                      <div
+                        key={batch.batchId}
+                        onClick={() => setSelectedBatchForRollback(batch.batchId)}
+                        className={`p-3 rounded-2xl border text-xs cursor-pointer transition flex items-center justify-between ${
+                          isSelected
+                            ? "bg-amber-50 border-amber-400 ring-2 ring-amber-400/30"
+                            : "bg-cream/40 border-teal-900/10 hover:bg-cream"
+                        }`}
+                      >
+                        <div className="space-y-0.5 min-w-0">
+                          <div className="font-mono font-bold text-teal-950 truncate max-w-[260px] sm:max-w-xs">
+                            {batch.batchId}
+                          </div>
+                          <div className="text-[10px] text-teal-950/60">
+                            {new Date(batch.createdAt).toLocaleString()} · {batch.totalCount.toLocaleString()} total leads
+                          </div>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <span className="font-bold text-rose-700 block">
+                            -{batch.pendingCount.toLocaleString()} pending
+                          </span>
+                          {batch.contactedCount > 0 && (
+                            <span className="text-[10px] text-emerald-700 font-bold">
+                              ✓ {batch.contactedCount.toLocaleString()} protected
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-teal-900/10">
+              <button
+                type="button"
+                onClick={() => setIsRollbackModalOpen(false)}
+                disabled={rollingBackBatch}
+                className="rounded-xl px-4 py-2 text-xs font-bold text-teal-950/70 hover:bg-sand transition"
               >
                 Cancel
               </button>
               <button
                 type="button"
-                onClick={handleExecuteLeadUpload}
-                disabled={actionLoading || parsedLeads.length === 0}
-                className="rounded-xl bg-teal-950 hover:bg-teal-900 text-gold px-5 py-2 text-xs font-black shadow-xs transition cursor-pointer disabled:opacity-50 flex items-center gap-2"
+                onClick={() => handleExecuteRollback()}
+                disabled={rollingBackBatch || recentBatches.length === 0}
+                className="rounded-xl bg-rose-700 hover:bg-rose-800 active:scale-95 text-white px-5 py-2 text-xs font-black shadow-md transition cursor-pointer disabled:opacity-50 flex items-center gap-2"
               >
-                {actionLoading && <span className="animate-spin text-xs">⚙️</span>}
-                <span>
-                  {actionLoading
-                    ? `Importing Chunk ${uploadProgress?.currentChunk || 1}/${uploadProgress?.totalChunks || 1}...`
-                    : `Import & Distribute ${parsedLeads.length.toLocaleString()} Leads`}
-                </span>
+                {rollingBackBatch && <span className="animate-spin text-xs">⚙️</span>}
+                <span>{rollingBackBatch ? "Rolling back batch..." : "Confirm Rollback"}</span>
               </button>
             </div>
           </div>

@@ -558,6 +558,7 @@ export const agLeads = pgTable(
     dispositionReason: text("disposition_reason"), // Structured reason for disposition (cross-caller visibility)
     preferredLanguage: text("preferred_language"), // Donor language preference (kn | en | hi | te | ta)
     validationStatus: text("validation_status").notNull().default("UNVERIFIED"), // UNVERIFIED | VALID_INTERESTED | VALID_DONATED | VALID_CALLBACK | SOFT_REJECT | JUNK_INVALID
+    uploadBatchId: text("upload_batch_id"), // Unique batch session identifier for atomic rollback & audit tracking
     lastDonationYear: integer("last_donation_year"),
     lifetimeDonations: integer("lifetime_donations").notNull().default(0),
     rescheduleDate: timestamp("reschedule_date"),
@@ -571,6 +572,7 @@ export const agLeads = pgTable(
     index("ag_leads_phone_idx").on(t.phone),
     index("ag_leads_stream_dob_idx").on(t.stream, t.dobMonth, t.dobDay, t.status),
     index("ag_leads_validation_idx").on(t.validationStatus),
+    index("ag_leads_batch_idx").on(t.uploadBatchId),
   ],
 );
 

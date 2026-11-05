@@ -28,6 +28,8 @@ import {
   repairStudentNamesInDb,
   deduplicateDatabaseLeads,
   equalizePendingWorkload,
+  rollbackUploadBatch,
+  getRecentUploadBatches,
 } from "@/lib/antigravity-crm";
 
 export async function GET(req: Request) {
@@ -208,18 +210,18 @@ export async function POST(req: Request) {
     }
 
     if (action === "upload_chunk" || action === "upload_leads") {
-      const { leads, autoDistribute, mode } = body;
+      const { leads, autoDistribute, mode, uploadBatchId } = body;
       if (!leads || !Array.isArray(leads) || leads.length === 0) {
         return NextResponse.json({ error: "Please provide an array of leads to upload." }, { status: 400 });
       }
       const shouldDistribute = autoDistribute === true;
-      const res = await uploadBulkLeads(leads, shouldDistribute, mode || "balanced");
+      const res = await uploadBulkLeads(leads, shouldDistribute, mode || "balanced", uploadBatchId);
 
       await writeAudit({
         actorAdminUserId: session.user.id ?? null,
         action: action === "upload_chunk" ? "crm.upload_chunk" : "crm.upload_bulk_leads",
         entity: "ag_leads",
-        afterState: { uploaded: res.validInserted, distributed: res.distributed },
+        afterState: { uploaded: res.validInserted, distributed: res.distributed, uploadBatchId: (res as any).uploadBatchId },
         ipAddress: ip,
       });
 
@@ -239,6 +241,35 @@ export async function POST(req: Request) {
         success: true,
         message: `Uploaded ${res.validInserted} leads successfully${enrichMsg}. ${res.distributed} leads distributed equally among active telecallers.`,
         uploadResult: res,
+        ...updatedLeaderboard,
+      });
+    }
+
+    if (action === "get_upload_batches") {
+      const batches = await getRecentUploadBatches();
+      return NextResponse.json({
+        success: true,
+        batches,
+      });
+    }
+
+    if (action === "rollback_upload_batch") {
+      const { batchId } = body;
+      const res = await rollbackUploadBatch(batchId);
+
+      await writeAudit({
+        actorAdminUserId: session.user.id ?? null,
+        action: "crm.rollback_upload_batch",
+        entity: "ag_leads",
+        afterState: res,
+        ipAddress: ip,
+      });
+
+      const updatedLeaderboard = await getAdminLeaderboard();
+      return NextResponse.json({
+        success: true,
+        message: res.message,
+        rollbackResult: res,
         ...updatedLeaderboard,
       });
     }
@@ -316,27 +347,6 @@ export async function POST(req: Request) {
         success: true,
         message: `Equally distributed ${res.distributed} newly uploaded unassigned leads across active telecallers.`,
         distributionResult: res,
-        ...updatedLeaderboard,
-      });
-    }
-
-    if (action === "reallocate_absentee_advance") {
-      const { includeT2 } = body;
-      const res = await reallocateAbsenteeAdvanceLeads({ includeT2: includeT2 !== false });
-
-      await writeAudit({
-        actorAdminUserId: session.user.id ?? null,
-        action: "crm.reallocate_absentee_advance",
-        entity: "ag_leads",
-        afterState: res,
-        ipAddress: ip,
-      });
-
-      const updatedLeaderboard = await getAdminLeaderboard();
-      return NextResponse.json({
-        success: true,
-        message: `Harvested ${res.harvestedFromAbsentCount} advance leads from absent callers and reallocated ${res.reallocatedToPresentCount} leads equally across ${res.presentCallersCount} present floor callers.`,
-        reallocationResult: res,
         ...updatedLeaderboard,
       });
     }
