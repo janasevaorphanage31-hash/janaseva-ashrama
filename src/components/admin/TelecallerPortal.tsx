@@ -296,6 +296,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
   const [dailyLogs, setDailyLogs] = useState<any[]>([]);
   const [loadingDailyLogs, setLoadingDailyLogs] = useState(false);
   const [showShiftDrawer, setShowShiftDrawer] = useState(false);
+  const [shiftFilter, setShiftFilter] = useState<"ALL" | "Interested" | "Donated" | "Reschedule">("ALL");
   const [editingLog, setEditingLog] = useState<any | null>(null);
   const [editDisposition, setEditDisposition] = useState("Interested");
   const [editAmount, setEditAmount] = useState<number | "">("");
@@ -398,15 +399,24 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
     });
   };
 
-  const loadCallerLeads = async (cid: string, isRefresh = false) => {
+  const loadCallerLeads = async (cid: string, isRefresh = false, activeFilter?: string) => {
     setLoadingLeads(true);
     try {
       const refreshParam = isRefresh ? "&refresh=true" : "";
-      const res = await fetch(`/api/v1/leads/assigned?callerId=${encodeURIComponent(cid)}${refreshParam}`);
+      const filterParam = activeFilter && activeFilter !== "ALL" ? `&filter=${encodeURIComponent(activeFilter)}` : "";
+      const res = await fetch(`/api/v1/leads/assigned?callerId=${encodeURIComponent(cid)}${refreshParam}${filterParam}`);
       const data = await res.json();
       if (data.success) {
         const leadItems = data.leads || [];
-        setLeads(leadItems);
+        setLeads((prev) => {
+          if (!activeFilter || activeFilter === "ALL") return leadItems;
+          const map = new Map<number, any>();
+          leadItems.forEach((l: any) => map.set(l.leadId, l));
+          prev.forEach((l: any) => {
+            if (!map.has(l.leadId)) map.set(l.leadId, l);
+          });
+          return Array.from(map.values());
+        });
         if (data.istDate) {
           setServerDate(data.istDate);
         }
@@ -1815,21 +1825,29 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
         ? donors
         : leads.length;
 
+    const serverT2 = (stats as any)?.t2BirthdayCount;
+    const serverTomorrow = (stats as any)?.tomorrowBirthdayCount;
+    const serverToday = (stats as any)?.todayBirthdayCount;
+    const serverParents = (stats as any)?.parentsCount;
+    const serverDonors = (stats as any)?.donorsCount;
+    const serverTotal = (stats as any)?.totalAssigned;
+    const serverPending = (stats as any)?.pendingCount;
+
     return {
-      all: activeStreamTotal,
-      pending,
+      all: streamFilter === "ALL" && typeof serverTotal === "number" ? serverTotal : activeStreamTotal,
+      pending: streamFilter === "ALL" && typeof serverPending === "number" ? serverPending : pending,
       attended,
-      birthdays,
-      tomorrowBirthdays,
-      t2Birthdays,
+      birthdays: streamFilter === "ALL" && typeof serverToday === "number" ? serverToday : birthdays,
+      tomorrowBirthdays: streamFilter === "ALL" && typeof serverTomorrow === "number" ? serverTomorrow : tomorrowBirthdays,
+      t2Birthdays: streamFilter === "ALL" && typeof serverT2 === "number" ? serverT2 : t2Birthdays,
       interested,
       reschedule,
       donated,
-      parents,
-      donors,
-      globalTotal: leads.length,
+      parents: typeof serverParents === "number" ? serverParents : parents,
+      donors: typeof serverDonors === "number" ? serverDonors : donors,
+      globalTotal: typeof serverTotal === "number" ? serverTotal : leads.length,
     };
-  }, [leads, streamFilter, sessionContactedIds, serverDate]);
+  }, [leads, streamFilter, sessionContactedIds, serverDate, stats]);
 
   // Due callback calculation (Scheduled callbacks that are due now or within next 10 minutes)
   const dueCallbacks = useMemo(() => {
@@ -2768,6 +2786,9 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                     onClick={() => {
                       setFilter(st.id);
                       setFocusIndex(0);
+                      if (callerProfile && st.id !== "ALL") {
+                        void loadCallerLeads(callerProfile.callerId, false, st.id);
+                      }
                     }}
                     className={`rounded-xl px-3 py-1.5 text-xs font-bold transition whitespace-nowrap cursor-pointer flex items-center gap-1.5 shrink-0 ${
                       isActive
@@ -4693,30 +4714,75 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
               </button>
             </div>
 
-            {/* Quick Summary Pill Bar */}
-            <div className="grid grid-cols-4 gap-2 bg-sand/30 p-2.5 rounded-2xl border border-teal-900/10 text-center text-xs">
-              <div>
-                <span className="block text-[10px] text-teal-950/60 font-bold uppercase">Total Calls</span>
-                <span className="font-display font-black text-base text-teal-950">{dailyLogs.length}</span>
-              </div>
-              <div>
-                <span className="block text-[10px] text-amber-900 font-bold uppercase">Interested</span>
-                <span className="font-display font-black text-base text-amber-900">
+            {/* Quick Summary Pill Bar - Interactive & Clickable Filters */}
+            <div className="grid grid-cols-4 gap-1.5 sm:gap-2 bg-sand/30 p-2 rounded-2xl border border-teal-900/10 text-center text-xs">
+              <button
+                type="button"
+                onClick={() => setShiftFilter("ALL")}
+                className={`p-2 rounded-xl transition cursor-pointer flex flex-col items-center justify-center ${
+                  shiftFilter === "ALL"
+                    ? "bg-teal-950 text-white shadow-sm ring-2 ring-teal-900"
+                    : "bg-white hover:bg-sand/60 text-teal-950 border border-teal-900/10"
+                }`}
+                title="Show all today calls"
+              >
+                <span className={`block text-[10px] font-bold uppercase ${shiftFilter === "ALL" ? "text-gold" : "text-teal-950/60"}`}>
+                  Total Calls
+                </span>
+                <span className="font-display font-black text-base">{dailyLogs.length}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShiftFilter("Interested")}
+                className={`p-2 rounded-xl transition cursor-pointer flex flex-col items-center justify-center ${
+                  shiftFilter === "Interested"
+                    ? "bg-amber-500 text-teal-950 shadow-sm ring-2 ring-amber-400 font-black"
+                    : "bg-amber-50/70 hover:bg-amber-100/70 text-amber-900 border border-amber-200"
+                }`}
+                title="Filter to Interested calls"
+              >
+                <span className="block text-[10px] font-bold uppercase">Interested</span>
+                <span className="font-display font-black text-base">
                   {dailyLogs.filter((l) => l.disposition === "Interested").length}
                 </span>
-              </div>
-              <div>
-                <span className="block text-[10px] text-emerald-900 font-bold uppercase">Donated</span>
-                <span className="font-display font-black text-base text-emerald-900">
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShiftFilter("Donated")}
+                className={`p-2 rounded-xl transition cursor-pointer flex flex-col items-center justify-center ${
+                  shiftFilter === "Donated"
+                    ? "bg-emerald-600 text-white shadow-sm ring-2 ring-emerald-500 font-black"
+                    : "bg-emerald-50/70 hover:bg-emerald-100/70 text-emerald-900 border border-emerald-200"
+                }`}
+                title="Filter to Donated calls"
+              >
+                <span className={`block text-[10px] font-bold uppercase ${shiftFilter === "Donated" ? "text-emerald-100" : "text-emerald-900"}`}>
+                  Donated
+                </span>
+                <span className="font-display font-black text-base">
                   {dailyLogs.filter((l) => l.disposition === "Donated").length}
                 </span>
-              </div>
-              <div>
-                <span className="block text-[10px] text-blue-900 font-bold uppercase">Callbacks</span>
-                <span className="font-display font-black text-base text-blue-900">
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShiftFilter("Reschedule")}
+                className={`p-2 rounded-xl transition cursor-pointer flex flex-col items-center justify-center ${
+                  shiftFilter === "Reschedule"
+                    ? "bg-blue-600 text-white shadow-sm ring-2 ring-blue-500 font-black"
+                    : "bg-blue-50/70 hover:bg-blue-100/70 text-blue-900 border border-blue-200"
+                }`}
+                title="Filter to Callbacks"
+              >
+                <span className={`block text-[10px] font-bold uppercase ${shiftFilter === "Reschedule" ? "text-blue-100" : "text-blue-900"}`}>
+                  Callbacks
+                </span>
+                <span className="font-display font-black text-base">
                   {dailyLogs.filter((l) => l.disposition === "Reschedule").length}
                 </span>
-              </div>
+              </button>
             </div>
 
             {/* Shift Submission Status Banner */}
@@ -4764,77 +4830,105 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
               <div className="p-8 text-center text-xs text-teal-950/60 bg-cream/40 rounded-2xl">
                 No calls logged yet today. Dial numbers from your Calling Card to get started!
               </div>
-            ) : (
-              <div className="space-y-2.5">
-                {dailyLogs.map((log: any) => {
-                  const logTime = new Date(log.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-                  const isParent = log.stream === "PARENTS" || Boolean(log.parentName || log.childName);
-                  const childDisp = cleanChildName(log);
-                  const parentDisp = cleanParentName(log);
+            ) : (() => {
+              const filteredDailyList = dailyLogs.filter((l) => {
+                if (shiftFilter === "ALL") return true;
+                return l.disposition === shiftFilter;
+              });
 
-                  return (
-                    <div
-                      key={log.logId}
-                      className="rounded-2xl border border-teal-900/10 bg-white p-3.5 shadow-xs space-y-2 hover:border-teal-900/20 transition"
+              if (filteredDailyList.length === 0) {
+                return (
+                  <div className="p-8 text-center text-xs text-teal-950/60 bg-cream/40 rounded-2xl space-y-2">
+                    <p className="font-bold">No calls found matching &quot;{shiftFilter}&quot;.</p>
+                    <button
+                      type="button"
+                      onClick={() => setShiftFilter("ALL")}
+                      className="text-xs font-bold text-teal-950 bg-white hover:bg-sand border border-teal-900/15 px-3 py-1 rounded-xl cursor-pointer"
                     >
-                      <div className="flex items-start justify-between gap-2">
-                        <div>
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="font-black text-xs text-teal-950">
-                              {isParent ? `${childDisp} (${parentDisp})` : log.leadName}
-                            </span>
-                            <span className="text-[10px] font-mono text-teal-950/60 bg-sand/60 px-1.5 py-0.2 rounded">
-                              {log.phone}
+                      Show All ({dailyLogs.length})
+                    </button>
+                  </div>
+                );
+              }
+
+              return (
+                <div className="space-y-2.5">
+                  {filteredDailyList.map((log: any) => {
+                    const logTime = new Date(log.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+                    const isParent = log.stream === "PARENTS" || Boolean(log.parentName || log.childName);
+                    const childDisp = cleanChildName(log);
+                    const parentDisp = cleanParentName(log);
+                    const isRevertedOrPending = log.disposition === "Pending" || log.disposition === "Reverted";
+
+                    return (
+                      <div
+                        key={log.logId}
+                        className="rounded-2xl border border-teal-900/10 bg-white p-3.5 shadow-xs space-y-2 hover:border-teal-900/20 transition"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="font-black text-xs text-teal-950">
+                                {isParent ? `${childDisp} (${parentDisp})` : log.leadName}
+                              </span>
+                              <span className="text-[10px] font-mono text-teal-950/60 bg-sand/60 px-1.5 py-0.2 rounded">
+                                {log.phone}
+                              </span>
+                            </div>
+                            <span className="text-[10px] text-teal-950/50 block mt-0.5">
+                              Logged at {logTime} {log.isEdited && <span className="text-amber-800 font-bold">· ✏️ Edited</span>}
                             </span>
                           </div>
-                          <span className="text-[10px] text-teal-950/50 block mt-0.5">
-                            Logged at {logTime} {log.isEdited && <span className="text-amber-800 font-bold">· ✏️ Edited</span>}
-                          </span>
-                        </div>
 
-                        {/* Disposition Pill */}
-                        <div className="flex items-center gap-1.5">
-                          <span
-                            className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                              log.disposition === "Donated"
-                                ? "bg-emerald-100 text-emerald-950 border border-emerald-300"
-                                : log.disposition === "Interested"
-                                ? "bg-amber-100 text-amber-950 border border-amber-300"
-                                : log.disposition === "Reschedule"
-                                ? "bg-blue-100 text-blue-950 border border-blue-300"
-                                : "bg-rose-100 text-rose-950 border border-rose-300"
-                            }`}
-                          >
-                            {log.disposition}
-                          </span>
+                          {/* Disposition Pill */}
+                          <div className="flex items-center gap-1.5">
+                            <span
+                              className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                                log.disposition === "Donated"
+                                  ? "bg-emerald-100 text-emerald-950 border border-emerald-300"
+                                  : log.disposition === "Interested"
+                                  ? "bg-amber-100 text-amber-950 border border-amber-300"
+                                  : log.disposition === "Reschedule"
+                                  ? "bg-blue-100 text-blue-950 border border-blue-300"
+                                  : isRevertedOrPending
+                                  ? "bg-slate-100 text-slate-800 border border-slate-300"
+                                  : "bg-rose-100 text-rose-950 border border-rose-300"
+                              }`}
+                            >
+                              {isRevertedOrPending ? "↩️ Reverted" : log.disposition}
+                            </span>
 
-                          {!eodStatus?.isSubmitted && (
-                            <div className="flex items-center gap-1.5">
-                              <button
-                                type="button"
-                                onClick={() => handleOpenEdit(log)}
-                                className="text-xs font-bold text-teal-950 bg-sand/60 hover:bg-sand border border-teal-900/15 px-2 py-0.5 rounded-lg cursor-pointer"
-                                title="Edit this entry"
-                              >
-                                ✏️ Edit
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  if (confirm(`Revert lead #${log.leadId} (${log.leadName}) back to fresh pending queue?`)) {
-                                    void handleRevertToPending(log.leadId);
-                                    void loadDailyLogs();
-                                  }
-                                }}
-                                className="text-xs font-bold text-amber-950 bg-amber-100 hover:bg-amber-200 border border-amber-300 px-2 py-0.5 rounded-lg cursor-pointer"
-                                title="Revert to Pending"
-                              >
-                                ↩️ Revert
-                              </button>
-                            </div>
-                          )}
+                            {!eodStatus?.isSubmitted && (
+                              <div className="flex items-center gap-1.5">
+                                {!isRevertedOrPending && (
+                                  <>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleOpenEdit(log)}
+                                      className="text-xs font-bold text-teal-950 bg-sand/60 hover:bg-sand border border-teal-900/15 px-2 py-0.5 rounded-lg cursor-pointer"
+                                      title="Edit this entry"
+                                    >
+                                      ✏️ Edit
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={async () => {
+                                        if (confirm(`Revert lead #${log.leadId} (${log.leadName}) back to fresh pending queue?`)) {
+                                          await handleRevertToPending(log.leadId);
+                                          await loadDailyLogs();
+                                        }
+                                      }}
+                                      className="text-xs font-bold text-amber-950 bg-amber-100 hover:bg-amber-200 border border-amber-300 px-2 py-0.5 rounded-lg cursor-pointer transition shadow-2xs active:scale-95"
+                                      title="Revert to Pending"
+                                    >
+                                      ↩️ Revert
+                                    </button>
+                                  </>
+                                )}
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      </div>
 
                       {/* Donation Info if Donated */}
                       {log.disposition === "Donated" && (
@@ -4884,7 +4978,8 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                   );
                 })}
               </div>
-            )}
+            );
+          })()}
           </div>
         </div>
       )}
@@ -6016,6 +6111,9 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                       onClick={() => {
                         setFilter(st.id);
                         setFocusIndex(0);
+                        if (callerProfile && st.id !== "ALL") {
+                          void loadCallerLeads(callerProfile.callerId, false, st.id);
+                        }
                       }}
                       className={`py-2 px-2.5 rounded-xl text-xs font-bold transition flex items-center justify-between cursor-pointer ${
                         isActive
@@ -6066,10 +6164,15 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
             <div className="pt-2">
               <button
                 type="button"
-                onClick={() => setIsMobileFilterSheetOpen(false)}
+                onClick={() => {
+                  setIsMobileFilterSheetOpen(false);
+                  if (callerProfile && filter !== "ALL") {
+                    void loadCallerLeads(callerProfile.callerId, false, filter);
+                  }
+                }}
                 className="w-full py-3 rounded-2xl bg-teal-950 hover:bg-teal-900 active:scale-98 text-gold font-black text-sm shadow-md transition cursor-pointer text-center ring-2 ring-amber-400/50"
               >
-                ✓ ಅನ್ವಯಿಸಿ ({filteredLeads.length} ಲೀಡ್‌ಗಳು ಲಭ್ಯವಿದೆ)
+                ✓ ಅನ್ವಯಿಸಿ ({filteredLeads.length > 0 ? filteredLeads.length : counts[filter === "T2_Birthday" ? "t2Birthdays" : filter === "Tomorrow_Birthday" ? "tomorrowBirthdays" : filter === "Today_Birthday" ? "birthdays" : filter === "Pending" ? "pending" : "all"] || 0} ಲೀಡ್‌ಗಳು ಲಭ್ಯವಿದೆ)
               </button>
             </div>
           </div>

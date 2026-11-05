@@ -24,8 +24,9 @@ export async function GET(req: Request) {
     const paramLimit = url.searchParams.get("limit");
     const paramPage = url.searchParams.get("page");
     const paramRefresh = url.searchParams.get("refresh");
+    const paramFilter = url.searchParams.get("filter");
     const page = paramPage ? Math.max(1, parseInt(paramPage, 10)) : 1;
-    const limit = paramLimit ? Math.min(parseInt(paramLimit, 10), 10000) : (paramPage ? 100 : 400);
+    const limit = paramLimit ? Math.min(parseInt(paramLimit, 10), 10000) : (paramPage ? 100 : 1000);
     const offset = (page - 1) * limit;
 
     const { dateStr, year, month, day } = getISTDateBounds();
@@ -51,7 +52,7 @@ export async function GET(req: Request) {
       ? (paramCallerId || auth.callerId)
       : auth.callerId;
 
-    const { leads, stats } = await getCallerPortalData(targetCallerId, limit, offset);
+    const { leads, stats } = await getCallerPortalData(targetCallerId, limit, offset, paramFilter);
 
     return NextResponse.json({
       success: true,

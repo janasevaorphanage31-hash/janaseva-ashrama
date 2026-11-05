@@ -1,6 +1,6 @@
 import { db, ensureDbSchema } from "@/db";
 import { agTelecallers, agLeads, agCallLogs, agDonations, contentEntries, influencerProfiles, donations, agDailySubmissions } from "@/db/schema";
-import { eq, and, or, sql, desc, inArray, isNull, like, gte, lte } from "drizzle-orm";
+import { eq, ne, and, or, sql, desc, inArray, isNull, like, gte, lte } from "drizzle-orm";
 import { hashPassword } from "@/lib/admin-auth";
 import { parseCustomerPhone } from "@/lib/whatsapp-phone";
 import { signCallerToken } from "@/lib/caller-auth";
@@ -650,7 +650,7 @@ export async function distributeT2BirthdayLeads(mode: "balanced" | "round_robin"
  * 3. Tomorrow's birthdays (T+1 advance calling target)
  * 4. Deterministic order by leadId (prevents card jumping)
  */
-export async function getAssignedLeads(callerId?: string | null, limit = 10000, offset = 0) {
+export async function getAssignedLeads(callerId?: string | null, limit = 10000, offset = 0, filter?: string | null) {
   await ensureTelecallersAndSeedData();
   const cid = (callerId || "").trim().toUpperCase();
   const { day: todayDay, month: todayMonth, year: todayYear } = getISTDateBounds();
@@ -706,17 +706,42 @@ export async function getAssignedLeads(callerId?: string | null, limit = 10000, 
     updatedAt: agLeads.updatedAt,
   };
 
-  const rawLeads = (!cid || cid === "ALL")
+  const cidCondition = (!cid || cid === "ALL") ? undefined : eq(agLeads.assignedCallerId, cid);
+
+  let filterCondition: any = undefined;
+  if (filter === "T2_Birthday") {
+    filterCondition = sql`(${agLeads.dobMonth} = ${t2Month} and ${agLeads.dobDay} = ${t2Day}) or (${agLeads.dobMonth} = ${t2Day} and ${agLeads.dobDay} = ${t2Month} and ${agLeads.dobDay} <= 12)`;
+  } else if (filter === "Tomorrow_Birthday") {
+    filterCondition = sql`(${agLeads.dobMonth} = ${targetMonth} and ${agLeads.dobDay} = ${targetDay}) or (${agLeads.dobMonth} = ${targetDay} and ${agLeads.dobDay} = ${targetMonth} and ${agLeads.dobDay} <= 12)`;
+  } else if (filter === "Today_Birthday") {
+    filterCondition = sql`(${agLeads.dobMonth} = ${todayMonth} and ${agLeads.dobDay} = ${todayDay}) or (${agLeads.dobMonth} = ${todayDay} and ${agLeads.dobDay} = ${todayMonth} and ${agLeads.dobDay} <= 12)`;
+  } else if (filter === "Pending") {
+    filterCondition = sql`${agLeads.status} = 'Pending' or ${agLeads.status} is null`;
+  } else if (filter === "Interested") {
+    filterCondition = eq(agLeads.status, "Interested");
+  } else if (filter === "Donated") {
+    filterCondition = eq(agLeads.status, "Donated");
+  } else if (filter === "Reschedule") {
+    filterCondition = eq(agLeads.status, "Reschedule");
+  } else if (filter === "Attended") {
+    filterCondition = sql`${agLeads.status} IS NOT NULL and ${agLeads.status} != 'Pending'`;
+  }
+
+  const finalWhere = cidCondition && filterCondition
+    ? and(cidCondition, filterCondition)
+    : (cidCondition || filterCondition || undefined);
+
+  const rawLeads = finalWhere
     ? await db
         .select(selectFields)
         .from(agLeads)
+        .where(finalWhere)
         .orderBy(...orderClauses)
         .limit(limit)
         .offset(offset)
     : await db
         .select(selectFields)
         .from(agLeads)
-        .where(eq(agLeads.assignedCallerId, cid))
         .orderBy(...orderClauses)
         .limit(limit)
         .offset(offset);
@@ -782,22 +807,36 @@ export async function getAssignedLeads(callerId?: string | null, limit = 10000, 
  * 3b. Fetch Caller Portal Data (Assigned Leads + Realtime SQL Aggregated Stats)
  * Allows telecallers to load their verified stats directly without calling admin-only endpoints.
  */
-export async function getCallerPortalData(callerId?: string | null, limit = 10000, offset = 0) {
+export async function getCallerPortalData(callerId?: string | null, limit = 10000, offset = 0, filter?: string | null) {
   await ensureTelecallersAndSeedData();
   const cid = (callerId || "").trim().toUpperCase();
+  const { day: todayDay, month: todayMonth, year: todayYear, todayStart, todayEnd } = getISTDateBounds();
+  const nowIST = new Date(Date.UTC(todayYear, todayMonth - 1, todayDay));
+  const tomorrow = new Date(nowIST.getTime() + 24 * 60 * 60 * 1000);
+  const targetDay = tomorrow.getUTCDate();
+  const targetMonth = tomorrow.getUTCMonth() + 1;
 
-  const leads = await getAssignedLeads(cid, limit, offset);
+  const t2 = new Date(nowIST.getTime() + 2 * 24 * 60 * 60 * 1000);
+  const t2Day = t2.getUTCDate();
+  const t2Month = t2.getUTCMonth() + 1;
+
+  const leads = await getAssignedLeads(cid, limit, offset, filter);
 
   // SQL-indexed aggregate metrics for this specific caller
   const callerCondition = cid && cid !== "ALL" ? eq(agLeads.assignedCallerId, cid) : sql`1=1`;
   const [leadStats] = await db
     .select({
       totalAssigned: sql<number>`count(*)`,
-      contactedCount: sql<number>`count(*) filter (where ${agLeads.status} IS NOT NULL and ${agLeads.status} != 'Pending')`,
+      contactedCount: sql<number>`count(*) filter (where ${agLeads.status} IS NOT NULL and ${agLeads.status} != 'Pending' and ${agLeads.status} != 'Reverted')`,
       convertedCount: sql<number>`count(*) filter (where ${agLeads.status} = 'Donated')`,
       pendingCount: sql<number>`count(*) filter (where ${agLeads.status} = 'Pending' or ${agLeads.status} IS NULL)`,
       interestedCount: sql<number>`count(*) filter (where ${agLeads.status} = 'Interested')`,
       rescheduleCount: sql<number>`count(*) filter (where ${agLeads.status} = 'Reschedule')`,
+      parentsCount: sql<number>`count(*) filter (where ${agLeads.stream} = 'PARENTS' or (${agLeads.stream} != 'DIRECT_DONOR' and (${agLeads.parentName} IS NOT NULL or ${agLeads.childName} IS NOT NULL)))`,
+      donorsCount: sql<number>`count(*) filter (where ${agLeads.stream} = 'DIRECT_DONOR' or ${agLeads.stream} = 'DIRECT_DONORS')`,
+      todayBirthdayCount: sql<number>`count(*) filter (where (${agLeads.dobMonth} = ${todayMonth} and ${agLeads.dobDay} = ${todayDay}) or (${agLeads.dobMonth} = ${todayDay} and ${agLeads.dobDay} = ${todayMonth} and ${agLeads.dobDay} <= 12))`,
+      tomorrowBirthdayCount: sql<number>`count(*) filter (where (${agLeads.dobMonth} = ${targetMonth} and ${agLeads.dobDay} = ${targetDay}) or (${agLeads.dobMonth} = ${targetDay} and ${agLeads.dobDay} = ${targetMonth} and ${agLeads.dobDay} <= 12))`,
+      t2BirthdayCount: sql<number>`count(*) filter (where (${agLeads.dobMonth} = ${t2Month} and ${agLeads.dobDay} = ${t2Day}) or (${agLeads.dobMonth} = ${t2Day} and ${agLeads.dobDay} = ${t2Month} and ${agLeads.dobDay} <= 12))`,
     })
     .from(agLeads)
     .where(callerCondition);
@@ -810,11 +849,21 @@ export async function getCallerPortalData(callerId?: string | null, limit = 1000
     .from(agDonations)
     .where(donationCondition);
 
-  // Today's calls count directly from agCallLogs (IST bounds)
-  const { todayStart, todayEnd } = getISTDateBounds();
+  // Today's calls count directly from agCallLogs (IST bounds), excluding reverted/pending logs
   const callerLogsCondition = cid && cid !== "ALL" 
-    ? and(eq(agCallLogs.callerId, cid), gte(agCallLogs.createdAt, todayStart), lte(agCallLogs.createdAt, todayEnd))
-    : and(gte(agCallLogs.createdAt, todayStart), lte(agCallLogs.createdAt, todayEnd));
+    ? and(
+        eq(agCallLogs.callerId, cid),
+        gte(agCallLogs.createdAt, todayStart),
+        lte(agCallLogs.createdAt, todayEnd),
+        ne(agCallLogs.disposition, "Pending"),
+        ne(agCallLogs.disposition, "Reverted")
+      )
+    : and(
+        gte(agCallLogs.createdAt, todayStart),
+        lte(agCallLogs.createdAt, todayEnd),
+        ne(agCallLogs.disposition, "Pending"),
+        ne(agCallLogs.disposition, "Reverted")
+      );
 
   const [todayCalls] = await db
     .select({ count: sql<number>`count(*)` })
@@ -831,6 +880,11 @@ export async function getCallerPortalData(callerId?: string | null, limit = 1000
       pendingCount: Number(leadStats?.pendingCount || 0),
       interestedCount: Number(leadStats?.interestedCount || 0),
       rescheduleCount: Number(leadStats?.rescheduleCount || 0),
+      parentsCount: Number(leadStats?.parentsCount || 0),
+      donorsCount: Number(leadStats?.donorsCount || 0),
+      todayBirthdayCount: Number(leadStats?.todayBirthdayCount || 0),
+      tomorrowBirthdayCount: Number(leadStats?.tomorrowBirthdayCount || 0),
+      t2BirthdayCount: Number(leadStats?.t2BirthdayCount || 0),
       totalRevenue: Number(revRow?.totalRevenue || 0),
     },
   };
@@ -3549,30 +3603,16 @@ export async function revertLeadToPending(leadId: number, callerId: string) {
       status: "Pending",
       validationStatus: "UNVERIFIED",
       rescheduleDate: null,
+      dispositionReason: null,
+      lastContactedAt: null,
       updatedAt: new Date(),
     })
     .where(eq(agLeads.leadId, leadId));
 
-  // Mark latest call log as reverted with audit trail
-  const recentLogs = await db
-    .select()
-    .from(agCallLogs)
-    .where(and(eq(agCallLogs.leadId, leadId), eq(agCallLogs.callerId, callerId)))
-    .orderBy(desc(agCallLogs.createdAt))
-    .limit(1);
-
-  if (recentLogs.length > 0) {
-    const existing = recentLogs[0];
-    await db
-      .update(agCallLogs)
-      .set({
-        disposition: "Pending",
-        notes: [existing.notes, "[Reverted to Pending by caller]"].filter(Boolean).join(" "),
-        isEdited: true,
-        editedAt: new Date(),
-      })
-      .where(eq(agCallLogs.logId, existing.logId));
-  }
+  // Accidental call log undo: delete recent call logs for this lead by this caller so it does not count in shift activity
+  await db
+    .delete(agCallLogs)
+    .where(and(eq(agCallLogs.leadId, leadId), eq(agCallLogs.callerId, callerId)));
 
   // Cancel any pending donation if previously logged
   await db
@@ -3594,7 +3634,7 @@ export async function getCallerDailyLogs(callerId: string) {
   await ensureDbSchema();
   const { todayStart, todayEnd } = getISTDateBounds();
 
-  // Fetch call logs with lead information
+  // Fetch call logs with lead information (excluding reverted or pending entries)
   const logs = await db
     .select({
       logId: agCallLogs.logId,
@@ -3625,7 +3665,9 @@ export async function getCallerDailyLogs(callerId: string) {
       and(
         eq(agCallLogs.callerId, callerId),
         gte(agCallLogs.createdAt, todayStart),
-        lte(agCallLogs.createdAt, todayEnd)
+        lte(agCallLogs.createdAt, todayEnd),
+        ne(agCallLogs.disposition, "Pending"),
+        ne(agCallLogs.disposition, "Reverted")
       )
     )
     .orderBy(desc(agCallLogs.createdAt));
