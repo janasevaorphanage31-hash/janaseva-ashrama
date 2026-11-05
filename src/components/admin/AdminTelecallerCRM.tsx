@@ -1740,6 +1740,26 @@ export function AdminTelecallerCRM() {
       releaseWakeLock();
       setActiveResumableJob(null);
 
+      if (autoDistribute && cumInserted > 0) {
+        setUploadProgress((prev) =>
+          prev
+            ? {
+                ...prev,
+                statusMessage: "Dividing leads equally by upcoming birthday across active telecallers in database...",
+              }
+            : null
+        );
+        try {
+          await fetch("/api/v1/admin/telecallers", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "distribute_equally", mode }),
+          });
+        } catch (distErr) {
+          console.warn("[CRM] In-database equal distribution error:", distErr);
+        }
+      }
+
       setUploadProgress({
         inProgress: false,
         currentChunk: totalChunks,
@@ -1748,7 +1768,7 @@ export function AdminTelecallerCRM() {
         totalLeads: totalLeadsCount,
         percent: 100,
         stage: "done",
-        statusMessage: `✓ Import complete! ${cumInserted.toLocaleString()} unique leads added (${cumEnriched} updated with Student Names, ${cumDuplicates.toLocaleString()} duplicates skipped, ${cumJunk.toLocaleString()} junk filtered).`,
+        statusMessage: `✓ Import complete! ${cumInserted.toLocaleString()} unique leads added & equally divided by date (${cumEnriched} updated with Student Names, ${cumDuplicates.toLocaleString()} duplicates skipped, ${cumJunk.toLocaleString()} junk filtered).`,
         insertedTotal: cumInserted,
         duplicatesTotal: cumDuplicates,
         enrichedTotal: cumEnriched,
@@ -2361,6 +2381,17 @@ export function AdminTelecallerCRM() {
                 <span>⚖️ Equalize</span>
               </button>
 
+              {/* Date-Wise Equal Math Distribution Button */}
+              <button
+                type="button"
+                onClick={() => handleDistributeEqually("balanced")}
+                disabled={actionLoading}
+                className="focus-ring tap-scale inline-flex items-center gap-1.5 rounded-xl bg-teal-800 hover:bg-teal-700 text-amber-300 border border-teal-600 px-3 py-2 text-xs font-bold shadow-xs transition cursor-pointer"
+                title="Equally divide all pending leads by upcoming birthday across active telecallers with exact mathematical fairness"
+              >
+                <span>🎯 Date-Wise Divide</span>
+              </button>
+
               {/* Deduplicate Database Button */}
               <button
                 type="button"
@@ -2633,6 +2664,20 @@ export function AdminTelecallerCRM() {
                       <div>
                         <span className="font-bold text-xs text-amber-950 block">Rollback Recent Upload Batch</span>
                         <span className="text-[11px] text-amber-900/80">Safely undo accidental wrong file upload without deleting called leads</span>
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsToolsMenuOpen(false);
+                        void handleDistributeEqually("balanced");
+                      }}
+                      className="w-full p-3 rounded-2xl bg-teal-900 hover:bg-teal-800 border border-teal-700 text-left flex items-start gap-3 transition cursor-pointer text-white shadow-sm"
+                    >
+                      <span className="text-xl">🎯</span>
+                      <div>
+                        <span className="font-bold text-xs text-amber-300 block">Date-Wise Equal Math Distribution (All Dates)</span>
+                        <span className="text-[11px] text-teal-100/90">Divide all uploaded leads equally by upcoming birthday across active callers</span>
                       </div>
                     </button>
                     <button
