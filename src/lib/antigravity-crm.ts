@@ -122,15 +122,6 @@ export async function ensureTelecallersAndSeedData(forceCheck = false) {
   if (telecallersSeeded && !forceCheck) return;
   await ensureDbSchema();
 
-  // One-time auto-repair of legacy records where child_name was stored as 'Child'
-  if (!legacyNamesRepaired) {
-    legacyNamesRepaired = true;
-    try {
-      await repairStudentNamesInDb();
-    } catch (e) {
-      console.error("[CRM] Auto-repair student names notice:", e);
-    }
-  }
   const existingCallers = await db.select({ count: sql<number>`count(*)` }).from(agTelecallers);
   const callersCount = Number(existingCallers[0]?.count || 0);
 
@@ -170,11 +161,10 @@ export async function ensureTelecallersAndSeedData(forceCheck = false) {
     }
   }
 
-  // INDEPENDENT CHECK: Ensure ag_leads are always populated in PostgreSQL
-  const existingLeads = await db.select({ count: sql<number>`count(*)` }).from(agLeads);
-  const leadsCount = Number(existingLeads[0]?.count || 0);
+  // Fast check: Ensure ag_leads has at least one lead (stops at row 1, zero full-table scan overload)
+  const existingLeads = await db.select({ leadId: agLeads.leadId }).from(agLeads).limit(1);
 
-  if (leadsCount === 0) {
+  if (existingLeads.length === 0) {
     const activeCallers = await db
       .select({ callerId: agTelecallers.callerId })
       .from(agTelecallers)
@@ -1643,13 +1633,17 @@ export async function getAdminLeaderboard(): Promise<{
 export async function bulkReassignLeads(leadIds: number[], targetCallerId: string) {
   if (leadIds.length === 0) return { updated: 0 };
 
-  await db
-    .update(agLeads)
-    .set({
-      assignedCallerId: targetCallerId.toUpperCase(),
-      updatedAt: new Date(),
-    })
-    .where(inArray(agLeads.leadId, leadIds));
+  const BATCH_SIZE = 500;
+  for (let i = 0; i < leadIds.length; i += BATCH_SIZE) {
+    const chunk = leadIds.slice(i, i + BATCH_SIZE);
+    await db
+      .update(agLeads)
+      .set({
+        assignedCallerId: targetCallerId.toUpperCase(),
+        updatedAt: new Date(),
+      })
+      .where(inArray(agLeads.leadId, chunk));
+  }
 
   return { updated: leadIds.length, targetCallerId };
 }
@@ -1848,7 +1842,6 @@ export async function uploadBulkLeads(
   mode: "balanced" | "round_robin" = "balanced",
   uploadBatchId?: string
 ) {
-  await ensureTelecallersAndSeedData();
   if (!rawLeads || rawLeads.length === 0) {
     throw new Error("No lead records provided.");
   }
@@ -2012,20 +2005,29 @@ export async function uploadBulkLeads(
           ? `${effectiveChild} (${effectiveParent})`
           : (effectiveParent !== "ಪೋಷಕರು" ? `${effectiveParent} ಅವರ ಮಗು (${effectiveParent})` : "ವಿದ್ಯಾರ್ಥಿ / ಮಗು");
 
-        await db
-          .update(agLeads)
-          .set({
-            stream: "PARENTS",
-            childName: effectiveChild,
-            parentName: effectiveParent,
-            name: effectiveDisplayName,
-            dobDay: day,
-            dobMonth: month,
-            updatedAt: new Date(),
-          })
-          .where(eq(agLeads.leadId, existing.leadId));
+        const hasChange =
+          existing.childName !== effectiveChild ||
+          existing.parentName !== effectiveParent ||
+          existing.name !== effectiveDisplayName;
 
-        enrichedUpdatedCount++;
+        if (hasChange) {
+          await db
+            .update(agLeads)
+            .set({
+              stream: "PARENTS",
+              childName: effectiveChild,
+              parentName: effectiveParent,
+              name: effectiveDisplayName,
+              dobDay: day,
+              dobMonth: month,
+              updatedAt: new Date(),
+            })
+            .where(eq(agLeads.leadId, existing.leadId));
+
+          enrichedUpdatedCount++;
+        } else {
+          alreadyInDbSkipped++;
+        }
         continue;
       }
 
@@ -2177,7 +2179,8 @@ export async function repairStudentNamesInDb() {
         sql`LOWER(${agLeads.name}) LIKE '%(child)'`,
         sql`${agLeads.parentName} IS NOT NULL AND (${agLeads.childName} IS NULL OR TRIM(LOWER(${agLeads.childName})) IN ('child', 'student', ''))`
       )
-    );
+    )
+    .limit(1000);
 
   let updatedCount = 0;
   for (const lead of leadsToFix) {
@@ -2244,7 +2247,29 @@ export async function repairStudentNamesInDb() {
 export async function deduplicateDatabaseLeads() {
   await ensureDbSchema();
 
-  const allLeads = await db
+  // Fast indexed SQL aggregation: Only fetch phones that have duplicates (zero full-table RAM overload)
+  const duplicateGroupRows = await db.execute<{ phone: string; cnt: string }>(sql`
+    SELECT phone, count(*) as cnt 
+    FROM ag_leads 
+    WHERE phone IS NOT NULL AND phone != '' 
+    GROUP BY phone 
+    HAVING count(*) > 1 
+    LIMIT 200
+  `);
+
+  const rawRows = (duplicateGroupRows as any).rows || duplicateGroupRows || [];
+  if (rawRows.length === 0) {
+    return {
+      success: true,
+      totalScanned: 0,
+      duplicateGroupsFound: 0,
+      duplicateRowsPurged: 0,
+      message: "Database phone registry is 100% clean. Zero duplicate phone numbers found!",
+    };
+  }
+
+  const dupPhones = rawRows.map((r: any) => String(r.phone));
+  const candidateLeads = await db
     .select({
       leadId: agLeads.leadId,
       stream: agLeads.stream,
@@ -2262,22 +2287,14 @@ export async function deduplicateDatabaseLeads() {
       rescheduleDate: agLeads.rescheduleDate,
       createdAt: agLeads.createdAt,
     })
-    .from(agLeads);
+    .from(agLeads)
+    .where(inArray(agLeads.phone, dupPhones));
 
-  const totalScanned = allLeads.length;
-  if (totalScanned === 0) {
-    return {
-      success: true,
-      totalScanned: 0,
-      duplicateGroupsFound: 0,
-      duplicateRowsPurged: 0,
-      message: "No leads in database to deduplicate.",
-    };
-  }
+  const totalScanned = candidateLeads.length;
 
   // Group by normalized 10-digit phone
-  const groups = new Map<string, typeof allLeads>();
-  for (const lead of allLeads) {
+  const groups = new Map<string, typeof candidateLeads>();
+  for (const lead of candidateLeads) {
     const rawDigits = (lead.phone || "").replace(/\D/g, "");
     if (rawDigits.length >= 10) {
       const phone10 = rawDigits.slice(-10);
@@ -2496,28 +2513,41 @@ export async function equalizePendingWorkload() {
     if (needed > 0 && transferPool.length > 0) {
       const toAssign = transferPool.splice(0, needed);
       if (toAssign.length > 0) {
-        await db
-          .update(agLeads)
-          .set({ assignedCallerId: caller.callerId, updatedAt: new Date() })
-          .where(inArray(agLeads.leadId, toAssign));
+        for (let i = 0; i < toAssign.length; i += 500) {
+          const chunk = toAssign.slice(i, i + 500);
+          await db
+            .update(agLeads)
+            .set({ assignedCallerId: caller.callerId, updatedAt: new Date() })
+            .where(inArray(agLeads.leadId, chunk));
+        }
         reallocatedCount += toAssign.length;
         perCallerSummary[caller.callerId] += toAssign.length;
       }
     }
   }
 
-  // Distribute any remainder leads round-robin
+  // Distribute any remainder leads round-robin in memory, then batch update (zero N+1 update loop)
   if (transferPool.length > 0) {
+    const remainderBuckets = new Map<string, number[]>();
+    activeCallers.forEach((c) => remainderBuckets.set(c.callerId, []));
     let callerIdx = 0;
     for (const leadId of transferPool) {
       const caller = activeCallers[callerIdx % K];
-      await db
-        .update(agLeads)
-        .set({ assignedCallerId: caller.callerId, updatedAt: new Date() })
-        .where(eq(agLeads.leadId, leadId));
+      remainderBuckets.get(caller.callerId)!.push(leadId);
       reallocatedCount++;
       perCallerSummary[caller.callerId]++;
       callerIdx++;
+    }
+
+    for (const [callerId, ids] of remainderBuckets.entries()) {
+      if (ids.length === 0) continue;
+      for (let i = 0; i < ids.length; i += 500) {
+        const chunk = ids.slice(i, i + 500);
+        await db
+          .update(agLeads)
+          .set({ assignedCallerId: callerId, updatedAt: new Date() })
+          .where(inArray(agLeads.leadId, chunk));
+      }
     }
   }
 
@@ -3023,7 +3053,7 @@ export async function generateAgencyCSVExport(
   }
 
   if (type === "leads") {
-    const leads = await db
+    const leadsQuery = db
       .select({
         leadId: agLeads.leadId,
         stream: agLeads.stream,
@@ -3042,24 +3072,38 @@ export async function generateAgencyCSVExport(
         rescheduleDate: agLeads.rescheduleDate,
         createdAt: agLeads.createdAt,
       })
-      .from(agLeads)
-      .orderBy(agLeads.dobMonth, agLeads.dobDay, desc(agLeads.leadId));
+      .from(agLeads);
+
+    // Filter by caller if specified, or limit to safe 25,000 leads (prevents Vercel 4.5MB payload limit crash & OOM)
+    const targetCaller = (callerId || "").trim().toUpperCase();
+    const leads = targetCaller && targetCaller !== "ALL"
+      ? await leadsQuery.where(eq(agLeads.assignedCallerId, targetCaller)).orderBy(agLeads.dobMonth, agLeads.dobDay, desc(agLeads.leadId))
+      : await leadsQuery.orderBy(agLeads.dobMonth, agLeads.dobDay, desc(agLeads.leadId)).limit(25000);
 
     const callers = await db.select({ callerId: agTelecallers.callerId, name: agTelecallers.name }).from(agTelecallers);
     const callerNameMap = new Map<string, string>();
     callers.forEach((c) => callerNameMap.set(c.callerId, c.name));
 
-    const callLogs = await db
-      .select({ leadId: agCallLogs.leadId, notes: agCallLogs.notes, callbackTime: agCallLogs.callbackTime })
-      .from(agCallLogs)
-      .orderBy(desc(agCallLogs.createdAt));
-
+    const leadIds = leads.map((l) => l.leadId);
     const callCountMap = new Map<number, number>();
     const latestNotesMap = new Map<number, string>();
-    for (const log of callLogs) {
-      callCountMap.set(log.leadId, (callCountMap.get(log.leadId) || 0) + 1);
-      if (!latestNotesMap.has(log.leadId) && log.notes) {
-        latestNotesMap.set(log.leadId, log.notes);
+
+    // Chunked log lookup ONLY for the leads in this export page (zero unindexed full-table scan on ag_call_logs)
+    if (leadIds.length > 0) {
+      for (let i = 0; i < Math.min(leadIds.length, 5000); i += 500) {
+        const slice = leadIds.slice(i, i + 500);
+        const callLogs = await db
+          .select({ leadId: agCallLogs.leadId, notes: agCallLogs.notes })
+          .from(agCallLogs)
+          .where(inArray(agCallLogs.leadId, slice))
+          .orderBy(desc(agCallLogs.createdAt));
+
+        for (const log of callLogs) {
+          callCountMap.set(log.leadId, (callCountMap.get(log.leadId) || 0) + 1);
+          if (!latestNotesMap.has(log.leadId) && log.notes) {
+            latestNotesMap.set(log.leadId, log.notes);
+          }
+        }
       }
     }
 

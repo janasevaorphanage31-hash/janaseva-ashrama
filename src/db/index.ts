@@ -17,9 +17,10 @@ export const pool =
   globalForDb.__arenaNextJsPostgresqlPool ??
   new Pool({
     connectionString: databaseUrl,
-    max: Number(process.env.DB_POOL_MAX || 20),
-    idleTimeoutMillis: 30_000,
+    max: Number(process.env.DB_POOL_MAX || 10),
+    idleTimeoutMillis: 10_000,
     connectionTimeoutMillis: 5_000,
+    allowExitOnIdle: true,
   });
 
 globalForDb.__arenaNextJsPostgresqlPool = pool;

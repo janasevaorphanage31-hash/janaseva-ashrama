@@ -6,8 +6,7 @@
  * 2. Navigates between sub-pages or clicks away to other tabs
  * 3. Locks their mobile screen (via Screen WakeLock API)
  *
- * State is backed up in localStorage so returning to the page
- * automatically surfaces an active resume banner.
+ * Uses IndexedDB to store full lead chunks without hitting the 5MB localStorage quota limit.
  */
 
 export interface PersistedUploadJob {
@@ -34,6 +33,9 @@ export interface PersistedUploadJob {
 }
 
 const STORAGE_KEY = "janaseva_admin_active_upload_job";
+const DB_NAME = "JanasevaUploadDB";
+const STORE_NAME = "upload_jobs";
+const ACTIVE_JOB_KEY = "current_active_job";
 
 let activeWakeLock: any = null;
 
@@ -69,32 +71,99 @@ export function releaseWakeLock() {
   }
 }
 
+function openDB(): Promise<IDBDatabase | null> {
+  if (typeof window === "undefined" || !window.indexedDB) {
+    return Promise.resolve(null);
+  }
+  return new Promise((resolve) => {
+    try {
+      const req = window.indexedDB.open(DB_NAME, 1);
+      req.onupgradeneeded = () => {
+        const db = req.result;
+        if (!db.objectStoreNames.contains(STORE_NAME)) {
+          db.createObjectStore(STORE_NAME);
+        }
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => resolve(null);
+    } catch {
+      resolve(null);
+    }
+  });
+}
+
 /**
- * Save current job progress into localStorage
+ * Save job progress into IndexedDB (supports unlimited MBs for 180k+ leads),
+ * and lightweight metadata into localStorage.
  */
-export function saveActiveUploadJob(job: PersistedUploadJob) {
+export async function saveActiveUploadJob(job: PersistedUploadJob): Promise<void> {
   if (typeof window === "undefined") return;
+
+  const jobWithTimestamp: PersistedUploadJob = {
+    ...job,
+    lastActiveAt: Date.now(),
+  };
+
+  // 1. Save lightweight metadata to localStorage (without the giant chunks array)
   try {
-    const serialized = JSON.stringify({
-      ...job,
-      lastActiveAt: Date.now(),
-    });
-    localStorage.setItem(STORAGE_KEY, serialized);
+    const metaOnly = {
+      ...jobWithTimestamp,
+      chunks: [], // Omit chunks from localStorage to never exceed 5MB quota
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(metaOnly));
   } catch (e) {
-    console.warn("[UploadManager] Failed to persist upload job to localStorage:", e);
+    console.warn("[UploadManager] Metadata localStorage fallback:", e);
+  }
+
+  // 2. Save full payload (including all chunks) into IndexedDB
+  try {
+    const db = await openDB();
+    if (!db) return;
+    const tx = db.transaction(STORE_NAME, "readwrite");
+    const store = tx.objectStore(STORE_NAME);
+    store.put(jobWithTimestamp, ACTIVE_JOB_KEY);
+  } catch (idbErr) {
+    console.warn("[UploadManager] IndexedDB save warning:", idbErr);
   }
 }
 
 /**
- * Retrieve any in-progress upload job (valid if within last 2 hours)
+ * Retrieve any in-progress upload job with full chunks from IndexedDB
  */
-export function getActiveUploadJob(): PersistedUploadJob | null {
+export async function getActiveUploadJob(): Promise<PersistedUploadJob | null> {
   if (typeof window === "undefined") return null;
+
+  const TWO_HOURS = 2 * 60 * 60 * 1000;
+
+  // Try IndexedDB first (contains the actual chunks)
+  try {
+    const db = await openDB();
+    if (db) {
+      const result = await new Promise<PersistedUploadJob | null>((resolve) => {
+        const tx = db.transaction(STORE_NAME, "readonly");
+        const store = tx.objectStore(STORE_NAME);
+        const req = store.get(ACTIVE_JOB_KEY);
+        req.onsuccess = () => resolve(req.result || null);
+        req.onerror = () => resolve(null);
+      });
+
+      if (result) {
+        if (Date.now() - result.lastActiveAt > TWO_HOURS) {
+          clearActiveUploadJob();
+          return null;
+        }
+        return result;
+      }
+    }
+  } catch (err) {
+    console.warn("[UploadManager] IndexedDB read error:", err);
+  }
+
+  // Fallback to localStorage metadata if IndexedDB empty
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
     const parsed: PersistedUploadJob = JSON.parse(raw);
-    const TWO_HOURS = 2 * 60 * 60 * 1000;
     if (Date.now() - parsed.lastActiveAt > TWO_HOURS) {
       clearActiveUploadJob();
       return null;
@@ -112,6 +181,13 @@ export function clearActiveUploadJob() {
   if (typeof window === "undefined") return;
   try {
     localStorage.removeItem(STORAGE_KEY);
+  } catch {}
+  try {
+    void openDB().then((db) => {
+      if (!db) return;
+      const tx = db.transaction(STORE_NAME, "readwrite");
+      tx.objectStore(STORE_NAME).delete(ACTIVE_JOB_KEY);
+    });
   } catch {}
   releaseWakeLock();
 }

@@ -458,14 +458,15 @@ export function AdminTelecallerCRM() {
   useEffect(() => {
     queueMicrotask(() => {
       void loadAdminData();
-      const savedJob = getActiveUploadJob();
-      if (
-        savedJob &&
-        (savedJob.status === "in_progress" || savedJob.status === "paused") &&
-        savedJob.currentChunk < savedJob.totalChunks
-      ) {
-        setActiveResumableJob(savedJob);
-      }
+      void getActiveUploadJob().then((savedJob) => {
+        if (
+          savedJob &&
+          (savedJob.status === "in_progress" || savedJob.status === "paused") &&
+          savedJob.currentChunk < savedJob.totalChunks
+        ) {
+          setActiveResumableJob(savedJob);
+        }
+      });
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -1629,28 +1630,6 @@ export function AdminTelecallerCRM() {
         while (attempts < MAX_RETRIES && !success) {
           if (cancelRequestedRef.current) break;
 
-          // If document is hidden (screen off or tab minimized), wait until visible before calling fetch
-          if (typeof document !== "undefined" && document.hidden) {
-            setUploadProgress((prev) =>
-              prev
-                ? {
-                    ...prev,
-                    statusMessage: `📱 Phone screen off or tab hidden. Waiting for you to return to resume Chunk ${chunkNum}...`,
-                  }
-                : null
-            );
-            await new Promise<void>((resolve) => {
-              const onVis = () => {
-                if (document.visibilityState === "visible") {
-                  document.removeEventListener("visibilitychange", onVis);
-                  resolve();
-                }
-              };
-              document.addEventListener("visibilitychange", onVis);
-            });
-            void acquireWakeLock();
-          }
-
           attempts++;
           try {
             const res = await fetch("/api/v1/admin/telecallers", {
@@ -1720,8 +1699,8 @@ export function AdminTelecallerCRM() {
           throw new Error(`Upload paused on chunk ${chunkNum}/${totalChunks}: ${lastErr}. You can tap Resume Upload anytime.`);
         }
 
-        // Persist progress to localStorage on each completed chunk
-        saveActiveUploadJob({
+        // Persist progress to IndexedDB and localStorage on each completed chunk
+        void saveActiveUploadJob({
           jobId,
           uploadBatchId,
           createdAt: Date.now(),
@@ -1793,7 +1772,7 @@ export function AdminTelecallerCRM() {
       }, 1800);
     } catch (err: any) {
       releaseWakeLock();
-      saveActiveUploadJob({
+      void saveActiveUploadJob({
         jobId,
         uploadBatchId,
         createdAt: Date.now(),

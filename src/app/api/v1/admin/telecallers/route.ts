@@ -64,11 +64,15 @@ export async function POST(req: Request) {
       );
     }
 
-    await ensureDbSchema();
-    await ensureTelecallersAndSeedData();
     const body = await req.json();
     const action = body.action;
     const ip = clientIp(req);
+
+    // Fast-path: Skip DDL schema checks and telecaller seeding during high-frequency chunk uploads
+    if (action !== "upload_chunk") {
+      await ensureDbSchema();
+      await ensureTelecallersAndSeedData();
+    }
 
     if (action === "trigger_routing" || action === "distribute_tomorrow_mix") {
       const result = await distributeBirthdayLeads();
@@ -221,13 +225,15 @@ export async function POST(req: Request) {
       const shouldDistribute = autoDistribute === true;
       const res = await uploadBulkLeads(leads, shouldDistribute, mode || "balanced", uploadBatchId);
 
-      await writeAudit({
-        actorAdminUserId: session.user.id ?? null,
-        action: action === "upload_chunk" ? "crm.upload_chunk" : "crm.upload_bulk_leads",
-        entity: "ag_leads",
-        afterState: { uploaded: res.validInserted, distributed: res.distributed, uploadBatchId: (res as any).uploadBatchId },
-        ipAddress: ip,
-      });
+      if (action !== "upload_chunk") {
+        await writeAudit({
+          actorAdminUserId: session.user.id ?? null,
+          action: "crm.upload_bulk_leads",
+          entity: "ag_leads",
+          afterState: { uploaded: res.validInserted, distributed: res.distributed, uploadBatchId: (res as any).uploadBatchId },
+          ipAddress: ip,
+        });
+      }
 
       // For chunked ingestion, return fast response without recalculating entire admin leaderboard
       if (action === "upload_chunk") {

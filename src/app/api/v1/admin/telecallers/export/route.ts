@@ -1,4 +1,8 @@
 import { NextResponse } from "next/server";
+
+export const maxDuration = 60;
+export const dynamic = "force-dynamic";
+
 import { generateAgencyCSVExport } from "@/lib/antigravity-crm";
 import { requireAdminApi } from "@/lib/admin-auth";
 import { authenticateCallerOrAdmin, verifyCallerToken } from "@/lib/caller-auth";
