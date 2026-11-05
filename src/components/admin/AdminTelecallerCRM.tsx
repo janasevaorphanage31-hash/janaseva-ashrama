@@ -1538,7 +1538,7 @@ export function AdminTelecallerCRM() {
     } = params;
 
     const totalChunks = chunks.length;
-    const CHUNK_SIZE = 500;
+    const CHUNK_SIZE = chunks[0]?.length || 1000;
     const jobId = params.jobId || `job_${Date.now()}`;
     const uploadBatchId =
       params.uploadBatchId ||
@@ -1724,7 +1724,8 @@ export function AdminTelecallerCRM() {
         });
 
         // 150ms gentle breath between chunks
-        await new Promise((r) => setTimeout(r, 150));
+        // 15ms UI render tick
+        await new Promise((r) => setTimeout(r, 15));
       }
 
       if (cancelRequestedRef.current) {
@@ -1828,7 +1829,7 @@ export function AdminTelecallerCRM() {
     }
 
     const totalLeadsCount = parsedLeads.length;
-    const CHUNK_SIZE = 500;
+    const CHUNK_SIZE = 1000;
     const chunks: typeof parsedLeads[] = [];
     for (let i = 0; i < totalLeadsCount; i += CHUNK_SIZE) {
       chunks.push(parsedLeads.slice(i, i + CHUNK_SIZE));

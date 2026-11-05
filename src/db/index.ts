@@ -406,6 +406,7 @@ export async function ensureDbSchema(): Promise<void> {
           CREATE INDEX IF NOT EXISTS ag_leads_batch_idx ON ag_leads(upload_batch_id);
           CREATE INDEX IF NOT EXISTS ag_call_logs_lead_idx ON ag_call_logs(lead_id);
           CREATE INDEX IF NOT EXISTS ag_call_logs_caller_idx ON ag_call_logs(caller_id, created_at);
+          CREATE INDEX IF NOT EXISTS ag_donations_lead_id_idx ON ag_donations(lead_id);
           CREATE INDEX IF NOT EXISTS ag_donations_caller_idx ON ag_donations(caller_ref_id, created_at);
           CREATE INDEX IF NOT EXISTS ag_donations_order_idx ON ag_donations(gateway_order_id);
           CREATE INDEX IF NOT EXISTS influencer_code_idx ON influencer_profiles(influencer_code);
