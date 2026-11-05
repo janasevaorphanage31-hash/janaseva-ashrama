@@ -8,7 +8,14 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default function PortalPage() {
+export default async function PortalPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ caller?: string; id?: string }>;
+}) {
+  const params = searchParams ? await searchParams : {};
+  const callerId = params.caller || params.id || "";
+
   return (
     <div className="min-h-screen bg-sand/30 font-sans text-teal-950 flex flex-col overscroll-none">
       {/* Hide bulky desktop navbar on mobile to give telecallers 100% zero-scroll screen space */}
@@ -16,7 +23,7 @@ export default function PortalPage() {
         <TelecallerNavbar />
       </div>
       <main className="flex-1 max-w-7xl w-full mx-auto p-0 sm:py-4 sm:px-4 lg:py-6 lg:px-8 overscroll-none">
-        <TelecallerPortal />
+        <TelecallerPortal initialCallerId={callerId} />
       </main>
     </div>
   );

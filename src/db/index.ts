@@ -286,28 +286,8 @@ export async function ensureDbSchema(): Promise<void> {
             NULL;
           END $$;
 
-          INSERT INTO ag_telecallers (caller_id, name, whatsapp_number, email, password_hash, daily_quota, is_active)
-          VALUES ('ADMIN', 'Ashrama Admin', '9980359595', 'admin@janasevaashrama.org', 'ADMIN', 100, true)
-          ON CONFLICT (caller_id) DO UPDATE SET is_active = true;
-
-          -- Safe 1-time auto-repair for existing leads with placeholder 'Child' name
-          UPDATE ag_leads
-          SET child_name = parent_name || ' ಅವರ ಮಗು',
-              name = parent_name || ' ಅವರ ಮಗು (' || parent_name || ')'
-          WHERE stream = 'PARENTS'
-            AND (child_name = 'Child' OR child_name IS NULL)
-            AND parent_name IS NOT NULL
-            AND parent_name != ''
-            AND parent_name != 'Parent';
-
-          -- Safe auto-repair for Direct Donor stream normalization and clearing misclassified parent/child names
-          UPDATE ag_leads
-          SET stream = 'DIRECT_DONOR'
-          WHERE stream = 'DIRECT_DONORS' OR stream IS NULL;
-
-          UPDATE ag_leads
-          SET parent_name = NULL, child_name = NULL
-          WHERE stream = 'DIRECT_DONOR' AND (parent_name IS NOT NULL OR child_name IS NOT NULL);
+          -- Clean up legacy ADMIN from ag_telecallers if present (ADMIN belongs to admin_users only)
+          DELETE FROM ag_telecallers WHERE caller_id = 'ADMIN';
 
           CREATE TABLE IF NOT EXISTS ag_donations (
             txn_id TEXT PRIMARY KEY,
@@ -409,6 +389,7 @@ export async function ensureDbSchema(): Promise<void> {
           CREATE INDEX IF NOT EXISTS ag_daily_sub_status_idx ON ag_daily_submissions(status);
           CREATE INDEX IF NOT EXISTS ag_call_logs_eod_idx ON ag_call_logs(caller_id, eod_submitted);
 
+          CREATE INDEX IF NOT EXISTS ag_leads_stream_assigned_status_idx ON ag_leads(stream, assigned_caller_id, status);
           CREATE INDEX IF NOT EXISTS ag_leads_dob_idx ON ag_leads(dob_month, dob_day);
           CREATE INDEX IF NOT EXISTS ag_leads_assigned_idx ON ag_leads(assigned_caller_id, status);
           CREATE INDEX IF NOT EXISTS ag_leads_phone_idx ON ag_leads(phone);

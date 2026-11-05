@@ -102,6 +102,12 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
 
   // Login Form state
   const [loginIdentifier, setLoginIdentifier] = useState(initialCallerId || "");
+
+  useEffect(() => {
+    if (initialCallerId) {
+      setLoginIdentifier(initialCallerId);
+    }
+  }, [initialCallerId]);
   const [loginPassword, setLoginPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
@@ -2219,7 +2225,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
               <label className="block text-xs font-bold text-teal-950/80 mb-1">
-                Caller ID or Registered Email
+                Caller ID, Mobile Number or Email
               </label>
               <div className="relative">
                 <input
@@ -2227,7 +2233,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                   required
                   value={loginIdentifier}
                   onChange={(e) => setLoginIdentifier(e.target.value)}
-                  placeholder="e.g. TC01 or tc01@janaseva.org"
+                  placeholder="e.g. TC01, 9483160340 or kavithabaijanaseva@gmail.com"
                   className="w-full rounded-xl border border-teal-900/20 px-3.5 py-2.5 text-xs font-semibold text-teal-950 placeholder:text-teal-950/40 focus:border-amber-500 focus:ring-2 focus:ring-amber-400/20 outline-none"
                 />
               </div>
@@ -2252,10 +2258,13 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                   required
                   value={loginPassword}
                   onChange={(e) => setLoginPassword(e.target.value)}
-                  placeholder="Enter your advisor password"
+                  placeholder="Enter password (default: ashrama@123)"
                   className="w-full rounded-xl border border-teal-900/20 px-3.5 py-2.5 text-xs font-semibold text-teal-950 placeholder:text-teal-950/40 focus:border-amber-500 focus:ring-2 focus:ring-amber-400/20 outline-none"
                 />
               </div>
+              <p className="text-[11px] text-teal-950/60 mt-1">
+                Default password for all telecallers: <strong className="font-mono text-amber-900">ashrama@123</strong>
+              </p>
             </div>
 
             {/* Remember Me Checkbox */}
