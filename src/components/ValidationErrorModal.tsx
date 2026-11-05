@@ -27,13 +27,14 @@ export function ValidationErrorModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-teal-950/75 p-4 backdrop-blur-sm animate-fade-in"
+      className="fixed inset-0 z-[100] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/75 backdrop-blur-sm animate-fadeIn"
       role="alertdialog"
       aria-modal="true"
       aria-labelledby="validation-modal-title"
       aria-describedby="validation-modal-desc"
     >
-      <div className="w-full max-w-md transform overflow-hidden rounded-3xl bg-white p-6 shadow-2xl ring-1 ring-amber-500/25 transition-all sm:p-7">
+      <div className="w-full max-w-md overflow-hidden rounded-t-3xl sm:rounded-3xl bg-white p-6 shadow-2xl ring-1 ring-amber-500/25 transition-all sm:p-7 max-h-[92vh] overflow-y-auto">
+        <div className="sm:hidden mx-auto w-12 h-1.5 rounded-full bg-teal-900/20 mb-3 shrink-0" />
         <div className="flex items-start gap-4">
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-amber-50 text-amber-700 ring-4 ring-amber-100/60">
             <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

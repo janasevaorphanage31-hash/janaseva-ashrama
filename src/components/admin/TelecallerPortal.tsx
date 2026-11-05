@@ -4300,8 +4300,9 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
 
       {/* ── CHANGE PASSWORD MODAL ── */}
       {isChangePasswordOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-teal-950/60 backdrop-blur-xs p-4 animate-fadeIn">
-          <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl border border-teal-900/10 text-teal-950">
+        <div className="fixed inset-0 z-[100] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/70 backdrop-blur-xs animate-fadeIn">
+          <div className="w-full max-w-md rounded-t-3xl sm:rounded-3xl bg-white p-5 sm:p-6 shadow-2xl border border-teal-900/10 text-teal-950 max-h-[92vh] overflow-y-auto">
+            <div className="sm:hidden mx-auto w-12 h-1.5 rounded-full bg-teal-900/20 mb-3 shrink-0" />
             <div className="flex items-center justify-between border-b border-teal-900/10 pb-3 mb-4">
               <h3 className="font-display text-base font-bold text-teal-950 flex items-center gap-2">
                 <span>🔑</span> Change Portal Password
@@ -4387,8 +4388,9 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
 
       {/* ── NOTES & RESCHEDULE CALLBACK MODAL ── */}
       {activeNotesLead && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-teal-950/60 backdrop-blur-xs p-4 animate-fadeIn">
-          <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl border border-teal-900/10 text-teal-950">
+        <div className="fixed inset-0 z-[100] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/70 backdrop-blur-xs animate-fadeIn">
+          <div className="w-full max-w-md rounded-t-3xl sm:rounded-3xl bg-white p-5 sm:p-6 shadow-2xl border border-teal-900/10 text-teal-950 max-h-[92vh] overflow-y-auto">
+            <div className="sm:hidden mx-auto w-12 h-1.5 rounded-full bg-teal-900/20 mb-3 shrink-0" />
             <div className="flex items-center justify-between border-b border-teal-900/10 pb-3 mb-4">
               <div>
                 <h3 className="font-display text-base font-bold text-teal-950">
@@ -4533,13 +4535,14 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
       {/* ── DIRECT DONATION LOGGER MODAL (FOR IMMEDIATE 80G RECEIPT & ATTRIBUTION) ── */}
       {activeDonationLead && callerProfile && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
+          className="fixed inset-0 z-[100] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/70 backdrop-blur-xs animate-fadeIn"
           onClick={() => setActiveDonationLead(null)}
         >
           <div
-            className="relative w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl border border-teal-900/15 text-teal-950 space-y-4 animate-fadeIn"
+            className="relative w-full max-w-md rounded-t-3xl sm:rounded-3xl bg-white p-5 sm:p-6 shadow-2xl border border-teal-900/15 text-teal-950 space-y-4 max-h-[92vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
+            <div className="sm:hidden mx-auto w-12 h-1.5 rounded-full bg-teal-900/20 mb-3 shrink-0" />
             <div className="flex items-center justify-between border-b border-teal-900/10 pb-3">
               <div className="flex items-center gap-2">
                 <span className="text-2xl">🎉</span>
@@ -4650,7 +4653,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
       {/* ── TODAY'S SHIFT ACTIVITY & SELF-CORRECTION (EDIT) DRAWER (Phase 2 Mobile Bottom Sheet / Desktop Drawer) ── */}
       {showShiftDrawer && (
         <div
-          className="fixed inset-0 z-50 flex flex-col justify-end sm:flex-row sm:items-center sm:justify-end bg-teal-950/70 backdrop-blur-xs animate-in fade-in"
+          className="fixed inset-0 z-[100] flex flex-col justify-end sm:flex-row sm:items-center sm:justify-end bg-teal-950/70 backdrop-blur-xs animate-in fade-in"
           onClick={() => setShowShiftDrawer(false)}
         >
           <div
@@ -4880,13 +4883,14 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
       {/* ── EDIT LOG MODAL ── */}
       {editingLog && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
+          className="fixed inset-0 z-[100] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/70 backdrop-blur-xs animate-fadeIn"
           onClick={() => setEditingLog(null)}
         >
           <div
-            className="relative w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl border border-teal-900/15 text-teal-950 space-y-4"
+            className="relative w-full max-w-md rounded-t-3xl sm:rounded-3xl bg-white p-5 sm:p-6 shadow-2xl border border-teal-900/15 text-teal-950 space-y-4 max-h-[92vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
+            <div className="sm:hidden mx-auto w-12 h-1.5 rounded-full bg-teal-900/20 mb-3 shrink-0" />
             <div className="flex items-center justify-between border-b border-teal-900/10 pb-3">
               <div className="flex items-center gap-2">
                 <span className="text-xl">✏️</span>
@@ -5042,7 +5046,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
       {/* ── END OF DAY (EOD) SHIFT SUBMISSION MODAL (Phase 2 Mobile Bottom Sheet / Desktop Modal) ── */}
       {showEodModal && callerProfile && (
         <div
-          className="fixed inset-0 z-50 flex flex-col justify-end sm:flex-row sm:items-center sm:justify-center p-0 sm:p-4 bg-teal-950/70 backdrop-blur-xs animate-in fade-in"
+          className="fixed inset-0 z-[100] flex flex-col justify-end sm:flex-row sm:items-center sm:justify-center p-0 sm:p-4 bg-teal-950/70 backdrop-blur-xs animate-in fade-in"
           onClick={() => setShowEodModal(false)}
         >
           <div
@@ -5181,8 +5185,9 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
 
       {/* ── RESPECTFUL CALLING HOURS ADVISORY MODAL (TRAI GUIDELINES) ── */}
       {nightCallLead && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-teal-950/75 backdrop-blur-xs animate-fadeIn">
-          <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-teal-900/20 space-y-4">
+        <div className="fixed inset-0 z-[100] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/75 backdrop-blur-xs animate-fadeIn">
+          <div className="bg-white rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 max-w-sm w-full shadow-2xl border border-teal-900/20 space-y-4 max-h-[92vh] overflow-y-auto">
+            <div className="sm:hidden mx-auto w-12 h-1.5 rounded-full bg-teal-900/20 mb-3 shrink-0" />
             <div className="flex items-center gap-2.5 text-amber-600 border-b border-teal-900/10 pb-3">
               <span className="text-3xl">🌙</span>
               <div>
@@ -5304,13 +5309,14 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
       {/* ── EDIT CONTACT NUMBERS & ALTERNATE WHATSAPP MODAL (CASE 1) ── */}
       {editContactLead && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn"
+          className="fixed inset-0 z-[100] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/70 backdrop-blur-xs animate-fadeIn"
           onClick={() => setEditContactLead(null)}
         >
           <div
-            className="relative w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl border border-teal-900/15 text-teal-950 space-y-4"
+            className="relative w-full max-w-md rounded-t-3xl sm:rounded-3xl bg-white p-5 sm:p-6 shadow-2xl border border-teal-900/15 text-teal-950 space-y-4 max-h-[92vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
+            <div className="sm:hidden mx-auto w-12 h-1.5 rounded-full bg-teal-900/20 mb-3 shrink-0" />
             <div className="flex items-center justify-between border-b border-teal-900/10 pb-3">
               <div className="flex items-center gap-2">
                 <span className="text-2xl">📱</span>
@@ -5524,13 +5530,14 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
 
       {/* ── 1-TAP DISPOSITION CONFIRMATION MODAL (Prevents accidental clicks & mobile scroll jumping) ── */}
       {pendingConfirmation && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-teal-950/70 backdrop-blur-xs animate-in fade-in duration-150">
+        <div className="fixed inset-0 z-[100] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/70 backdrop-blur-xs animate-fadeIn">
           <div
-            className="w-full max-w-md bg-white rounded-3xl shadow-2xl border-2 border-teal-900/20 p-5 space-y-4 animate-in zoom-in-95 duration-150"
+            className="w-full max-w-md bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl border-2 border-teal-900/20 p-5 space-y-4 max-h-[92vh] overflow-y-auto"
             role="dialog"
             aria-modal="true"
             aria-labelledby="confirm-dialog-title"
           >
+            <div className="sm:hidden mx-auto w-12 h-1.5 rounded-full bg-teal-900/20 mb-3 shrink-0" />
             {/* Header */}
             <div className="flex items-start justify-between gap-3 border-b border-teal-900/10 pb-3">
               <div className="flex items-center gap-2.5">
@@ -5638,7 +5645,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
 
       {/* ── MOBILE BOTTOM SHEET: CALL QUEUE DRAWER (Phase 2 Zero-Scroll Architecture) ── */}
       {isMobileQueueSheetOpen && (
-        <div className="lg:hidden fixed inset-0 z-50 flex flex-col justify-end">
+        <div className="lg:hidden fixed inset-0 z-[100] flex flex-col justify-end">
           {/* Backdrop */}
           <div
             className="fixed inset-0 bg-teal-950/70 backdrop-blur-xs transition-opacity animate-in fade-in"
@@ -5862,7 +5869,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
 
       {/* ── MOBILE BOTTOM SHEET 1: SEARCH, STREAM & STATUS FILTERS ── */}
       {isMobileFilterSheetOpen && (
-        <div className="fixed inset-0 z-50 flex flex-col justify-end">
+        <div className="fixed inset-0 z-[100] flex flex-col justify-end">
           {/* Backdrop */}
           <div
             className="fixed inset-0 bg-teal-950/70 backdrop-blur-xs transition-opacity animate-in fade-in"
@@ -6062,7 +6069,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
 
       {/* ── MOBILE BOTTOM SHEET 2: QUICK MENU & SHIFT SETTINGS ── */}
       {isMobileMenuOpen && (
-        <div className="fixed inset-0 z-50 flex flex-col justify-end">
+        <div className="fixed inset-0 z-[100] flex flex-col justify-end">
           <div
             className="fixed inset-0 bg-teal-950/70 backdrop-blur-xs transition-opacity animate-in fade-in"
             onClick={() => setIsMobileMenuOpen(false)}
@@ -6219,7 +6226,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
 
       {/* ── MOBILE BOTTOM SHEET 3: WHATSAPP TEMPLATES & OUTREACH (Zero-Scroll Slide-Up Drawer) ── */}
       {isMobileWhatsAppSheetOpen && currentFocusLead && (
-        <div className="fixed inset-0 z-50 flex flex-col justify-end">
+        <div className="fixed inset-0 z-[100] flex flex-col justify-end">
           {/* Backdrop */}
           <div
             className="fixed inset-0 bg-teal-950/70 backdrop-blur-xs transition-opacity animate-in fade-in"

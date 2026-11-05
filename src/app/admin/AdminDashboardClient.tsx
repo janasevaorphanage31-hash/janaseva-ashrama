@@ -3378,8 +3378,9 @@ May Lord Shiva and the children's prayers bring lasting happiness and peace to y
 
           {/* Donor Detail Modal */}
           {selectedDonation && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-              <div className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl ring-1 ring-teal-900/10">
+            <div className="fixed inset-0 z-[100] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/70 backdrop-blur-xs animate-fadeIn">
+              <div className="max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-t-3xl sm:rounded-3xl bg-white p-5 sm:p-6 shadow-2xl ring-1 ring-teal-900/10">
+                <div className="sm:hidden mx-auto w-12 h-1.5 rounded-full bg-teal-900/20 mb-3 shrink-0" />
                 <div className="flex items-center justify-between border-b border-teal-900/10 pb-3">
                   <div>
                     <h4 className="font-display text-lg font-bold text-teal-950">
@@ -3488,8 +3489,9 @@ May Lord Shiva and the children's prayers bring lasting happiness and peace to y
           )}
           {/* Offline Donation Modal */}
           {offlineDonationModalOpen && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-              <div className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl ring-1 ring-teal-900/10 max-h-[90vh] overflow-y-auto">
+            <div className="fixed inset-0 z-[100] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/70 backdrop-blur-xs animate-fadeIn">
+              <div className="w-full max-w-lg rounded-t-3xl sm:rounded-3xl bg-white p-5 sm:p-6 shadow-2xl ring-1 ring-teal-900/10 max-h-[92vh] overflow-y-auto">
+                <div className="sm:hidden mx-auto w-12 h-1.5 rounded-full bg-teal-900/20 mb-3 shrink-0" />
                 <div className="flex items-center justify-between border-b border-teal-900/10 pb-3">
                   <div>
                     <h3 className="font-display text-lg font-bold text-teal-950">
@@ -3666,8 +3668,9 @@ May Lord Shiva and the children's prayers bring lasting happiness and peace to y
 
           {/* CREATE CAMPAIGN MODAL */}
           {newCampaignModalOpen && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-              <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl ring-1 ring-teal-900/10">
+            <div className="fixed inset-0 z-[100] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/70 backdrop-blur-xs animate-fadeIn">
+              <div className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-3xl sm:rounded-3xl bg-white p-5 sm:p-6 shadow-2xl ring-1 ring-teal-900/10">
+                <div className="sm:hidden mx-auto w-12 h-1.5 rounded-full bg-teal-900/20 mb-3 shrink-0" />
                 <div className="flex items-center justify-between border-b pb-3 mb-4">
                   <h4 className="font-display text-base font-bold text-teal-950">
                     + Launch New Fundraising Campaign
@@ -3790,8 +3793,9 @@ May Lord Shiva and the children's prayers bring lasting happiness and peace to y
 
           {/* EDIT CAMPAIGN MODAL */}
           {editingCampaign && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-              <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl ring-1 ring-teal-900/10">
+            <div className="fixed inset-0 z-[100] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/70 backdrop-blur-xs animate-fadeIn">
+              <div className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-3xl sm:rounded-3xl bg-white p-5 sm:p-6 shadow-2xl ring-1 ring-teal-900/10">
+                <div className="sm:hidden mx-auto w-12 h-1.5 rounded-full bg-teal-900/20 mb-3 shrink-0" />
                 <div className="flex items-center justify-between border-b pb-3 mb-4">
                   <h4 className="font-display text-base font-bold text-teal-950">
                     Edit: {editingCampaign.title}
@@ -4226,8 +4230,9 @@ May Lord Shiva and the children's prayers bring lasting happiness and peace to y
 
           {/* New Walk-In Celebration Modal */}
           {newCelebModalOpen && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-              <div className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl ring-1 ring-teal-900/10 max-h-[90vh] overflow-y-auto">
+            <div className="fixed inset-0 z-[100] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/70 backdrop-blur-xs animate-fadeIn">
+              <div className="w-full max-w-lg rounded-t-3xl sm:rounded-3xl bg-white p-5 sm:p-6 shadow-2xl ring-1 ring-teal-900/10 max-h-[92vh] overflow-y-auto">
+                <div className="sm:hidden mx-auto w-12 h-1.5 rounded-full bg-teal-900/20 mb-3 shrink-0" />
                 <div className="flex items-center justify-between border-b border-teal-900/10 pb-3">
                   <div>
                     <h3 className="font-display text-lg font-bold text-teal-950">
@@ -4438,8 +4443,9 @@ May Lord Shiva and the children's prayers bring lasting happiness and peace to y
 
           {/* Attach / View Proof Modal */}
           {proofModalCeleb && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-              <div className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl ring-1 ring-teal-900/10">
+            <div className="fixed inset-0 z-[100] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/70 backdrop-blur-xs animate-fadeIn">
+              <div className="w-full max-w-lg rounded-t-3xl sm:rounded-3xl bg-white p-5 sm:p-6 shadow-2xl ring-1 ring-teal-900/10 max-h-[92vh] overflow-y-auto">
+                <div className="sm:hidden mx-auto w-12 h-1.5 rounded-full bg-teal-900/20 mb-3 shrink-0" />
                 <div className="flex items-center justify-between border-b border-teal-900/10 pb-3">
                   <div>
                     <h3 className="font-display text-lg font-bold text-teal-950">
@@ -7617,8 +7623,9 @@ May Lord Shiva and the children's prayers bring lasting happiness and peace to y
 
           {/* Embedded Video Preview Modal */}
           {selectedVideoPreview && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
-              <div className="w-full max-w-2xl overflow-hidden rounded-3xl bg-teal-950 p-4 shadow-2xl">
+            <div className="fixed inset-0 z-[100] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/85 backdrop-blur-xs animate-fadeIn">
+              <div className="w-full max-w-2xl overflow-hidden rounded-t-3xl sm:rounded-3xl bg-teal-950 p-4 shadow-2xl max-h-[92vh] overflow-y-auto">
+                <div className="sm:hidden mx-auto w-12 h-1.5 rounded-full bg-white/20 mb-3 shrink-0" />
                 <div className="flex items-center justify-between pb-3 text-white border-b border-white/10">
                   <p className="font-mono text-xs font-bold text-gold truncate">
                     Preview: {selectedVideoPreview}
@@ -7646,13 +7653,14 @@ May Lord Shiva and the children's prayers bring lasting happiness and peace to y
           {/* Embedded Image Preview Modal */}
           {selectedImagePreview && (
             <div
-              className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 backdrop-blur-xs"
+              className="fixed inset-0 z-[100] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-black/85 backdrop-blur-xs animate-fadeIn"
               onClick={() => setSelectedImagePreview(null)}
             >
               <div
-                className="w-full max-w-2xl overflow-hidden rounded-3xl bg-teal-950 p-4 shadow-2xl ring-1 ring-white/10"
+                className="w-full max-w-2xl overflow-hidden rounded-t-3xl sm:rounded-3xl bg-teal-950 p-4 shadow-2xl ring-1 ring-white/10 max-h-[92vh] overflow-y-auto"
                 onClick={(e) => e.stopPropagation()}
               >
+                <div className="sm:hidden mx-auto w-12 h-1.5 rounded-full bg-white/20 mb-3 shrink-0" />
                 <div className="flex items-center justify-between pb-3 text-white border-b border-white/10">
                   <div className="min-w-0 pr-2">
                     <p className="font-display text-sm font-bold text-white truncate">
@@ -7913,8 +7921,9 @@ May Lord Shiva and the children's prayers bring lasting happiness and peace to y
 
           {/* Edit Catalog Modal */}
           {editingCatalog && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-              <div className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl ring-1 ring-teal-900/10">
+            <div className="fixed inset-0 z-[100] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/70 backdrop-blur-xs animate-fadeIn">
+              <div className="max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-t-3xl sm:rounded-3xl bg-white p-5 sm:p-6 shadow-2xl ring-1 ring-teal-900/10">
+                <div className="sm:hidden mx-auto w-12 h-1.5 rounded-full bg-teal-900/20 mb-3 shrink-0" />
                 <div className="flex items-center justify-between border-b pb-3 mb-4">
                   <h4 className="font-display text-base font-bold text-teal-950">
                     Edit: {editingCatalog.name}
@@ -8225,8 +8234,9 @@ May Lord Shiva and the children's prayers bring lasting happiness and peace to y
 
           {/* Edit Document Modal */}
           {editingDocument && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-              <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl ring-1 ring-teal-900/10 space-y-4">
+            <div className="fixed inset-0 z-[100] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/70 backdrop-blur-xs animate-fadeIn">
+              <div className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-3xl sm:rounded-3xl bg-white p-5 sm:p-6 shadow-2xl ring-1 ring-teal-900/10 space-y-4">
+                <div className="sm:hidden mx-auto w-12 h-1.5 rounded-full bg-teal-900/20 mb-3 shrink-0" />
                 <div className="flex items-center justify-between border-b border-teal-900/10 pb-3">
                   <h4 className="font-display text-sm font-bold text-teal-950">
                     Edit Audit / Legal Document #{editingDocument.id}
@@ -8807,8 +8817,9 @@ May Lord Shiva and the children's prayers bring lasting happiness and peace to y
 
       {/* ==================== ADD EMPLOYEE MODAL ==================== */}
       {newMemberModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-teal-950/70 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl ring-1 ring-teal-900/15">
+        <div className="fixed inset-0 z-[100] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/70 backdrop-blur-xs animate-fadeIn">
+          <div className="w-full max-w-lg rounded-t-3xl sm:rounded-3xl bg-white p-5 sm:p-6 shadow-2xl ring-1 ring-teal-900/15 max-h-[92vh] overflow-y-auto">
+            <div className="sm:hidden mx-auto w-12 h-1.5 rounded-full bg-teal-900/20 mb-3 shrink-0" />
             <div className="flex items-center justify-between border-b border-teal-900/10 pb-4">
               <div>
                 <h3 className="font-display text-base font-bold text-teal-950">Add New Employee Account</h3>
@@ -8906,8 +8917,9 @@ May Lord Shiva and the children's prayers bring lasting happiness and peace to y
 
       {/* ==================== RESET PASSWORD MODAL ==================== */}
       {resetPassModalUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-teal-950/70 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl ring-1 ring-teal-900/15">
+        <div className="fixed inset-0 z-[100] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/70 backdrop-blur-xs animate-fadeIn">
+          <div className="w-full max-w-md rounded-t-3xl sm:rounded-3xl bg-white p-5 sm:p-6 shadow-2xl ring-1 ring-teal-900/15 max-h-[92vh] overflow-y-auto">
+            <div className="sm:hidden mx-auto w-12 h-1.5 rounded-full bg-teal-900/20 mb-3 shrink-0" />
             <div className="flex items-center justify-between border-b border-teal-900/10 pb-4">
               <div>
                 <h3 className="font-display text-base font-bold text-teal-950">Reset Employee Password</h3>
@@ -8973,8 +8985,9 @@ May Lord Shiva and the children's prayers bring lasting happiness and peace to y
 
       {/* ==================== TODAY DAILY PHOTO UPLOAD MODAL ==================== */}
       {dailyPhotoModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-teal-950/70 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl ring-1 ring-teal-900/15">
+        <div className="fixed inset-0 z-[100] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/70 backdrop-blur-xs animate-fadeIn">
+          <div className="w-full max-w-lg rounded-t-3xl sm:rounded-3xl bg-white p-5 sm:p-6 shadow-2xl ring-1 ring-teal-900/15 max-h-[92vh] overflow-y-auto">
+            <div className="sm:hidden mx-auto w-12 h-1.5 rounded-full bg-teal-900/20 mb-3 shrink-0" />
             <div className="flex items-center justify-between border-b border-teal-900/10 pb-4">
               <div className="flex items-center gap-2.5">
                 <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-saffron text-white text-xl">
@@ -9153,8 +9166,9 @@ May Lord Shiva and the children's prayers bring lasting happiness and peace to y
 
       {/* ==================== EDIT TODAY MOMENT MODAL ==================== */}
       {editingTodayUpdate && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl ring-1 ring-teal-900/10 space-y-4">
+        <div className="fixed inset-0 z-[100] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/70 backdrop-blur-xs animate-fadeIn">
+          <div className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-3xl sm:rounded-3xl bg-white p-5 sm:p-6 shadow-2xl ring-1 ring-teal-900/10 space-y-4">
+            <div className="sm:hidden mx-auto w-12 h-1.5 rounded-full bg-teal-900/20 mb-3 shrink-0" />
             <div className="flex items-center justify-between border-b border-teal-900/10 pb-3">
               <h4 className="font-display text-sm font-bold text-teal-950">
                 Edit Today Moment #{editingTodayUpdate.id}
@@ -9257,8 +9271,9 @@ May Lord Shiva and the children's prayers bring lasting happiness and peace to y
 
       {/* ==================== PUBLISH TO LIVE GALLERY MODAL ==================== */}
       {publishGalleryModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl space-y-4">
+        <div className="fixed inset-0 z-[100] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/70 backdrop-blur-xs animate-fadeIn">
+          <div className="w-full max-w-md rounded-t-3xl sm:rounded-3xl bg-white p-5 sm:p-6 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">
+            <div className="sm:hidden mx-auto w-12 h-1.5 rounded-full bg-teal-900/20 mb-3 shrink-0" />
             <div className="flex items-center justify-between border-b pb-3">
               <h3 className="font-display text-base font-bold text-teal-900">
                 Publish to Live Ashrama Gallery
@@ -9340,8 +9355,9 @@ May Lord Shiva and the children's prayers bring lasting happiness and peace to y
 
       {/* ==================== EDIT DB MEDIA ASSET MODAL ==================== */}
       {editingDbMedia && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl ring-1 ring-teal-900/10 space-y-4">
+        <div className="fixed inset-0 z-[100] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/70 backdrop-blur-xs animate-fadeIn">
+          <div className="max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-t-3xl sm:rounded-3xl bg-white p-5 sm:p-6 shadow-2xl ring-1 ring-teal-900/10 space-y-4">
+            <div className="sm:hidden mx-auto w-12 h-1.5 rounded-full bg-teal-900/20 mb-3 shrink-0" />
             <div className="flex items-center justify-between border-b pb-3">
               <div>
                 <h4 className="font-display text-base font-bold text-teal-950">
@@ -9527,8 +9543,9 @@ May Lord Shiva and the children's prayers bring lasting happiness and peace to y
 
       {/* ==================== CUSTOMIZE CURATED GALLERY ITEM MODAL ==================== */}
       {customizingCuratedItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl ring-1 ring-teal-900/10 space-y-4">
+        <div className="fixed inset-0 z-[100] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/70 backdrop-blur-xs animate-fadeIn">
+          <div className="max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-t-3xl sm:rounded-3xl bg-white p-5 sm:p-6 shadow-2xl ring-1 ring-teal-900/10 space-y-4">
+            <div className="sm:hidden mx-auto w-12 h-1.5 rounded-full bg-teal-900/20 mb-3 shrink-0" />
             <div className="flex items-center justify-between border-b pb-3">
               <div>
                 <h4 className="font-display text-base font-bold text-teal-950">
@@ -9667,8 +9684,9 @@ May Lord Shiva and the children's prayers bring lasting happiness and peace to y
 
       {/* ==================== EDIT IMPACT METRIC MODAL ==================== */}
       {editingMetric && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl ring-1 ring-teal-900/10 space-y-4">
+        <div className="fixed inset-0 z-[100] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/70 backdrop-blur-xs animate-fadeIn">
+          <div className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-3xl sm:rounded-3xl bg-white p-5 sm:p-6 shadow-2xl ring-1 ring-teal-900/10 space-y-4">
+            <div className="sm:hidden mx-auto w-12 h-1.5 rounded-full bg-teal-900/20 mb-3 shrink-0" />
             <div className="flex items-center justify-between border-b pb-3">
               <div>
                 <h4 className="font-display text-base font-bold text-teal-950">
@@ -9813,8 +9831,9 @@ May Lord Shiva and the children's prayers bring lasting happiness and peace to y
 
       {/* ==================== CREATE NEW IMPACT METRIC MODAL ==================== */}
       {newMetricModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl ring-1 ring-teal-900/10 space-y-4">
+        <div className="fixed inset-0 z-[100] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/70 backdrop-blur-xs animate-fadeIn">
+          <div className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-3xl sm:rounded-3xl bg-white p-5 sm:p-6 shadow-2xl ring-1 ring-teal-900/10 space-y-4">
+            <div className="sm:hidden mx-auto w-12 h-1.5 rounded-full bg-teal-900/20 mb-3 shrink-0" />
             <div className="flex items-center justify-between border-b pb-3">
               <div>
                 <h4 className="font-display text-base font-bold text-teal-950">

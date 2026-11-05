@@ -102,8 +102,9 @@ export function AdminTelecallerCRM() {
     junkTotal?: number;
   } | null>(null);
 
-  // 4. Export Menu State
+  // 4. Export & Maintenance Menu State
   const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
+  const [isToolsMenuOpen, setIsToolsMenuOpen] = useState(false);
 
   // 5. Telecaller Credentials & Access Modal State
   const [isAccessModalOpen, setIsAccessModalOpen] = useState(false);
@@ -2035,7 +2036,7 @@ export function AdminTelecallerCRM() {
   const equalQuotaPerCaller = activeCallersCount > 0 ? Math.floor(totalLeads / activeCallersCount) : 0;
 
   return (
-    <div className="space-y-8 animate-fadeIn">
+    <div className="space-y-8">
       {/* Toast Notification */}
       {toastMessage && (
         <div className="rounded-2xl bg-teal-950 text-gold px-4 py-3 shadow-lg border border-amber-400/40 text-xs font-bold flex items-center justify-between">
@@ -2134,73 +2135,87 @@ export function AdminTelecallerCRM() {
               <span>🎯 Distribute Tomorrow (50/50 Mix)</span>
             </button>
 
-            {/* Reset Daily Limit / Queue Button */}
-            <button
-              type="button"
-              onClick={() => setIsResetDailyModalOpen(true)}
-              disabled={actionLoading}
-              className="focus-ring tap-scale inline-flex items-center gap-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-teal-950 px-3.5 py-2.5 text-xs font-black shadow-sm transition cursor-pointer disabled:opacity-50"
-              title="Reset non-donated leads to Pending and refresh daily quota across active callers"
-            >
-              <span>🔄 Reset Daily Limit</span>
-            </button>
+            {/* Desktop Actions */}
+            <div className="hidden sm:flex items-center gap-2 flex-wrap">
+              {/* Reset Daily Limit / Queue Button */}
+              <button
+                type="button"
+                onClick={() => setIsResetDailyModalOpen(true)}
+                disabled={actionLoading}
+                className="focus-ring tap-scale inline-flex items-center gap-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-teal-950 px-3 py-2 text-xs font-black shadow-sm transition cursor-pointer disabled:opacity-50"
+                title="Reset non-donated leads to Pending and refresh daily quota across active callers"
+              >
+                <span>🔄 Reset Daily Limit</span>
+              </button>
 
-            {/* Delete All Leads Button */}
-            <button
-              type="button"
-              onClick={() => setIsDeleteAllModalOpen(true)}
-              disabled={actionLoading}
-              className="focus-ring tap-scale inline-flex items-center gap-1.5 rounded-xl bg-rose-700 hover:bg-rose-800 text-white border border-rose-600 px-3.5 py-2.5 text-xs font-black shadow-sm transition cursor-pointer disabled:opacity-50"
-              title="Permanently delete all leads and call logs to start 100% fresh (keeps telecaller login accounts safe)"
-            >
-              <span>🗑️ Delete All Leads</span>
-            </button>
+              {/* Equalize Pending Workload Button */}
+              <button
+                type="button"
+                onClick={handleEqualizeWorkload}
+                disabled={actionLoading}
+                className="focus-ring tap-scale inline-flex items-center gap-1.5 rounded-xl bg-indigo-900/60 hover:bg-indigo-900 text-indigo-200 border border-indigo-700/60 px-3 py-2 text-xs font-bold shadow-xs transition cursor-pointer"
+                title="Evenly balance untouched pending leads across all active callers"
+              >
+                <span>⚖️ Equalize</span>
+              </button>
 
-            {/* Clean Demo Leads Button */}
-            <button
-              type="button"
-              onClick={() => handleClearDemoLeads(false)}
-              disabled={actionLoading}
-              className="focus-ring tap-scale inline-flex items-center gap-1.5 rounded-xl bg-teal-900/60 hover:bg-teal-900 text-teal-200 border border-teal-700/60 px-3 py-2.5 text-xs font-bold shadow-xs transition cursor-pointer"
-              title="Remove sample and dummy test leads from the database"
-            >
-              <span>🧹 Clean Demo Leads</span>
-            </button>
+              {/* Deduplicate Database Button */}
+              <button
+                type="button"
+                onClick={handleDeduplicateDatabase}
+                disabled={actionLoading}
+                className="focus-ring tap-scale inline-flex items-center gap-1.5 rounded-xl bg-purple-900/60 hover:bg-purple-900 text-purple-200 border border-purple-700/60 px-3 py-2 text-xs font-bold shadow-xs transition cursor-pointer"
+                title="Scan and merge duplicate phone numbers in the database"
+              >
+                <span>🔍 Merge Dups</span>
+              </button>
 
-            {/* Repair Student Names Button */}
-            <button
-              type="button"
-              onClick={handleRepairStudentNames}
-              disabled={actionLoading}
-              className="focus-ring tap-scale inline-flex items-center gap-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-400/40 px-3 py-2.5 text-xs font-bold shadow-xs transition cursor-pointer"
-              title="Replace placeholder 'Child' with student/parent indicators in database"
-            >
-              <span>🔄 Repair Student Names</span>
-            </button>
+              {/* Repair Student Names Button */}
+              <button
+                type="button"
+                onClick={handleRepairStudentNames}
+                disabled={actionLoading}
+                className="focus-ring tap-scale inline-flex items-center gap-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-400/40 px-3 py-2 text-xs font-bold shadow-xs transition cursor-pointer"
+                title="Replace placeholder 'Child' with student/parent indicators in database"
+              >
+                <span>🔄 Repair Names</span>
+              </button>
 
-            {/* Deduplicate Database Button */}
-            <button
-              type="button"
-              onClick={handleDeduplicateDatabase}
-              disabled={actionLoading}
-              className="focus-ring tap-scale inline-flex items-center gap-1.5 rounded-xl bg-purple-900/60 hover:bg-purple-900 text-purple-200 border border-purple-700/60 px-3 py-2.5 text-xs font-bold shadow-xs transition cursor-pointer"
-              title="Scan and merge duplicate phone numbers in the database"
-            >
-              <span>🔍 Merge Duplicates</span>
-            </button>
+              {/* Clean Demo Leads Button */}
+              <button
+                type="button"
+                onClick={() => handleClearDemoLeads(false)}
+                disabled={actionLoading}
+                className="focus-ring tap-scale inline-flex items-center gap-1.5 rounded-xl bg-teal-900/60 hover:bg-teal-900 text-teal-200 border border-teal-700/60 px-3 py-2 text-xs font-bold shadow-xs transition cursor-pointer"
+                title="Remove sample and dummy test leads from the database"
+              >
+                <span>🧹 Clean Demo</span>
+              </button>
 
-            {/* Equalize Pending Workload Button */}
-            <button
-              type="button"
-              onClick={handleEqualizeWorkload}
-              disabled={actionLoading}
-              className="focus-ring tap-scale inline-flex items-center gap-1.5 rounded-xl bg-indigo-900/60 hover:bg-indigo-900 text-indigo-200 border border-indigo-700/60 px-3 py-2.5 text-xs font-bold shadow-xs transition cursor-pointer"
-              title="Evenly balance untouched pending leads across all active callers (safe for newly added callers)"
-            >
-              <span>⚖️ Equalize Workload</span>
-            </button>
+              {/* Delete All Leads Button */}
+              <button
+                type="button"
+                onClick={() => setIsDeleteAllModalOpen(true)}
+                disabled={actionLoading}
+                className="focus-ring tap-scale inline-flex items-center gap-1.5 rounded-xl bg-rose-700 hover:bg-rose-800 text-white border border-rose-600 px-3 py-2 text-xs font-black shadow-sm transition cursor-pointer disabled:opacity-50"
+                title="Permanently delete all leads and call logs"
+              >
+                <span>🗑️ Delete All</span>
+              </button>
+            </div>
 
-            {/* Export Dropdown */}
+            {/* Mobile Maintenance Button Drawer Trigger */}
+            <div className="sm:hidden">
+              <button
+                type="button"
+                onClick={() => setIsToolsMenuOpen(true)}
+                className="focus-ring tap-scale inline-flex items-center gap-1.5 rounded-xl bg-teal-900/80 hover:bg-teal-900 text-gold border border-teal-700/60 px-3.5 py-2.5 text-xs font-bold shadow-xs transition cursor-pointer"
+              >
+                <span>⚙️ Tools &amp; Maintenance ▾</span>
+              </button>
+            </div>
+
+            {/* Export Dropdown / Drawer Button */}
             <div className="relative">
               <button
                 type="button"
@@ -2210,8 +2225,9 @@ export function AdminTelecallerCRM() {
                 <span>📥 Export CRM Data ▾</span>
               </button>
 
+              {/* Desktop Export Dropdown */}
               {isExportMenuOpen && (
-                <div className="absolute right-0 mt-2 w-72 rounded-2xl bg-white text-teal-950 shadow-2xl border border-teal-900/10 p-2 z-50 animate-fadeIn">
+                <div className="hidden sm:block absolute right-0 mt-2 w-72 rounded-2xl bg-white text-teal-950 shadow-2xl border border-teal-900/10 p-2 z-[90]">
                   <div className="px-3 py-2 border-b border-teal-900/10 text-[10px] font-bold text-teal-950/60 uppercase tracking-wider">
                     Agency Campaign Reports (CSV)
                   </div>
@@ -2244,7 +2260,10 @@ export function AdminTelecallerCRM() {
                     <span className="text-[10px] text-teal-950/50">.CSV</span>
                   </button>
                   <button
-                    onClick={() => window.open("/api/v1/admin/influencers/export?type=summary", "_blank")}
+                    onClick={() => {
+                      setIsExportMenuOpen(false);
+                      window.open("/api/v1/admin/influencers/export?type=summary", "_blank");
+                    }}
                     className="w-full text-left px-3 py-2 text-xs font-bold text-amber-900 bg-amber-50/70 hover:bg-amber-100 rounded-xl transition flex items-center justify-between"
                   >
                     <span>📸 Influencer Performance Summary</span>
@@ -2261,6 +2280,219 @@ export function AdminTelecallerCRM() {
                 </div>
               )}
             </div>
+
+            {/* Mobile Export Action Sheet Drawer (100% Mobile Friendly, No Cut-Off) */}
+            {isExportMenuOpen && (
+              <div
+                className="sm:hidden fixed inset-0 z-[100] flex flex-col justify-end bg-teal-950/70 backdrop-blur-xs animate-fadeIn"
+                onClick={() => setIsExportMenuOpen(false)}
+              >
+                <div
+                  className="w-full bg-white rounded-t-3xl p-5 shadow-2xl border-t border-teal-900/10 space-y-3 max-h-[85vh] overflow-y-auto"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="w-12 h-1.5 rounded-full bg-teal-900/20 mx-auto mb-2 shrink-0" />
+                  <div className="flex items-center justify-between pb-2 border-b border-teal-900/10">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl">📥</span>
+                      <h3 className="font-display text-base font-bold text-teal-950">
+                        Export Campaign Reports
+                      </h3>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setIsExportMenuOpen(false)}
+                      className="rounded-full bg-cream p-1.5 text-teal-950/60 hover:text-teal-950 font-bold"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  <div className="space-y-1.5 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => handleTriggerCSVDownload("performance")}
+                      className="w-full p-3 rounded-2xl bg-cream/50 hover:bg-cream border border-teal-900/10 text-left flex items-center justify-between transition cursor-pointer"
+                    >
+                      <div>
+                        <span className="font-bold text-xs text-teal-950 block">📊 Performance Leaderboard</span>
+                        <span className="text-[10px] text-teal-950/60">Calls made, donations raised &amp; rank</span>
+                      </div>
+                      <span className="font-mono text-[10px] font-bold bg-teal-950 text-gold px-2 py-0.5 rounded-md">.CSV</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleTriggerCSVDownload("leads")}
+                      className="w-full p-3 rounded-2xl bg-cream/50 hover:bg-cream border border-teal-900/10 text-left flex items-center justify-between transition cursor-pointer"
+                    >
+                      <div>
+                        <span className="font-bold text-xs text-teal-950 block">📋 Birthday Leads Registry</span>
+                        <span className="text-[10px] text-teal-950/60">Assigned caller, stream, phone &amp; DOB</span>
+                      </div>
+                      <span className="font-mono text-[10px] font-bold bg-teal-950 text-gold px-2 py-0.5 rounded-md">.CSV</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleTriggerCSVDownload("donations")}
+                      className="w-full p-3 rounded-2xl bg-cream/50 hover:bg-cream border border-teal-900/10 text-left flex items-center justify-between transition cursor-pointer"
+                    >
+                      <div>
+                        <span className="font-bold text-xs text-teal-950 block">💳 Attributed Donations Ledger</span>
+                        <span className="text-[10px] text-teal-950/60">Claimed &amp; verified donation transactions</span>
+                      </div>
+                      <span className="font-mono text-[10px] font-bold bg-teal-950 text-gold px-2 py-0.5 rounded-md">.CSV</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleTriggerCSVDownload("roster")}
+                      className="w-full p-3 rounded-2xl bg-cream/50 hover:bg-cream border border-teal-900/10 text-left flex items-center justify-between transition cursor-pointer"
+                    >
+                      <div>
+                        <span className="font-bold text-xs text-teal-950 block">👥 Telecaller Accounts Roster</span>
+                        <span className="text-[10px] text-teal-950/60">Login credentials, quotas &amp; active status</span>
+                      </div>
+                      <span className="font-mono text-[10px] font-bold bg-teal-950 text-gold px-2 py-0.5 rounded-md">.CSV</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsExportMenuOpen(false);
+                        window.open("/api/v1/admin/influencers/export?type=summary", "_blank");
+                      }}
+                      className="w-full p-3 rounded-2xl bg-amber-50 hover:bg-amber-100/80 border border-amber-300 text-left flex items-center justify-between transition cursor-pointer"
+                    >
+                      <div>
+                        <span className="font-bold text-xs text-amber-950 block">📸 Creator &amp; Influencer Summary</span>
+                        <span className="text-[10px] text-amber-800">30-day link conversions &amp; totals</span>
+                      </div>
+                      <span className="font-mono text-[10px] font-bold bg-amber-900 text-white px-2 py-0.5 rounded-md">.CSV</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleCopyAgencySummary}
+                      className="w-full p-3 rounded-2xl bg-sand/60 hover:bg-sand border border-teal-900/15 text-center font-bold text-xs text-teal-950 transition cursor-pointer mt-1"
+                    >
+                      📋 Copy Summary to Clipboard
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Mobile Maintenance Tools Action Sheet Drawer */}
+            {isToolsMenuOpen && (
+              <div
+                className="sm:hidden fixed inset-0 z-[100] flex flex-col justify-end bg-teal-950/70 backdrop-blur-xs animate-fadeIn"
+                onClick={() => setIsToolsMenuOpen(false)}
+              >
+                <div
+                  className="w-full bg-white rounded-t-3xl p-5 shadow-2xl border-t border-teal-900/10 space-y-3 max-h-[85vh] overflow-y-auto"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="w-12 h-1.5 rounded-full bg-teal-900/20 mx-auto mb-2 shrink-0" />
+                  <div className="flex items-center justify-between pb-2 border-b border-teal-900/10">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl">⚙️</span>
+                      <h3 className="font-display text-base font-bold text-teal-950">
+                        Floor &amp; Database Maintenance
+                      </h3>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setIsToolsMenuOpen(false)}
+                      className="rounded-full bg-cream p-1.5 text-teal-950/60 hover:text-teal-950 font-bold"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  <div className="space-y-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsToolsMenuOpen(false);
+                        setIsResetDailyModalOpen(true);
+                      }}
+                      className="w-full p-3 rounded-2xl bg-amber-50 hover:bg-amber-100 border border-amber-300 text-left flex items-start gap-3 transition cursor-pointer"
+                    >
+                      <span className="text-xl">🔄</span>
+                      <div>
+                        <span className="font-bold text-xs text-amber-950 block">Reset Daily Limit &amp; Rebalance</span>
+                        <span className="text-[11px] text-amber-900/80">Reset pending leads and divide equally across present callers</span>
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsToolsMenuOpen(false);
+                        void handleEqualizeWorkload();
+                      }}
+                      className="w-full p-3 rounded-2xl bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-left flex items-start gap-3 transition cursor-pointer"
+                    >
+                      <span className="text-xl">⚖️</span>
+                      <div>
+                        <span className="font-bold text-xs text-indigo-950 block">Equalize Workload</span>
+                        <span className="text-[11px] text-indigo-900/80">Re-distribute untouched leads to new or low-quota callers</span>
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsToolsMenuOpen(false);
+                        void handleDeduplicateDatabase();
+                      }}
+                      className="w-full p-3 rounded-2xl bg-purple-50 hover:bg-purple-100 border border-purple-200 text-left flex items-start gap-3 transition cursor-pointer"
+                    >
+                      <span className="text-xl">🔍</span>
+                      <div>
+                        <span className="font-bold text-xs text-purple-950 block">Merge Duplicate Numbers</span>
+                        <span className="text-[11px] text-purple-900/80">Scan for repeated phones and combine call histories</span>
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsToolsMenuOpen(false);
+                        void handleRepairStudentNames();
+                      }}
+                      className="w-full p-3 rounded-2xl bg-amber-50 hover:bg-amber-100 border border-amber-200 text-left flex items-start gap-3 transition cursor-pointer"
+                    >
+                      <span className="text-xl">🔄</span>
+                      <div>
+                        <span className="font-bold text-xs text-amber-950 block">Repair Student &amp; Child Names</span>
+                        <span className="text-[11px] text-amber-900/80">Replace placeholder &quot;Child&quot; with genuine student names</span>
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsToolsMenuOpen(false);
+                        void handleClearDemoLeads(false);
+                      }}
+                      className="w-full p-3 rounded-2xl bg-teal-50 hover:bg-teal-100 border border-teal-200 text-left flex items-start gap-3 transition cursor-pointer"
+                    >
+                      <span className="text-xl">🧹</span>
+                      <div>
+                        <span className="font-bold text-xs text-teal-950 block">Clean Demo Leads</span>
+                        <span className="text-[11px] text-teal-900/80">Safely remove test placeholder data from database</span>
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsToolsMenuOpen(false);
+                        setIsDeleteAllModalOpen(true);
+                      }}
+                      className="w-full p-3 rounded-2xl bg-rose-50 hover:bg-rose-100 border-2 border-rose-300 text-left flex items-start gap-3 transition cursor-pointer"
+                    >
+                      <span className="text-xl">🗑️</span>
+                      <div>
+                        <span className="font-bold text-xs text-rose-950 block">Delete All Leads (Wipe Database)</span>
+                        <span className="text-[11px] text-rose-800">Clear all leads before importing official Excel registry</span>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <Link
               href="/portal"
@@ -4196,7 +4428,7 @@ export function AdminTelecallerCRM() {
           MODAL 1: ADD NEW TELECALLER
       ══════════════════════════════════════════════════════════════════ */}
       {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/70 backdrop-blur-xs animate-fadeIn">
+        <div className="fixed inset-0 z-[100] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/70 backdrop-blur-xs animate-fadeIn">
           <div className="w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-3xl p-4 sm:p-6 shadow-2xl border-t-4 border-teal-800 sm:border border-teal-900/10 max-h-[92vh] sm:max-h-[85vh] overflow-y-auto animate-in slide-in-from-bottom sm:zoom-in-95 duration-200">
             <div className="sm:hidden mx-auto w-12 h-1.5 rounded-full bg-teal-900/20 mb-2 shrink-0" />
             <div className="flex items-center justify-between pb-4 border-b border-teal-900/10">
@@ -4321,7 +4553,7 @@ export function AdminTelecallerCRM() {
           MODAL 2: DELETE TELECALLER CONFIRMATION
       ══════════════════════════════════════════════════════════════════ */}
       {isDeleteModalOpen && callerToDelete && (
-        <div className="fixed inset-0 z-50 flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/70 backdrop-blur-xs animate-fadeIn">
+        <div className="fixed inset-0 z-[100] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/70 backdrop-blur-xs animate-fadeIn">
           <div className="w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-3xl p-4 sm:p-6 shadow-2xl border-t-4 border-rose-600 sm:border border-rose-200 max-h-[92vh] sm:max-h-[85vh] overflow-y-auto animate-in slide-in-from-bottom sm:zoom-in-95 duration-200">
             <div className="sm:hidden mx-auto w-12 h-1.5 rounded-full bg-rose-900/20 mb-2 shrink-0" />
             <div className="flex items-center gap-3 text-rose-700 pb-3 border-b border-rose-100">
@@ -4377,7 +4609,7 @@ export function AdminTelecallerCRM() {
           MODAL 2B: DELETE ALL LEADS CONFIRMATION
       ══════════════════════════════════════════════════════════════════ */}
       {isDeleteAllModalOpen && (
-        <div className="fixed inset-0 z-50 flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/70 backdrop-blur-xs animate-fadeIn">
+        <div className="fixed inset-0 z-[100] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/70 backdrop-blur-xs animate-fadeIn">
           <div className="w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-3xl p-4 sm:p-6 shadow-2xl border-t-4 border-rose-600 sm:border-2 border-rose-300 max-h-[92vh] sm:max-h-[85vh] overflow-y-auto animate-in slide-in-from-bottom sm:zoom-in-95 duration-200">
             <div className="sm:hidden mx-auto w-12 h-1.5 rounded-full bg-rose-900/20 mb-2 shrink-0" />
             <div className="flex items-center gap-3 text-rose-700 pb-3 border-b border-rose-100">
@@ -4435,7 +4667,7 @@ export function AdminTelecallerCRM() {
           MODAL 2C: RESET DAILY LIMIT & REBALANCE QUEUE
       ══════════════════════════════════════════════════════════════════ */}
       {isResetDailyModalOpen && (
-        <div className="fixed inset-0 z-50 flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/70 backdrop-blur-xs animate-fadeIn">
+        <div className="fixed inset-0 z-[100] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/70 backdrop-blur-xs animate-fadeIn">
           <div className="w-full max-w-md bg-white rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 shadow-2xl border-2 border-amber-300 max-h-[92vh] overflow-y-auto">
             <div className="sm:hidden mx-auto w-12 h-1.5 rounded-full bg-teal-900/20 mb-3 shrink-0" />
             <div className="flex items-center gap-3 text-amber-800 pb-3 border-b border-amber-100">
@@ -4528,8 +4760,8 @@ export function AdminTelecallerCRM() {
           MODAL 3: BULK LEAD UPLOAD & EQUAL DISTRIBUTION
       ══════════════════════════════════════════════════════════════════ */}
       {isUploadModalOpen && (
-        <div className="fixed inset-0 z-50 flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/60 backdrop-blur-xs animate-fadeIn">
-          <div className="w-full max-w-2xl bg-white rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 shadow-2xl border border-teal-900/10 max-h-[92vh] flex flex-col">
+        <div className="fixed inset-0 z-[100] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/70 backdrop-blur-xs animate-fadeIn">
+          <div className="w-full max-w-2xl bg-white rounded-t-3xl sm:rounded-3xl p-4 sm:p-6 shadow-2xl border border-teal-900/10 h-[90vh] sm:h-auto sm:max-h-[88vh] flex flex-col">
             <div className="sm:hidden mx-auto w-12 h-1.5 rounded-full bg-teal-900/20 mb-2 shrink-0" />
             <div className="flex items-center justify-between pb-4 border-b border-teal-900/10 shrink-0">
               <div className="flex items-center gap-2.5">
@@ -4972,7 +5204,7 @@ export function AdminTelecallerCRM() {
 
       {/* ── 5. TELECALLER CREDENTIALS & ACCESS MODAL ── */}
       {isAccessModalOpen && selectedCallerForAccess && (
-        <div className="fixed inset-0 z-50 flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/60 backdrop-blur-xs animate-fadeIn">
+        <div className="fixed inset-0 z-[100] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/60 backdrop-blur-xs animate-fadeIn">
           <div className="w-full max-w-lg rounded-t-3xl sm:rounded-3xl bg-white p-5 sm:p-7 shadow-2xl border border-teal-900/10 text-teal-950 space-y-4 sm:space-y-5 max-h-[92vh] overflow-y-auto">
             <div className="sm:hidden mx-auto w-12 h-1.5 rounded-full bg-teal-900/20 mb-2 shrink-0" />
             <div className="flex items-center justify-between border-b border-teal-900/10 pb-4">
@@ -5094,7 +5326,7 @@ export function AdminTelecallerCRM() {
           MODAL 6: EDIT TELECALLER DETAILS & INDIVIDUAL WHATSAPP NUMBER
       ══════════════════════════════════════════════════════════════════ */}
       {isEditModalOpen && editingCaller && (
-        <div className="fixed inset-0 z-50 flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/60 backdrop-blur-xs animate-fadeIn">
+        <div className="fixed inset-0 z-[100] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/60 backdrop-blur-xs animate-fadeIn">
           <div className="w-full max-w-md bg-white rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 shadow-2xl border border-teal-900/10 max-h-[92vh] overflow-y-auto">
             <div className="sm:hidden mx-auto w-12 h-1.5 rounded-full bg-teal-900/20 mb-2 shrink-0" />
             <div className="flex items-center justify-between pb-4 border-b border-teal-900/10">
@@ -5271,7 +5503,7 @@ export function AdminTelecallerCRM() {
           MODAL 9: ADD / EDIT INFLUENCER PARTNER
       ══════════════════════════════════════════════════════════════════ */}
       {isInfluencerModalOpen && (
-        <div className="fixed inset-0 z-50 flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/60 backdrop-blur-xs animate-fadeIn">
+        <div className="fixed inset-0 z-[100] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/60 backdrop-blur-xs animate-fadeIn">
           <div className="w-full max-w-md bg-white rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 shadow-2xl border border-teal-900/10 max-h-[92vh] overflow-y-auto">
             <div className="sm:hidden mx-auto w-12 h-1.5 rounded-full bg-teal-900/20 mb-2 shrink-0" />
             <div className="flex items-center justify-between pb-4 border-b border-teal-900/10">
@@ -5403,7 +5635,7 @@ export function AdminTelecallerCRM() {
       {/* ── MODAL: ADJUST DONATION AMOUNT & APPROVE ── */}
       {adjustingDonation && (
         <div
-          className="fixed inset-0 z-50 flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/60 backdrop-blur-xs animate-fadeIn"
+          className="fixed inset-0 z-[100] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/60 backdrop-blur-xs animate-fadeIn"
           onClick={() => setAdjustingDonation(null)}
         >
           <div
@@ -5485,7 +5717,7 @@ export function AdminTelecallerCRM() {
       {/* ── MODAL: REJECT DONATION CLAIM ── */}
       {rejectingDonation && (
         <div
-          className="fixed inset-0 z-50 flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/60 backdrop-blur-xs animate-fadeIn"
+          className="fixed inset-0 z-[100] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/60 backdrop-blur-xs animate-fadeIn"
           onClick={() => setRejectingDonation(null)}
         >
           <div
@@ -5554,7 +5786,7 @@ export function AdminTelecallerCRM() {
       {/* ── MODAL: TELECALLER DONATION AUDIT LEDGER ── */}
       {selectedCallerForLedger && (
         <div
-          className="fixed inset-0 z-50 flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/60 backdrop-blur-xs animate-fadeIn"
+          className="fixed inset-0 z-[100] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/60 backdrop-blur-xs animate-fadeIn"
           onClick={() => setSelectedCallerForLedger(null)}
         >
           <div

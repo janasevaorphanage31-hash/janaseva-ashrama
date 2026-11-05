@@ -642,8 +642,9 @@ export function WhatsAppDashboard({ initialSession, initialTab = "inbox" }: What
 
           {/* New Campaign Modal */}
           {newCampaignModal && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-              <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl">
+            <div className="fixed inset-0 z-[100] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/70 backdrop-blur-xs animate-fadeIn">
+              <div className="w-full max-w-md rounded-t-3xl sm:rounded-3xl bg-white p-5 sm:p-6 shadow-2xl max-h-[92vh] overflow-y-auto">
+                <div className="sm:hidden mx-auto w-12 h-1.5 rounded-full bg-teal-900/20 mb-3 shrink-0" />
                 <h3 className="text-base font-bold text-teal-950 font-display">Create WhatsApp Broadcast</h3>
                 <form onSubmit={handleCreateCampaign} className="mt-4 space-y-3">
                   <div>
@@ -824,8 +825,9 @@ export function WhatsAppDashboard({ initialSession, initialTab = "inbox" }: What
 
           {/* Add Doc Modal */}
           {newDocModal && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-              <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl">
+            <div className="fixed inset-0 z-[100] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/70 backdrop-blur-xs animate-fadeIn">
+              <div className="w-full max-w-md rounded-t-3xl sm:rounded-3xl bg-white p-5 sm:p-6 shadow-2xl max-h-[92vh] overflow-y-auto">
+                <div className="sm:hidden mx-auto w-12 h-1.5 rounded-full bg-teal-900/20 mb-3 shrink-0" />
                 <h3 className="text-base font-bold text-teal-950 font-display">Add Knowledge Document</h3>
                 <form onSubmit={handleSaveKnowledgeDoc} className="mt-4 space-y-3">
                   <div>

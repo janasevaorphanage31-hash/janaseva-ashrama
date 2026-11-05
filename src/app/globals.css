@@ -254,7 +254,20 @@ h1, h2, h3, .font-display {
 @keyframes fadeIn {
   from {
     opacity: 0;
-    transform: translateY(8px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.2s ease-out forwards;
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.97);
   }
   to {
     opacity: 1;
@@ -262,8 +275,8 @@ h1, h2, h3, .font-display {
   }
 }
 
-.animate-fadeIn {
-  animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+.animate-scaleIn {
+  animation: scaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 /* =============================================

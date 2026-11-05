@@ -147,8 +147,9 @@ Janaseva Ashrama operates as a grassroots sanctuary for orphaned, abandoned, and
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-teal-950/75 p-3 sm:p-5 backdrop-blur-sm animate-fade-in">
-      <div className="relative flex max-h-[90vh] w-full max-w-4xl flex-col rounded-3xl bg-white shadow-2xl ring-1 ring-teal-900/15 overflow-hidden">
+    <div className="fixed inset-0 z-[100] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-5 bg-teal-950/75 backdrop-blur-sm animate-fadeIn">
+      <div className="relative flex max-h-[92vh] w-full max-w-4xl flex-col rounded-t-3xl sm:rounded-3xl bg-white shadow-2xl ring-1 ring-teal-900/15 overflow-hidden">
+        <div className="sm:hidden mx-auto w-12 h-1.5 rounded-full bg-teal-900/20 my-2 shrink-0" />
         {/* Header */}
         <div className="flex items-center justify-between border-b border-teal-900/10 bg-teal-900 px-5 py-4 text-white sm:px-6">
           <div className="flex items-center gap-2.5">
