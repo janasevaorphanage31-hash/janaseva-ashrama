@@ -1,4 +1,8 @@
 import { NextResponse } from "next/server";
+
+export const maxDuration = 60;
+export const dynamic = "force-dynamic";
+
 import { ensureDbSchema } from "@/db";
 import { requireAdminApi } from "@/lib/admin-auth";
 import { writeAudit } from "@/lib/audit";

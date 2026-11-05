@@ -1537,7 +1537,7 @@ export function AdminTelecallerCRM() {
     } = params;
 
     const totalChunks = chunks.length;
-    const CHUNK_SIZE = 1000;
+    const CHUNK_SIZE = 500;
     const jobId = params.jobId || `job_${Date.now()}`;
     const uploadBatchId =
       params.uploadBatchId ||
@@ -1698,11 +1698,14 @@ export function AdminTelecallerCRM() {
 
             if (attempts < MAX_RETRIES) {
               const backoffDelay = Math.min(1000 * Math.pow(1.3, attempts - 1), 12000);
+              const cleanReason = lastErr.includes("504") || lastErr.includes("TIMEOUT")
+                ? "Server busy / 504 timeout"
+                : (lastErr.includes("Failed to fetch") ? "Network disconnected" : lastErr);
               setUploadProgress((prev) =>
                 prev
                   ? {
                       ...prev,
-                      statusMessage: `⚠️ Network paused on Chunk ${chunkNum}/${totalChunks} (${lastErr}). Auto-resuming in ${(backoffDelay / 1000).toFixed(0)}s (Attempt ${attempts}/${MAX_RETRIES}). Keep screen open or wake phone anytime.`,
+                      statusMessage: `⚠️ Auto-retrying Chunk ${chunkNum}/${totalChunks} (${cleanReason}). Resuming in ${(backoffDelay / 1000).toFixed(0)}s (Attempt ${attempts}/${MAX_RETRIES}). All progress is safe in database.`,
                     }
                   : null
               );
@@ -1846,7 +1849,7 @@ export function AdminTelecallerCRM() {
     }
 
     const totalLeadsCount = parsedLeads.length;
-    const CHUNK_SIZE = 1000;
+    const CHUNK_SIZE = 500;
     const chunks: typeof parsedLeads[] = [];
     for (let i = 0; i < totalLeadsCount; i += CHUNK_SIZE) {
       chunks.push(parsedLeads.slice(i, i + CHUNK_SIZE));
@@ -2257,7 +2260,7 @@ export function AdminTelecallerCRM() {
               </p>
               <p className="text-[11px] text-amber-900 mt-0.5 leading-snug">
                 Chunk {activeResumableJob.currentChunk} of {activeResumableJob.totalChunks} completed (
-                {Math.min(activeResumableJob.currentChunk * 1000, activeResumableJob.totalLeads).toLocaleString()} / {activeResumableJob.totalLeads.toLocaleString()} leads).
+                {Math.min(activeResumableJob.currentChunk * (activeResumableJob.chunks?.[0]?.length || 500), activeResumableJob.totalLeads).toLocaleString()} / {activeResumableJob.totalLeads.toLocaleString()} leads).
                 You can resume safely without creating duplicate leads.
               </p>
             </div>
@@ -2444,7 +2447,7 @@ export function AdminTelecallerCRM() {
 
               {/* Desktop Export Dropdown */}
               {isExportMenuOpen && (
-                <div className="hidden md:block absolute right-0 sm:right-0 mt-2 w-72 max-w-[calc(100vw-2rem)] rounded-2xl bg-white text-teal-950 shadow-2xl border border-teal-900/10 p-2 z-[90]">
+                <div className="hidden md:block absolute left-0 mt-2 w-72 max-w-[calc(100vw-2rem)] rounded-2xl bg-white text-teal-950 shadow-2xl border border-teal-900/10 p-2 z-[150]">
                   <div className="px-3 py-2 border-b border-teal-900/10 text-[10px] font-bold text-teal-950/60 uppercase tracking-wider">
                     Agency Campaign Reports (CSV)
                   </div>
@@ -2501,7 +2504,7 @@ export function AdminTelecallerCRM() {
             {/* Mobile Export Action Sheet Drawer (100% Mobile Friendly, No Cut-Off) */}
             {isExportMenuOpen && (
               <div
-                className="md:hidden fixed inset-0 z-[100] flex flex-col justify-end bg-teal-950/70 backdrop-blur-xs animate-fadeIn"
+                className="md:hidden fixed inset-0 z-[200] flex flex-col justify-end bg-teal-950/70 backdrop-blur-xs animate-fadeIn pb-24 sm:pb-6 safe-area-pb"
                 onClick={() => setIsExportMenuOpen(false)}
               >
                 <div
@@ -2598,7 +2601,7 @@ export function AdminTelecallerCRM() {
             {/* Mobile Maintenance Tools Action Sheet Drawer */}
             {isToolsMenuOpen && (
               <div
-                className="md:hidden fixed inset-0 z-[100] flex flex-col justify-end bg-teal-950/70 backdrop-blur-xs animate-fadeIn"
+                className="md:hidden fixed inset-0 z-[200] flex flex-col justify-end bg-teal-950/70 backdrop-blur-xs animate-fadeIn pb-24 sm:pb-6 safe-area-pb"
                 onClick={() => setIsToolsMenuOpen(false)}
               >
                 <div
@@ -4659,7 +4662,7 @@ export function AdminTelecallerCRM() {
           MODAL 1: ADD NEW TELECALLER
       ══════════════════════════════════════════════════════════════════ */}
       {isAddModalOpen && (
-        <div className="fixed inset-0 z-[100] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/70 backdrop-blur-xs animate-fadeIn">
+        <div className="fixed inset-0 z-[200] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/70 backdrop-blur-xs animate-fadeIn">
           <div className="w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-3xl p-4 sm:p-6 shadow-2xl border-t-4 border-teal-800 sm:border border-teal-900/10 max-h-[92vh] sm:max-h-[85vh] overflow-y-auto animate-in slide-in-from-bottom sm:zoom-in-95 duration-200">
             <div className="sm:hidden mx-auto w-12 h-1.5 rounded-full bg-teal-900/20 mb-2 shrink-0" />
             <div className="flex items-center justify-between pb-4 border-b border-teal-900/10">
@@ -4784,7 +4787,7 @@ export function AdminTelecallerCRM() {
           MODAL 2: DELETE TELECALLER CONFIRMATION
       ══════════════════════════════════════════════════════════════════ */}
       {isDeleteModalOpen && callerToDelete && (
-        <div className="fixed inset-0 z-[100] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/70 backdrop-blur-xs animate-fadeIn">
+        <div className="fixed inset-0 z-[200] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/70 backdrop-blur-xs animate-fadeIn">
           <div className="w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-3xl p-4 sm:p-6 shadow-2xl border-t-4 border-rose-600 sm:border border-rose-200 max-h-[92vh] sm:max-h-[85vh] overflow-y-auto animate-in slide-in-from-bottom sm:zoom-in-95 duration-200">
             <div className="sm:hidden mx-auto w-12 h-1.5 rounded-full bg-rose-900/20 mb-2 shrink-0" />
             <div className="flex items-center gap-3 text-rose-700 pb-3 border-b border-rose-100">
@@ -4840,7 +4843,7 @@ export function AdminTelecallerCRM() {
           MODAL 2B: DELETE ALL LEADS CONFIRMATION
       ══════════════════════════════════════════════════════════════════ */}
       {isDeleteAllModalOpen && (
-        <div className="fixed inset-0 z-[100] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/70 backdrop-blur-xs animate-fadeIn">
+        <div className="fixed inset-0 z-[200] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/70 backdrop-blur-xs animate-fadeIn">
           <div className="w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-3xl p-4 sm:p-6 shadow-2xl border-t-4 border-rose-600 sm:border-2 border-rose-300 max-h-[92vh] sm:max-h-[85vh] overflow-y-auto animate-in slide-in-from-bottom sm:zoom-in-95 duration-200">
             <div className="sm:hidden mx-auto w-12 h-1.5 rounded-full bg-rose-900/20 mb-2 shrink-0" />
             <div className="flex items-center gap-3 text-rose-700 pb-3 border-b border-rose-100">
@@ -4898,7 +4901,7 @@ export function AdminTelecallerCRM() {
           MODAL 2C: RESET DAILY LIMIT & REBALANCE QUEUE
       ══════════════════════════════════════════════════════════════════ */}
       {isResetDailyModalOpen && (
-        <div className="fixed inset-0 z-[100] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/70 backdrop-blur-xs animate-fadeIn">
+        <div className="fixed inset-0 z-[200] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/70 backdrop-blur-xs animate-fadeIn">
           <div className="w-full max-w-md bg-white rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 shadow-2xl border-2 border-amber-300 max-h-[92vh] overflow-y-auto">
             <div className="sm:hidden mx-auto w-12 h-1.5 rounded-full bg-teal-900/20 mb-3 shrink-0" />
             <div className="flex items-center gap-3 text-amber-800 pb-3 border-b border-amber-100">
@@ -4991,8 +4994,8 @@ export function AdminTelecallerCRM() {
           MODAL 3: BULK LEAD UPLOAD & EQUAL DISTRIBUTION
       ══════════════════════════════════════════════════════════════════ */}
       {isUploadModalOpen && (
-        <div className="fixed inset-0 z-[100] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/70 backdrop-blur-xs animate-fadeIn">
-          <div className="w-full max-w-2xl bg-white rounded-t-3xl sm:rounded-3xl p-4 sm:p-6 shadow-2xl border border-teal-900/10 h-[90vh] sm:h-auto sm:max-h-[88vh] flex flex-col">
+        <div className="fixed inset-0 z-[200] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/70 backdrop-blur-xs animate-fadeIn">
+          <div className="w-full max-w-2xl bg-white rounded-t-3xl sm:rounded-3xl p-4 sm:p-6 shadow-2xl border border-teal-900/10 h-[92vh] sm:h-auto sm:max-h-[88vh] flex flex-col pb-8 sm:pb-6 safe-area-pb">
             <div className="sm:hidden mx-auto w-12 h-1.5 rounded-full bg-teal-900/20 mb-2 shrink-0" />
             <div className="flex items-center justify-between pb-4 border-b border-teal-900/10 shrink-0">
               <div className="flex items-center gap-2.5">
@@ -5370,7 +5373,7 @@ export function AdminTelecallerCRM() {
                         <>
                           <span className="animate-pulse text-base">🚀</span>
                           <span>
-                            Chunk {uploadProgress.currentChunk} of {uploadProgress.totalChunks} (1,000 leads/chunk)
+                            Chunk {uploadProgress.currentChunk} of {uploadProgress.totalChunks} (500 leads/chunk)
                           </span>
                         </>
                       )}
@@ -5467,7 +5470,7 @@ export function AdminTelecallerCRM() {
 
       {/* ── MODAL 3B: IN-FLIGHT CANCEL & SAFE ROLLBACK DIALOG ── */}
       {isCancelConfirmOpen && (
-        <div className="fixed inset-0 z-[110] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/80 backdrop-blur-xs animate-fadeIn">
+        <div className="fixed inset-0 z-[210] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/80 backdrop-blur-xs animate-fadeIn pb-24 sm:pb-6 safe-area-pb">
           <div className="w-full max-w-md bg-white rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 shadow-2xl border-2 border-rose-300 space-y-4">
             <div className="sm:hidden mx-auto w-12 h-1.5 rounded-full bg-rose-900/20 mb-2 shrink-0" />
             <div className="flex items-center gap-3 text-rose-700 pb-2 border-b border-rose-100">
@@ -5524,7 +5527,7 @@ export function AdminTelecallerCRM() {
 
       {/* ── MODAL 3C: SAFE NON-DESTRUCTIVE BATCH ROLLBACK ── */}
       {isRollbackModalOpen && (
-        <div className="fixed inset-0 z-[100] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/70 backdrop-blur-xs animate-fadeIn">
+        <div className="fixed inset-0 z-[200] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/70 backdrop-blur-xs animate-fadeIn pb-24 sm:pb-6 safe-area-pb">
           <div className="w-full max-w-lg bg-white rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 shadow-2xl border-2 border-amber-400 max-h-[92vh] overflow-y-auto space-y-4">
             <div className="sm:hidden mx-auto w-12 h-1.5 rounded-full bg-teal-900/20 mb-2 shrink-0" />
             <div className="flex items-center justify-between pb-3 border-b border-teal-900/10">
@@ -5625,7 +5628,7 @@ export function AdminTelecallerCRM() {
 
       {/* ── 5. TELECALLER CREDENTIALS & ACCESS MODAL ── */}
       {isAccessModalOpen && selectedCallerForAccess && (
-        <div className="fixed inset-0 z-[100] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/60 backdrop-blur-xs animate-fadeIn">
+        <div className="fixed inset-0 z-[200] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/60 backdrop-blur-xs animate-fadeIn pb-24 sm:pb-6 safe-area-pb">
           <div className="w-full max-w-lg rounded-t-3xl sm:rounded-3xl bg-white p-5 sm:p-7 shadow-2xl border border-teal-900/10 text-teal-950 space-y-4 sm:space-y-5 max-h-[92vh] overflow-y-auto">
             <div className="sm:hidden mx-auto w-12 h-1.5 rounded-full bg-teal-900/20 mb-2 shrink-0" />
             <div className="flex items-center justify-between border-b border-teal-900/10 pb-4">
@@ -5747,7 +5750,7 @@ export function AdminTelecallerCRM() {
           MODAL 6: EDIT TELECALLER DETAILS & INDIVIDUAL WHATSAPP NUMBER
       ══════════════════════════════════════════════════════════════════ */}
       {isEditModalOpen && editingCaller && (
-        <div className="fixed inset-0 z-[100] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/60 backdrop-blur-xs animate-fadeIn">
+        <div className="fixed inset-0 z-[200] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/60 backdrop-blur-xs animate-fadeIn pb-24 sm:pb-6 safe-area-pb">
           <div className="w-full max-w-md bg-white rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 shadow-2xl border border-teal-900/10 max-h-[92vh] overflow-y-auto">
             <div className="sm:hidden mx-auto w-12 h-1.5 rounded-full bg-teal-900/20 mb-2 shrink-0" />
             <div className="flex items-center justify-between pb-4 border-b border-teal-900/10">
@@ -5924,7 +5927,7 @@ export function AdminTelecallerCRM() {
           MODAL 9: ADD / EDIT INFLUENCER PARTNER
       ══════════════════════════════════════════════════════════════════ */}
       {isInfluencerModalOpen && (
-        <div className="fixed inset-0 z-[100] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/60 backdrop-blur-xs animate-fadeIn">
+        <div className="fixed inset-0 z-[200] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/60 backdrop-blur-xs animate-fadeIn pb-24 sm:pb-6 safe-area-pb">
           <div className="w-full max-w-md bg-white rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 shadow-2xl border border-teal-900/10 max-h-[92vh] overflow-y-auto">
             <div className="sm:hidden mx-auto w-12 h-1.5 rounded-full bg-teal-900/20 mb-2 shrink-0" />
             <div className="flex items-center justify-between pb-4 border-b border-teal-900/10">
@@ -6056,7 +6059,7 @@ export function AdminTelecallerCRM() {
       {/* ── MODAL: ADJUST DONATION AMOUNT & APPROVE ── */}
       {adjustingDonation && (
         <div
-          className="fixed inset-0 z-[100] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/60 backdrop-blur-xs animate-fadeIn"
+          className="fixed inset-0 z-[200] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/60 backdrop-blur-xs animate-fadeIn pb-24 sm:pb-6 safe-area-pb"
           onClick={() => setAdjustingDonation(null)}
         >
           <div
@@ -6138,7 +6141,7 @@ export function AdminTelecallerCRM() {
       {/* ── MODAL: REJECT DONATION CLAIM ── */}
       {rejectingDonation && (
         <div
-          className="fixed inset-0 z-[100] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/60 backdrop-blur-xs animate-fadeIn"
+          className="fixed inset-0 z-[200] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/60 backdrop-blur-xs animate-fadeIn pb-24 sm:pb-6 safe-area-pb"
           onClick={() => setRejectingDonation(null)}
         >
           <div
@@ -6207,7 +6210,7 @@ export function AdminTelecallerCRM() {
       {/* ── MODAL: TELECALLER DONATION AUDIT LEDGER ── */}
       {selectedCallerForLedger && (
         <div
-          className="fixed inset-0 z-[100] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/60 backdrop-blur-xs animate-fadeIn"
+          className="fixed inset-0 z-[200] flex flex-col justify-end sm:justify-center sm:items-center p-0 sm:p-4 bg-teal-950/60 backdrop-blur-xs animate-fadeIn pb-24 sm:pb-6 safe-area-pb"
           onClick={() => setSelectedCallerForLedger(null)}
         >
           <div
