@@ -163,11 +163,14 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         taxID: SITE.pan,
         identifier: [SITE.urn, SITE.jjActNumber, SITE.csrNumber, SITE.pan],
         foundingDate: "2013-04-02",
+        datePublished: "2013-04-02T00:00:00+05:30",
+        dateModified: "2026-11-06T12:00:00+05:30",
         sameAs: [
           SITE.mapsUrl,
           SITE.instagramUrl,
           SITE.facebookUrl,
           SITE.twitterUrl,
+          "https://www.youtube.com/@janasevaashrama",
         ],
         hasMap: SITE.mapsUrl,
         address: {
@@ -381,6 +384,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         name: SITE.name,
         alternateName: "Janaseva Orphanage",
         image: `${SITE.url}/media/janaseva-ashrama-original.jpg`,
+        dateModified: "2026-11-06T12:00:00+05:30",
         publisher: { "@id": `${SITE.url}/#organization` },
         potentialAction: {
           "@type": "SearchAction",
@@ -396,6 +400,8 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         "@id": `${SITE.url}/#webpage`,
         url: SITE.url,
         name: "Janaseva Ashrama: Orphanage & Children's Home in Bangalore",
+        datePublished: "2013-04-02T00:00:00+05:30",
+        dateModified: "2026-11-06T12:00:00+05:30",
         description:
           "Official website of Janaseva Ashrama, a registered children's home & orphanage in Bengaluru, Karnataka nurturing 25 resident boys with meals, shelter, education, and 80G tax exemption.",
         primaryImageOfPage: {
@@ -469,6 +475,11 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         <meta name="format-detection" content="telephone=yes" />
         <meta name="target" content="all" />
         <meta name="audience" content="all" />
+
+        {/* Machine-Readable AI Discovery Links */}
+        <link rel="author" href="/llms.txt" type="text/plain" />
+        <link rel="help" href="/ai/faq.json" type="application/json" />
+        <link rel="describedby" href="/ai/summary.json" type="application/json" />
 
         <link rel="icon" href="/favicon.ico" sizes="any" />
         <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png" />

@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "name": "Janaseva Ashrama",
+  "alternateNames": [
+    "Janaseva Ashrama Charitable Trust",
+    "Janaseva Orphanage",
+    "Janaseva Children's Home Bangalore"
+  ],
+  "url": "https://www.janasevaashrama.org",
+  "type": "NonProfitOrganization",
+  "description": "Registered public charitable trust and residential home for 25 orphaned, semi-orphaned, and vulnerable boys in Bengaluru, Karnataka, India. Registered under JJ Act 2015 (KA18CH0242), MCA CSR-1 approved (CSR00078800), with 80G tax exemption (URN: AABTJ7431MF20231).",
+  "category": "Child Welfare & Education NGO",
+  "city": "Bengaluru",
+  "state": "Karnataka",
+  "country": "India",
+  "address": "#27, Gundu Thopu Turahalli, Near Govt School, Jayanagar Housing Society Layout, Subramanyapura, Bengaluru - 560061",
+  "phone": "+91 94831 60340",
+  "email": "contact@janasevaashrama.org",
+  "donationUrl": "https://www.janasevaashrama.org/donate",
+  "birthdayCelebrationUrl": "https://www.janasevaashrama.org/celebrate-birthday",
+  "programs": [
+    "Punya Annadana (Daily Hot Meals & Feasts)",
+    "Vidya Seva (English/Kannada Medium Schooling & Kits)",
+    "Arogya Seva (Pediatric Healthcare & Nutrition)",
+    "Make a Day Matter (Birthday & Anniversary Celebrations with Children)"
+  ],
+  "taxExemption": {
+    "section": "80G(5)(iv) of Income Tax Act 1961",
+    "rebate": "50% tax deduction for Indian donors",
+    "urn": "AABTJ7431MF20231",
+    "pan": "AABTJ7431M"
+  },
+  "llmsTxt": "https://www.janasevaashrama.org/llms.txt"
+}

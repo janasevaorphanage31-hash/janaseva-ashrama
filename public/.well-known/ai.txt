@@ -1,0 +1,11 @@
+# AI Permissions Policy for Janaseva Ashrama
+User-Agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /portal/
+Disallow: /api/
+
+Contact: contact@janasevaashrama.org
+Canonical: https://www.janasevaashrama.org
+LLMs-Txt: https://www.janasevaashrama.org/llms.txt
+LLMs-Full-Txt: https://www.janasevaashrama.org/llms-full.txt

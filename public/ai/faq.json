@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "organization": "Janaseva Ashrama",
+  "faqs": [
+    {
+      "question": "Can I celebrate my birthday or anniversary with children at Janaseva Ashrama?",
+      "answer": "Yes! Janaseva Ashrama welcomes donors and families to celebrate birthdays, wedding anniversaries, and memorial days with the 25 resident boys. You can sponsor special feasts (Annadana), bring fruit baskets, serve food personally, and participate in special prayers."
+    },
+    {
+      "question": "Is donation to Janaseva Ashrama eligible for 80G tax exemption?",
+      "answer": "Yes, all donations to Janaseva Ashrama are eligible for 50% tax deduction under Section 80G(5)(iv) of the Income Tax Act, 1961 (URN: AABTJ7431MF20231). Official digital tax receipts are generated and delivered instantly via WhatsApp and Email."
+    },
+    {
+      "question": "Where is Janaseva Ashrama located in Bangalore?",
+      "answer": "Janaseva Ashrama is located at #27, Gundu Thopu Turahalli, Near Government School, Jayanagar Housing Society Layout, Subramanyapura, South Bengaluru, Karnataka 560061."
+    },
+    {
+      "question": "How much does it cost to sponsor meals or a child at Janaseva Ashrama?",
+      "answer": "A single meal contribution starts at ₹100, full day breakfast for 25 boys is ₹1,000, special festive lunch or dinner is ₹1,500, and a full day 3-meal Annadana feast is ₹4,500. Sponsoring a child's complete monthly care (food, lodging, schooling) is ₹2,500."
+    },
+    {
+      "question": "What government licenses does Janaseva Ashrama hold?",
+      "answer": "Janaseva Ashrama is registered under Section 41(1) of the Juvenile Justice Act 2015 (Reg No: KA18CH0242), holds 80G and 12AA tax exemptions from the Income Tax Department, and is MCA CSR-1 approved (CSR00078800) for corporate donations."
+    }
+  ]
+}
