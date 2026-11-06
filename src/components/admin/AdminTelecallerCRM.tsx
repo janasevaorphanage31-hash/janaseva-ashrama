@@ -324,7 +324,9 @@ export function AdminTelecallerCRM() {
         }
       }
       await Promise.all([
-        loadLeadsForReassignment(selectedCallerForLeads || "ALL"),
+        selectedCallerForLeads && selectedCallerForLeads !== "ALL"
+          ? loadLeadsForReassignment(selectedCallerForLeads)
+          : Promise.resolve(),
         loadInfluencers(),
         loadFinancialData(),
       ]);

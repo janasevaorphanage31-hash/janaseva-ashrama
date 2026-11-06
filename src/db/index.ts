@@ -31,6 +31,13 @@ export async function ensureDbSchema(): Promise<void> {
   if (!globalForDb.__arenaNextJsSchemaPromise) {
     globalForDb.__arenaNextJsSchemaPromise = (async () => {
       try {
+        // Fast probe: If ag_leads already exists, schema is initialized.
+        // Skipping 400 lines of DDL on every cold start saves ~1.5s CPU time on Vercel!
+        const probe = await pool.query(`SELECT 1 FROM information_schema.tables WHERE table_name = 'ag_leads' LIMIT 1;`);
+        if (probe.rows.length > 0) {
+          return;
+        }
+
         await pool.query(`
           CREATE TABLE IF NOT EXISTS recurring_subscriptions (
             id SERIAL PRIMARY KEY,

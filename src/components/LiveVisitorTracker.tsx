@@ -76,17 +76,8 @@ function VisitorBeaconInner() {
     const utmMedium = searchParams?.get("utm_medium") || "";
     const utmCampaign = searchParams?.get("utm_campaign") || "";
 
-    // Send page view ping
-    sendVisitorPing({
-      path: currentPath,
-      pageTitle: title,
-      referrer: lastPath.current ? lastPath.current : referrer,
-      utmSource,
-      utmMedium,
-      utmCampaign,
-      action: "page_view",
-    });
-
+    // In Zero-Resource Free Tier mode: skip waking serverless functions for raw page_views
+    // Milestone interactions (donations, forms, clicks) still track via trackVisitorAction
     lastPath.current = currentPath;
 
     // In zero-resource mode: send 1 page view ping per navigation.
