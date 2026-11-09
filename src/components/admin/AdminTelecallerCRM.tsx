@@ -5,7 +5,13 @@ import Link from "next/link";
 import * as XLSX from "xlsx";
 import { formatINR } from "@/lib/site";
 import { LogoMark } from "@/components/Logo";
-import type { TelecallerStats, CrmWhatsAppSettings, InfluencerStats } from "@/lib/antigravity-crm";
+import type {
+  TelecallerStats,
+  CrmWhatsAppSettings,
+  InfluencerStats,
+  AdminFloorTodayStats,
+  AdminRecentCallLog,
+} from "@/lib/antigravity-crm";
 import { AntiBanWhatsAppModal } from "@/components/admin/AntiBanWhatsAppModal";
 import { validateIndianMobile } from "@/lib/indian-phone-validator";
 import {
@@ -24,6 +30,10 @@ export function AdminTelecallerCRM() {
   const [totalDonations, setTotalDonations] = useState(0);
   const [totalRevenue, setTotalRevenue] = useState(0);
   const [streamCounts, setStreamCounts] = useState<{ DIRECT_DONOR: number; PARENTS: number }>({ DIRECT_DONOR: 0, PARENTS: 0 });
+  const [todayFloorStats, setTodayFloorStats] = useState<AdminFloorTodayStats | null>(null);
+  const [recentCallFeed, setRecentCallFeed] = useState<AdminRecentCallLog[]>([]);
+  const [showLiveStream, setShowLiveStream] = useState<boolean>(true);
+  const [callerRosterFilter, setCallerRosterFilter] = useState<"ALL" | "ACTIVE_TODAY" | "ABSENT">("ALL");
 
   // Bulk Reassignment State
   const [selectedCallerForLeads, setSelectedCallerForLeads] = useState<string>("ALL");
@@ -311,6 +321,12 @@ export function AdminTelecallerCRM() {
         setTotalRevenue(data.totalRevenue || 0);
         if (data.streamCounts) {
           setStreamCounts(data.streamCounts);
+        }
+        if (data.todayStats) {
+          setTodayFloorStats(data.todayStats);
+        }
+        if (data.recentCallFeed) {
+          setRecentCallFeed(data.recentCallFeed);
         }
 
         if (data.crmWhatsAppSettings) {
@@ -2005,10 +2021,12 @@ export function AdminTelecallerCRM() {
   };
 
   // ── EXPORT AGENCY REPORT (CSV) ──
-  const handleTriggerCSVDownload = (type: "performance" | "leads" | "donations" | "roster") => {
+  const handleTriggerCSVDownload = (
+    type: "performance" | "leads" | "donations" | "roster" | "today_calls" | "shift_summary" | "all_calls"
+  ) => {
     window.open(`/api/v1/admin/telecallers/export?type=${type}`, "_blank");
     setIsExportMenuOpen(false);
-    showToast(`✓ Initiated ${type.toUpperCase()} CSV export download`);
+    showToast(`✓ Initiated ${type.toUpperCase().replace("_", " ")} CSV export download`);
   };
 
   // ── TELECALLER CREDENTIALS & ACCESS MODAL HANDLERS ──
@@ -2231,12 +2249,28 @@ export function AdminTelecallerCRM() {
   };
 
   // Agency Metrics calculations
-  const activeCallersCount = callers.filter((c) => c.isActive).length;
+  const activeCallersCount = callers.filter((c) => c.callerId !== "ADMIN" && c.isActive).length;
+  const callersActiveTodayCount = callers.filter((c) => c.callerId !== "ADMIN" && (c.todayContactedCount || 0) > 0).length;
+  const totalCallsToday = todayFloorStats?.totalCalls ?? callers.reduce((sum, c) => sum + (c.todayContactedCount || 0), 0);
+  const totalHotLeadsToday = todayFloorStats?.hotLeadsCount ?? callers.reduce((sum, c) => {
+    const dis = c.todayDispositions || {};
+    return sum + (dis["Interested"] || 0) + (dis["Donated"] || 0);
+  }, 0);
   const totalContacted = callers.reduce((sum, c) => sum + c.contactedCount, 0);
   const totalAssigned = callers.reduce((sum, c) => sum + c.assignedCount, 0);
   const contactRate = totalAssigned > 0 ? ((totalContacted / totalAssigned) * 100).toFixed(1) : "0.0";
   const avgDonationTicket = totalDonations > 0 ? Math.round(totalRevenue / totalDonations) : 0;
   const equalQuotaPerCaller = activeCallersCount > 0 ? Math.floor(totalLeads / activeCallersCount) : 0;
+
+  const filteredRosterCallers = useMemo(() => {
+    if (callerRosterFilter === "ACTIVE_TODAY") {
+      return callers.filter((c) => (c.todayContactedCount || 0) > 0);
+    }
+    if (callerRosterFilter === "ABSENT") {
+      return callers.filter((c) => c.isWorkingToday === false || !c.isActive);
+    }
+    return callers;
+  }, [callers, callerRosterFilter]);
 
   return (
     <div className="space-y-8">
@@ -2467,6 +2501,27 @@ export function AdminTelecallerCRM() {
                     Agency Campaign Reports (CSV)
                   </div>
                   <button
+                    onClick={() => handleTriggerCSVDownload("today_calls")}
+                    className="w-full text-left px-3 py-2 text-xs font-bold text-amber-950 bg-amber-50 hover:bg-amber-100 rounded-xl transition flex items-center justify-between border border-amber-300"
+                  >
+                    <span>📞 Today&apos;s Shift Call Logs</span>
+                    <span className="text-[10px] bg-amber-900 text-white px-1.5 py-0.5 rounded font-mono font-bold">.CSV</span>
+                  </button>
+                  <button
+                    onClick={() => handleTriggerCSVDownload("shift_summary")}
+                    className="w-full text-left px-3 py-2 text-xs font-bold text-teal-950 bg-teal-50 hover:bg-teal-100 rounded-xl transition flex items-center justify-between border border-teal-200"
+                  >
+                    <span>📊 Today&apos;s Shift Scorecard</span>
+                    <span className="text-[10px] bg-teal-950 text-gold px-1.5 py-0.5 rounded font-mono font-bold">.CSV</span>
+                  </button>
+                  <button
+                    onClick={() => handleTriggerCSVDownload("all_calls")}
+                    className="w-full text-left px-3 py-2 text-xs font-bold hover:bg-amber-50 rounded-xl transition flex items-center justify-between"
+                  >
+                    <span>📁 All Call Logs Audit</span>
+                    <span className="text-[10px] text-teal-950/50">.CSV</span>
+                  </button>
+                  <button
                     onClick={() => handleTriggerCSVDownload("performance")}
                     className="w-full text-left px-3 py-2 text-xs font-bold hover:bg-amber-50 rounded-xl transition flex items-center justify-between"
                   >
@@ -2543,6 +2598,39 @@ export function AdminTelecallerCRM() {
                     </button>
                   </div>
                   <div className="space-y-1.5 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => handleTriggerCSVDownload("today_calls")}
+                      className="w-full p-3 rounded-2xl bg-amber-50 hover:bg-amber-100 border-2 border-amber-400 text-left flex items-center justify-between transition cursor-pointer"
+                    >
+                      <div>
+                        <span className="font-bold text-xs text-amber-950 block">📞 Today&apos;s Shift Call Logs</span>
+                        <span className="text-[10px] text-amber-900/80">Every call dialed today with notes &amp; dispositions</span>
+                      </div>
+                      <span className="font-mono text-[10px] font-bold bg-amber-900 text-white px-2 py-0.5 rounded-md">.CSV</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleTriggerCSVDownload("shift_summary")}
+                      className="w-full p-3 rounded-2xl bg-teal-50 hover:bg-teal-100 border border-teal-200 text-left flex items-center justify-between transition cursor-pointer"
+                    >
+                      <div>
+                        <span className="font-bold text-xs text-teal-950 block">📊 Today&apos;s Shift Scorecard</span>
+                        <span className="text-[10px] text-teal-900/80">Per-caller breakdown of today&apos;s dials &amp; status</span>
+                      </div>
+                      <span className="font-mono text-[10px] font-bold bg-teal-950 text-gold px-2 py-0.5 rounded-md">.CSV</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleTriggerCSVDownload("all_calls")}
+                      className="w-full p-3 rounded-2xl bg-cream/50 hover:bg-cream border border-teal-900/10 text-left flex items-center justify-between transition cursor-pointer"
+                    >
+                      <div>
+                        <span className="font-bold text-xs text-teal-950 block">📁 All Call Logs Audit History</span>
+                        <span className="text-[10px] text-teal-950/60">Complete calling audit trail</span>
+                      </div>
+                      <span className="font-mono text-[10px] font-bold bg-teal-950 text-gold px-2 py-0.5 rounded-md">.CSV</span>
+                    </button>
                     <button
                       type="button"
                       onClick={() => handleTriggerCSVDownload("performance")}
@@ -2837,90 +2925,257 @@ export function AdminTelecallerCRM() {
       ══════════════════════════════════════════════════════════════════ */}
       {activeSubtab === "callers" && (
         <div className="space-y-6">
-          {/* ── 1. AGENCY SALES CAMPAIGN KPIS (6 TILES) ── */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3.5">
-        <div className="rounded-2xl bg-white p-4 shadow-sm border border-teal-900/10">
-          <span className="text-[10px] font-black uppercase tracking-wider text-teal-950/60 block">
-            Attributed Revenue
-          </span>
-          <p className="mt-1 font-display text-xl sm:text-2xl font-black text-teal-950">
-            {formatINR(totalRevenue)}
-          </p>
-          <span className="text-[10px] text-emerald-700 font-bold mt-0.5 block">
-            {totalDonations} completed gifts
-          </span>
-        </div>
+          {/* ── 1. REAL-TIME FLOOR PULSE: TODAY'S SHIFT KPI BANNER ── */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
+            {/* TILE 1: TODAY'S CALLS DIALED */}
+            <div className="col-span-2 sm:col-span-1 rounded-2xl bg-gradient-to-br from-amber-500/20 via-amber-500/10 to-white p-4 shadow-sm border-2 border-amber-500/50 relative overflow-hidden">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-black uppercase tracking-wider text-amber-950 block">
+                  📞 Calls Today
+                </span>
+                <span className="flex h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" title="Live Floor Sync" />
+              </div>
+              <p className="mt-1 font-display text-2xl sm:text-3xl font-black text-amber-950">
+                {totalCallsToday.toLocaleString()}
+              </p>
+              <span className="text-[11px] text-amber-900 font-bold mt-0.5 block">
+                🎯 {callersActiveTodayCount} of {activeCallersCount} active today
+              </span>
+            </div>
 
-        <div className="rounded-2xl bg-white p-4 shadow-sm border border-teal-900/10">
-          <span className="text-[10px] font-black uppercase tracking-wider text-teal-950/60 block">
-            Telecallers
-          </span>
-          <p className="mt-1 font-display text-xl sm:text-2xl font-black text-teal-950">
-            {activeCallersCount} / {callers.length}
-          </p>
-          <span className="text-[10px] text-teal-950/60 font-semibold mt-0.5 block">
-            {activeCallersCount * 50} calls / day quota
-          </span>
-        </div>
+            {/* TILE 2: TODAY'S HOT LEADS */}
+            <div className="rounded-2xl bg-white p-4 shadow-sm border border-teal-900/10">
+              <span className="text-[10px] font-black uppercase tracking-wider text-teal-950/60 block">
+                🔥 Hot Leads Today
+              </span>
+              <p className="mt-1 font-display text-2xl sm:text-3xl font-black text-emerald-800">
+                {totalHotLeadsToday}
+              </p>
+              <span className="text-[10px] text-emerald-700 font-bold mt-0.5 block">
+                {todayFloorStats?.dispositions?.["Interested"] || 0} Interested · {todayFloorStats?.dispositions?.["Donated"] || 0} Donated
+              </span>
+            </div>
 
-        <div className="rounded-2xl bg-white p-4 shadow-sm border border-teal-900/10">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-black uppercase tracking-wider text-teal-950/60 block">
-              Managed Leads
-            </span>
-            <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-md bg-teal-50 text-teal-800 border border-teal-200">
-              Dual Stream
-            </span>
+            {/* TILE 3: TOTAL CONTACTED ALL-TIME */}
+            <div className="rounded-2xl bg-white p-4 shadow-sm border border-teal-900/10">
+              <span className="text-[10px] font-black uppercase tracking-wider text-teal-950/60 block">
+                📞 Total Contacted
+              </span>
+              <p className="mt-1 font-display text-xl sm:text-2xl font-black text-teal-950">
+                {totalContacted.toLocaleString()}
+              </p>
+              <span className="text-[10px] text-blue-700 font-bold mt-0.5 block">
+                {contactRate}% floor reach rate
+              </span>
+            </div>
+
+            {/* TILE 4: MANAGED LEADS */}
+            <div className="rounded-2xl bg-white p-4 shadow-sm border border-teal-900/10">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-black uppercase tracking-wider text-teal-950/60 block">
+                  📋 Managed Leads
+                </span>
+                <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-md bg-teal-50 text-teal-800 border border-teal-200">
+                  Dual Stream
+                </span>
+              </div>
+              <p className="mt-1 font-display text-xl sm:text-2xl font-black text-teal-950">
+                {totalLeads.toLocaleString()}
+              </p>
+              <div className="flex flex-wrap items-center gap-1 text-[9px] font-bold mt-1">
+                <span className="text-amber-800 bg-amber-50 px-1 py-0.5 rounded border border-amber-200">
+                  🎂 {streamCounts.DIRECT_DONOR.toLocaleString()}
+                </span>
+                <span className="text-indigo-800 bg-indigo-50 px-1 py-0.5 rounded border border-indigo-200">
+                  👨‍👩‍👧 {streamCounts.PARENTS.toLocaleString()}
+                </span>
+              </div>
+            </div>
+
+            {/* TILE 5: ATTRIBUTED REVENUE */}
+            <div className="rounded-2xl bg-white p-4 shadow-sm border border-teal-900/10">
+              <span className="text-[10px] font-black uppercase tracking-wider text-teal-950/60 block">
+                💰 Attributed Revenue
+              </span>
+              <p className="mt-1 font-display text-xl sm:text-2xl font-black text-teal-950">
+                {formatINR(totalRevenue)}
+              </p>
+              <span className="text-[10px] text-emerald-700 font-bold mt-0.5 block">
+                {totalDonations} completed gifts
+              </span>
+            </div>
+
+            {/* TILE 6: TODAY'S CLAIMS */}
+            <div className="rounded-2xl bg-white p-4 shadow-sm border border-teal-900/10">
+              <span className="text-[10px] font-black uppercase tracking-wider text-teal-950/60 block">
+                💰 Today&apos;s Claims
+              </span>
+              <p className="mt-1 font-display text-xl sm:text-2xl font-black text-emerald-900">
+                ₹{formatINR(finStats?.today?.claimed || 0)}
+              </p>
+              <span className="text-[10px] text-emerald-800 font-bold mt-0.5 block">
+                ₹{formatINR(finStats?.today?.verified || 0)} verified credits
+              </span>
+            </div>
           </div>
-          <p className="mt-1 font-display text-xl sm:text-2xl font-black text-teal-950">
-            {totalLeads.toLocaleString()} Leads
-          </p>
-          <div className="flex flex-wrap items-center gap-1.5 text-[10px] font-bold mt-1">
-            <span className="text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
-              🎂 Donors: {streamCounts.DIRECT_DONOR.toLocaleString()}
-            </span>
-            <span className="text-indigo-800 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-200">
-              👨‍👩‍👧 Parents: {streamCounts.PARENTS.toLocaleString()}
-            </span>
+
+          {/* ── TODAY'S FLOOR DISPOSITION DISTRIBUTION PILLS ── */}
+          {todayFloorStats?.dispositions && Object.keys(todayFloorStats.dispositions).length > 0 && (
+            <div className="rounded-2xl bg-white p-3.5 shadow-xs border border-teal-900/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="text-xs font-black uppercase tracking-wider text-teal-950">
+                  📊 Today&apos;s Floor Dispositions:
+                </span>
+                <span className="text-xs font-mono font-bold bg-amber-100 text-amber-900 px-2 py-0.5 rounded-full">
+                  {totalCallsToday} calls dialed
+                </span>
+              </div>
+              <div className="flex flex-wrap items-center gap-1.5 text-xs font-semibold">
+                {todayFloorStats.dispositions["Interested"] && (
+                  <span className="rounded-lg bg-blue-50 text-blue-800 border border-blue-200 px-2 py-1 font-bold">
+                    💡 Interested: {todayFloorStats.dispositions["Interested"]}
+                  </span>
+                )}
+                {todayFloorStats.dispositions["Donated"] && (
+                  <span className="rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 px-2 py-1 font-bold">
+                    🙏 Donated: {todayFloorStats.dispositions["Donated"]}
+                  </span>
+                )}
+                {todayFloorStats.dispositions["Reschedule"] && (
+                  <span className="rounded-lg bg-indigo-50 text-indigo-800 border border-indigo-200 px-2 py-1 font-bold">
+                    ⏰ Callbacks: {todayFloorStats.dispositions["Reschedule"]}
+                  </span>
+                )}
+                {todayFloorStats.dispositions["No_Answer"] && (
+                  <span className="rounded-lg bg-amber-50 text-amber-900 border border-amber-200 px-2 py-1">
+                    📳 Ringing / No Answer: {todayFloorStats.dispositions["No_Answer"]}
+                  </span>
+                )}
+                {todayFloorStats.dispositions["Not_Reachable"] && (
+                  <span className="rounded-lg bg-orange-50 text-orange-900 border border-orange-200 px-2 py-1">
+                    📵 Not Reachable: {todayFloorStats.dispositions["Not_Reachable"]}
+                  </span>
+                )}
+                {todayFloorStats.dispositions["Busy"] && (
+                  <span className="rounded-lg bg-yellow-50 text-yellow-900 border border-yellow-200 px-2 py-1">
+                    ⏳ Busy: {todayFloorStats.dispositions["Busy"]}
+                  </span>
+                )}
+                {todayFloorStats.dispositions["Wrong_Number"] && (
+                  <span className="rounded-lg bg-rose-50 text-rose-800 border border-rose-200 px-2 py-1">
+                    ❌ Wrong: {todayFloorStats.dispositions["Wrong_Number"]}
+                  </span>
+                )}
+                {todayFloorStats.dispositions["Rejected"] && (
+                  <span className="rounded-lg bg-gray-100 text-gray-700 border border-gray-200 px-2 py-1">
+                    🚫 Rejected: {todayFloorStats.dispositions["Rejected"]}
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ── LIVE FLOOR ACTIVITY STREAM (LAST 50 CALLS) ── */}
+          <div className="rounded-3xl bg-white shadow-sm border border-teal-900/10 overflow-hidden">
+            <div className="p-4 sm:p-5 bg-teal-950 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <span className="flex h-3 w-3 rounded-full bg-emerald-400 animate-pulse" />
+                <h3 className="font-display text-sm sm:text-base font-black text-amber-300">
+                  🔴 Live Floor Activity Stream
+                </h3>
+                <span className="text-[11px] font-mono font-bold bg-teal-900 text-teal-200 px-2 py-0.5 rounded-full">
+                  Latest {recentCallFeed.length} calls
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => void loadAdminData()}
+                  className="text-xs font-bold text-amber-300 hover:text-white bg-teal-900 hover:bg-teal-800 px-3 py-1.5 rounded-xl transition cursor-pointer flex items-center gap-1.5"
+                >
+                  <span>🔄 Refresh Stream</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowLiveStream(!showLiveStream)}
+                  className="text-xs font-bold text-teal-200 hover:text-white bg-teal-900/60 px-3 py-1.5 rounded-xl transition cursor-pointer"
+                >
+                  {showLiveStream ? "Hide Feed ▲" : "Show Feed ▼"}
+                </button>
+              </div>
+            </div>
+
+            {showLiveStream && (
+              <div className="divide-y divide-teal-900/5 max-h-[380px] overflow-y-auto font-sans">
+                {recentCallFeed.length === 0 ? (
+                  <div className="p-8 text-center text-xs text-teal-950/60">
+                    No call activity recorded yet today. When telecallers make calls, live entries will stream here in real time!
+                  </div>
+                ) : (
+                  recentCallFeed.map((log) => {
+                    const dateObj = new Date(log.createdAt);
+                    const timeStr = dateObj.toLocaleTimeString("en-IN", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      second: "2-digit",
+                      hour12: true,
+                    });
+
+                    const dispoUpper = (log.disposition || "").toUpperCase();
+                    let badgeClass = "bg-gray-100 text-gray-800 border-gray-300";
+                    if (dispoUpper.includes("DONAT")) badgeClass = "bg-emerald-100 text-emerald-900 border-emerald-300 font-black";
+                    else if (dispoUpper.includes("INTEREST")) badgeClass = "bg-blue-100 text-blue-900 border-blue-300 font-bold";
+                    else if (dispoUpper.includes("RESCHED") || dispoUpper.includes("CALL")) badgeClass = "bg-indigo-100 text-indigo-900 border-indigo-300 font-bold";
+                    else if (dispoUpper.includes("BUSY") || dispoUpper.includes("ANSWER") || dispoUpper.includes("REACH")) badgeClass = "bg-amber-100 text-amber-900 border-amber-300";
+                    else if (dispoUpper.includes("REJECT") || dispoUpper.includes("WRONG")) badgeClass = "bg-rose-100 text-rose-900 border-rose-300";
+
+                    return (
+                      <div key={log.logId} className="p-3.5 hover:bg-cream/40 transition flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                        <div className="flex items-start sm:items-center gap-3">
+                          <span className="font-mono text-[11px] text-teal-950/60 font-semibold shrink-0 pt-0.5 sm:pt-0">
+                            {timeStr}
+                          </span>
+                          <span className="font-bold text-teal-950 bg-teal-50 border border-teal-200/80 px-2 py-0.5 rounded-md shrink-0">
+                            {log.callerName} <span className="font-mono text-[10px] text-teal-950/60">({log.callerId})</span>
+                          </span>
+                          <div className="min-w-0">
+                            <span className="font-bold text-teal-950 block sm:inline truncate max-w-[220px]">
+                              {log.leadName}
+                            </span>
+                            {log.leadPhone && (
+                              <span className="text-[11px] text-teal-950/60 font-mono ml-0 sm:ml-1.5">
+                                (+91 {log.leadPhone.slice(0, 4)}***{log.leadPhone.slice(-3)})
+                              </span>
+                            )}
+                            {log.notes && (
+                              <p className="text-[11px] text-teal-950/80 italic mt-0.5">
+                                &quot;{log.notes}&quot;
+                              </p>
+                            )}
+                            {log.reason && !log.notes && (
+                              <span className="text-[11px] text-teal-950/70 block mt-0.5">
+                                {log.reason}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                          {log.amount && log.amount > 0 && (
+                            <span className="font-black text-emerald-800 bg-emerald-50 border border-emerald-300 px-2 py-0.5 rounded-md font-mono">
+                              ₹{formatINR(log.amount)}
+                            </span>
+                          )}
+                          <span className={`px-2.5 py-1 rounded-lg text-[11px] border capitalize ${badgeClass}`}>
+                            {log.disposition.replace("_", " ")}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            )}
           </div>
-        </div>
-
-        <div className="rounded-2xl bg-white p-4 shadow-sm border border-teal-900/10">
-          <span className="text-[10px] font-black uppercase tracking-wider text-teal-950/60 block">
-            Calls Contacted
-          </span>
-          <p className="mt-1 font-display text-xl sm:text-2xl font-black text-teal-950">
-            {totalContacted}
-          </p>
-          <span className="text-[10px] text-blue-700 font-bold mt-0.5 block">
-            {contactRate}% contact rate
-          </span>
-        </div>
-
-        <div className="rounded-2xl bg-white p-4 shadow-sm border border-teal-900/10">
-          <span className="text-[10px] font-black uppercase tracking-wider text-teal-950/60 block">
-            Conversion Rate
-          </span>
-          <p className="mt-1 font-display text-xl sm:text-2xl font-black text-saffron-dark">
-            {totalLeads > 0 ? ((totalDonations / totalLeads) * 100).toFixed(1) : 0}%
-          </p>
-          <span className="text-[10px] text-teal-950/60 font-semibold mt-0.5 block">
-            Lead to verified payment
-          </span>
-        </div>
-
-        <div className="rounded-2xl bg-white p-4 shadow-sm border border-teal-900/10">
-          <span className="text-[10px] font-black uppercase tracking-wider text-teal-950/60 block">
-            Average Ticket (AOV)
-          </span>
-          <p className="mt-1 font-display text-xl sm:text-2xl font-black text-teal-950">
-            {formatINR(avgDonationTicket)}
-          </p>
-          <span className="text-[10px] text-teal-950/60 font-semibold mt-0.5 block">
-            Per attributed donation
-          </span>
-        </div>
-      </div>
 
       {/* ── 2. EQUAL LEAD DISTRIBUTION & ROUTING CONTROLS ── */}
       <div className="rounded-3xl bg-amber-50/60 p-5 border border-amber-200/80 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -3137,15 +3392,40 @@ export function AdminTelecallerCRM() {
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
-            <span className="rounded-full bg-emerald-100 text-emerald-800 px-3 py-1 text-xs font-black">
-              {activeCallersCount} Active
-            </span>
-            {callers.length - activeCallersCount > 0 && (
-              <span className="rounded-full bg-slate-100 text-slate-700 px-3 py-1 text-xs font-bold">
-                {callers.length - activeCallersCount} Inactive
-              </span>
-            )}
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setCallerRosterFilter("ALL")}
+              className={`rounded-full px-3 py-1 text-xs font-bold transition cursor-pointer ${
+                callerRosterFilter === "ALL"
+                  ? "bg-teal-950 text-gold shadow-xs"
+                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+              }`}
+            >
+              All ({callers.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setCallerRosterFilter("ACTIVE_TODAY")}
+              className={`rounded-full px-3 py-1 text-xs font-bold transition cursor-pointer ${
+                callerRosterFilter === "ACTIVE_TODAY"
+                  ? "bg-amber-600 text-white shadow-xs"
+                  : "bg-amber-100 text-amber-900 hover:bg-amber-200"
+              }`}
+            >
+              🎯 Active Today ({callersActiveTodayCount})
+            </button>
+            <button
+              type="button"
+              onClick={() => setCallerRosterFilter("ABSENT")}
+              className={`rounded-full px-3 py-1 text-xs font-bold transition cursor-pointer ${
+                callerRosterFilter === "ABSENT"
+                  ? "bg-rose-600 text-white shadow-xs"
+                  : "bg-rose-100 text-rose-900 hover:bg-rose-200"
+              }`}
+            >
+              🔴 Absent / Paused ({callers.length - activeCallersCount})
+            </button>
           </div>
         </div>
 
@@ -3158,7 +3438,8 @@ export function AdminTelecallerCRM() {
                 <th className="p-3">Caller Name &amp; ID</th>
                 <th className="p-3">WhatsApp Mobile</th>
                 <th className="p-3">Quota</th>
-                <th className="p-3">Status</th>
+                <th className="p-3">Presence &amp; Shift</th>
+                <th className="p-3">Today&apos;s Calls</th>
                 <th className="p-3">Assigned</th>
                 <th className="p-3">Contacted</th>
                 <th className="p-3">Converted</th>
@@ -3168,7 +3449,7 @@ export function AdminTelecallerCRM() {
               </tr>
             </thead>
             <tbody className="divide-y divide-teal-900/5">
-              {callers.map((c) => {
+              {filteredRosterCallers.map((c) => {
                 return (
                   <tr
                     key={c.callerId}
@@ -3201,39 +3482,74 @@ export function AdminTelecallerCRM() {
                     <td className="p-3 font-semibold">{c.dailyQuota || 50}/day</td>
                     <td className="p-3">
                       <div className="flex flex-col gap-1 items-start">
-                        <button
-                          type="button"
-                          onClick={() => handleToggleActive(c.callerId, c.isActive)}
-                          title="Click to toggle Active / Paused state"
-                          className={`rounded-full px-2 py-0.5 text-[9px] font-black uppercase cursor-pointer transition ${
-                            c.isActive
-                              ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-200"
-                              : "bg-slate-200 text-slate-700 hover:bg-slate-300"
-                          }`}
-                        >
-                          {c.isActive ? "● Active" : "○ Paused"}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleToggleAttendance(c.callerId, c.isWorkingToday)}
-                          title="Click to toggle Today's Shift Presence (Present vs Absent)"
-                          className={`rounded-full px-2 py-0.5 text-[9px] font-black uppercase cursor-pointer transition ${
-                            c.isWorkingToday !== false
-                              ? "bg-teal-100 text-teal-800 hover:bg-teal-200"
-                              : "bg-rose-100 text-rose-800 hover:bg-rose-200"
-                          }`}
-                        >
-                          {c.isWorkingToday !== false ? "🟢 Present" : "🔴 Absent"}
-                        </button>
+                        {c.liveStatus === "ACTIVE_NOW" && (
+                          <span className="rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 px-2 py-0.5 text-[9px] font-black uppercase flex items-center gap-1">
+                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-600 animate-ping" />
+                            Calling Now
+                          </span>
+                        )}
+                        {c.liveStatus === "IDLE" && (
+                          <span className="rounded-full bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 text-[9px] font-bold uppercase">
+                            Idle
+                          </span>
+                        )}
+                        {c.liveStatus === "SUBMITTED" && (
+                          <span className="rounded-full bg-blue-100 text-blue-900 border border-blue-300 px-2 py-0.5 text-[9px] font-bold uppercase">
+                            ✓ Submitted
+                          </span>
+                        )}
+                        {c.liveStatus === "NOT_STARTED" && (
+                          <span className="rounded-full bg-gray-100 text-gray-700 px-2 py-0.5 text-[9px] font-medium">
+                            Not Started
+                          </span>
+                        )}
+                        {c.liveStatus === "ABSENT" && (
+                          <span className="rounded-full bg-rose-100 text-rose-800 px-2 py-0.5 text-[9px] font-bold uppercase">
+                            Absent
+                          </span>
+                        )}
+                        <div className="flex items-center gap-1 mt-0.5">
+                          <button
+                            type="button"
+                            onClick={() => handleToggleActive(c.callerId, c.isActive)}
+                            title="Click to toggle Active / Paused state"
+                            className={`rounded-sm px-1.5 py-0.2 text-[8px] font-black uppercase cursor-pointer transition ${
+                              c.isActive
+                                ? "bg-emerald-100 text-emerald-800 hover:bg-emerald-200"
+                                : "bg-slate-200 text-slate-700 hover:bg-slate-300"
+                            }`}
+                          >
+                            {c.isActive ? "Active" : "Paused"}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleToggleAttendance(c.callerId, c.isWorkingToday)}
+                            title="Click to toggle Today's Shift Presence (Present vs Absent)"
+                            className={`rounded-sm px-1.5 py-0.2 text-[8px] font-black uppercase cursor-pointer transition ${
+                              c.isWorkingToday !== false
+                                ? "bg-teal-100 text-teal-800 hover:bg-teal-200"
+                                : "bg-rose-100 text-rose-800 hover:bg-rose-200"
+                            }`}
+                          >
+                            {c.isWorkingToday !== false ? "Present" : "Absent"}
+                          </button>
+                        </div>
                       </div>
                     </td>
-                    <td className="p-3 font-semibold">{c.assignedCount}</td>
                     <td className="p-3">
-                      <div className="font-semibold text-teal-950">{c.contactedCount}</div>
-                      <div className="text-[10px] text-amber-700 font-bold whitespace-nowrap">
-                        🎯 {c.todayContactedCount ?? 0} today
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-display font-black text-sm text-amber-950 bg-amber-50 border border-amber-300 px-2.5 py-1 rounded-lg whitespace-nowrap">
+                          🎯 {c.todayContactedCount ?? 0} today
+                        </span>
                       </div>
+                      {c.lastCallAt && (
+                        <div className="text-[10px] text-teal-950/60 mt-0.5">
+                          Last: {new Date(c.lastCallAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true })}
+                        </div>
+                      )}
                     </td>
+                    <td className="p-3 font-semibold text-teal-950/70">{c.assignedCount}</td>
+                    <td className="p-3 font-semibold text-teal-950">{c.contactedCount}</td>
                     <td className="p-3 text-emerald-700 font-bold">{c.convertedCount}</td>
                     <td className="p-3">
                       <span className="rounded-md bg-emerald-50 text-emerald-800 px-2 py-0.5 text-[10px] font-black">
@@ -3306,7 +3622,7 @@ export function AdminTelecallerCRM() {
 
         {/* Mobile View: Telecaller Roster Cards */}
         <div className="md:hidden space-y-3 p-3">
-          {callers.map((c) => (
+          {filteredRosterCallers.map((c) => (
             <div
               key={c.callerId}
               className={`rounded-2xl p-4 bg-white border transition shadow-xs space-y-3 ${
@@ -3334,7 +3650,24 @@ export function AdminTelecallerCRM() {
                     #{c.rank}
                   </span>
                   <div className="min-w-0">
-                    <h4 className="font-bold text-teal-950 text-sm truncate">{c.name}</h4>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <h4 className="font-bold text-teal-950 text-sm truncate">{c.name}</h4>
+                      {c.liveStatus === "ACTIVE_NOW" && (
+                        <span className="rounded-full bg-emerald-100 text-emerald-800 px-1.5 py-0.2 text-[8px] font-black uppercase">
+                          Calling Now
+                        </span>
+                      )}
+                      {c.liveStatus === "IDLE" && (
+                        <span className="rounded-full bg-amber-100 text-amber-900 px-1.5 py-0.2 text-[8px] font-bold uppercase">
+                          Idle
+                        </span>
+                      )}
+                      {c.liveStatus === "SUBMITTED" && (
+                        <span className="rounded-full bg-blue-100 text-blue-900 px-1.5 py-0.2 text-[8px] font-bold uppercase">
+                          ✓ Submitted
+                        </span>
+                      )}
+                    </div>
                     <p className="text-[10px] font-mono text-teal-900/70">
                       {c.callerId} · Quota: {c.dailyQuota || 50}/day
                     </p>
@@ -3379,6 +3712,10 @@ export function AdminTelecallerCRM() {
 
               {/* Performance Metrics Grid */}
               <div className="grid grid-cols-4 gap-2 text-center text-xs">
+                <div className="rounded-xl bg-amber-500/15 p-2 border border-amber-500/40">
+                  <span className="block text-[10px] text-amber-950 font-bold uppercase">Today</span>
+                  <span className="font-black text-amber-950 text-xs">🎯 {c.todayContactedCount ?? 0}</span>
+                </div>
                 <div className="rounded-xl bg-slate-50 p-2 border border-slate-200/60">
                   <span className="block text-[10px] text-teal-950/60 uppercase">Assigned</span>
                   <span className="font-bold text-teal-950 text-xs">{c.assignedCount}</span>
@@ -3386,15 +3723,10 @@ export function AdminTelecallerCRM() {
                 <div className="rounded-xl bg-slate-50 p-2 border border-slate-200/60">
                   <span className="block text-[10px] text-teal-950/60 uppercase">Contacted</span>
                   <span className="font-bold text-teal-950 text-xs">{c.contactedCount}</span>
-                  <span className="block text-[9px] text-amber-700 font-bold whitespace-nowrap">🎯 {c.todayContactedCount ?? 0} today</span>
                 </div>
                 <div className="rounded-xl bg-emerald-50 p-2 border border-emerald-200/60">
                   <span className="block text-[10px] text-emerald-800 uppercase">Converted</span>
                   <span className="font-bold text-emerald-800 text-xs">{c.convertedCount}</span>
-                </div>
-                <div className="rounded-xl bg-amber-50 p-2 border border-amber-200/60">
-                  <span className="block text-[10px] text-amber-900 uppercase">Conv %</span>
-                  <span className="font-bold text-amber-900 text-xs">{c.conversionRate}%</span>
                 </div>
               </div>
 

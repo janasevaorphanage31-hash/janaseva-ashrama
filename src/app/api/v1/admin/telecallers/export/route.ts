@@ -49,8 +49,14 @@ export async function GET(req: Request) {
     }
 
     const exportType =
-      typeParam === "leads" || typeParam === "donations" || typeParam === "roster" || typeParam === "caller_leads"
-        ? (typeParam as "performance" | "leads" | "donations" | "roster" | "caller_leads")
+      typeParam === "leads" ||
+      typeParam === "donations" ||
+      typeParam === "roster" ||
+      typeParam === "caller_leads" ||
+      typeParam === "today_calls" ||
+      typeParam === "shift_summary" ||
+      typeParam === "all_calls"
+        ? (typeParam as "performance" | "leads" | "donations" | "roster" | "caller_leads" | "today_calls" | "shift_summary" | "all_calls")
         : "performance";
 
     const { filename, csv } = await generateAgencyCSVExport(exportType, callerIdParam || undefined);

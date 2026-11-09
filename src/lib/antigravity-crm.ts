@@ -110,6 +110,36 @@ export interface TelecallerStats {
   totalDonationAmount: number;
   rank: number;
   exportToken?: string;
+  lastCallAt?: string | null;
+  liveStatus?: "ACTIVE_NOW" | "IDLE" | "SUBMITTED" | "NOT_STARTED" | "ABSENT";
+  todayDispositions?: Record<string, number>;
+}
+
+export interface AdminFloorTodayStats {
+  totalCalls: number;
+  activeCallers: number;
+  totalCallers: number;
+  hotLeadsCount: number;
+  callbacksCount: number;
+  unreachedCount: number;
+  dispositions: Record<string, number>;
+}
+
+export interface AdminRecentCallLog {
+  logId: number;
+  leadId: number;
+  callerId: string;
+  callerName: string;
+  leadName: string;
+  leadPhone: string;
+  stream: string;
+  disposition: string;
+  reason: string | null;
+  notes: string | null;
+  amount: number | null;
+  utr: string | null;
+  callbackTime: string | null;
+  createdAt: string;
 }
 
 let telecallersSeeded = false;
@@ -1329,6 +1359,8 @@ export async function getAdminLeaderboard(): Promise<{
   totalDonations: number;
   totalRevenue: number;
   streamCounts?: { DIRECT_DONOR: number; PARENTS: number };
+  todayStats?: AdminFloorTodayStats;
+  recentCallFeed?: AdminRecentCallLog[];
   crmWhatsAppSettings: CrmWhatsAppSettings;
 }> {
   // Ensure tables and telecallers exist
@@ -1344,6 +1376,9 @@ export async function getAdminLeaderboard(): Promise<{
     donationAggRows,
     callerDonationRows,
     todayCallRows,
+    todayDispoResult,
+    todaySubsResult,
+    recentCallFeedResult,
     crmWhatsAppSettings,
   ] = await Promise.all([
     db.select().from(agTelecallers).orderBy(agTelecallers.callerId),
@@ -1378,6 +1413,43 @@ export async function getAdminLeaderboard(): Promise<{
       .from(agCallLogs)
       .where(and(gte(agCallLogs.createdAt, todayStart), lte(agCallLogs.createdAt, todayEnd)))
       .groupBy(agCallLogs.callerId),
+    db.execute(sql`
+      SELECT 
+        caller_id as "callerId",
+        disposition,
+        COUNT(*)::int as count,
+        MAX(created_at) as "lastCallAt"
+      FROM ag_call_logs
+      WHERE created_at BETWEEN ${todayStart} AND ${todayEnd}
+      GROUP BY caller_id, disposition;
+    `),
+    db.execute(sql`
+      SELECT caller_id as "callerId", status 
+      FROM ag_daily_submissions 
+      WHERE submission_date = ${todayISTStr};
+    `),
+    db.execute(sql`
+      SELECT 
+        c.log_id as "logId",
+        c.lead_id as "leadId",
+        c.caller_id as "callerId",
+        COALESCE(t.name, c.caller_id) as "callerName",
+        COALESCE(l.name, 'Lead #' || c.lead_id) as "leadName",
+        COALESCE(l.phone, '') as "leadPhone",
+        COALESCE(l.stream, 'DIRECT_DONOR') as "stream",
+        c.disposition as "disposition",
+        c.reason as "reason",
+        c.notes as "notes",
+        c.amount as "amount",
+        c.utr as "utr",
+        c.callback_time as "callbackTime",
+        c.created_at as "createdAt"
+      FROM ag_call_logs c
+      LEFT JOIN ag_leads l ON c.lead_id = l.lead_id
+      LEFT JOIN ag_telecallers t ON c.caller_id = t.caller_id
+      ORDER BY c.created_at DESC
+      LIMIT 50;
+    `),
     getCrmWhatsAppSettings(),
   ]);
 
@@ -1433,6 +1505,67 @@ export async function getAdminLeaderboard(): Promise<{
     if (r.callerId) todayCallsByCaller[r.callerId] = Number(r.count || 0);
   }
 
+  // Process today's dispositions & floor stats
+  const todayDispoRows = (todayDispoResult?.rows || []) as Array<{
+    callerId: string | null;
+    disposition: string | null;
+    count: number;
+    lastCallAt: string | Date | null;
+  }>;
+
+  const todaySubRows = (todaySubsResult?.rows || []) as Array<{
+    callerId: string | null;
+    status: string | null;
+  }>;
+
+  const recentCallFeedRows = (recentCallFeedResult?.rows || []) as Array<{
+    logId: number;
+    leadId: number;
+    callerId: string;
+    callerName: string;
+    leadName: string;
+    leadPhone: string;
+    stream: string;
+    disposition: string;
+    reason: string | null;
+    notes: string | null;
+    amount: number | null;
+    utr: string | null;
+    callbackTime: string | Date | null;
+    createdAt: string | Date;
+  }>;
+
+  const todayDispositionsFloor: Record<string, number> = {};
+  const callerTodayDispositions: Record<string, Record<string, number>> = {};
+  const callerLastCallMap: Record<string, string> = {};
+  let floorTotalCallsToday = 0;
+
+  for (const r of todayDispoRows) {
+    const cid = r.callerId || "UNKNOWN";
+    const dispo = r.disposition || "Unknown";
+    const cnt = Number(r.count || 0);
+
+    floorTotalCallsToday += cnt;
+    todayDispositionsFloor[dispo] = (todayDispositionsFloor[dispo] || 0) + cnt;
+
+    if (!callerTodayDispositions[cid]) callerTodayDispositions[cid] = {};
+    callerTodayDispositions[cid][dispo] = (callerTodayDispositions[cid][dispo] || 0) + cnt;
+
+    if (r.lastCallAt) {
+      const existing = callerLastCallMap[cid];
+      const dStr = new Date(r.lastCallAt).toISOString();
+      if (!existing || new Date(dStr).getTime() > new Date(existing).getTime()) {
+        callerLastCallMap[cid] = dStr;
+      }
+    }
+  }
+
+  const submissionsMap: Record<string, string> = {};
+  for (const s of todaySubRows) {
+    if (s.callerId) submissionsMap[s.callerId] = s.status || "SUBMITTED";
+  }
+
+  const nowMs = Date.now();
   const statsList: TelecallerStats[] = allCallers.map((c) => {
     const assigned = assignedByCaller[c.callerId] || 0;
     const contacted = contactedByCaller[c.callerId] || 0;
@@ -1441,6 +1574,23 @@ export async function getAdminLeaderboard(): Promise<{
     const rate = assigned > 0 ? (converted / assigned) * 100 : 0;
     const isSameDay = c.attendanceDate === todayISTStr;
     const isWorkingToday = isSameDay ? (c.isWorkingToday ?? true) : true;
+    const callerCallsToday = todayCallsByCaller[c.callerId] || 0;
+    const lastCall = callerLastCallMap[c.callerId] || null;
+    const isSubmitted = submissionsMap[c.callerId] === "SUBMITTED";
+
+    let liveStatus: "ACTIVE_NOW" | "IDLE" | "SUBMITTED" | "NOT_STARTED" | "ABSENT" = "NOT_STARTED";
+    if (c.isActive === false || isWorkingToday === false) {
+      liveStatus = "ABSENT";
+    } else if (isSubmitted) {
+      liveStatus = "SUBMITTED";
+    } else if (callerCallsToday === 0) {
+      liveStatus = "NOT_STARTED";
+    } else if (lastCall) {
+      const diffMins = (nowMs - new Date(lastCall).getTime()) / (60 * 1000);
+      liveStatus = diffMins <= 20 ? "ACTIVE_NOW" : "IDLE";
+    } else {
+      liveStatus = "IDLE";
+    }
 
     return {
       callerId: c.callerId,
@@ -1453,12 +1603,15 @@ export async function getAdminLeaderboard(): Promise<{
       dailyQuota: c.dailyQuota,
       assignedCount: assigned,
       contactedCount: contacted,
-      todayContactedCount: todayCallsByCaller[c.callerId] || 0,
+      todayContactedCount: callerCallsToday,
       convertedCount: converted,
       conversionRate: Math.round(rate * 10) / 10,
       totalDonationAmount: totalAmount,
       rank: 0,
       exportToken: signCallerToken(c.callerId),
+      lastCallAt: lastCall,
+      liveStatus,
+      todayDispositions: callerTodayDispositions[c.callerId] || {},
     };
   });
 
@@ -1468,12 +1621,49 @@ export async function getAdminLeaderboard(): Promise<{
     item.rank = idx + 1;
   });
 
+  const activeCallersCount = statsList.filter((c) => c.callerId !== "ADMIN" && (c.todayContactedCount || 0) > 0).length;
+  const hotLeadsCount = (todayDispositionsFloor["Interested"] || 0) + (todayDispositionsFloor["Donated"] || 0);
+  const callbacksCount = todayDispositionsFloor["Reschedule"] || 0;
+  const unreachedCount =
+    (todayDispositionsFloor["No_Answer"] || 0) +
+    (todayDispositionsFloor["Not_Reachable"] || 0) +
+    (todayDispositionsFloor["Busy"] || 0);
+
+  const todayStats: AdminFloorTodayStats = {
+    totalCalls: floorTotalCallsToday,
+    activeCallers: activeCallersCount,
+    totalCallers: statsList.filter((c) => c.callerId !== "ADMIN").length,
+    hotLeadsCount,
+    callbacksCount,
+    unreachedCount,
+    dispositions: todayDispositionsFloor,
+  };
+
+  const formattedRecentFeed: AdminRecentCallLog[] = recentCallFeedRows.map((f) => ({
+    logId: Number(f.logId),
+    leadId: Number(f.leadId),
+    callerId: f.callerId,
+    callerName: f.callerName,
+    leadName: f.leadName,
+    leadPhone: f.leadPhone,
+    stream: f.stream,
+    disposition: f.disposition,
+    reason: f.reason,
+    notes: f.notes,
+    amount: f.amount != null ? Number(f.amount) : null,
+    utr: f.utr,
+    callbackTime: f.callbackTime ? new Date(f.callbackTime).toISOString() : null,
+    createdAt: new Date(f.createdAt).toISOString(),
+  }));
+
   return {
     callers: statsList,
     totalLeads,
     totalDonations,
     totalRevenue,
     streamCounts,
+    todayStats,
+    recentCallFeed: formattedRecentFeed,
     crmWhatsAppSettings,
   };
 }
@@ -2675,7 +2865,7 @@ export async function getRecentUploadBatches(limit = 10) {
  * 15. Agency-Grade CSV Export Generator
  */
 export async function generateAgencyCSVExport(
-  type: "performance" | "leads" | "donations" | "roster" | "caller_leads",
+  type: "performance" | "leads" | "donations" | "roster" | "caller_leads" | "today_calls" | "shift_summary" | "all_calls",
   callerId?: string
 ) {
   if (type === "caller_leads") {
@@ -2776,6 +2966,292 @@ export async function generateAgencyCSVExport(
     };
   }
 
+  if (type === "today_calls") {
+    const { todayStart, todayEnd, dateStr } = getISTDateBounds();
+    const targetCaller = (callerId || "").trim().toUpperCase();
+
+    const logs = await db
+      .select({
+        logId: agCallLogs.logId,
+        callerId: agCallLogs.callerId,
+        leadId: agCallLogs.leadId,
+        disposition: agCallLogs.disposition,
+        reason: agCallLogs.reason,
+        notes: agCallLogs.notes,
+        amount: agCallLogs.amount,
+        utr: agCallLogs.utr,
+        callbackTime: agCallLogs.callbackTime,
+        createdAt: agCallLogs.createdAt,
+      })
+      .from(agCallLogs)
+      .where(
+        targetCaller && targetCaller !== "ALL"
+          ? and(
+              gte(agCallLogs.createdAt, todayStart),
+              lte(agCallLogs.createdAt, todayEnd),
+              eq(agCallLogs.callerId, targetCaller)
+            )
+          : and(
+              gte(agCallLogs.createdAt, todayStart),
+              lte(agCallLogs.createdAt, todayEnd)
+            )
+      )
+      .orderBy(desc(agCallLogs.createdAt));
+
+    const callers = await db
+      .select({ callerId: agTelecallers.callerId, name: agTelecallers.name })
+      .from(agTelecallers);
+    const callerNameMap = new Map<string, string>();
+    callers.forEach((c) => callerNameMap.set(c.callerId, c.name));
+
+    const leadIds = Array.from(new Set(logs.map((l) => l.leadId)));
+    const leadMap = new Map<number, { name: string; phone: string; stream: string }>();
+
+    if (leadIds.length > 0) {
+      for (let i = 0; i < leadIds.length; i += 500) {
+        const slice = leadIds.slice(i, i + 500);
+        const leadsData = await db
+          .select({
+            leadId: agLeads.leadId,
+            name: agLeads.name,
+            phone: agLeads.phone,
+            stream: agLeads.stream,
+          })
+          .from(agLeads)
+          .where(inArray(agLeads.leadId, slice));
+        leadsData.forEach((ld) => leadMap.set(ld.leadId, ld));
+      }
+    }
+
+    const rows = [
+      [
+        "Log ID",
+        "Call Date & Time (IST)",
+        "Caller ID",
+        "Caller Name",
+        "Lead ID",
+        "Lead Name",
+        "Stream",
+        "Phone Number",
+        "Disposition",
+        "Reason",
+        "Call Notes",
+        "Scheduled Callback Time (IST)",
+        "Amount Claimed (INR)",
+        "UTR Number",
+      ],
+    ];
+
+    for (const l of logs) {
+      const callerName = callerNameMap.get(l.callerId) || l.callerId;
+      const ld = leadMap.get(l.leadId);
+      const istTime = new Date(l.createdAt.getTime() + 5.5 * 60 * 60 * 1000)
+        .toISOString()
+        .slice(0, 19)
+        .replace("T", " ");
+      const cbTime = l.callbackTime
+        ? new Date(l.callbackTime.getTime() + 5.5 * 60 * 60 * 1000)
+            .toISOString()
+            .slice(0, 19)
+            .replace("T", " ")
+        : "";
+
+      rows.push([
+        String(l.logId),
+        istTime,
+        l.callerId,
+        `"${callerName.replace(/"/g, '""')}"`,
+        String(l.leadId),
+        `"${(ld?.name || "").replace(/"/g, '""')}"`,
+        ld?.stream || "DIRECT_DONOR",
+        `"+91${ld?.phone || ""}"`,
+        l.disposition || "",
+        `"${(l.reason || "").replace(/"/g, '""')}"`,
+        `"${(l.notes || "").replace(/"/g, '""')}"`,
+        cbTime,
+        String(l.amount || 0),
+        l.utr || "",
+      ]);
+    }
+
+    const fileSuffix = targetCaller ? `_${targetCaller}` : "";
+    return {
+      filename: `janaseva_today_call_logs${fileSuffix}_${dateStr}.csv`,
+      csv: rows.map((r) => r.join(",")).join("\n"),
+    };
+  }
+
+  if (type === "shift_summary") {
+    const { dateStr } = getISTDateBounds();
+    const leaderboard = await getAdminLeaderboard();
+    const rows = [
+      [
+        "Shift Date",
+        "Caller ID",
+        "Caller Name",
+        "WhatsApp Mobile",
+        "Account Status",
+        "Shift Status",
+        "Today Calls Dialed",
+        "Hot Leads (Interested + Donated)",
+        "Interested Today",
+        "Donated Today",
+        "Callbacks Today",
+        "Unreached Today",
+        "Total Assigned Leads",
+        "All-Time Contacted",
+        "All-Time Conversions",
+        "Attributed Revenue (INR)",
+        "Last Call Timestamp (IST)",
+      ],
+    ];
+
+    for (const c of leaderboard.callers) {
+      const dispos = c.todayDispositions || {};
+      const interested = dispos["Interested"] || 0;
+      const donated = dispos["Donated"] || 0;
+      const callbacks = dispos["Reschedule"] || 0;
+      const unreached =
+        (dispos["No_Answer"] || 0) +
+        (dispos["Not_Reachable"] || 0) +
+        (dispos["Busy"] || 0);
+      const lastCall = c.lastCallAt
+        ? new Date(new Date(c.lastCallAt).getTime() + 5.5 * 60 * 60 * 1000)
+            .toISOString()
+            .slice(0, 19)
+            .replace("T", " ")
+        : "No calls today";
+
+      rows.push([
+        dateStr,
+        c.callerId,
+        `"${c.name.replace(/"/g, '""')}"`,
+        `"+91${c.whatsappNumber}"`,
+        c.isActive ? "Active" : "Paused",
+        c.liveStatus || "NOT_STARTED",
+        String(c.todayContactedCount || 0),
+        String(interested + donated),
+        String(interested),
+        String(donated),
+        String(callbacks),
+        String(unreached),
+        String(c.assignedCount),
+        String(c.contactedCount),
+        String(c.convertedCount),
+        String(c.totalDonationAmount),
+        lastCall,
+      ]);
+    }
+
+    return {
+      filename: `janaseva_shift_summary_${dateStr}.csv`,
+      csv: rows.map((r) => r.join(",")).join("\n"),
+    };
+  }
+
+  if (type === "all_calls") {
+    const targetCaller = (callerId || "").trim().toUpperCase();
+    const logs = await db
+      .select({
+        logId: agCallLogs.logId,
+        callerId: agCallLogs.callerId,
+        leadId: agCallLogs.leadId,
+        disposition: agCallLogs.disposition,
+        reason: agCallLogs.reason,
+        notes: agCallLogs.notes,
+        amount: agCallLogs.amount,
+        utr: agCallLogs.utr,
+        callbackTime: agCallLogs.callbackTime,
+        createdAt: agCallLogs.createdAt,
+      })
+      .from(agCallLogs)
+      .where(targetCaller && targetCaller !== "ALL" ? eq(agCallLogs.callerId, targetCaller) : undefined)
+      .orderBy(desc(agCallLogs.createdAt))
+      .limit(25000);
+
+    const callers = await db
+      .select({ callerId: agTelecallers.callerId, name: agTelecallers.name })
+      .from(agTelecallers);
+    const callerNameMap = new Map<string, string>();
+    callers.forEach((c) => callerNameMap.set(c.callerId, c.name));
+
+    const leadIds = Array.from(new Set(logs.map((l) => l.leadId)));
+    const leadMap = new Map<number, { name: string; phone: string; stream: string }>();
+
+    if (leadIds.length > 0) {
+      for (let i = 0; i < leadIds.length; i += 500) {
+        const slice = leadIds.slice(i, i + 500);
+        const leadsData = await db
+          .select({
+            leadId: agLeads.leadId,
+            name: agLeads.name,
+            phone: agLeads.phone,
+            stream: agLeads.stream,
+          })
+          .from(agLeads)
+          .where(inArray(agLeads.leadId, slice));
+        leadsData.forEach((ld) => leadMap.set(ld.leadId, ld));
+      }
+    }
+
+    const rows = [
+      [
+        "Log ID",
+        "Call Date & Time (IST)",
+        "Caller ID",
+        "Caller Name",
+        "Lead ID",
+        "Lead Name",
+        "Stream",
+        "Phone Number",
+        "Disposition",
+        "Reason",
+        "Call Notes",
+        "Scheduled Callback Time (IST)",
+        "Amount Claimed (INR)",
+        "UTR Number",
+      ],
+    ];
+
+    for (const l of logs) {
+      const callerName = callerNameMap.get(l.callerId) || l.callerId;
+      const ld = leadMap.get(l.leadId);
+      const istTime = new Date(l.createdAt.getTime() + 5.5 * 60 * 60 * 1000)
+        .toISOString()
+        .slice(0, 19)
+        .replace("T", " ");
+      const cbTime = l.callbackTime
+        ? new Date(l.callbackTime.getTime() + 5.5 * 60 * 60 * 1000)
+            .toISOString()
+            .slice(0, 19)
+            .replace("T", " ")
+        : "";
+
+      rows.push([
+        String(l.logId),
+        istTime,
+        l.callerId,
+        `"${callerName.replace(/"/g, '""')}"`,
+        String(l.leadId),
+        `"${(ld?.name || "").replace(/"/g, '""')}"`,
+        ld?.stream || "DIRECT_DONOR",
+        `"+91${ld?.phone || ""}"`,
+        l.disposition || "",
+        `"${(l.reason || "").replace(/"/g, '""')}"`,
+        `"${(l.notes || "").replace(/"/g, '""')}"`,
+        cbTime,
+        String(l.amount || 0),
+        l.utr || "",
+      ]);
+    }
+
+    const fileSuffix = targetCaller ? `_${targetCaller}` : "";
+    return {
+      filename: `janaseva_all_call_logs${fileSuffix}_${new Date().toISOString().slice(0, 10)}.csv`,
+      csv: rows.map((r) => r.join(",")).join("\n"),
+    };
+  }
+
   if (type === "performance") {
     const data = await getAdminLeaderboard();
     const rows = [
@@ -2786,7 +3262,9 @@ export async function generateAgencyCSVExport(
         "WhatsApp Mobile",
         "Email",
         "Status",
+        "Live Shift Status",
         "Daily Quota",
+        "Today Calls Dialed",
         "Assigned Leads",
         "Contacted Leads",
         "Contact Rate %",
@@ -2809,7 +3287,9 @@ export async function generateAgencyCSVExport(
         `"+91${c.whatsappNumber}"`,
         c.email ? `"${c.email.replace(/"/g, '""')}"` : '""',
         c.isActive ? "Active" : "Inactive",
+        c.liveStatus || "NOT_STARTED",
         String(c.dailyQuota || 50),
+        String(c.todayContactedCount || 0),
         String(c.assignedCount),
         String(c.contactedCount),
         `${contactRate}%`,
