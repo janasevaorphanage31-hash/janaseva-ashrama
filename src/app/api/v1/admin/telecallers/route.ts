@@ -408,10 +408,10 @@ export async function POST(req: Request) {
 
     if (action === "reset_password") {
       const { callerId, newPassword } = body;
-      if (!callerId || !newPassword) {
-        return NextResponse.json({ error: "Caller ID and new password are required." }, { status: 400 });
+      if (!callerId) {
+        return NextResponse.json({ error: "Caller ID is required." }, { status: 400 });
       }
-      await resetTelecallerPassword(callerId, newPassword);
+      const resetRes = await resetTelecallerPassword(callerId, newPassword);
 
       await writeAudit({
         actorAdminUserId: session.user.id ?? null,
@@ -424,6 +424,7 @@ export async function POST(req: Request) {
       return NextResponse.json({
         success: true,
         message: `Password for ${callerId} has been successfully updated.`,
+        tempPassword: resetRes.tempPassword,
       });
     }
 

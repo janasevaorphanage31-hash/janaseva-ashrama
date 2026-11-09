@@ -6,6 +6,7 @@ import {
   updateLeadContactInfo,
   revertLeadToPending,
   checkUtrAvailability,
+  normalizeDisposition,
 } from "@/lib/antigravity-crm";
 import { validateIndianUtr } from "@/lib/crm-validators";
 import { authenticateCallerOrAdmin } from "@/lib/caller-auth";
@@ -93,6 +94,7 @@ export async function POST(
       }
     }
 
+    const normalizedDisp = normalizeDisposition(rawDisposition);
     const VALID_DISPOSITIONS = [
       "Interested",
       "Reschedule",
@@ -102,14 +104,13 @@ export async function POST(
       "No_Answer",
       "Contacted",
       "Busy",
-      "Invalid_Number",
       "Wrong_Number",
       "Not_Reachable",
-      "RNR",
+      "Reverted",
     ];
-    if (!VALID_DISPOSITIONS.includes(rawDisposition)) {
+    if (!VALID_DISPOSITIONS.includes(normalizedDisp)) {
       return NextResponse.json(
-        { error: `Invalid disposition. Allowed: ${VALID_DISPOSITIONS.join(", ")}` },
+        { error: `Invalid disposition "${rawDisposition}". Allowed: ${VALID_DISPOSITIONS.join(", ")}` },
         { status: 400 },
       );
     }
@@ -118,7 +119,7 @@ export async function POST(
       await logCallDisposition(
         leadId,
         auth.callerId,
-        rawDisposition,
+        normalizedDisp,
         notes,
         callbackTime,
         amount,
@@ -136,7 +137,7 @@ export async function POST(
         await db
           .update(agLeads)
           .set({
-            status: rawDisposition,
+            status: normalizedDisp,
             dispositionReason: rawReason,
             whatsappPhone: rawWhatsappPhone,
             lastContactedAt: new Date(),
@@ -149,7 +150,7 @@ export async function POST(
     }
 
     // If marked Donated with an amount, record payment attribution in real-time
-    if (rawDisposition === "Donated" && amount && amount > 0) {
+    if (normalizedDisp === "Donated" && amount && amount > 0) {
       try {
         const txnId = cleanUtr ? `utr_${cleanUtr}` : `offline_${Date.now()}_${leadId}`;
         await recordPaymentAttribution({
@@ -171,7 +172,7 @@ export async function POST(
       success: true,
       message: "Call disposition logged successfully.",
       leadId,
-      disposition: rawDisposition,
+      disposition: normalizedDisp,
       callerId: auth.callerId,
     });
   } catch (err: any) {
@@ -256,6 +257,7 @@ export async function PATCH(
       cleanUtr = utrVal.cleaned;
     }
 
+    const normalizedDisp = normalizeDisposition(disposition);
     const VALID_DISPOSITIONS = [
       "Interested",
       "Reschedule",
@@ -265,14 +267,13 @@ export async function PATCH(
       "No_Answer",
       "Contacted",
       "Busy",
-      "Invalid_Number",
       "Wrong_Number",
       "Not_Reachable",
-      "RNR",
+      "Reverted",
     ];
-    if (!VALID_DISPOSITIONS.includes(disposition)) {
+    if (!VALID_DISPOSITIONS.includes(normalizedDisp)) {
       return NextResponse.json(
-        { error: `Invalid disposition. Allowed: ${VALID_DISPOSITIONS.join(", ")}` },
+        { error: `Invalid disposition "${disposition}". Allowed: ${VALID_DISPOSITIONS.join(", ")}` },
         { status: 400 },
       );
     }
@@ -280,7 +281,7 @@ export async function PATCH(
     const result = await editCallDispositionLog({
       leadId,
       callerId: auth.callerId,
-      disposition,
+      disposition: normalizedDisp,
       notes,
       amount,
       utr: cleanUtr,
@@ -296,7 +297,7 @@ export async function PATCH(
       success: true,
       message: result.message,
       leadId,
-      disposition,
+      disposition: normalizedDisp,
       amount,
     });
   } catch (err: any) {

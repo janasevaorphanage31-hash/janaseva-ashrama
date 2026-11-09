@@ -142,15 +142,56 @@ export interface AdminRecentCallLog {
   createdAt: string;
 }
 
+const g = globalThis as unknown as {
+  __telecallersSeeded?: boolean;
+  __legacyNamesRepaired?: boolean;
+  __cachedActiveCallerIds?: string[] | null;
+  __cachedActiveCallersTimestamp?: number;
+};
+
 let telecallersSeeded = false;
 let legacyNamesRepaired = false;
 let cachedActiveCallerIds: string[] | null = null;
 let cachedActiveCallersTimestamp = 0;
 
+/**
+ * Generates an 8-character secure alphanumeric temporary password (e.g. "Jana#748291").
+ */
+export function generateSecureTempPassword(): string {
+  const digits = Math.floor(100000 + Math.random() * 900000);
+  return `Jana#${digits}`;
+}
+
+/**
+ * Canonicalizes call dispositions from user/telecaller input, APIs, and webhooks.
+ * Converts casing variations, spaces, and abbreviations into the system canonical Title_Case enums.
+ */
+export function normalizeDisposition(raw?: string | null): string {
+  if (!raw) return "Pending";
+  const s = raw.trim();
+  const lower = s.toLowerCase().replace(/[\s-]+/g, "_");
+
+  if (lower === "interested" || lower === "hot_lead") return "Interested";
+  if (lower === "donated" || lower === "paid" || lower === "pledged") return "Donated";
+  if (lower === "reschedule" || lower === "callback" || lower === "call_back" || lower === "scheduled") return "Reschedule";
+  if (lower === "no_answer" || lower === "noanswer" || lower === "ringing" || lower === "unanswered" || lower === "rnr") return "No_Answer";
+  if (lower === "not_reachable" || lower === "unreachable" || lower === "switched_off" || lower === "out_of_coverage") return "Not_Reachable";
+  if (lower === "busy" || lower === "line_busy" || lower === "call_waiting") return "Busy";
+  if (lower === "wrong_number" || lower === "wrong" || lower === "invalid_number" || lower === "invalid" || lower === "junk") return "Wrong_Number";
+  if (lower === "rejected" || lower === "not_interested" || lower === "declined" || lower === "refused" || lower === "do_not_call") return "Rejected";
+  if (lower === "contacted" || lower === "spoken") return "Contacted";
+  if (lower === "reverted") return "Reverted";
+  if (lower === "pending") return "Pending";
+
+  return s;
+}
+
 export async function getActiveTelecallerIds(): Promise<string[]> {
   const now = Date.now();
-  if (cachedActiveCallerIds && now - cachedActiveCallersTimestamp < 45_000) {
-    return cachedActiveCallerIds;
+  const cached = cachedActiveCallerIds || g.__cachedActiveCallerIds;
+  const stamp = cachedActiveCallersTimestamp || g.__cachedActiveCallersTimestamp || 0;
+  if (cached && now - stamp < 45_000) {
+    return cached;
   }
   const callers = await db
     .select({ callerId: agTelecallers.callerId })
@@ -159,19 +200,26 @@ export async function getActiveTelecallerIds(): Promise<string[]> {
     .orderBy(agTelecallers.callerId);
   cachedActiveCallerIds = callers.map((c) => c.callerId);
   cachedActiveCallersTimestamp = now;
+  g.__cachedActiveCallerIds = cachedActiveCallerIds;
+  g.__cachedActiveCallersTimestamp = now;
   return cachedActiveCallerIds;
 }
 
 export function invalidateActiveTelecallersCache() {
   cachedActiveCallerIds = null;
   cachedActiveCallersTimestamp = 0;
+  g.__cachedActiveCallerIds = null;
+  g.__cachedActiveCallersTimestamp = 0;
 }
 
 /**
  * 1. Seeds 15 telecallers (TC01 to TC15) and realistic birthday leads if tables are fresh.
  */
 export async function ensureTelecallersAndSeedData(forceCheck = false) {
-  if (telecallersSeeded && !forceCheck) return;
+  if ((telecallersSeeded || g.__telecallersSeeded) && !forceCheck) {
+    telecallersSeeded = true;
+    return;
+  }
   await ensureDbSchema();
 
   const existingCallers = await db.select({ count: sql<number>`count(*)` }).from(agTelecallers);
@@ -309,6 +357,7 @@ export async function ensureTelecallersAndSeedData(forceCheck = false) {
     }
   }
   telecallersSeeded = true;
+  g.__telecallersSeeded = true;
 }
 
 /**
@@ -972,6 +1021,8 @@ export async function logCallDisposition(
   }
 ) {
   await ensureDbSchema();
+  const normalizedDisp = normalizeDisposition(disposition);
+
   // Insert call history log safely without blocking lead status updates
   try {
     const validCallbackDate =
@@ -982,7 +1033,7 @@ export async function logCallDisposition(
     await db.insert(agCallLogs).values({
       leadId,
       callerId,
-      disposition,
+      disposition: normalizedDisp,
       reason: extra?.dispositionReason?.trim() || null,
       notes: notes?.trim() || null,
       callbackTime: validCallbackDate,
@@ -995,26 +1046,21 @@ export async function logCallDisposition(
   }
 
   let validationStatus = "UNVERIFIED";
-  if (disposition === "Donated") {
+  if (normalizedDisp === "Donated") {
     validationStatus = "VALID_DONATED";
-  } else if (disposition === "Interested") {
+  } else if (normalizedDisp === "Interested") {
     validationStatus = "VALID_INTERESTED";
-  } else if (disposition === "Reschedule") {
+  } else if (normalizedDisp === "Reschedule") {
     validationStatus = "VALID_CALLBACK";
-  } else if (disposition === "Rejected" || disposition === "Not Interested") {
+  } else if (normalizedDisp === "Rejected") {
     validationStatus = "SOFT_REJECT";
-  } else if (
-    disposition === "Wrong_Number" ||
-    disposition === "Invalid_Number" ||
-    disposition === "Junk" ||
-    disposition === "Invalid"
-  ) {
+  } else if (normalizedDisp === "Wrong_Number") {
     validationStatus = "JUNK_INVALID";
   }
 
   // Update lead current status and contact details
   const leadUpdates: Record<string, any> = {
-    status: disposition,
+    status: normalizedDisp,
     validationStatus,
     rescheduleDate: callbackTime ? new Date(callbackTime) : null,
     lastContactedAt: new Date(),
@@ -1730,7 +1776,7 @@ export async function addTelecaller(data: {
   }
 
   const rawPassword =
-    data.password && data.password.trim().length >= 4 ? data.password.trim() : "ashrama@123";
+    data.password && data.password.trim().length >= 4 ? data.password.trim() : generateSecureTempPassword();
   const passwordHash = hashPassword(rawPassword);
 
   await db.insert(agTelecallers).values({
@@ -1745,7 +1791,7 @@ export async function addTelecaller(data: {
 
   invalidateActiveTelecallersCache();
 
-  return { callerId, name: data.name, email };
+  return { callerId, name: data.name, email, tempPassword: rawPassword };
 }
 
 /**
@@ -3507,13 +3553,12 @@ export async function generateAgencyCSVExport(
 /**
  * 16. Reset Telecaller Password
  */
-export async function resetTelecallerPassword(callerId: string, newPassword: string) {
+export async function resetTelecallerPassword(callerId: string, newPassword?: string) {
   await ensureTelecallersAndSeedData();
   const cid = callerId.trim().toUpperCase();
-  if (!newPassword || newPassword.length < 4) {
-    throw new Error("Password must be at least 4 characters.");
-  }
-  const passwordHash = hashPassword(newPassword);
+  const passToUse =
+    newPassword && newPassword.trim().length >= 4 ? newPassword.trim() : generateSecureTempPassword();
+  const passwordHash = hashPassword(passToUse);
 
   await db
     .update(agTelecallers)
@@ -3523,7 +3568,7 @@ export async function resetTelecallerPassword(callerId: string, newPassword: str
     })
     .where(eq(agTelecallers.callerId, cid));
 
-  return { success: true, callerId: cid };
+  return { success: true, callerId: cid, tempPassword: passToUse };
 }
 
 // ==============================================================================
@@ -3843,11 +3888,22 @@ export async function exportInfluencerDonationsCsv(influencerCode?: string | nul
 
 export function getISTDateBounds(d = new Date()) {
   const istOffset = 5.5 * 60 * 60 * 1000;
-  const istTime = d.getTime() + istOffset;
-  const istDate = new Date(istTime);
-  const y = istDate.getUTCFullYear();
-  const m = istDate.getUTCMonth(); // 0-11
-  const day = istDate.getUTCDate();
+  // Intl provides guaranteed Asia/Kolkata date calculations across all server environments
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+  });
+  const parts = formatter.formatToParts(d);
+  let y = d.getUTCFullYear();
+  let m = d.getUTCMonth();
+  let day = d.getUTCDate();
+  for (const part of parts) {
+    if (part.type === "year") y = parseInt(part.value, 10);
+    if (part.type === "month") m = parseInt(part.value, 10) - 1; // 0-indexed
+    if (part.type === "day") day = parseInt(part.value, 10);
+  }
 
   const todayStart = new Date(Date.UTC(y, m, day) - istOffset);
   const todayEnd = new Date(Date.UTC(y, m, day, 23, 59, 59, 999) - istOffset);
@@ -3875,6 +3931,7 @@ export async function editCallDispositionLog(params: {
   preferredLanguage?: string | null;
 }) {
   await ensureDbSchema();
+  const normalizedDisp = normalizeDisposition(params.disposition);
 
   // Find the most recent log for this lead by this caller
   const recentLogs = await db
@@ -3911,7 +3968,7 @@ export async function editCallDispositionLog(params: {
   await db
     .update(agCallLogs)
     .set({
-      disposition: params.disposition,
+      disposition: normalizedDisp,
       notes: params.notes !== undefined ? (params.notes?.trim() || null) : existingLog.notes,
       reason: params.dispositionReason !== undefined ? (params.dispositionReason?.trim() || null) : existingLog.reason,
       callbackTime: validCallbackDate,
@@ -3926,15 +3983,15 @@ export async function editCallDispositionLog(params: {
 
   // 2. Update lead status & validation
   let validationStatus = "UNVERIFIED";
-  if (params.disposition === "Donated") validationStatus = "VALID_DONATED";
-  else if (params.disposition === "Interested") validationStatus = "VALID_INTERESTED";
-  else if (params.disposition === "Reschedule") validationStatus = "VALID_CALLBACK";
-  else if (params.disposition === "Rejected" || params.disposition === "Not Interested") validationStatus = "SOFT_REJECT";
-  else if (params.disposition === "Wrong_Number" || params.disposition === "Invalid_Number") validationStatus = "JUNK_INVALID";
-  else if (params.disposition === "Pending") validationStatus = "UNVERIFIED";
+  if (normalizedDisp === "Donated") validationStatus = "VALID_DONATED";
+  else if (normalizedDisp === "Interested") validationStatus = "VALID_INTERESTED";
+  else if (normalizedDisp === "Reschedule") validationStatus = "VALID_CALLBACK";
+  else if (normalizedDisp === "Rejected") validationStatus = "SOFT_REJECT";
+  else if (normalizedDisp === "Wrong_Number") validationStatus = "JUNK_INVALID";
+  else if (normalizedDisp === "Pending") validationStatus = "UNVERIFIED";
 
   const leadUpdates: Record<string, any> = {
-    status: params.disposition,
+    status: normalizedDisp,
     validationStatus,
     rescheduleDate: validCallbackDate,
     updatedAt: new Date(),

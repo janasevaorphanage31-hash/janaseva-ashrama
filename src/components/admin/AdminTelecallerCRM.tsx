@@ -58,6 +58,8 @@ export function AdminTelecallerCRM() {
   const [isDeleteAllModalOpen, setIsDeleteAllModalOpen] = useState<boolean>(false);
   const [isResetDailyModalOpen, setIsResetDailyModalOpen] = useState<boolean>(false);
   const [resetDistributionMode, setResetDistributionMode] = useState<"balanced" | "round_robin">("balanced");
+  const [devSandboxEnabled, setDevSandboxEnabled] = useState(false);
+  const [lastResetPassword, setLastResetPassword] = useState<string | null>(null);
 
   // 1. Add Telecaller Modal State
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -66,7 +68,7 @@ export function AdminTelecallerCRM() {
     name: "",
     whatsappNumber: "",
     email: "",
-    password: "ashrama@123",
+    password: "",
     dailyQuota: 50,
   });
 
@@ -499,13 +501,14 @@ export function AdminTelecallerCRM() {
       .filter((n) => !isNaN(n));
     const nextNum = numbers.length > 0 ? Math.max(...numbers) + 1 : 1;
     const suggestedId = `TC${String(nextNum).padStart(2, "0")}`;
+    const generatedPass = `Jana#${Math.floor(100000 + Math.random() * 900000)}`;
 
     setAddCallerForm({
       callerId: suggestedId,
       name: "",
       whatsappNumber: "",
       email: `${suggestedId.toLowerCase()}@janaseva.org`,
-      password: "ashrama@123",
+      password: generatedPass,
       dailyQuota: 50,
     });
     setIsAddModalOpen(true);
@@ -1998,6 +2001,15 @@ export function AdminTelecallerCRM() {
 
   // ── SIMULATE DONATION TEST ──
   const handleSimulateDonation = async (callerId: string) => {
+    if (!devSandboxEnabled) {
+      showToast("⚠️ Developer Sandbox mode is disabled. Turn on Sandbox to test donation simulations.");
+      return;
+    }
+    const confirmed = window.confirm(
+      `⚠️ DEVELOPER SANDBOX SIMULATION\n\nSimulate ₹1,000 test donation for caller ${callerId}?\nThis will create a test payment attribution in the database.`
+    );
+    if (!confirmed) return;
+
     const amount = 1000;
     try {
       const res = await fetch("/api/v1/webhooks/payment", {
@@ -2012,7 +2024,7 @@ export function AdminTelecallerCRM() {
       });
       const data = await res.json();
       if (data.status === "ok") {
-        showToast(`✓ Simulated donation of ₹${amount} attributed to ${callerId}!`);
+        showToast(`🧪 Simulated donation of ₹${amount} attributed to ${callerId}!`);
         await loadAdminData();
       }
     } catch (err: any) {
@@ -2033,16 +2045,13 @@ export function AdminTelecallerCRM() {
   const handleOpenAccessModal = (c: TelecallerStats) => {
     setSelectedCallerForAccess(c);
     setNewPasswordInput("");
+    setLastResetPassword(null);
     setIsAccessModalOpen(true);
   };
 
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedCallerForAccess || !newPasswordInput.trim()) return;
-    if (newPasswordInput.trim().length < 4) {
-      showToast("⚠️ New password must be at least 4 characters.");
-      return;
-    }
+    if (!selectedCallerForAccess) return;
     setResettingPassword(true);
     try {
       const res = await fetch("/api/v1/admin/telecallers", {
@@ -2051,12 +2060,14 @@ export function AdminTelecallerCRM() {
         body: JSON.stringify({
           action: "reset_password",
           callerId: selectedCallerForAccess.callerId,
-          newPassword: newPasswordInput.trim(),
+          newPassword: newPasswordInput.trim() || undefined,
         }),
       });
       const data = await res.json();
       if (!data.success) throw new Error(data.error || "Failed to reset password");
-      showToast(`✓ Password for ${selectedCallerForAccess.callerId} updated successfully!`);
+      const activePwd = data.tempPassword || newPasswordInput.trim();
+      setLastResetPassword(activePwd);
+      showToast(`✓ Password for ${selectedCallerForAccess.callerId} updated successfully: ${activePwd}`);
       setNewPasswordInput("");
     } catch (err: any) {
       showToast("❌ Error resetting password: " + err.message);
@@ -2067,7 +2078,8 @@ export function AdminTelecallerCRM() {
 
   const handleCopyCredentials = (caller: TelecallerStats, pwd?: string) => {
     const origin = typeof window !== "undefined" ? window.location.origin : "https://janasevaashrama.org";
-    const text = `🌟 *JANASEVA ASHRAMA TELECALLER PORTAL ACCESS*\n👤 Advisor Name: ${caller.name}\n🆔 Caller ID: ${caller.callerId}\n📱 Mobile Login: ${caller.whatsappNumber}\n📧 Registered Email: ${caller.email}\n🔑 Password: ${pwd || "ashrama@123"}\n🔗 Direct Portal: ${origin}/portal?caller=${caller.callerId}\n🎯 Primary 'Sponsor 25 Boys' Campaign Link: ${origin}/give?ref=${caller.callerId}`;
+    const pwdText = pwd || lastResetPassword || "[Use your established portal password]";
+    const text = `🌟 *JANASEVA ASHRAMA TELECALLER PORTAL ACCESS*\n👤 Advisor Name: ${caller.name}\n🆔 Caller ID: ${caller.callerId}\n📱 Mobile Login: ${caller.whatsappNumber}\n📧 Registered Email: ${caller.email}\n🔑 Password: ${pwdText}\n🔗 Direct Portal: ${origin}/portal?caller=${caller.callerId}\n🎯 Primary 'Sponsor 25 Boys' Campaign Link: ${origin}/give?ref=${caller.callerId}`;
     navigator.clipboard.writeText(text);
     showToast(`✓ Copied login credentials for ${caller.callerId} to clipboard!`);
   };
@@ -2075,7 +2087,8 @@ export function AdminTelecallerCRM() {
   const handleSendWhatsAppCredentials = (caller: TelecallerStats, pwd?: string) => {
     const origin = typeof window !== "undefined" ? window.location.origin : "https://janasevaashrama.org";
     const tokenQuery = caller.exportToken ? `&token=${caller.exportToken}` : "";
-    const text = `🌸 *JANASEVA ASHRAMA TELECALLER PORTAL & CALLING DATA*\n\nNamaste ${caller.name},\nHere are your access credentials and assigned calling data:\n\n🎧 *Telecaller:* ${caller.name}\n🆔 *Caller ID:* ${caller.callerId}\n📱 *Mobile Login:* ${caller.whatsappNumber}\n📧 *Login ID:* ${caller.callerId} (or your mobile)\n🔑 *Password:* ${pwd || "ashrama@123"}\n🎯 *Daily Target:* ${caller.dailyQuota || 50} donors\n📋 *Total Assigned Leads:* ${caller.assignedCount.toLocaleString()}\n\n🔗 *Calling Portal (1-Tap Call & Log):*\n${origin}/portal?caller=${caller.callerId}\n\n📥 *Download Your Leads (CSV Spreadsheet):*\n${origin}/api/v1/admin/telecallers/export?type=caller_leads&callerId=${caller.callerId}${tokenQuery}\n\n🎁 *Your Direct Donation Link:*\n${origin}/give?ref=${caller.callerId}\n\nPlease open your portal and start reaching out to donors with sincere devotion!`;
+    const pwdText = pwd || lastResetPassword || "[Use your established portal password]";
+    const text = `🌸 *JANASEVA ASHRAMA TELECALLER PORTAL & CALLING DATA*\n\nNamaste ${caller.name},\nHere are your access credentials and assigned calling data:\n\n🎧 *Telecaller:* ${caller.name}\n🆔 *Caller ID:* ${caller.callerId}\n📱 *Mobile Login:* ${caller.whatsappNumber}\n📧 *Login ID:* ${caller.callerId} (or your mobile)\n🔑 *Password:* ${pwdText}\n🎯 *Daily Target:* ${caller.dailyQuota || 50} donors\n📋 *Total Assigned Leads:* ${caller.assignedCount.toLocaleString()}\n\n🔗 *Calling Portal (1-Tap Call & Log):*\n${origin}/portal?caller=${caller.callerId}\n\n📥 *Download Your Leads (CSV Spreadsheet):*\n${origin}/api/v1/admin/telecallers/export?type=caller_leads&callerId=${caller.callerId}${tokenQuery}\n\n🎁 *Your Direct Donation Link:*\n${origin}/give?ref=${caller.callerId}\n\nPlease open your portal and start reaching out to donors with sincere devotion!`;
     const cleanNumber = (caller.whatsappNumber || "").replace(/\D/g, "").slice(-10);
     window.open(`https://wa.me/91${cleanNumber}?text=${encodeURIComponent(text)}`, "_blank");
     showToast(`✓ Opened WhatsApp to send calling sheet & access to ${caller.name}`);
@@ -3426,6 +3439,22 @@ export function AdminTelecallerCRM() {
             >
               🔴 Absent / Paused ({callers.length - activeCallersCount})
             </button>
+            <button
+              type="button"
+              onClick={() => {
+                const next = !devSandboxEnabled;
+                setDevSandboxEnabled(next);
+                showToast(next ? "🧪 Developer Sandbox mode enabled — +₹1k test simulation active" : "🔒 Developer Sandbox mode disabled");
+              }}
+              title="Toggle Developer Sandbox Mode (enables test donation simulation buttons)"
+              className={`rounded-full px-3 py-1 text-xs font-bold transition cursor-pointer border ${
+                devSandboxEnabled
+                  ? "bg-amber-500/20 text-amber-900 border-amber-500/50 shadow-xs"
+                  : "bg-slate-100 text-slate-600 hover:bg-slate-200 border-slate-200"
+              }`}
+            >
+              {devSandboxEnabled ? "🧪 Sandbox: ON" : "🧪 Sandbox"}
+            </button>
           </div>
         </div>
 
@@ -3577,14 +3606,16 @@ export function AdminTelecallerCRM() {
                         >
                           🔑 Access
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => handleSimulateDonation(c.callerId)}
-                          title="Simulate ₹1,000 donation attributed to this caller"
-                          className="rounded-lg bg-teal-900/10 hover:bg-teal-900/20 text-teal-900 px-2 py-1 text-[10px] font-bold transition cursor-pointer"
-                        >
-                          +₹1k Test
-                        </button>
+                        {devSandboxEnabled && (
+                          <button
+                            type="button"
+                            onClick={() => handleSimulateDonation(c.callerId)}
+                            title="Simulate ₹1,000 donation attributed to this caller (Sandbox Only)"
+                            className="rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-900 border border-amber-500/40 px-2 py-1 text-[10px] font-bold transition cursor-pointer"
+                          >
+                            🧪 +₹1k Test
+                          </button>
+                        )}
                         <button
                           type="button"
                           onClick={() => window.open(`/api/v1/admin/telecallers/export?type=caller_leads&callerId=${c.callerId}`, "_blank")}
@@ -5110,13 +5141,25 @@ export function AdminTelecallerCRM() {
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-teal-950 mb-1">Portal Password</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-[11px] font-bold text-teal-950">Portal Password</label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const rand = `Jana#${Math.floor(100000 + Math.random() * 900000)}`;
+                      setAddCallerForm({ ...addCallerForm, password: rand });
+                    }}
+                    className="text-[10px] text-amber-900 font-bold hover:underline cursor-pointer"
+                  >
+                    🎲 Generate Temp Password
+                  </button>
+                </div>
                 <input
-                  type="password"
+                  type="text"
                   value={addCallerForm.password}
                   onChange={(e) => setAddCallerForm({ ...addCallerForm, password: e.target.value })}
-                  className="w-full rounded-xl border border-teal-900/20 px-3 py-2 text-xs text-teal-950 focus:ring-2 focus:ring-amber-400 outline-none"
-                  placeholder="ashrama@123"
+                  className="w-full rounded-xl border border-teal-900/20 px-3 py-2 text-xs font-mono font-bold text-teal-950 focus:ring-2 focus:ring-amber-400 outline-none"
+                  placeholder="e.g. Jana#849201"
                 />
                 <span className="text-[10px] text-teal-950/50 mt-0.5 block">
                   Telecaller uses Caller ID &amp; Password to login at <code className="font-mono">/portal</code>
@@ -6054,27 +6097,47 @@ export function AdminTelecallerCRM() {
 
             {/* Reset Password Section */}
             <form onSubmit={handleResetPassword} className="space-y-3">
-              <label className="block text-xs font-bold text-teal-950">
-                Set / Reset Portal Password
-              </label>
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-bold text-teal-950">
+                  Set / Reset Portal Password
+                </label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const generated = `Jana#${Math.floor(100000 + Math.random() * 900000)}`;
+                    setNewPasswordInput(generated);
+                  }}
+                  className="text-[11px] text-amber-900 font-bold hover:underline cursor-pointer"
+                >
+                  🎲 Generate Temp Password
+                </button>
+              </div>
+
+              {lastResetPassword && (
+                <div className="rounded-xl bg-emerald-500/15 border border-emerald-500/30 p-2.5 text-xs text-emerald-950 flex items-center justify-between">
+                  <span>Updated Password: <code className="font-mono font-bold text-emerald-900">{lastResetPassword}</code></span>
+                  <span className="text-[10px] uppercase font-black text-emerald-800 bg-emerald-200/70 px-2 py-0.5 rounded-full">Active</span>
+                </div>
+              )}
+
               <div className="flex items-center gap-2">
                 <input
                   type="text"
                   value={newPasswordInput}
                   onChange={(e) => setNewPasswordInput(e.target.value)}
-                  placeholder="Enter new password (e.g. ashrama@2026)"
-                  className="flex-1 rounded-xl border border-teal-900/20 px-3 py-2 text-xs font-semibold text-teal-950 focus:border-amber-500 outline-none"
+                  placeholder="e.g. Jana#849201"
+                  className="flex-1 rounded-xl border border-teal-900/20 px-3 py-2 text-xs font-mono font-bold text-teal-950 focus:border-amber-500 outline-none"
                 />
                 <button
                   type="submit"
-                  disabled={resettingPassword || !newPasswordInput.trim()}
+                  disabled={resettingPassword}
                   className="rounded-xl bg-teal-950 hover:bg-teal-900 text-gold px-4 py-2 text-xs font-black shadow-xs transition cursor-pointer disabled:opacity-50"
                 >
-                  {resettingPassword ? "Saving..." : "Save Password"}
+                  {resettingPassword ? "Saving..." : newPasswordInput.trim() ? "Save Password" : "Auto-Generate & Save"}
                 </button>
               </div>
               <p className="text-[11px] text-teal-950/60">
-                Default password for seeded accounts: <code className="font-mono font-bold text-amber-900">ashrama@123</code>. Advisors can also change their password directly in their portal.
+                Advisors can also change their password securely inside <code className="font-mono">/portal</code> anytime.
               </p>
             </form>
 
@@ -6103,7 +6166,7 @@ export function AdminTelecallerCRM() {
 
               <button
                 type="button"
-                onClick={() => handleCopyCredentials(selectedCallerForAccess, newPasswordInput || undefined)}
+                onClick={() => handleCopyCredentials(selectedCallerForAccess, lastResetPassword || newPasswordInput || undefined)}
                 className="w-full sm:w-auto flex-1 focus-ring tap-scale inline-flex items-center justify-center gap-1.5 rounded-xl bg-sand hover:bg-amber-100 border border-teal-900/15 text-teal-950 px-3 py-2.5 text-xs font-bold transition cursor-pointer"
               >
                 <span>📋 Copy Login</span>
@@ -6111,7 +6174,7 @@ export function AdminTelecallerCRM() {
 
               <button
                 type="button"
-                onClick={() => handleSendWhatsAppCredentials(selectedCallerForAccess, newPasswordInput || undefined)}
+                onClick={() => handleSendWhatsAppCredentials(selectedCallerForAccess, lastResetPassword || newPasswordInput || undefined)}
                 className="w-full sm:w-auto flex-1 focus-ring tap-scale inline-flex items-center justify-center gap-1.5 rounded-xl bg-[#25D366] hover:brightness-105 text-white px-3.5 py-2.5 text-xs font-bold shadow-xs transition cursor-pointer"
               >
                 <span>📱 WhatsApp Sheet & Login</span>
