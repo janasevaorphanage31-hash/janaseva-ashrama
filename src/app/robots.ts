@@ -4,7 +4,6 @@ import { SITE } from "@/lib/site";
 export const revalidate = 86400; // 24 hours
 
 export default async function robots(): Promise<MetadataRoute.Robots> {
-  const primaryUrl = "https://www.janasevaorphanage.org";
   const ashramaUrl = "https://www.janasevaashrama.org";
 
   const protectedRoutes = [
@@ -46,7 +45,6 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
       disallow: protectedRoutes,
     })),
     sitemap: [
-      `${primaryUrl}/sitemap.xml`,
       `${ashramaUrl}/sitemap.xml`,
     ],
   };

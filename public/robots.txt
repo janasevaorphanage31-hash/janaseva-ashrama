@@ -60,5 +60,3 @@ Allow: /
 
 # Sitemaps
 Sitemap: https://www.janasevaashrama.org/sitemap.xml
-Sitemap: https://janasevaashrama.org/sitemap.xml
-Sitemap: https://www.janasevaorphanage.org/sitemap.xml

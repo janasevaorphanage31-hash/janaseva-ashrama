@@ -28,38 +28,33 @@ let seeding: Promise<void> | null = null;
 
 /** Idempotent first-run seed so the site has structure before the admin adds real content. */
 export function ensureSeed(): Promise<void> {
-  if (process.env.ALLOW_DEMO_SEED !== "true") return Promise.resolve();
   if (!seeding) {
     seeding = (async () => {
-      await db
-        .insert(impactItems)
-        .values(DEFAULT_ITEMS)
-        .onConflictDoUpdate({
-          target: impactItems.slug,
-          set: {
-            unitPrice: sql`excluded.unit_price`,
-            name: sql`excluded.name`,
-            description: sql`excluded.description`,
-            imageUrl: sql`excluded.image_url`,
-            category: sql`excluded.category`,
-            unitLabel: sql`excluded.unit_label`,
-            featured: sql`excluded.featured`,
-            todayNeed: sql`excluded.today_need`,
-            sortOrder: sql`excluded.sort_order`,
-          },
-        });
-      const [{ t }] = await db.select({ t: count() }).from(todayUpdates);
-      if (t === 0) {
-        await db
-          .insert(todayUpdates)
-          .values(TODAY_SEED.map((u) => ({ ...u, isSample: false })));
+      try {
+        const [{ t: itemCount }] = await db.select({ t: count() }).from(impactItems);
+        if (itemCount === 0 || process.env.ALLOW_DEMO_SEED === "true") {
+          await db
+            .insert(impactItems)
+            .values(DEFAULT_ITEMS.map((item) => ({ ...item, active: true, financeApproval: "approved" })))
+            .onConflictDoNothing();
+        }
+      } catch (e) {
+        console.error("ensureSeed impactItems check failed:", e);
       }
-      const [{ c }] = await db.select({ c: count() }).from(campaigns);
-      if (c === 0) {
-        await db
-          .insert(campaigns)
-          .values({ ...CAMPAIGN_SEED, status: "approved", isSample: false })
-          .onConflictDoNothing();
+      if (process.env.ALLOW_DEMO_SEED === "true") {
+        const [{ t }] = await db.select({ t: count() }).from(todayUpdates);
+        if (t === 0) {
+          await db
+            .insert(todayUpdates)
+            .values(TODAY_SEED.map((u) => ({ ...u, isSample: false })));
+        }
+        const [{ c }] = await db.select({ c: count() }).from(campaigns);
+        if (c === 0) {
+          await db
+            .insert(campaigns)
+            .values({ ...CAMPAIGN_SEED, status: "approved", isSample: false })
+            .onConflictDoNothing();
+        }
       }
       const [{ d }] = await db.select({ d: count() }).from(documents);
       if (d === 0) await db.insert(documents).values(DOCS_SEED);
@@ -101,8 +96,8 @@ async function safe<T>(fn: () => Promise<T>, fallback: T): Promise<T> {
 
 export const getImpactItems = (): Promise<ImpactItem[]> =>
   safe(
-    async () =>
-      (await db
+    async () => {
+      const rows = await db
         .select()
         .from(impactItems)
         .where(
@@ -113,8 +108,13 @@ export const getImpactItems = (): Promise<ImpactItem[]> =>
               : eq(impactItems.financeApproval, "approved"),
           ),
         )
-        .orderBy(asc(impactItems.sortOrder))
-      ).map((i) => ({
+        .orderBy(asc(impactItems.sortOrder));
+
+      if (!rows || rows.length === 0) {
+        return DEFAULT_ITEMS;
+      }
+
+      return rows.map((i) => ({
         slug: i.slug,
         name: i.name,
         description: i.description,
@@ -132,8 +132,9 @@ export const getImpactItems = (): Promise<ImpactItem[]> =>
         financeApproval: i.financeApproval,
         gallery: i.gallery,
         schemes: i.schemes,
-      })),
-    process.env.ALLOW_DEMO_SEED === "true" ? DEFAULT_ITEMS : [],
+      }));
+    },
+    DEFAULT_ITEMS,
   );
 
 export const getImpactItem = (slug: string): Promise<ImpactItem | null> =>
@@ -152,7 +153,9 @@ export const getImpactItem = (slug: string): Promise<ImpactItem | null> =>
           ),
         )
         .limit(1);
-      if (!i) return null;
+      if (!i) {
+        return DEFAULT_ITEMS.find((item) => item.slug === slug) ?? null;
+      }
       return {
         slug: i.slug,
         name: i.name,
