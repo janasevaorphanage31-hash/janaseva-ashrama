@@ -437,7 +437,7 @@ export function OfficialSupportTiersSection({
             <div className="mt-3 inline-flex items-center gap-2 rounded-xl bg-teal-900 text-white px-3.5 py-1.5 text-xs font-bold shadow-md animate-fadeIn">
               <span>🛒</span>
               <span>{addedNotification}</span>
-              <Link href={`/checkout?amount=${total > 0 ? total : selectedExactAmount}`} className="underline text-gold hover:text-white font-extrabold ml-1 cursor-pointer">
+              <Link href={`/checkout?amount=${total > 0 ? total : selectedExactAmount}`} rel="nofollow" className="underline text-gold hover:text-white font-extrabold ml-1 cursor-pointer">
                 Checkout →
               </Link>
             </div>

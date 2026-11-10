@@ -246,6 +246,7 @@ export function CampaignsSection({
                   </Link>
                   <Link
                     href={`/checkout?occasion=${encodeURIComponent(occ.name)}`}
+                    rel="nofollow"
                     className="focus-ring rounded-xl bg-cream px-3 py-2 text-center text-xs font-semibold text-teal-900 border border-teal-900/15 hover:bg-sand transition"
                     title="Dedicate a contribution today"
                   >

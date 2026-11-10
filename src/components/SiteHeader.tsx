@@ -71,6 +71,7 @@ const mobileMenuLinks = [
   { href: "/#transparency", label: "80G Transparency & Trust", icon: "shield" },
   { href: "/supporter-form", label: "Official Supporter Form", icon: "document" },
   { href: "/stories", label: "Stories of Hope", icon: "book" },
+  { href: "/orphanage-bangalore", label: "Bengaluru Orphanage Guide", icon: "pin" },
   { href: "/celebrate-birthday", label: "Custom Birthday Booking Portal", icon: "gift" },
   { href: "/corporate", label: "Corporate / CSR", icon: "building" },
   { href: "/contact", label: "Contact & Location", icon: "pin" },
@@ -331,6 +332,7 @@ export function SiteHeader() {
             ) : (
               <Link
                 href={total > 0 ? `/checkout?amount=${total}` : "/checkout"}
+                rel="nofollow"
                 onClick={() => track("cta_make_impact", { where: "header", amount: total })}
                 className="focus-ring tap-scale relative flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-600 hover:to-orange-600 px-3 sm:px-4 py-2 sm:py-2.5 text-xs font-black tracking-wide text-white shadow-md shadow-orange-500/25 transition active:scale-95 whitespace-nowrap cursor-pointer shrink-0"
               >
@@ -421,6 +423,7 @@ export function SiteHeader() {
             <div className="border-t border-teal-900/60 p-4 space-y-2">
               <Link
                 href={total > 0 ? `/checkout?amount=${total}` : "/checkout"}
+                rel="nofollow"
                 onClick={() => setMobileMenuOpen(false)}
                 className="btn-primary block text-center"
               >

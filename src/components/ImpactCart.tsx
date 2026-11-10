@@ -270,6 +270,7 @@ export function ImpactCart({
       ) : (
         <Link
           href={checkoutHref}
+          rel="nofollow"
           onClick={() => track("checkout_start", { total })}
           className="focus-ring flex items-center justify-center gap-1.5 w-full rounded-2xl px-4 py-3 sm:py-3.5 text-center text-xs sm:text-sm font-extrabold tracking-wide text-white bg-gradient-to-r from-emerald-600 to-teal-700 shadow-md hover:from-emerald-700 hover:to-teal-800 transition active:scale-95 animate-heartbeat"
         >

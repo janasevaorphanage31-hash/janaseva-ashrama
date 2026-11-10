@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Logo } from "./Logo";
 import { SITE } from "@/lib/site";
+import { BANGALORE_LOCALITIES } from "@/lib/locations-data";
 
 export function SiteFooter() {
   return (
@@ -52,6 +53,16 @@ export function SiteFooter() {
             <li>
               <Link href="/recurring-giving" className="hover:text-gold transition font-medium flex items-center gap-1.5">
                 <span>❤️</span> Monthly Regular Giving
+              </Link>
+            </li>
+            <li>
+              <Link href="/stories/sponsor-meals-orphanage-bangalore-guide" className="hover:text-gold transition font-medium flex items-center gap-1.5">
+                <span>📖</span> Meal Sponsor &amp; Annadana Guide
+              </Link>
+            </li>
+            <li>
+              <Link href="/stories" className="hover:text-gold transition font-medium flex items-center gap-1.5">
+                <span>✨</span> Stories of Hope &amp; Impact
               </Link>
             </li>
           </ul>
@@ -183,6 +194,46 @@ export function SiteFooter() {
               </svg>
             </a>
           </div>
+        </div>
+      </div>
+
+      {/* ── BENGALURU LOCALITY DIRECTORY & COMMUNITY SEVA HUBS ── */}
+      <div className="mx-auto mt-10 pt-8 border-t border-teal-900/60 max-w-7xl">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4">
+          <div>
+            <Link
+              href="/orphanage-bangalore"
+              className="text-xs font-bold uppercase tracking-wider text-gold hover:text-white transition inline-flex items-center gap-1.5"
+            >
+              <span>📍</span> Orphanage Near You · Bengaluru Locality Hubs
+              <span className="text-[10px] text-teal-300 lowercase tracking-normal font-medium">→ view citywide guide</span>
+            </Link>
+            <p className="text-[11px] text-white/65 mt-0.5">
+              Serving 25 resident boys in Turahalli, Bengaluru. Visit in person or sponsor Annadana meals from your neighbourhood.
+            </p>
+          </div>
+          <div className="flex items-center gap-2 text-xs">
+            <Link
+              href="/orphanage-bangalore"
+              className="rounded-full bg-white/10 hover:bg-white/20 px-3 py-1 text-[11px] font-semibold text-gold transition"
+            >
+              Bangalore Orphanage Directory →
+            </Link>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 text-xs">
+          {BANGALORE_LOCALITIES.map((loc) => (
+            <Link
+              key={loc.slug}
+              href={`/orphanage-bangalore/${loc.slug}`}
+              className="rounded-lg bg-white/5 hover:bg-white/10 p-2.5 text-white/80 hover:text-gold transition border border-white/5 flex flex-col justify-center"
+              title={`Janaseva Ashrama Orphanage near ${loc.name}, Bangalore`}
+            >
+              <span className="font-semibold text-white/95 truncate">{loc.name}</span>
+              <span className="text-[10px] text-white/55 truncate">{loc.distanceKm}</span>
+            </Link>
+          ))}
         </div>
       </div>
 

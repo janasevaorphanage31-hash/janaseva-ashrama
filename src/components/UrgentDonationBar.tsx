@@ -115,6 +115,7 @@ export function UrgentDonationBar() {
             <div className="flex items-center gap-2 shrink-0">
               <Link
                 href={`/checkout?amount=${total}`}
+                rel="nofollow"
                 className="focus-ring tap-scale inline-flex items-center gap-1.5 rounded-xl sm:rounded-2xl bg-gradient-to-r from-saffron to-amber-600 px-4 sm:px-6 py-2 sm:py-2.5 text-xs sm:text-sm font-black uppercase tracking-wider text-white shadow-lg hover:brightness-110 transition active:scale-95"
               >
                 <span>Checkout Now →</span>

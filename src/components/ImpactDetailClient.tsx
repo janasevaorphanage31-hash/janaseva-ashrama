@@ -429,6 +429,7 @@ export function ImpactDetailClient({
                 </div>
                 <Link
                   href={`/checkout?amount=${cart.total}`}
+                  rel="nofollow"
                   className="rounded-xl bg-saffron px-4 py-2 text-xs font-bold text-white shadow hover:bg-saffron-dark cursor-pointer"
                 >
                   Proceed to Checkout →

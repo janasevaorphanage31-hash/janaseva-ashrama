@@ -162,6 +162,7 @@ export function TodaySection({
                   ) : (
                     <Link
                       href={`/checkout?amount=${meal.amount || 51}`}
+                      rel="nofollow"
                       className="mt-3 inline-flex items-center justify-center rounded-xl bg-saffron px-3 py-1.5 text-xs font-bold text-white hover:bg-saffron-dark transition shadow-2xs text-center"
                     >
                       {meal.ctaText || `Sponsor (₹${meal.amount || 51}) →`}

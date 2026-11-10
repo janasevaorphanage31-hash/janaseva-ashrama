@@ -485,6 +485,7 @@ export function CelebrateBirthdayClient({
                 <div className="mt-6 pt-3 border-t border-amber-500/15 space-y-2">
                   <Link
                     href={`/checkout?amount=${pkg.price}&occasion=${encodeURIComponent(occasion)}`}
+                    rel="nofollow"
                     onClick={() => handleSponsor(pkg)}
                     className="focus-ring tap-scale block w-full rounded-2xl bg-gradient-celebrate py-3 text-center text-xs font-black uppercase tracking-wider text-white shadow-md glow-saffron transition hover:opacity-95 active:scale-95"
                   >
@@ -680,6 +681,7 @@ export function CelebrateBirthdayClient({
                 <div className="space-y-2.5 pt-2">
                   <Link
                     href={`/checkout?amount=${bookingSuccess.amount}`}
+                    rel="nofollow"
                     onClick={() => setDedicatedAmount(bookingSuccess.amount)}
                     className="focus-ring tap-scale block w-full rounded-2xl bg-gradient-celebrate px-5 py-3.5 text-center text-xs sm:text-sm font-black uppercase tracking-wider text-white shadow-xl glow-saffron transition hover:opacity-95 active:scale-95"
                   >
@@ -1187,6 +1189,7 @@ export function CelebrateBirthdayClient({
 
         <Link
           href={`/checkout?amount=${activePackage.price}&occasion=${encodeURIComponent(occasion)}`}
+          rel="nofollow"
           onClick={() => handleSponsor(activePackage)}
           className="focus-ring tap-scale inline-flex items-center gap-1.5 rounded-2xl bg-gradient-celebrate px-5 py-3 text-xs font-black uppercase tracking-wider text-white shadow-xl glow-saffron shrink-0 active:scale-95 animate-shimmer"
         >
