@@ -76,9 +76,19 @@ const HERO_SHAGUN_TIERS: HeroSchemeTier[] = [
     categoryId: "food_one_month",
     optionId: "4_children",
   },
+  {
+    amt: 7500,
+    label: "Non-Veg Feast · 25 Boys",
+    sub: "Biryani Rice, Kabab & Egg",
+    badge: "Special Feast 🍗",
+    image: "/media/non-veg-biryani-feast.jpg",
+    impact: "Special 1-time feast for all 25 boys with aromatic chicken Biryani rice, crispy chicken Kababs, and boiled eggs",
+    categoryId: "food_one_day",
+    optionId: "non_veg_feast",
+  },
 ];
 
-const HERO_QUICK_PRESETS = [11, 21, 51, 101, 251, 501, 1001, 2501, 5001];
+const HERO_QUICK_PRESETS = [11, 21, 51, 101, 251, 501, 1001, 2501, 5001, 7500];
 
 function getCustomImpact(amt: number): string {
   if (amt <= 0) {
@@ -105,7 +115,10 @@ function getCustomImpact(amt: number): string {
   if (amt < 4500) {
     return `Your generous sponsorship of ${formatINR(amt)} covers steaming hot lunch or dinner feasts with sambar, rice & sweet payasam for 25 boys.`;
   }
-  return `Your noble sponsorship of ${formatINR(amt)} covers complete 4-meal Annadana, grocery support & care for all 25 resident boys.`;
+  if (amt < 7500) {
+    return `Your noble sponsorship of ${formatINR(amt)} covers complete 4-meal Annadana, grocery support & care for all 25 resident boys.`;
+  }
+  return `Your royal sponsorship of ${formatINR(amt)} provides a grand Non-Veg Feast (Chicken Biryani Rice, Crispy Kababs & Boiled Eggs) or comprehensive care for all 25 resident boys.`;
 }
 
 export function CinematicHero({ content }: { content?: Partial<SiteContentMap> }) {
@@ -130,6 +143,7 @@ export function CinematicHero({ content }: { content?: Partial<SiteContentMap> }
     const optFood2 = foodDay?.options?.find((o) => o.id === "two_times") || foodDay?.options?.[1];
     const optFoodFull = foodDay?.options?.find((o) => o.id === "all_children") || foodDay?.options?.[0];
     const optRation4 = foodMonth?.options?.find((o) => o.id === "4_children") || foodMonth?.options?.[0];
+    const optNonVeg = foodDay?.options?.find((o) => o.id === "non_veg_feast");
 
     return [
       {
@@ -178,6 +192,16 @@ export function CinematicHero({ content }: { content?: Partial<SiteContentMap> }
         impact: foodMonth?.desc || "Essential 1-month kitchen groceries, toor dal, fresh vegetables & milk for resident boys",
         categoryId: "food_one_month",
         optionId: optRation4?.id || "4_children",
+      },
+      {
+        amt: optNonVeg?.amount || 7500,
+        label: "Non-Veg Feast · 25 Boys",
+        sub: optNonVeg?.subLabel || "Biryani Rice, Kabab & Egg",
+        badge: "Special Feast 🍗",
+        image: "/media/non-veg-biryani-feast.jpg",
+        impact: "Special 1-time feast for all 25 boys with aromatic chicken Biryani rice, crispy chicken Kababs, and boiled eggs",
+        categoryId: "food_one_day",
+        optionId: optNonVeg?.id || "non_veg_feast",
       },
     ];
   }, [content?.supportTiers]);

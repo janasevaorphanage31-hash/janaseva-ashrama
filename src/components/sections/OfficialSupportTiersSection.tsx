@@ -158,6 +158,15 @@ export const SCHEME_PRICE_CARDS = [
     optId: "4_children",
   },
   {
+    amount: 7500,
+    label: "Non-Veg Feast · 25 Boys",
+    sub: "Biryani, Kababs & Boiled Eggs",
+    badge: "Special Feast 🍗",
+    image: "/media/non-veg-biryani-feast.jpg",
+    catId: "food_one_day",
+    optId: "non_veg_feast",
+  },
+  {
     amount: 9600,
     label: "Schooling · 12 Boys",
     sub: "Monthly education & kits",
@@ -196,6 +205,7 @@ export function OfficialSupportTiersSection({
     const foodDayOpt1 = foodDay?.options?.find((o) => o.id === "one_time") || foodDay?.options?.[2];
     const foodDayOpt2 = foodDay?.options?.find((o) => o.id === "two_times") || foodDay?.options?.[1];
     const foodDayOptFull = foodDay?.options?.find((o) => o.id === "all_children") || foodDay?.options?.[0];
+    const foodDayOptNonVeg = foodDay?.options?.find((o) => o.id === "non_veg_feast");
     const foodMonthOpt4 = foodMonth?.options?.find((o) => o.id === "4_children") || foodMonth?.options?.[0];
     const eduMonthOpt12 = eduMonth?.options?.find((o) => o.id === "12_children") || eduMonth?.options?.[0];
 
@@ -249,6 +259,15 @@ export function OfficialSupportTiersSection({
         image: foodMonth?.imageUrl || TIER_IMAGES.food_one_month,
         catId: "food_one_month",
         optId: foodMonthOpt4?.id || "4_children",
+      },
+      {
+        amount: foodDayOptNonVeg?.amount || 7500,
+        label: "Non-Veg Feast · 25 Boys",
+        sub: foodDayOptNonVeg?.subLabel || "Biryani, Kababs & Boiled Eggs",
+        badge: "Special Feast 🍗",
+        image: "/media/non-veg-biryani-feast.jpg",
+        catId: "food_one_day",
+        optId: foodDayOptNonVeg?.id || "non_veg_feast",
       },
       {
         amount: eduMonthOpt12?.amount || 9600,
@@ -312,7 +331,8 @@ export function OfficialSupportTiersSection({
       queueMicrotask(() => {
         if (amtParam) {
           const amt = parseInt(amtParam, 10);
-          if (amt === 4500) handleSelectExactAmount(4500, "food_one_day", "all_children");
+          if (amt === 7500) handleSelectExactAmount(7500, "food_one_day", "non_veg_feast");
+          else if (amt === 4500) handleSelectExactAmount(4500, "food_one_day", "all_children");
           else if (amt === 3000) handleSelectExactAmount(3000, "food_one_day", "two_times");
           else if (amt === 2500) handleSelectExactAmount(2500, "food_one_day", "one_time");
           else if (amt === 6000) handleSelectExactAmount(6000, "food_one_month", "4_children");

@@ -42,6 +42,7 @@ interface FeastPackage {
   menu: string[];
   servings: string;
   badge?: string;
+  image?: string;
 }
 
 const PACKAGES: FeastPackage[] = [
@@ -110,6 +111,22 @@ const PACKAGES: FeastPackage[] = [
       "High-res WhatsApp video & photo updates",
     ],
     servings: "Evening celebration for 25 boys",
+  },
+  {
+    id: "pkg-non-veg-feast",
+    name: "Special Non-Veg Feast (Chicken Biryani, Kabab & Egg)",
+    price: 7500,
+    highlight: true,
+    badge: "🍗 Non-Veg Feast (25 Boys)",
+    image: "/media/non-veg-biryani-feast.jpg",
+    menu: [
+      "Aromatic Bengaluru Dum Chicken Biryani Rice",
+      "Crispy hot Chicken Kababs with onion & lemon",
+      "Farm boiled eggs for all 25 boys",
+      "Cucumber raita, biryani salan gravy & sweet",
+      "Happy Birthday song & personalized WhatsApp prayer blessing",
+    ],
+    servings: "Grand feast for all 25 resident boys (1 Time Meal)",
   },
   {
     id: "pkg-full-day",

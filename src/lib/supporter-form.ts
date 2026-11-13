@@ -27,7 +27,8 @@ export const SUPPORTER_CATEGORIES: SupporterCategory[] = [
     icon: "🍲",
     imageUrl: "/media/annadana-hall-hd.jpg",
     options: [
-      { id: "all_children", label: "Full Day (All Children)", subLabel: "Breakfast + Lunch + Dinner", amount: 4500, isPopular: true },
+      { id: "non_veg_feast", label: "Special Non-Veg Feast (25 Boys)", subLabel: "Biryani Rice, Kabab & Egg (1 Time)", amount: 7500, isPopular: true },
+      { id: "all_children", label: "Full Day (All Children)", subLabel: "Breakfast + Lunch + Dinner", amount: 4500 },
       { id: "two_times", label: "Two Times", subLabel: "Lunch & Dinner for all boys", amount: 3000 },
       { id: "one_time", label: "One Time", subLabel: "Single meal for all boys", amount: 2500 },
     ],

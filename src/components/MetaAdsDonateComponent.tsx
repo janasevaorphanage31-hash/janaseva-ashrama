@@ -120,6 +120,17 @@ const QUICK_SEVA_TIERS: SevaOption[] = [
     featured: true,
     category: "quick",
   },
+  {
+    amt: 7500,
+    label: "₹7,500",
+    name: "Non-Veg Feast (25 Boys)",
+    impact: "Special 1-time feast with chicken biryani, crispy kababs & boiled eggs for all 25 boys",
+    badge: "Grand Feast 🍗",
+    icon: "🍗",
+    image: "/media/non-veg-biryani-feast.jpg",
+    featured: true,
+    category: "quick",
+  },
 ];
 
 // ── 2. OFFICIAL 5 SUPPORT TIERS (FORM 28 JJ ACT REGISTERED) ──
@@ -218,6 +229,17 @@ const BIRTHDAY_CELEBRATIONS: SevaOption[] = [
     badge: "Special Video Blessing",
     icon: "✨",
     image: "/media/birthday-wishes-orange.jpg",
+    featured: true,
+    category: "birthday",
+  },
+  {
+    amt: 7500,
+    label: "₹7,500",
+    name: "Non-Veg Feast (25 Boys)",
+    impact: "Aromatic chicken Biryani rice, crispy chicken Kababs, boiled eggs & sweet for 25 boys",
+    badge: "Special Non-Veg Feast 🍗",
+    icon: "🍗",
+    image: "/media/non-veg-biryani-feast.jpg",
     featured: true,
     category: "birthday",
   },
