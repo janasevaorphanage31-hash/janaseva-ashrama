@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useEffect, useState, type FormEvent } from "react";
 import { useCart } from "./CartProvider";
 import { formatINR, SITE } from "@/lib/site";
@@ -454,8 +455,8 @@ export function CelebrateBirthdayClient({
           </p>
         </div>
 
-        {/* 5 Feast Packages Grid */}
-        <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-5">
+        {/* Feast Packages Grid */}
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {packages.map((pkg) => {
             const isSelected = selectedPkg === pkg.id;
             return (
@@ -468,11 +469,22 @@ export function CelebrateBirthdayClient({
                 }`}
               >
                 {pkg.highlight && (
-                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-gradient-celebrate px-3 py-0.5 text-[10px] font-black uppercase tracking-wider text-white shadow-md glow-saffron whitespace-nowrap">
+                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-gradient-celebrate px-3 py-0.5 text-[10px] font-black uppercase tracking-wider text-white shadow-md glow-saffron whitespace-nowrap z-10">
                     🔥 Most Popular Choice
                   </span>
                 )}
                 <div>
+                  {pkg.image && (
+                    <div className="relative aspect-[16/10] w-full overflow-hidden rounded-2xl mb-3 shadow-2xs bg-teal-900">
+                      <Image
+                        src={pkg.image}
+                        alt={pkg.name}
+                        fill
+                        className="object-cover"
+                        sizes="(max-width: 768px) 100vw, 300px"
+                      />
+                    </div>
+                  )}
                   <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700 bg-amber-100/70 px-2.5 py-0.5 rounded-lg inline-block mb-1.5">
                     {pkg.badge || "Satvik Meal"}
                   </span>

@@ -187,6 +187,17 @@ const OFFICIAL_TIERS: SevaOption[] = [
     category: "official",
   },
   {
+    amt: 7500,
+    label: "₹7,500",
+    name: "Non-Veg Feast (25 Boys)",
+    impact: "Special 1-time feast for all 25 boys with chicken biryani rice, crispy kabab, and boiled egg",
+    badge: "Special Non-Veg Feast 🍗",
+    icon: "🍗",
+    image: "/media/non-veg-biryani-feast.jpg",
+    featured: true,
+    category: "official",
+  },
+  {
     amt: 8000,
     label: "₹8,000",
     name: "1 Mo Ration (4 Boys)",
@@ -698,7 +709,7 @@ export function MetaAdsDonateComponent() {
     if (frequency === "weekly") return [101, 251, 501, 1000, 2500];
     if (frequency === "monthly") return [501, 1000, 1500, 2500, 5000];
     if (frequency === "yearly") return [9600, 15000, 25000, 30000, 50000];
-    return [101, 251, 501, 1000, 1800, 2500, 3000, 4500, 6000];
+    return [101, 251, 501, 1000, 1800, 2500, 3000, 4500, 6000, 7500];
   }, [frequency]);
 
   // Current active tier list based on selected Seva Tab

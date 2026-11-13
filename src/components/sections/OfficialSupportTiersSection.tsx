@@ -19,6 +19,7 @@ const TIER_IMAGES: Record<string, string> = {
 
 const TIER_SLUG_MAP: Record<string, Record<string, string>> = {
   food_one_day: {
+    non_veg_feast: "tier-1-non-veg-feast",
     all_children: "tier-1-full-day",
     two_times: "tier-1-two-times",
     one_time: "tier-1-one-time",
@@ -59,6 +60,7 @@ const CONCISE_META: Record<
     tabLabel: "Tier 1: Food",
     oneLineDesc: "Wholesome daily Annadana: hot breakfast, nutritious lunch, snacks & dinner for all 25 children.",
     pillOptions: [
+      { id: "non_veg_feast", label: "Non-Veg", impact: "25 Boys · Chicken Biryani, Kabab & Egg Feast" },
       { id: "all_children", label: "Full Day", impact: "All 25 Boys · 4 Complete Meals (Breakfast, Lunch, Snacks, Dinner)" },
       { id: "two_times", label: "2 Meals", impact: "All 25 Boys · Lunch & Dinner" },
       { id: "one_time", label: "1 Meal", impact: "All 25 Boys · Single Meal Feast" },
@@ -658,7 +660,7 @@ export function OfficialSupportTiersSection({
                   </div>
 
                   {/* Clean Segmented Option Pills */}
-                  <div className="grid grid-cols-3 gap-1 p-1 rounded-xl bg-sand/40 border border-teal-900/10 mb-3">
+                  <div className={`grid ${cat.options.length === 4 ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-3"} gap-1 p-1 rounded-xl bg-sand/40 border border-teal-900/10 mb-3`}>
                     {cat.options.map((opt) => {
                       const isSelected = currentOption.id === opt.id;
                       const pillMeta = meta?.pillOptions.find((p) => p.id === opt.id);

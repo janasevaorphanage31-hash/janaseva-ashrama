@@ -357,6 +357,7 @@ export const DEFAULT_SHAGUN_TIERS: ShagunTierItem[] = [
   { amount: 2101, name: "Maha Prasada", kannada: "ಸಿಹಿ ಪಾಯಸದ ಹಬ್ಬ", meaning: "Festival Sweet Payasam Feast for All 25 Boys", icon: "🎉" },
   { amount: 2501, name: "Sampoorna Bhojana", kannada: "ಎಲ್ಲಾ 25 ಮಕ್ಕಳಿಗೆ ಊಟ", meaning: "1-Time Full Dining Hall Feast for All 25 Boys", icon: "🥘" },
   { amount: 5001, name: "Sarva Seva", kannada: "ಸಂಪೂರ್ಣ ದಿನದ ಅನ್ನದಾನ", meaning: "Full Day All 3 Meals + Snacks for All 25 Boys", icon: "👑" },
+  { amount: 7500, name: "Non-Veg Feast", kannada: "ವಿಶೇಷ ಬಿರಿಯಾನಿ ಸೇವೆ", meaning: "Chicken Biryani, Kababs & Boiled Eggs for 25 Boys", icon: "🍗", isPopular: true },
 ];
 
 export const DEFAULT_NGO_ACTIVITIES: NgoActivityItem[] = [
@@ -706,19 +707,47 @@ export async function getSiteContentMap(): Promise<SiteContentMap> {
       wishVideos: parsed.wishVideos || DEFAULT_SITE_CONTENT.wishVideos,
       todayMealsStatus: parsed.todayMealsStatus || DEFAULT_SITE_CONTENT.todayMealsStatus,
       supportTiers: parsed.supportTiers
-        ? parsed.supportTiers.map((tier: any, idx: number) => ({
-            ...DEFAULT_SITE_CONTENT.supportTiers[idx],
-            ...tier,
-            imageUrl: tier.imageUrl || DEFAULT_SITE_CONTENT.supportTiers[idx]?.imageUrl,
-          }))
+        ? DEFAULT_SITE_CONTENT.supportTiers.map((defTier) => {
+            const dbTier = (parsed.supportTiers as any[]).find((t: any) => t.id === defTier.id);
+            if (!dbTier) return defTier;
+            const mergedOptions = [...defTier.options];
+            if (Array.isArray(dbTier.options)) {
+              dbTier.options.forEach((dbOpt: any) => {
+                const existingIdx = mergedOptions.findIndex((o) => o.id === dbOpt.id);
+                if (existingIdx !== -1) {
+                  mergedOptions[existingIdx] = { ...mergedOptions[existingIdx], ...dbOpt };
+                }
+              });
+            }
+            return {
+              ...defTier,
+              ...dbTier,
+              imageUrl: dbTier.imageUrl || defTier.imageUrl,
+              options: mergedOptions,
+            };
+          })
         : DEFAULT_SITE_CONTENT.supportTiers,
-      celebrationPackages: parsed.celebrationPackages || DEFAULT_SITE_CONTENT.celebrationPackages,
+      celebrationPackages: parsed.celebrationPackages
+        ? [
+            ...parsed.celebrationPackages,
+            ...DEFAULT_CELEBRATION_PACKAGES.filter(
+              (dp) => !(parsed.celebrationPackages as any[]).some((pp: any) => pp.id === dp.id)
+            ),
+          ]
+        : DEFAULT_CELEBRATION_PACKAGES,
       celebrationVideoCost: typeof parsed.celebrationVideoCost === "number" ? parsed.celebrationVideoCost : DEFAULT_SITE_CONTENT.celebrationVideoCost,
       celebrationVideoHeading: parsed.celebrationVideoHeading || DEFAULT_SITE_CONTENT.celebrationVideoHeading,
       celebrationVideoDescription: parsed.celebrationVideoDescription || DEFAULT_SITE_CONTENT.celebrationVideoDescription,
       celebrationVideoCallCost: typeof parsed.celebrationVideoCallCost === "number" ? parsed.celebrationVideoCallCost : DEFAULT_SITE_CONTENT.celebrationVideoCallCost,
       celebrationVideoCallTitle: parsed.celebrationVideoCallTitle || DEFAULT_SITE_CONTENT.celebrationVideoCallTitle,
-      shagunTiers: parsed.shagunTiers || DEFAULT_SITE_CONTENT.shagunTiers,
+      shagunTiers: parsed.shagunTiers
+        ? [
+            ...parsed.shagunTiers,
+            ...DEFAULT_SHAGUN_TIERS.filter(
+              (dt) => !(parsed.shagunTiers as any[]).some((pt: any) => pt.amount === dt.amount)
+            ),
+          ]
+        : DEFAULT_SHAGUN_TIERS,
       ngoActivities: parsed.ngoActivities || DEFAULT_SITE_CONTENT.ngoActivities,
       bankDetails: { ...DEFAULT_SITE_CONTENT.bankDetails, ...(parsed.bankDetails || {}) },
     };
