@@ -183,17 +183,19 @@ export function BottomNav() {
           const celEl = document.getElementById("section-celebrate") || document.getElementById("celebrate");
           const tiersEl = document.getElementById("section-tiers") || document.getElementById("official-tiers");
 
+          let nextSec: "home" | "tiers" | "celebrate" | "volunteer" = "home";
           if (trustEl && trustEl.getBoundingClientRect().top <= triggerY) {
-            setActiveSection("home");
+            nextSec = "home";
           } else if (volEl && volEl.getBoundingClientRect().top <= triggerY) {
-            setActiveSection("volunteer");
+            nextSec = "volunteer";
           } else if (celEl && celEl.getBoundingClientRect().top <= triggerY) {
-            setActiveSection("celebrate");
+            nextSec = "celebrate";
           } else if (tiersEl && tiersEl.getBoundingClientRect().top <= triggerY) {
-            setActiveSection("tiers");
+            nextSec = "tiers";
           } else {
-            setActiveSection("home");
+            nextSec = "home";
           }
+          setActiveSection((prev) => (prev !== nextSec ? nextSec : prev));
           ticking = false;
         });
         ticking = true;

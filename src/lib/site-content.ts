@@ -643,8 +643,14 @@ export const DEFAULT_SITE_CONTENT: SiteContentMap = {
 };
 
 const SITE_CONTENT_SLUG = "global-site-content";
+let cachedSiteContent: { data: SiteContentMap; expiresAt: number } | null = null;
 
 export async function getSiteContentMap(): Promise<SiteContentMap> {
+  const now = Date.now();
+  if (cachedSiteContent && cachedSiteContent.expiresAt > now) {
+    return cachedSiteContent.data;
+  }
+
   try {
     const [row] = await db
       .select()
@@ -652,12 +658,15 @@ export async function getSiteContentMap(): Promise<SiteContentMap> {
       .where(and(eq(contentEntries.type, "settings"), eq(contentEntries.slug, SITE_CONTENT_SLUG)))
       .limit(1);
 
-    if (!row || !row.body) return DEFAULT_SITE_CONTENT;
+    if (!row || !row.body) {
+      cachedSiteContent = { data: DEFAULT_SITE_CONTENT, expiresAt: now + 30_000 };
+      return DEFAULT_SITE_CONTENT;
+    }
 
     const parsed = JSON.parse(row.body);
     const heroVideoUrl = parsed.heroVideoUrl || DEFAULT_SITE_CONTENT.heroVideoUrl;
 
-    return {
+    const content: SiteContentMap = {
       ...DEFAULT_SITE_CONTENT,
       ...parsed,
       heroVideoUrl,
@@ -688,14 +697,19 @@ export async function getSiteContentMap(): Promise<SiteContentMap> {
       ngoActivities: parsed.ngoActivities || DEFAULT_SITE_CONTENT.ngoActivities,
       bankDetails: { ...DEFAULT_SITE_CONTENT.bankDetails, ...(parsed.bankDetails || {}) },
     };
+
+    cachedSiteContent = { data: content, expiresAt: now + 60_000 };
+    return content;
   } catch (err) {
     console.error("Error reading site content settings:", err);
+    cachedSiteContent = { data: DEFAULT_SITE_CONTENT, expiresAt: now + 15_000 };
     return DEFAULT_SITE_CONTENT;
   }
 }
 
 export async function saveSiteContentMap(data: Partial<SiteContentMap>): Promise<boolean> {
   try {
+    cachedSiteContent = null;
     const current = await getSiteContentMap();
     const updated = { ...current, ...data };
     const serialized = JSON.stringify(updated);

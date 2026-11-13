@@ -25,9 +25,11 @@ import {
 import { DEFAULT_SITE_CONTENT } from "./site-content";
 
 let seeding: Promise<void> | null = null;
+let isSeeded = false;
 
 /** Idempotent first-run seed so the site has structure before the admin adds real content. */
 export function ensureSeed(): Promise<void> {
+  if (isSeeded) return Promise.resolve();
   if (!seeding) {
     seeding = (async () => {
       try {
@@ -76,6 +78,7 @@ export function ensureSeed(): Promise<void> {
           })
           .onConflictDoNothing();
       }
+      isSeeded = true;
     })().catch((e) => {
       seeding = null;
       throw e;
@@ -84,9 +87,11 @@ export function ensureSeed(): Promise<void> {
   return seeding;
 }
 
+let cachedImpactItems: { data: ImpactItem[]; expiresAt: number } | null = null;
+
 async function safe<T>(fn: () => Promise<T>, fallback: T): Promise<T> {
   try {
-    await ensureSeed();
+    if (!isSeeded) await ensureSeed();
     return await fn();
   } catch (e) {
     console.error("content query failed", e);
@@ -94,8 +99,12 @@ async function safe<T>(fn: () => Promise<T>, fallback: T): Promise<T> {
   }
 }
 
-export const getImpactItems = (): Promise<ImpactItem[]> =>
-  safe(
+export const getImpactItems = async (): Promise<ImpactItem[]> => {
+  const now = Date.now();
+  if (cachedImpactItems && cachedImpactItems.expiresAt > now) {
+    return cachedImpactItems.data;
+  }
+  const items = await safe(
     async () => {
       const rows = await db
         .select()
@@ -136,6 +145,9 @@ export const getImpactItems = (): Promise<ImpactItem[]> =>
     },
     DEFAULT_ITEMS,
   );
+  cachedImpactItems = { data: items, expiresAt: now + 30_000 };
+  return items;
+};
 
 export const getImpactItem = (slug: string): Promise<ImpactItem | null> =>
   safe(

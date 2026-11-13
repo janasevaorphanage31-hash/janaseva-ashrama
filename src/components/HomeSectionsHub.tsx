@@ -1,22 +1,56 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
+import dynamic from "next/dynamic";
 import { track } from "@/lib/track";
 
 import { OfficialSupportTiersSection } from "./sections/OfficialSupportTiersSection";
 import { ImpactCart } from "./ImpactCart";
 import { TrendingBirthdaySection } from "./sections/TrendingBirthdaySection";
-import { EmotionalQuotesSection } from "./sections/EmotionalQuotesSection";
-import { RealBoysGallerySection } from "./sections/RealBoysGallerySection";
-import { DocumentaryVideoSection } from "./sections/DocumentaryVideoSection";
-import { TransparencySection } from "./sections/TransparencySection";
-import { TrustSection } from "./sections/TrustSection";
-import { VerifiedImpactSection } from "./sections/VerifiedImpactSection";
-import { CommunityActivitiesSection } from "./sections/CommunityActivitiesSection";
-import { DonationFAQ } from "./DonationFAQ";
-import { CommunityV2Section } from "./sections/CommunityV2Section";
 import { TodaySection } from "./sections/TodaySection";
-import { ContactSection } from "./sections/ContactSection";
+
+// Dynamically split below-the-fold chapters to eliminate JS parse bottlenecks on mobile
+const RealBoysGallerySection = dynamic(
+  () => import("./sections/RealBoysGallerySection").then((m) => m.RealBoysGallerySection),
+  { ssr: true }
+);
+const DocumentaryVideoSection = dynamic(
+  () => import("./sections/DocumentaryVideoSection").then((m) => m.DocumentaryVideoSection),
+  { ssr: true }
+);
+const EmotionalQuotesSection = dynamic(
+  () => import("./sections/EmotionalQuotesSection").then((m) => m.EmotionalQuotesSection),
+  { ssr: true }
+);
+const CommunityV2Section = dynamic(
+  () => import("./sections/CommunityV2Section").then((m) => m.CommunityV2Section),
+  { ssr: true }
+);
+const CommunityActivitiesSection = dynamic(
+  () => import("./sections/CommunityActivitiesSection").then((m) => m.CommunityActivitiesSection),
+  { ssr: true }
+);
+const TransparencySection = dynamic(
+  () => import("./sections/TransparencySection").then((m) => m.TransparencySection),
+  { ssr: true }
+);
+const TrustSection = dynamic(
+  () => import("./sections/TrustSection").then((m) => m.TrustSection),
+  { ssr: true }
+);
+const VerifiedImpactSection = dynamic(
+  () => import("./sections/VerifiedImpactSection").then((m) => m.VerifiedImpactSection),
+  { ssr: true }
+);
+const DonationFAQ = dynamic(
+  () => import("./DonationFAQ").then((m) => m.DonationFAQ),
+  { ssr: true }
+);
+const ContactSection = dynamic(
+  () => import("./sections/ContactSection").then((m) => m.ContactSection),
+  { ssr: true }
+);
+
 import { Container } from "./ui";
 import type { SiteContentMap } from "@/lib/site-content";
 import type {

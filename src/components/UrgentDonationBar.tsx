@@ -24,8 +24,16 @@ export function UrgentDonationBar() {
 
   // Auto-hide when at the top of the homepage hero on desktop to avoid blocking hero donation deck
   useEffect(() => {
+    let ticking = false;
     const handleScroll = () => {
-      setScrolledPastHero(window.scrollY > 480);
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          const isPast = window.scrollY > 480;
+          setScrolledPastHero((prev) => (prev !== isPast ? isPast : prev));
+          ticking = false;
+        });
+        ticking = true;
+      }
     };
     handleScroll();
     window.addEventListener("scroll", handleScroll, { passive: true });

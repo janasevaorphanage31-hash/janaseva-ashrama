@@ -15,8 +15,16 @@ export function FloatingSocials() {
 
   // Monitor scroll depth on customer pages so floating speed dial never occludes the urgent donation bar
   useEffect(() => {
+    let ticking = false;
     const handleScroll = () => {
-      setScrolledPastHero(window.scrollY > 480);
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          const isPast = window.scrollY > 480;
+          setScrolledPastHero((prev) => (prev !== isPast ? isPast : prev));
+          ticking = false;
+        });
+        ticking = true;
+      }
     };
     handleScroll();
     window.addEventListener("scroll", handleScroll, { passive: true });

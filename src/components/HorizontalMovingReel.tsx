@@ -114,6 +114,7 @@ export function HorizontalMovingReel() {
   const { openBottomDonate } = useCart();
   const scrollerRef = useRef<HTMLDivElement>(null);
   const [isPaused, setIsPaused] = useState(false);
+  const [activeVideo, setActiveVideo] = useState<ReelCard | null>(null);
   const resumeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Duplicate items for a continuous seamless marquee loop
@@ -224,35 +225,37 @@ export function HorizontalMovingReel() {
           {displayItems.map((item, idx) => (
             <div
               key={`${item.time}-${idx}`}
-              className="group relative h-72 w-56 sm:h-80 sm:w-64 shrink-0 overflow-hidden rounded-2xl bg-teal-900 border border-white/15 shadow-xl transition-all duration-300 hover:scale-[1.02] hover:border-amber-400"
+              onClick={() => {
+                if (item.type === "video") setActiveVideo(item);
+              }}
+              className={`group relative h-72 w-56 sm:h-80 sm:w-64 shrink-0 overflow-hidden rounded-2xl bg-teal-900 border border-white/15 shadow-xl transition-all duration-300 hover:scale-[1.02] hover:border-amber-400 ${
+                item.type === "video" ? "cursor-pointer" : ""
+              }`}
             >
-              {/* Media Background */}
-              {item.type === "video" ? (
-                <video
-                  src={item.src}
-                  poster={item.poster}
-                  autoPlay
-                  loop
-                  muted
-                  playsInline
-                  preload="metadata"
-                  className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
-                />
-              ) : (
-                /* eslint-disable-next-line @next/next/no-img-element */
-                <img
-                  src={item.src}
-                  alt={item.title}
-                  loading="lazy"
-                  className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
-                />
+              {/* Media Background - Lazy image for smooth 60fps marquee without video decode stall */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={item.poster || item.src}
+                alt={item.title}
+                loading="lazy"
+                decoding="async"
+                className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+              />
+
+              {/* Video Play Badge for video reels */}
+              {item.type === "video" && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur border border-white/40 shadow-xl group-hover:scale-110 group-hover:bg-amber-500 transition-all">
+                    <span className="text-base ml-0.5">▶</span>
+                  </div>
+                </div>
               )}
 
               {/* Gradient Scrim */}
               <div className="absolute inset-0 bg-gradient-to-t from-teal-950 via-teal-950/40 to-transparent" />
 
               {/* Time Badge (Top Left) */}
-              <div className="absolute top-3 left-3 flex items-center gap-1.5 rounded-lg bg-teal-950/80 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-amber-300 backdrop-blur border border-white/15">
+              <div className="absolute top-3 left-3 flex items-center gap-1.5 rounded-lg bg-teal-950/80 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-amber-300 backdrop-blur border border-white/15 z-10">
                 {item.type === "video" && (
                   <span className="flex h-1.5 w-1.5 rounded-full bg-red-400 animate-pulse" />
                 )}
@@ -260,12 +263,12 @@ export function HorizontalMovingReel() {
               </div>
 
               {/* Impact Tag (Top Right) */}
-              <div className="absolute top-3 right-3 rounded-lg bg-white/20 px-2 py-1 text-[9px] font-black uppercase text-white backdrop-blur">
+              <div className="absolute top-3 right-3 rounded-lg bg-white/20 px-2 py-1 text-[9px] font-black uppercase text-white backdrop-blur z-10">
                 {item.impactTag}
               </div>
 
               {/* Bottom Information & Action */}
-              <div className="absolute inset-x-0 bottom-0 p-3.5 space-y-2">
+              <div className="absolute inset-x-0 bottom-0 p-3.5 space-y-2 z-10">
                 <div>
                   <h4 className="font-display text-xs sm:text-sm font-bold text-white leading-snug line-clamp-2">
                     {item.title}
@@ -295,6 +298,67 @@ export function HorizontalMovingReel() {
           ))}
         </div>
       </div>
+
+      {/* ── ON-DEMAND VIDEO MODAL PLAYER (ONLY LOADED WHEN USER CLICKS TO WATCH) ── */}
+      {activeVideo && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-fadeIn"
+          onClick={() => setActiveVideo(null)}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            className="relative w-full max-w-lg rounded-3xl bg-teal-950 p-4 border border-white/20 shadow-2xl text-white"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-white/15">
+              <div>
+                <p className="text-[11px] font-bold text-amber-300 uppercase tracking-wider">
+                  {activeVideo.time} · {activeVideo.impactTag}
+                </p>
+                <h3 className="text-sm font-bold font-display line-clamp-1">
+                  {activeVideo.title}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveVideo(null)}
+                className="h-8 w-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-xs font-bold transition cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="my-3 rounded-2xl overflow-hidden aspect-[16/10] bg-black">
+              <video
+                src={activeVideo.src}
+                poster={activeVideo.poster}
+                autoPlay
+                controls
+                playsInline
+                className="h-full w-full object-contain"
+              />
+            </div>
+
+            <div className="flex items-center justify-between pt-1">
+              <span className="text-xs text-white/70">
+                Sponsor Seva: <strong className="text-amber-300">{formatINR(activeVideo.sponsorAmount)}</strong>
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  const amt = activeVideo.sponsorAmount;
+                  setActiveVideo(null);
+                  openBottomDonate(amt);
+                }}
+                className="rounded-xl bg-gradient-to-r from-amber-400 to-orange-500 px-4 py-2 text-xs font-black text-teal-950 uppercase shadow-md hover:brightness-105 transition cursor-pointer"
+              >
+                Sponsor This Seva ({formatINR(activeVideo.sponsorAmount)}) 💝
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

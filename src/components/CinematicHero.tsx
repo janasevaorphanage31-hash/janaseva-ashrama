@@ -215,13 +215,16 @@ export function CinematicHero({ content }: { content?: Partial<SiteContentMap> }
   }, [hydrated, total, heroTiers]);
 
   useEffect(() => {
-    if (videoRef.current) {
-      if (videoRef.current.readyState >= 2) {
-        setVideoReady(true);
+    // Polite video load: allow browser to prioritize LCP image and critical CSS first
+    const timer = setTimeout(() => {
+      if (videoRef.current) {
+        if (videoRef.current.readyState >= 2) {
+          setVideoReady(true);
+        }
+        videoRef.current.play().catch(() => {});
       }
-      videoRef.current.load();
-      videoRef.current.play().catch(() => {});
-    }
+    }, 250);
+    return () => clearTimeout(timer);
   }, [videoSrc]);
 
   const toggleSound = () => {
@@ -263,7 +266,7 @@ export function CinematicHero({ content }: { content?: Partial<SiteContentMap> }
           }`}
         />
 
-        {/* Autoplay edge-to-edge looping video (metadata preload for fast initial paint) */}
+        {/* Autoplay edge-to-edge looping video (polite lazy playback after initial paint) */}
         <video
           key={videoSrc}
           ref={videoRef}
@@ -272,7 +275,7 @@ export function CinematicHero({ content }: { content?: Partial<SiteContentMap> }
           muted={isMuted}
           loop
           playsInline
-          preload="metadata"
+          preload="none"
           aria-hidden
           onLoadedData={() => setVideoReady(true)}
           onCanPlay={() => setVideoReady(true)}
@@ -282,10 +285,7 @@ export function CinematicHero({ content }: { content?: Partial<SiteContentMap> }
           } transition-opacity duration-700 ${
             videoReady ? "opacity-100" : "opacity-0"
           }`}
-        >
-          <source src={videoSrc} type="video/mp4" />
-          <source src="/media/video-chant-prayer.mp4" type="video/mp4" />
-        </video>
+        />
 
         {/* Vignette Gradients */}
         <div className="absolute inset-x-0 top-0 h-20 sm:h-24 bg-gradient-to-b from-black/70 via-black/30 to-transparent pointer-events-none" />

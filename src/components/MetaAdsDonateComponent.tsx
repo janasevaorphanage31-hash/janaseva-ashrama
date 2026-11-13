@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
+import Script from "next/script";
 import { formatINR, SITE, FORM_10AC, BANK_DETAILS, JJ_ACT_REGISTRATION } from "@/lib/site";
 import { LogoMark } from "@/components/Logo";
 import {
@@ -627,17 +628,21 @@ export function MetaAdsDonateComponent() {
     }
   };
 
+  // Lazy, debounced dynamic QR code generation (only when visible to avoid UI freezing)
   useEffect(() => {
-    if (finalAmount > 0) {
-      QRCode.toDataURL(upiUri, {
-        width: 220,
-        margin: 1,
-        color: { dark: "#042825", light: "#ffffff" },
-      })
-        .then(setQrDataUrl)
-        .catch(() => {});
+    if (finalAmount > 0 && showDirectUpi && qrDisplayMode === "dynamic") {
+      const timer = setTimeout(() => {
+        QRCode.toDataURL(upiUri, {
+          width: 220,
+          margin: 1,
+          color: { dark: "#042825", light: "#ffffff" },
+        })
+          .then(setQrDataUrl)
+          .catch(() => {});
+      }, 150);
+      return () => clearTimeout(timer);
     }
-  }, [finalAmount, upiUri]);
+  }, [finalAmount, upiUri, showDirectUpi, qrDisplayMode]);
 
   // Dynamic Impact Description
   const impactSummary = getDynamicImpactText(finalAmount, frequency);
@@ -707,12 +712,20 @@ export function MetaAdsDonateComponent() {
     });
   };
 
-  // Sticky bottom bar trigger on mobile
+  // Throttled 60fps sticky bottom bar trigger on mobile to prevent main-thread jank & hanging
   useEffect(() => {
+    let ticking = false;
     const handleScroll = () => {
-      if (!topCardRef.current) return;
-      const rect = topCardRef.current.getBoundingClientRect();
-      setShowStickyBar(rect.bottom < 80);
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          if (topCardRef.current) {
+            const shouldShow = topCardRef.current.getBoundingClientRect().bottom < 80;
+            setShowStickyBar((prev) => (prev !== shouldShow ? shouldShow : prev));
+          }
+          ticking = false;
+        });
+        ticking = true;
+      }
     };
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
@@ -1017,6 +1030,9 @@ export function MetaAdsDonateComponent() {
 
   return (
     <div className="mx-auto max-w-xl lg:max-w-6xl xl:max-w-7xl pb-24 sm:pb-16 animate-fadeIn">
+      {/* Razorpay checkout script loaded on-demand only for payment routes */}
+      <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" />
+
       {/* Invisible Honeypot anti-bot protection */}
       <input
         type="text"
@@ -1840,6 +1856,8 @@ export function MetaAdsDonateComponent() {
                     <img
                       src="/media/janaseva-axis-bank-qr.jpg"
                       alt="Janaseva Ashrama Axis Bank Standee QR"
+                      loading="lazy"
+                      decoding="async"
                       className="w-56 h-auto sm:w-64 rounded-xl object-contain mx-auto"
                     />
                   </div>
@@ -2177,6 +2195,8 @@ export function MetaAdsDonateComponent() {
           <img
             src="/media/boys-meal-gratitude.jpg"
             alt="Resident orphaned boys praying with gratitude at Janaseva Ashrama Bangalore"
+            loading="lazy"
+            decoding="async"
             className="absolute inset-0 h-full w-full object-cover object-center filter brightness-90 transition-transform duration-700"
           />
           {/* High-Contrast Vedic Emerald & Saffron Scrim Overlay (Pantone 567 C & 151 C) */}

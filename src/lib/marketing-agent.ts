@@ -9,10 +9,18 @@ import {
 
 export * from "./marketing-blueprints";
 
+let cachedMarketingConfig: { data: MarketingConfig; expiresAt: number } | null = null;
+
 /**
  * Load marketing configuration from PostgreSQL contentEntries.
+ * Cached in-memory with a 60s TTL to prevent database roundtrips on every page load.
  */
 export async function getMarketingConfig(): Promise<MarketingConfig> {
+  const now = Date.now();
+  if (cachedMarketingConfig && cachedMarketingConfig.expiresAt > now) {
+    return cachedMarketingConfig.data;
+  }
+
   try {
     const [row] = await db
       .select({ body: contentEntries.body })
@@ -27,18 +35,21 @@ export async function getMarketingConfig(): Promise<MarketingConfig> {
 
     if (row && row.body) {
       const parsed = JSON.parse(row.body) as Partial<MarketingConfig>;
-      return {
+      const config: MarketingConfig = {
         ...DEFAULT_MARKETING_CONFIG,
         ...parsed,
         savedCampaigns: Array.isArray(parsed.savedCampaigns)
           ? parsed.savedCampaigns
           : [],
       };
+      cachedMarketingConfig = { data: config, expiresAt: now + 60_000 };
+      return config;
     }
   } catch (err) {
     console.error("Error reading marketing config from DB:", err);
   }
 
+  cachedMarketingConfig = { data: DEFAULT_MARKETING_CONFIG, expiresAt: now + 15_000 };
   return DEFAULT_MARKETING_CONFIG;
 }
 
@@ -87,6 +98,7 @@ export async function saveMarketingConfig(
       });
     }
 
+    cachedMarketingConfig = null;
     return true;
   } catch (err) {
     console.error("Error saving marketing config to DB:", err);
