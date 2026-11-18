@@ -26,7 +26,10 @@ export async function POST(req: Request) {
   // Revalidate Next.js cache so live website updates immediately
   revalidatePath("/", "layout");
   revalidatePath("/");
-  revalidatePath("/giving-basket");
+  revalidatePath("/donate");
+  revalidatePath("/checkout");
+  revalidatePath("/give");
+  revalidatePath("/impact");
   revalidatePath("/make-a-day-matter");
   revalidatePath("/celebrate-birthday");
   revalidatePath("/admin");

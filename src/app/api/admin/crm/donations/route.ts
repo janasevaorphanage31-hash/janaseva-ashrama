@@ -43,13 +43,30 @@ export async function GET(req: Request) {
   const limit = Math.min(100, Math.max(1, parseInt(url.searchParams.get("limit") || "50", 10)));
   const offset = (page - 1) * limit;
 
-  const donationRows = await db
-    .select()
-    .from(donations)
-    .where(whereClause || sql`true`)
-    .orderBy(desc(donations.createdAt), desc(donations.id))
-    .limit(limit)
-    .offset(offset);
+  const [donationRows, [totals], [filterCountRow]] = await Promise.all([
+    db
+      .select()
+      .from(donations)
+      .where(whereClause || sql`true`)
+      .orderBy(desc(donations.createdAt), desc(donations.id))
+      .limit(limit)
+      .offset(offset),
+    db
+      .select({
+        totalRaised: sql<number>`coalesce(sum(case when ${donations.status} = 'paid' then ${donations.amount} else 0 end), 0)::int`,
+        paidCount: sql<number>`count(case when ${donations.status} = 'paid' then 1 else null end)::int`,
+        totalCount: sql<number>`count(*)::int`,
+        onlineRaised: sql<number>`coalesce(sum(case when ${donations.status} = 'paid' and ${donations.mode} = 'razorpay' then ${donations.amount} else 0 end), 0)::int`,
+        wireRaised: sql<number>`coalesce(sum(case when ${donations.status} = 'paid' and ${donations.mode} in ('bank_wire', 'wire', 'transfer') then ${donations.amount} else 0 end), 0)::int`,
+        offlineRaised: sql<number>`coalesce(sum(case when ${donations.status} = 'paid' and ${donations.mode} not in ('razorpay', 'bank_wire', 'wire', 'transfer') then ${donations.amount} else 0 end), 0)::int`,
+        panClaimedCount: sql<number>`count(case when ${donations.status} = 'paid' and (${donations.meta}->>'pan' is not null or ${donations.meta}->>'donorPan' is not null) then 1 else null end)::int`,
+      })
+      .from(donations),
+    db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(donations)
+      .where(whereClause || sql`true`),
+  ]);
 
   // Fetch donation lines for these rows
   const ids = donationRows.map((d) => d.id);
@@ -72,24 +89,6 @@ export async function GET(req: Request) {
     lines: linesByDonation[d.id] || [],
   }));
 
-  // Summary counts and FinTech mode breakdown
-  const [totals] = await db
-    .select({
-      totalRaised: sql<number>`coalesce(sum(case when ${donations.status} = 'paid' then ${donations.amount} else 0 end), 0)::int`,
-      paidCount: sql<number>`count(case when ${donations.status} = 'paid' then 1 else null end)::int`,
-      totalCount: sql<number>`count(*)::int`,
-      onlineRaised: sql<number>`coalesce(sum(case when ${donations.status} = 'paid' and ${donations.mode} = 'razorpay' then ${donations.amount} else 0 end), 0)::int`,
-      wireRaised: sql<number>`coalesce(sum(case when ${donations.status} = 'paid' and ${donations.mode} in ('bank_wire', 'wire', 'transfer') then ${donations.amount} else 0 end), 0)::int`,
-      offlineRaised: sql<number>`coalesce(sum(case when ${donations.status} = 'paid' and ${donations.mode} not in ('razorpay', 'bank_wire', 'wire', 'transfer') then ${donations.amount} else 0 end), 0)::int`,
-      panClaimedCount: sql<number>`count(case when ${donations.status} = 'paid' and (${donations.meta}->>'pan' is not null or ${donations.meta}->>'donorPan' is not null) then 1 else null end)::int`,
-    })
-    .from(donations);
-
-  const [filterCountRow] = await db
-    .select({ count: sql<number>`count(*)::int` })
-    .from(donations)
-    .where(whereClause || sql`true`);
-
   return NextResponse.json({
     items,
     pagination: {
@@ -111,7 +110,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const session = await requireAdminApi();
+  const session = await requireAdminApi(["SUPER_ADMIN", "STAFF_ADMIN", "FINANCE", "DONATION_ADMIN"]);
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const b = await req.json().catch(() => null);
@@ -205,12 +204,17 @@ export async function POST(req: Request) {
 }
 
 export async function PATCH(req: Request) {
-  const session = await requireAdminApi();
+  const session = await requireAdminApi(["SUPER_ADMIN", "STAFF_ADMIN", "FINANCE", "DONATION_ADMIN"]);
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json().catch(() => null);
   if (!body || !body.id) {
     return NextResponse.json({ error: "Invalid donation ID." }, { status: 400 });
+  }
+
+  const ALLOWED_STATUSES = new Set(["paid", "created", "failed", "refunded", "pending"]);
+  if (body.status && !ALLOWED_STATUSES.has(String(body.status).toLowerCase())) {
+    return NextResponse.json({ error: "Invalid donation status value." }, { status: 400 });
   }
 
   const donationId = Number(body.id);

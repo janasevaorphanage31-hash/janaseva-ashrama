@@ -3024,10 +3024,10 @@ export function AdminTelecallerCRM() {
                 💰 Today&apos;s Claims
               </span>
               <p className="mt-1 font-display text-xl sm:text-2xl font-black text-emerald-900">
-                ₹{formatINR(finStats?.today?.claimed || 0)}
+                {formatINR(finStats?.today?.claimed || 0)}
               </p>
               <span className="text-[10px] text-emerald-800 font-bold mt-0.5 block">
-                ₹{formatINR(finStats?.today?.verified || 0)} verified credits
+                {formatINR(finStats?.today?.verified || 0)} verified credits
               </span>
             </div>
           </div>
@@ -3175,7 +3175,7 @@ export function AdminTelecallerCRM() {
                         <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
                           {log.amount && log.amount > 0 && (
                             <span className="font-black text-emerald-800 bg-emerald-50 border border-emerald-300 px-2 py-0.5 rounded-md font-mono">
-                              ₹{formatINR(log.amount)}
+                              {formatINR(log.amount)}
                             </span>
                           )}
                           <span className={`px-2.5 py-1 rounded-lg text-[11px] border capitalize ${badgeClass}`}>
@@ -4297,7 +4297,7 @@ export function AdminTelecallerCRM() {
                 Today&apos;s Verified Collections
               </span>
               <p className="font-display text-2xl sm:text-3xl font-black text-emerald-800 mt-1">
-                {loadingFinancials ? "..." : `₹${formatINR(finStats?.today?.verified || 0)}`}
+                {loadingFinancials ? "..." : `${formatINR(finStats?.today?.verified || 0)}`}
               </p>
               <span className="text-[11px] text-emerald-900/70 font-semibold block mt-0.5">
                 Confirmed received in Ashram bank account
@@ -4309,7 +4309,7 @@ export function AdminTelecallerCRM() {
                 Pending Admin Verification
               </span>
               <p className="font-display text-2xl sm:text-3xl font-black text-amber-800 mt-1">
-                {loadingFinancials ? "..." : `₹${formatINR(finStats?.today?.pending || 0)}`}
+                {loadingFinancials ? "..." : `${formatINR(finStats?.today?.pending || 0)}`}
               </p>
               <span className="text-[11px] text-amber-900/70 font-semibold block mt-0.5">
                 {finStats?.pendingApprovals?.length || 0} claims waiting for bank statement match
@@ -4321,7 +4321,7 @@ export function AdminTelecallerCRM() {
                 Today&apos;s Total Claimed
               </span>
               <p className="font-display text-2xl sm:text-3xl font-black text-teal-950 mt-1">
-                {loadingFinancials ? "..." : `₹${formatINR(finStats?.today?.claimed || 0)}`}
+                {loadingFinancials ? "..." : `${formatINR(finStats?.today?.claimed || 0)}`}
               </p>
               <span className="text-[11px] text-teal-950/60 font-semibold block mt-0.5">
                 {finStats?.today?.totalCalls || 0} total calls logged by telecallers today
@@ -4333,7 +4333,7 @@ export function AdminTelecallerCRM() {
                 Rejected / Discrepancy
               </span>
               <p className="font-display text-2xl sm:text-3xl font-black text-rose-800 mt-1">
-                {loadingFinancials ? "..." : `₹${formatINR(finStats?.today?.rejected || 0)}`}
+                {loadingFinancials ? "..." : `${formatINR(finStats?.today?.rejected || 0)}`}
               </p>
               <span className="text-[11px] text-rose-800/70 font-semibold block mt-0.5">
                 Bounced, fake UTRs or unverified claims
@@ -4348,7 +4348,7 @@ export function AdminTelecallerCRM() {
                 <h3 className="font-display font-black text-base text-teal-950 flex items-center gap-2">
                   <span>🎯 Monthly Ashram Seva Progress</span>
                   <span className="text-xs font-mono bg-teal-950 text-gold px-2.5 py-0.5 rounded-full font-bold">
-                    Target: ₹{formatINR(finStats?.month?.target || 500000)}
+                    Target: {formatINR(finStats?.month?.target || 500000)}
                   </span>
                 </h3>
                 <p className="text-xs text-teal-950/70 mt-0.5">
@@ -4358,13 +4358,13 @@ export function AdminTelecallerCRM() {
 
               <div className="flex items-center gap-2">
                 <span className="text-xs font-bold text-teal-950 bg-white px-3 py-1.5 rounded-xl border border-teal-900/15">
-                  🏆 MTD Verified: <strong>₹{formatINR(finStats?.month?.verified || 0)}</strong>
+                  🏆 MTD Verified: <strong>{formatINR(finStats?.month?.verified || 0)}</strong>
                 </span>
                 <span className="text-xs font-bold text-teal-950 bg-white px-3 py-1.5 rounded-xl border border-teal-900/15">
                   👥 Donors: <strong>{finStats?.month?.donorsCount || 0}</strong>
                 </span>
                 <span className="text-xs font-bold text-teal-950 bg-white px-3 py-1.5 rounded-xl border border-teal-900/15">
-                  Avg Ticket: <strong>₹{formatINR(finStats?.month?.averageDonation || 0)}</strong>
+                  Avg Ticket: <strong>{formatINR(finStats?.month?.averageDonation || 0)}</strong>
                 </span>
               </div>
             </div>
@@ -4373,7 +4373,7 @@ export function AdminTelecallerCRM() {
             <div className="space-y-1">
               <div className="flex justify-between text-xs font-bold text-teal-950">
                 <span>{finStats?.month?.targetAchievedPercent || 0}% Achieved</span>
-                <span>₹{formatINR(finStats?.month?.verified || 0)} / ₹{formatINR(finStats?.month?.target || 500000)}</span>
+                <span>{formatINR(finStats?.month?.verified || 0)} / {formatINR(finStats?.month?.target || 500000)}</span>
               </div>
               <div className="w-full bg-teal-950/10 rounded-full h-3 overflow-hidden border border-teal-900/10">
                 <div
@@ -4460,7 +4460,7 @@ export function AdminTelecallerCRM() {
                             </td>
                             <td className="py-3 px-3">
                               <span className="font-display font-black text-sm text-emerald-900 bg-emerald-100 px-2.5 py-0.5 rounded-lg border border-emerald-300">
-                                ₹{formatINR(p.amount)}
+                                {formatINR(p.amount)}
                               </span>
                             </td>
                             <td className="py-3 px-3">
@@ -4550,7 +4550,7 @@ export function AdminTelecallerCRM() {
                             </span>
                           </div>
                           <span className="font-display font-black text-sm text-emerald-950 bg-emerald-100 border border-emerald-300 px-2.5 py-1 rounded-xl shrink-0">
-                            ₹{formatINR(p.amount)}
+                            {formatINR(p.amount)}
                           </span>
                         </div>
 
@@ -4662,13 +4662,13 @@ export function AdminTelecallerCRM() {
                           </div>
                         </td>
                         <td className="py-3 px-3 font-mono font-bold">{c.todayCalls}</td>
-                        <td className="py-3 px-3 text-teal-950/70">₹{formatINR(c.todayClaimedAmount)}</td>
-                        <td className="py-3 px-3 font-black text-emerald-800">₹{formatINR(c.todayVerifiedAmount)}</td>
+                        <td className="py-3 px-3 text-teal-950/70">{formatINR(c.todayClaimedAmount)}</td>
+                        <td className="py-3 px-3 font-black text-emerald-800">{formatINR(c.todayVerifiedAmount)}</td>
                         <td className="py-3 px-3 font-bold text-amber-800">
-                          {c.todayPendingAmount > 0 ? `₹${formatINR(c.todayPendingAmount)}` : "—"}
+                          {c.todayPendingAmount > 0 ? `${formatINR(c.todayPendingAmount)}` : "—"}
                         </td>
                         <td className="py-3 px-3 font-display font-black text-sm text-teal-950">
-                          ₹{formatINR(c.monthVerifiedAmount)}
+                          {formatINR(c.monthVerifiedAmount)}
                         </td>
                         <td className="py-3 px-3 font-mono font-bold">{c.monthDonorsCount}</td>
                         <td className="py-3 px-3">
@@ -4764,11 +4764,11 @@ export function AdminTelecallerCRM() {
                       </div>
                       <div>
                         <span className="text-[10px] text-teal-950/60 block">Verified Today:</span>
-                        <span className="font-bold text-emerald-800">₹{formatINR(c.todayVerifiedAmount)}</span>
+                        <span className="font-bold text-emerald-800">{formatINR(c.todayVerifiedAmount)}</span>
                       </div>
                       <div>
                         <span className="text-[10px] text-teal-950/60 block">Claimed Today:</span>
-                        <span className="font-semibold text-teal-950">₹{formatINR(c.todayClaimedAmount)}</span>
+                        <span className="font-semibold text-teal-950">{formatINR(c.todayClaimedAmount)}</span>
                       </div>
                       <div>
                         <span className="text-[10px] text-teal-950/60 block">Approval Accuracy:</span>
@@ -6513,7 +6513,7 @@ export function AdminTelecallerCRM() {
                     Adjust Donation Amount
                   </h3>
                   <p className="text-[11px] text-teal-950/60 font-mono">
-                    {adjustingDonation.donorName || "Donor"} · Claimed: ₹{formatINR(adjustingDonation.amount)}
+                    {adjustingDonation.donorName || "Donor"} · Claimed: {formatINR(adjustingDonation.amount)}
                   </p>
                 </div>
               </div>
@@ -6538,7 +6538,7 @@ export function AdminTelecallerCRM() {
                 className="w-full rounded-xl border border-teal-900/20 px-3 py-2 text-sm font-bold text-teal-950 outline-none focus:ring-2 focus:ring-amber-400"
               />
               <p className="text-[10px] text-teal-950/60 mt-1">
-                Original amount claimed by {adjustingDonation.callerName}: ₹{formatINR(adjustingDonation.amount)}
+                Original amount claimed by {adjustingDonation.callerName}: {formatINR(adjustingDonation.amount)}
               </p>
             </div>
 
@@ -6595,7 +6595,7 @@ export function AdminTelecallerCRM() {
                     Reject Donation Claim
                   </h3>
                   <p className="text-[11px] text-teal-950/60 font-mono">
-                    Claimed: ₹{formatINR(rejectingDonation.amount)} by {rejectingDonation.callerName}
+                    Claimed: {formatINR(rejectingDonation.amount)} by {rejectingDonation.callerName}
                   </p>
                 </div>
               </div>
@@ -6707,7 +6707,7 @@ export function AdminTelecallerCRM() {
                         </span>
                         {log.effectiveAmount > 0 && (
                           <span className="font-mono font-bold text-emerald-900">
-                            Claimed: ₹{formatINR(log.effectiveAmount)}
+                            Claimed: {formatINR(log.effectiveAmount)}
                           </span>
                         )}
                         {log.verificationStatus && (

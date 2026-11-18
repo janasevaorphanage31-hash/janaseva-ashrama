@@ -1274,7 +1274,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
     const siteOrigin = typeof window !== "undefined" ? window.location.origin : "https://janasevaashrama.org";
     const qrUrl = `${siteOrigin}/media/janaseva-axis-bank-qr.jpg`;
     const donationUrl = `${siteOrigin}/give?ref=${callerProfile.callerId}&lead_id=${lead.leadId}&amount=${amount}`;
-    const qrCaption = `🙏 Namaskara ${lead.name} Sir/Madam!\n\nAttached is our Official Axis Bank UPI Payment QR Scanner for Janaseva Ashrama (Turahalli, Bengaluru). Scan directly via GPay / PhonePe / Paytm / BHIM:\n\n👉 [ 📲 1-TAP PAY ₹${formatINR(amount)} (GPay / PhonePe / Card + 80G Tax Receipt) ]\n${donationUrl}\n\n💳 Direct UPI / GPay ID:\nMAB.037349050110044@axisbank\n🏛️ Registered Trust: JANASEVA SAMRUDDI EDUCATI\n📜 Karnataka Govt JJ Act Reg: KA18CH0242\n🧾 100% Tax Deductible (Section 80G Form 10AC)\n\n📍 Turahalli, Bengaluru · Google Maps: https://maps.app.goo.gl/uPjN24rP1i1YkX6t7\n📞 Ashrama Helpline: +91 99803 59595`;
+    const qrCaption = `🙏 Namaskara ${lead.name} Sir/Madam!\n\nAttached is our Official Axis Bank UPI Payment QR Scanner for Janaseva Ashrama (Turahalli, Bengaluru). Scan directly via GPay / PhonePe / Paytm / BHIM:\n\n👉 [ 📲 1-TAP PAY ${formatINR(amount)} (GPay / PhonePe / Card + 80G Tax Receipt) ]\n${donationUrl}\n\n💳 Direct UPI / GPay ID:\nMAB.037349050110044@axisbank\n🏛️ Registered Trust: JANASEVA SAMRUDDI EDUCATI\n📜 Karnataka Govt JJ Act Reg: KA18CH0242\n🧾 100% Tax Deductible (Section 80G Form 10AC)\n\n📍 Turahalli, Bengaluru · Google Maps: https://maps.app.goo.gl/uPjN24rP1i1YkX6t7\n📞 Ashrama Helpline: +91 99803 59595`;
 
     try {
       const res = await fetch(qrUrl);
@@ -1361,7 +1361,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
     // Auto-copy Axis Bank UPI QR info to clipboard for instant attachment
     if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
       navigator.clipboard.writeText(
-        `Axis Bank UPI ID: MAB.037349050110044@axisbank (Janaseva Ashrama) - ₹${formatINR(amount)}`
+        `Axis Bank UPI ID: MAB.037349050110044@axisbank (Janaseva Ashrama) - ${formatINR(amount)}`
       ).catch(() => {});
     }
 
@@ -3755,7 +3755,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                               {isParentLead ? "ವಾಟ್ಸಾಪ್" : "ವಾಟ್ಸಾಪ್"}
                             </span>
                             <span className="block text-[10px] sm:text-xs text-white/90 font-medium truncate">
-                              {selectedNarrativeAngle === "trust_80g" ? "80G Tax" : selectedNarrativeAngle === "location_visit" ? "Map/Video" : selectedNarrativeAngle === "provisions_inkind" ? "Groceries" : `₹${formatINR(selectedSevaAmount)}`}
+                              {selectedNarrativeAngle === "trust_80g" ? "80G Tax" : selectedNarrativeAngle === "location_visit" ? "Map/Video" : selectedNarrativeAngle === "provisions_inkind" ? "Groceries" : `${formatINR(selectedSevaAmount)}`}
                             </span>
                           </div>
                         )}
@@ -4156,16 +4156,17 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                             🎯 ಸೇವಾ ಮೊತ್ತ (Amount):
                           </span>
                           <span className="text-xs font-black text-emerald-800">
-                            ಆಯ್ಕೆ: ₹{formatINR(selectedSevaAmount)}
+                            ಆಯ್ಕೆ: {formatINR(selectedSevaAmount)}
                           </span>
                         </div>
-                        <div className="grid grid-cols-5 gap-1">
+                        <div className="grid grid-cols-3 sm:grid-cols-6 gap-1">
                           {[
                             { amt: 501, label: "₹501" },
                             { amt: 1500, label: "₹1,500" },
                             { amt: 2500, label: "₹2,500" },
                             { amt: 4500, label: "₹4,500" },
                             { amt: 6000, label: "₹6,000" },
+                            { amt: 7500, label: "🍗 ₹7,500" },
                           ].map((tier) => (
                             <button
                               key={tier.amt}
@@ -4250,7 +4251,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                         {[
                           isParentLead ? "👶 ತಂದೆ ಮಾತನಾಡಿದ್ದಾರೆ" : "👤 ದಾನಿ ಮಾತನಾಡಿದ್ದಾರೆ",
                           isParentLead ? "👩 ತಾಯಿ ಮಾತನಾಡಿದ್ದಾರೆ" : "🤝 ಒಪ್ಪಿದ್ದಾರೆ",
-                          `🎂 ₹${formatINR(selectedSevaAmount)} ಅನ್ನದಾನಕ್ಕೆ ಒಪ್ಪಿದ್ದಾರೆ`,
+                          `🎂 ${formatINR(selectedSevaAmount)} ಅನ್ನದಾನಕ್ಕೆ ಒಪ್ಪಿದ್ದಾರೆ`,
                           "📲 WhatsApp QR ಕಳುಹಿಸಲಾಗಿದೆ",
                           "🏛️ ಆಶ್ರಮಕ್ಕೆ ಭೇಟಿ ನೀಡುತ್ತಾರೆ",
                           "📜 80G ರಶೀದಿ ಕೇಳಿದ್ದಾರೆ",
@@ -4444,7 +4445,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                 </label>
                 <div className="flex flex-wrap gap-1.5 mb-2">
                   {[
-                    `👍 Agreed to donate ₹${formatINR(selectedSevaAmount)} via UPI`,
+                    `👍 Agreed to donate ${formatINR(selectedSevaAmount)} via UPI`,
                     "🎂 Wished birthday, visiting ashrama on weekend",
                     "📲 Sent Axis Bank QR scanner, will pay tonight",
                     "⏳ Busy in meeting, call back later",
@@ -4599,8 +4600,8 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
               <label className="block text-xs font-bold text-teal-950 mb-1.5">
                 Select or Enter Seva Amount:
               </label>
-              <div className="grid grid-cols-4 gap-2 mb-2">
-                {[501, 1500, 2500, 4500].map((amt) => (
+              <div className="grid grid-cols-5 gap-1.5 mb-2">
+                {[501, 1500, 2500, 4500, 7500].map((amt) => (
                   <button
                     key={amt}
                     type="button"
@@ -4611,7 +4612,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                         : "bg-cream text-teal-950 border-teal-900/15 hover:bg-sand"
                     }`}
                   >
-                    ₹{formatINR(amt)}
+                    {formatINR(amt)}
                   </button>
                 ))}
               </div>
@@ -4673,7 +4674,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                 disabled={loggingDonation || loggedDonationAmount <= 0}
                 className="py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-black text-xs shadow-md transition cursor-pointer disabled:opacity-50"
               >
-                {loggingDonation ? "Saving..." : `Confirm ₹${formatINR(loggedDonationAmount)} Paid`}
+                {loggingDonation ? "Saving..." : `Confirm ${formatINR(loggedDonationAmount)} Paid`}
               </button>
             </div>
           </div>
@@ -4935,7 +4936,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                         <div className="bg-emerald-50/80 border border-emerald-200 rounded-xl p-2 text-xs flex items-center justify-between">
                           <div>
                             <span className="font-bold text-emerald-950">
-                              Claimed: ₹{formatINR(log.effectiveAmount)}
+                              Claimed: {formatINR(log.effectiveAmount)}
                             </span>
                             {log.utr && (
                               <span className="font-mono text-[10px] text-emerald-900/70 block">
@@ -4946,7 +4947,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                           <div>
                             {log.verificationStatus === "VERIFIED" ? (
                               <span className="text-[10px] font-bold bg-emerald-600 text-white px-2 py-0.5 rounded-full">
-                                ✓ Verified: ₹{formatINR(log.verifiedAmount || log.effectiveAmount)}
+                                ✓ Verified: {formatINR(log.verifiedAmount || log.effectiveAmount)}
                               </span>
                             ) : log.verificationStatus === "REJECTED" ? (
                               <div className="text-right space-y-0.5">
@@ -5380,7 +5381,7 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                 </span>
                 {updateStampAlert.amount && (
                   <span className="font-bold bg-emerald-500 text-white px-2 py-0.5 rounded-md font-mono">
-                    ₹{formatINR(updateStampAlert.amount)}
+                    {formatINR(updateStampAlert.amount)}
                   </span>
                 )}
                 <span className="text-white/70 text-[10px]">
@@ -6413,11 +6414,11 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
                   ಸೇವಾ ಮೊತ್ತ (Amount):
                 </label>
                 <span className="font-mono text-xs font-black text-emerald-800">
-                  ₹{formatINR(selectedSevaAmount)}
+                  {formatINR(selectedSevaAmount)}
                 </span>
               </div>
-              <div className="grid grid-cols-5 gap-1.5">
-                {[501, 1500, 2500, 4500, 6000].map((amt) => (
+              <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
+                {[501, 1500, 2500, 4500, 6000, 7500].map((amt) => (
                   <button
                     key={amt}
                     type="button"

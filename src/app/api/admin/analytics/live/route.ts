@@ -16,37 +16,36 @@ export async function GET() {
   try {
     // 1. Get real-time in-memory visitor radar
     const liveTelemetry = getLiveVisitorTelemetry();
+    const istTodayStart = sql`(date_trunc('day', now() AT TIME ZONE 'Asia/Kolkata') AT TIME ZONE 'Asia/Kolkata')`;
 
-    // 2. Query today's historical aggregates from PostgreSQL
-    const [todayStats] = await db
-      .select({
-        pageViewsToday: sql<number>`count(*)::int`,
-        uniqueSessionsToday: sql<number>`count(distinct ${analyticsEvents.sessionId})::int`,
-        checkoutsToday: sql<number>`count(case when ${analyticsEvents.event} in ('checkout_start', 'custom_amount', 'item_add') then 1 else null end)::int`,
-      })
-      .from(analyticsEvents)
-      .where(sql`${analyticsEvents.createdAt} >= date_trunc('day', now())`);
-
-    // 3. Query today's donations
-    const [todayDonations] = await db
-      .select({
-        paidCount: sql<number>`count(case when ${donations.status} = 'paid' then 1 else null end)::int`,
-        totalRaised: sql<number>`coalesce(sum(case when ${donations.status} = 'paid' then ${donations.amount} else 0 end), 0)::int`,
-      })
-      .from(donations)
-      .where(sql`${donations.paidAt} >= date_trunc('day', now())`);
-
-    // 4. Query top 5 most viewed paths from database today
-    const topDbPages = await db
-      .select({
-        path: sql<string>`coalesce(${analyticsEvents.meta}->>'path', '/')`,
-        visits: count(),
-      })
-      .from(analyticsEvents)
-      .where(sql`${analyticsEvents.createdAt} >= date_trunc('day', now())`)
-      .groupBy(sql`${analyticsEvents.meta}->>'path'`)
-      .orderBy(desc(count()))
-      .limit(6);
+    // 2-4. Execute today's aggregates in parallel using Asia/Kolkata (IST) day boundary
+    const [[todayStats], [todayDonations], topDbPages] = await Promise.all([
+      db
+        .select({
+          pageViewsToday: sql<number>`count(*)::int`,
+          uniqueSessionsToday: sql<number>`count(distinct ${analyticsEvents.sessionId})::int`,
+          checkoutsToday: sql<number>`count(case when ${analyticsEvents.event} in ('checkout_start', 'custom_amount', 'item_add') then 1 else null end)::int`,
+        })
+        .from(analyticsEvents)
+        .where(sql`${analyticsEvents.createdAt} >= ${istTodayStart}`),
+      db
+        .select({
+          paidCount: sql<number>`count(case when ${donations.status} = 'paid' then 1 else null end)::int`,
+          totalRaised: sql<number>`coalesce(sum(case when ${donations.status} = 'paid' then ${donations.amount} else 0 end), 0)::int`,
+        })
+        .from(donations)
+        .where(sql`${donations.paidAt} >= ${istTodayStart}`),
+      db
+        .select({
+          path: sql<string>`coalesce(${analyticsEvents.meta}->>'path', '/')`,
+          visits: count(),
+        })
+        .from(analyticsEvents)
+        .where(sql`${analyticsEvents.createdAt} >= ${istTodayStart}`)
+        .groupBy(sql`${analyticsEvents.meta}->>'path'`)
+        .orderBy(desc(count()))
+        .limit(6),
+    ]);
 
     const formattedTopPages =
       topDbPages.length > 0

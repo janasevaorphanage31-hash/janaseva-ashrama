@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { requireAdminApi } from "@/lib/admin-auth";
 import {
   getMarketingConfig,
@@ -53,6 +54,7 @@ export async function POST(req: Request) {
     if (!success) {
       return NextResponse.json({ error: "Failed to save configuration" }, { status: 500 });
     }
+    revalidatePath("/", "layout");
     const updated = await getMarketingConfig();
     return NextResponse.json({ ok: true, config: updated });
   }

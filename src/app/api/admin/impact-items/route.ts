@@ -4,6 +4,7 @@ import { asc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { impactItems } from "@/db/schema";
 import { requireAdminApi } from "@/lib/admin-auth";
+import { invalidateImpactItemsCache } from "@/lib/content";
 import { writeAudit } from "@/lib/audit";
 import { clean, clientIp, publicToken, rateLimit, slugify } from "@/lib/server-utils";
 
@@ -36,9 +37,13 @@ export async function POST(req: Request) {
   const [row] = await db.insert(impactItems).values({ slug, name, description, unitPrice, category, unitLabel: unitLabel || null, imageUrl: clean(b?.imageUrl, 5000000) || null, gallery: gallery || null, schemes: schemes || null, featured: !!b?.featured, todayNeed: !!b?.todayNeed, futureFlag: !!b?.futureFlag, accountingMeaning: accountingMeaning || null, operationalMeaning: operationalMeaning || null, financeApproval, active: b?.active !== false, sortOrder: Math.floor(Number(b?.sortOrder) || 0) }).returning();
   await writeAudit({ actorAdminUserId: session.user.id, action: "create", entity: "impact_item", entityId: row.id, afterState: row, ipAddress: clientIp(req) });
 
+  invalidateImpactItemsCache();
   revalidatePath("/", "layout");
   revalidatePath("/");
-  revalidatePath("/giving-basket");
+  revalidatePath("/donate");
+  revalidatePath("/checkout");
+  revalidatePath("/give");
+  revalidatePath("/impact");
   revalidatePath("/make-a-day-matter");
   revalidatePath("/admin");
 
@@ -75,9 +80,13 @@ export async function PATCH(req: Request) {
   const [row] = await db.update(impactItems).set(patch).where(eq(impactItems.id, id)).returning();
   await writeAudit({ actorAdminUserId: session.user.id, action: "update", entity: "impact_item", entityId: id, beforeState: before, afterState: row, ipAddress: clientIp(req) });
 
+  invalidateImpactItemsCache();
   revalidatePath("/", "layout");
   revalidatePath("/");
-  revalidatePath("/giving-basket");
+  revalidatePath("/donate");
+  revalidatePath("/checkout");
+  revalidatePath("/give");
+  revalidatePath("/impact");
   revalidatePath("/make-a-day-matter");
   revalidatePath("/admin");
 
@@ -95,9 +104,13 @@ export async function DELETE(req: Request) {
   await db.delete(impactItems).where(eq(impactItems.id, id));
   await writeAudit({ actorAdminUserId: session.user.id, action: "delete", entity: "impact_item", entityId: id, beforeState: before, ipAddress: clientIp(req) });
 
+  invalidateImpactItemsCache();
   revalidatePath("/", "layout");
   revalidatePath("/");
-  revalidatePath("/giving-basket");
+  revalidatePath("/donate");
+  revalidatePath("/checkout");
+  revalidatePath("/give");
+  revalidatePath("/impact");
   revalidatePath("/make-a-day-matter");
   revalidatePath("/admin");
 

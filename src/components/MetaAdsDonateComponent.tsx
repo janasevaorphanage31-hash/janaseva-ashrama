@@ -1140,7 +1140,7 @@ export function MetaAdsDonateComponent() {
               </span>
               <div className="flex items-baseline gap-2 mt-0.5">
                 <span className="font-display text-2xl sm:text-3xl font-black text-[#042825] tracking-tight">
-                  ₹{formatINR(finalAmount)}
+                  {formatINR(finalAmount)}
                   {frequency !== "onetime" && (
                     <span className="text-xs sm:text-sm font-bold text-amber-900/80 ml-1">
                       /{frequency === "daily" ? "day" : frequency === "weekly" ? "week" : frequency === "monthly" ? "month" : "year"}
@@ -1264,7 +1264,7 @@ export function MetaAdsDonateComponent() {
               <span className="text-base select-none shrink-0">🥛</span>
               <div>
                 <p className="font-black text-[#042825] text-[11px] sm:text-xs">
-                  Daily Nitya Seva: ₹{formatINR(finalAmount)}/day (Billed ₹{formatINR(finalAmount * 7)} every 7 days via UPI Autopay)
+                  Daily Nitya Seva: {formatINR(finalAmount)}/day (Billed {formatINR(finalAmount * 7)} every 7 days via UPI Autopay)
                 </p>
                 <p className="text-[9px] sm:text-[10px] text-teal-900/80 font-medium leading-tight mt-0.5">
                   Per RBI &amp; NPCI e-mandate rules, daily seva is debited weekly for seamless processing without daily SMS interruptions. Cancel anytime.
@@ -1730,10 +1730,10 @@ export function MetaAdsDonateComponent() {
               <>
                 <span>
                   {frequency === "onetime"
-                    ? `PROCEED TO PAY ₹${formatINR(finalAmount)}`
+                    ? `PROCEED TO PAY ${formatINR(finalAmount)}`
                     : frequency === "daily"
-                    ? `START DAILY AUTOPAY (₹${formatINR(finalAmount)}/DAY · ₹${formatINR(finalAmount * 7)}/WK)`
-                    : `START ${frequency.toUpperCase()} AUTOPAY (₹${formatINR(finalAmount)} / ${
+                    ? `START DAILY AUTOPAY (${formatINR(finalAmount)}/DAY · ${formatINR(finalAmount * 7)}/WK)`
+                    : `START ${frequency.toUpperCase()} AUTOPAY (${formatINR(finalAmount)} / ${
                         frequency === "weekly"
                           ? "WEEK"
                           : frequency === "monthly"
@@ -1877,7 +1877,7 @@ export function MetaAdsDonateComponent() {
                   }`}
                 >
                   <span>⚡</span>
-                  <span>Dynamic QR (₹{formatINR(finalAmount)})</span>
+                  <span>Dynamic QR ({formatINR(finalAmount)})</span>
                 </button>
               </div>
 
@@ -1911,7 +1911,7 @@ export function MetaAdsDonateComponent() {
                     </div>
                   )}
                   <span className="text-[10px] text-amber-900 font-bold mt-1.5 flex items-center gap-1">
-                    <span>⚡</span> Amount pre-set to ₹{formatINR(finalAmount)}
+                    <span>⚡</span> Amount pre-set to {formatINR(finalAmount)}
                   </span>
                 </div>
               )}
@@ -1949,7 +1949,7 @@ export function MetaAdsDonateComponent() {
               <div className="bg-amber-50/90 border border-amber-300 rounded-xl p-2.5 text-left text-xs space-y-1.5">
                 <div className="flex items-center gap-1.5 font-black text-[#042825]">
                   <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[#042825] text-white text-[9px]">1</span>
-                  <span>Scan QR above &amp; pay ₹{formatINR(finalAmount)}</span>
+                  <span>Scan QR above &amp; pay {formatINR(finalAmount)}</span>
                 </div>
                 <div className="flex items-center gap-1.5 font-black text-[#042825]">
                   <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[#042825] text-white text-[9px]">2</span>
@@ -2437,7 +2437,7 @@ export function MetaAdsDonateComponent() {
                 {formatINR(finalAmount)}
                 {frequency === "daily" ? (
                   <span className="text-[10px] font-bold text-amber-900 ml-0.5">
-                    /d (₹{formatINR(finalAmount * 7)}/wk)
+                    /d ({formatINR(finalAmount * 7)}/wk)
                   </span>
                 ) : (
                   frequency !== "onetime" && (
@@ -2475,7 +2475,7 @@ export function MetaAdsDonateComponent() {
                   {frequency === "onetime"
                     ? "PROCEED TO PAY"
                     : frequency === "daily"
-                    ? `DAILY (₹${formatINR(finalAmount * 7)}/WK)`
+                    ? `DAILY (${formatINR(finalAmount * 7)}/WK)`
                     : `START ${frequency.toUpperCase()}`}
                 </span>
                 <span>💝</span>

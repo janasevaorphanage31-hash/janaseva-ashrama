@@ -1160,7 +1160,7 @@ export function AntiBanWhatsAppModal({
                       { label: "₹1,500 (Basic)", amt: 1500 },
                       { label: "₹2,500 (1 Meal)", amt: 2500 },
                       { label: "₹4,500 (Full Day)", amt: 4500 },
-                      { label: "₹5,000 (Feast)", amt: 5000 },
+                      { label: "🍗 ₹7,500 (Non-Veg Feast)", amt: 7500 },
                       { label: "₹9,600 (Vidya)", amt: 9600 },
                     ].map((item, idx) => (
                       <button

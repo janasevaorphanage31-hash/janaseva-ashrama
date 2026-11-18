@@ -793,6 +793,8 @@ export async function saveSiteContentMap(data: Partial<SiteContentMap>): Promise
       });
     }
 
+    // Invalidate in-memory cache AFTER write so immediate reads return fresh saved values
+    cachedSiteContent = null;
     return true;
   } catch (err) {
     console.error("Error saving site content settings:", err);

@@ -39,25 +39,27 @@ export async function GET(req: Request) {
 
   const whereClause = conditions.length > 1 ? and(...conditions) : conditions[0];
 
-  const items = await db
-    .select()
-    .from(celebrationBookings)
-    .where(whereClause || sql`true`)
-    .orderBy(desc(celebrationBookings.celebrationDate), desc(celebrationBookings.createdAt))
-    .limit(100);
+  // Use IST (UTC+5:30) date string for today's celebration count
+  const todayStr = new Date(Date.now() + 5.5 * 3600_000).toISOString().slice(0, 10);
 
-  // Summary counts
-  const todayStr = new Date().toISOString().slice(0, 10);
-  const [counts] = await db
-    .select({
-      total: sql<number>`count(*)::int`,
-      totalAmount: sql<number>`coalesce(sum(${celebrationBookings.amount}), 0)::int`,
-      todayCount: sql<number>`count(case when ${celebrationBookings.celebrationDate} = ${todayStr} then 1 else null end)::int`,
-      pendingCount: sql<number>`count(case when ${celebrationBookings.celebrationStatus} = 'PENDING' then 1 else null end)::int`,
-      confirmedCount: sql<number>`count(case when ${celebrationBookings.celebrationStatus} = 'CONFIRMED' then 1 else null end)::int`,
-      celebratedCount: sql<number>`count(case when ${celebrationBookings.celebrationStatus} = 'CELEBRATED' then 1 else null end)::int`,
-    })
-    .from(celebrationBookings);
+  const [items, [counts]] = await Promise.all([
+    db
+      .select()
+      .from(celebrationBookings)
+      .where(whereClause || sql`true`)
+      .orderBy(desc(celebrationBookings.celebrationDate), desc(celebrationBookings.createdAt))
+      .limit(100),
+    db
+      .select({
+        total: sql<number>`count(*)::int`,
+        totalAmount: sql<number>`coalesce(sum(${celebrationBookings.amount}), 0)::int`,
+        todayCount: sql<number>`count(case when ${celebrationBookings.celebrationDate} = ${todayStr} then 1 else null end)::int`,
+        pendingCount: sql<number>`count(case when ${celebrationBookings.celebrationStatus} = 'PENDING' then 1 else null end)::int`,
+        confirmedCount: sql<number>`count(case when ${celebrationBookings.celebrationStatus} = 'CONFIRMED' then 1 else null end)::int`,
+        celebratedCount: sql<number>`count(case when ${celebrationBookings.celebrationStatus} = 'CELEBRATED' then 1 else null end)::int`,
+      })
+      .from(celebrationBookings),
+  ]);
 
   return NextResponse.json({
     items,

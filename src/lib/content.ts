@@ -89,6 +89,10 @@ export function ensureSeed(): Promise<void> {
 
 let cachedImpactItems: { data: ImpactItem[]; expiresAt: number } | null = null;
 
+export function invalidateImpactItemsCache(): void {
+  cachedImpactItems = null;
+}
+
 async function safe<T>(fn: () => Promise<T>, fallback: T): Promise<T> {
   try {
     if (!isSeeded) await ensureSeed();

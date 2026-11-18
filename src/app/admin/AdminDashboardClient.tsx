@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo, type FormEvent } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { formatINR } from "@/lib/site";
 import {
@@ -14,13 +15,35 @@ import {
   sanitizePan,
 } from "@/lib/validation";
 import { ValidationErrorModal } from "@/components/ValidationErrorModal";
-import { BusinessPlanModal } from "@/components/BusinessPlanModal";
-import { AdminSubscriptionsTab } from "@/components/admin/AdminSubscriptionsTab";
-import { AdminMarketingHub } from "@/components/admin/AdminMarketingHub";
-import { AdminTelecallerCRM } from "@/components/admin/AdminTelecallerCRM";
-import { WhatsAppDashboard } from "@/components/admin/whatsapp/WhatsAppDashboard";
 import { CURATED_GALLERY, type GalleryItem } from "@/data/ashrama-curated-gallery";
 import type { TodayMealStatusItem } from "@/lib/site-content";
+
+const AdminTabSkeleton = () => (
+  <div className="rounded-3xl bg-white p-8 text-center text-sm font-semibold text-teal-950/60 shadow-xs ring-1 ring-teal-900/10">
+    Loading admin workspace module...
+  </div>
+);
+
+const BusinessPlanModal = dynamic(
+  () => import("@/components/BusinessPlanModal").then((m) => m.BusinessPlanModal),
+  { ssr: false }
+);
+const AdminSubscriptionsTab = dynamic(
+  () => import("@/components/admin/AdminSubscriptionsTab").then((m) => m.AdminSubscriptionsTab),
+  { ssr: false, loading: AdminTabSkeleton }
+);
+const AdminMarketingHub = dynamic(
+  () => import("@/components/admin/AdminMarketingHub").then((m) => m.AdminMarketingHub),
+  { ssr: false, loading: AdminTabSkeleton }
+);
+const AdminTelecallerCRM = dynamic(
+  () => import("@/components/admin/AdminTelecallerCRM").then((m) => m.AdminTelecallerCRM),
+  { ssr: false, loading: AdminTabSkeleton }
+);
+const WhatsAppDashboard = dynamic(
+  () => import("@/components/admin/whatsapp/WhatsAppDashboard").then((m) => m.WhatsAppDashboard),
+  { ssr: false, loading: AdminTabSkeleton }
+);
 
 type Tab = "analytics" | "crm" | "whatsapp" | "telecallers" | "subscriptions" | "marketing" | "celebrations" | "content" | "media" | "catalogs" | "documents" | "community" | "team";
 
@@ -52,6 +75,7 @@ const CATEGORIES = [
 ];
 
 const ASHRAMA_PRESET_PHOTOS = [
+  { label: "🍗 Non-Veg Biryani Feast (₹7,500)", url: "/media/non-veg-biryani-feast.jpg" },
   { label: "🍲 Annadana Hall", url: "/media/annadana-hall-hd.jpg" },
   { label: "🍌 Banana Leaf Feast", url: "/media/banana-leaf-feast.jpg" },
   { label: "🙏 Morning Satsang Altar", url: "/media/boys-group-altar.jpg" },
@@ -266,7 +290,7 @@ May Lord Shiva and the children's prayers bring lasting happiness and peace to y
   const [analyticsData, setAnalyticsData] = useState<any | null>(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
   const [liveTelemetry, setLiveTelemetry] = useState<any | null>(null);
-  const [liveAutoRefresh, setLiveAutoRefresh] = useState(true);
+  const [liveAutoRefresh, setLiveAutoRefresh] = useState(false);
   const [lastLivePoll, setLastLivePoll] = useState<Date>(new Date());
   const [liveChannelFilter, setLiveChannelFilter] = useState<string>("all");
 
