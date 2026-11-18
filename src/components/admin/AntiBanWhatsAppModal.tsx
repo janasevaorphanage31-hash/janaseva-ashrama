@@ -322,7 +322,6 @@ export function AntiBanWhatsAppModal({
       setApiCardMessage("");
       setLanguage(initialLanguage);
 
-      void checkBaileysStatus();
       generateMessage({
         lang: initialLanguage,
         ang: tmpl.angle,

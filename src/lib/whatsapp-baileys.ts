@@ -55,6 +55,14 @@ export function formatToJid(rawPhone: string): string {
  * Initializes or returns the existing Baileys WebSocket connection
  */
 export async function getBaileysSocket(): Promise<any> {
+  // Serverless platforms (Vercel/Netlify/Lambda) cannot sustain persistent WebSockets;
+  // prevent runaway reconnect loops from burning Fluid Active CPU.
+  if (process.env.VERCEL || process.env.NETLIFY || process.env.AWS_LAMBDA_FUNCTION_NAME) {
+    gatewayState.status = "disconnected";
+    gatewayState.lastError = "Direct Baileys WebSocket requires a persistent Node VPS (use WhatsApp Web / Meta Cloud API on serverless).";
+    return null;
+  }
+
   if (gatewayState.socket && gatewayState.status === "connected") {
     return gatewayState.socket;
   }

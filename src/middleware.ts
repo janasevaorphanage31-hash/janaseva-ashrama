@@ -185,12 +185,12 @@ export function middleware(req: NextRequest) {
 export const config = {
   matcher: [
     /*
-     * Match all request paths except for:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico, icon.png, apple-touch-icon.png
-     * - public static files matching common extensions
+     * Only invoke middleware for admin routes, portal routes, and API endpoints.
+     * Public static/ISR pages are served directly from Edge CDN (0ms compute)
+     * with security headers and redirects configured in next.config.ts.
      */
-    "/((?!_next/static|_next/image|favicon.ico|icon.png|apple-touch-icon.png|.*\\.(?:svg|png|jpg|jpeg|gif|webp|avif|css|js|mp4|pdf|txt|xml)$).*)",
+    "/admin/:path*",
+    "/portal/:path*",
+    "/api/:path*",
   ],
 };
