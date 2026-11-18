@@ -66,8 +66,8 @@ async function ensureDocumentBodyReady(): Promise<HTMLElement> {
 }
 
 /**
- * Ensures Razorpay container and backdrop DOM elements have top-level z-index
- * and visibility without destructively re-parenting iframes.
+ * Ensures Razorpay container sits above site chrome while keeping
+ * the checkout iframe ABOVE the backdrop so every button is clickable.
  */
 export function ensureRazorpayContainerAttached(): void {
   if (typeof document === "undefined") return;
@@ -78,7 +78,12 @@ export function ensureRazorpayContainerAttached(): void {
     }
     const backdrop = document.querySelector<HTMLElement>(".razorpay-backdrop");
     if (backdrop) {
-      backdrop.style.zIndex = "2147483646";
+      backdrop.style.zIndex = "0";
+    }
+    const frame = document.querySelector<HTMLElement>(".razorpay-checkout-frame");
+    if (frame) {
+      frame.style.zIndex = "1000";
+      frame.style.pointerEvents = "auto";
     }
   } catch (err) {
     console.warn("[Razorpay DOM] Style check warning:", err);

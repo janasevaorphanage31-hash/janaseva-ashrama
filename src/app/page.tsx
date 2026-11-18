@@ -11,7 +11,7 @@ import {
 } from "@/lib/content";
 import { getSiteContentMap } from "@/lib/site-content";
 
-export const revalidate = 60;
+export const revalidate = 300;
 
 export default async function Home() {
   const [updates, docs, metrics, totals, siteContent, approvedMedia] = await Promise.all([

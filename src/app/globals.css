@@ -376,13 +376,21 @@ h1, h2, h3, .font-display {
 
 /* =============================================
    RAZORPAY PAYMENT GATEWAY VISIBILITY & STACKING
+   NOTE: .razorpay-backdrop and .razorpay-checkout-frame are siblings inside
+   .razorpay-container. Never give .razorpay-backdrop a z-index higher than
+   .razorpay-checkout-frame or it will cover the modal and block all clicks.
    ============================================= */
 .razorpay-container {
   z-index: 2147483647 !important;
 }
 
-.razorpay-backdrop {
-  z-index: 2147483646 !important;
+.razorpay-container .razorpay-backdrop {
+  z-index: 0 !important;
+}
+
+.razorpay-container .razorpay-checkout-frame {
+  z-index: 1000 !important;
+  pointer-events: auto !important;
 }
 
 /* =============================================

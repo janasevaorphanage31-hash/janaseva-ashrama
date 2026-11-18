@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { formatINR, FORM_10AC, SITE } from "@/lib/site";
 import { LogoMark } from "@/components/Logo";
 import { trackDonationSuccess } from "@/lib/tracking";
 
-export function ThankYouClient() {
+function ThankYouClientInner() {
   const searchParams = useSearchParams();
 
   const rawAmount = searchParams.get("amount");
@@ -279,5 +279,13 @@ export function ThankYouClient() {
         </Link>
       </div>
     </div>
+  );
+}
+
+export function ThankYouClient() {
+  return (
+    <Suspense fallback={null}>
+      <ThankYouClientInner />
+    </Suspense>
   );
 }

@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useCart } from "./CartProvider";
 import { Container, Head, Section, Chip } from "./ui";
@@ -21,7 +21,7 @@ const CATEGORIES = [
   { id: "Celebrations", label: "Feasts & Milestones", icon: "🎉" },
 ];
 
-export function ImpactCart({
+function ImpactCartInner({
   campaign,
   missionSlug,
   page = false,
@@ -566,5 +566,17 @@ export function ImpactCart({
         </div>
       </Container>
     </Section>
+  );
+}
+
+export function ImpactCart(props: {
+  campaign?: { slug: string; title: string } | null;
+  missionSlug?: string | null;
+  page?: boolean;
+}) {
+  return (
+    <Suspense fallback={null}>
+      <ImpactCartInner {...props} />
+    </Suspense>
   );
 }

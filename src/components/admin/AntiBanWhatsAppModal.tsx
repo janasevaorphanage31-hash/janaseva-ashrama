@@ -333,10 +333,17 @@ export function AntiBanWhatsAppModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, lead?.leadId]);
 
-  // Polling for Baileys QR code completion when QR modal is active
+  // Polling for Baileys QR code completion when QR modal is active (5s interval, visibility guarded, 2-min max)
   useEffect(() => {
     if (!showQrModal) return;
+    let attempts = 0;
     const interval = setInterval(async () => {
+      if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
+      attempts += 1;
+      if (attempts > 24) {
+        clearInterval(interval);
+        return;
+      }
       try {
         const res = await fetch("/api/v1/telecaller/baileys");
         const data = await res.json();
@@ -351,7 +358,7 @@ export function AntiBanWhatsAppModal({
           }
         }
       } catch {}
-    }, 2500);
+    }, 5000);
     return () => clearInterval(interval);
   }, [showQrModal]);
 

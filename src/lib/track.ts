@@ -13,9 +13,22 @@ function sessionId(): string {
   }
 }
 
-/** Journey events: visit, story, need, item, cart, checkout, verified, share. No personal data. */
+const HIGH_VALUE_SERVER_EVENTS = new Set([
+  "checkout_start",
+  "checkout_submit",
+  "payment_failed",
+  "volunteer_submitted",
+  "gift_created",
+  "campaign_created",
+  "company_interest_submitted",
+  "creator_campaign_created",
+  "ngo_partner_interest",
+]);
+
+/** Journey events: only sends high-value conversion milestones to /api/events to protect Vercel Fluid CPU & Neon DB. */
 export function track(event: string, meta?: Record<string, string | number | boolean>) {
   if (typeof window === "undefined") return;
+  if (!HIGH_VALUE_SERVER_EVENTS.has(event)) return;
   try {
     const body = JSON.stringify({ event, sessionId: sessionId(), meta });
     if (navigator.sendBeacon) {

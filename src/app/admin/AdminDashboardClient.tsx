@@ -1959,14 +1959,15 @@ May Lord Shiva and the children's prayers bring lasting happiness and peace to y
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
 
-  // Real-time 30-second live visitor polling loop when on analytics tab (reduced from 4s to prevent DB query exhaustion)
+  // Real-time 60-second live visitor polling loop when on analytics tab (paused when tab is hidden)
   useEffect(() => {
     if (activeTab !== "analytics") return;
     void fetchLiveTelemetry();
     if (!liveAutoRefresh) return;
     const interval = setInterval(() => {
+      if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
       void fetchLiveTelemetry();
-    }, 30000);
+    }, 60000);
     return () => clearInterval(interval);
   }, [activeTab, liveAutoRefresh]);
 

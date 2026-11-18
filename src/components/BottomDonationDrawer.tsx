@@ -39,25 +39,7 @@ export function BottomDonationDrawer() {
     total,
   } = useCart();
 
-  const [quickAmounts, setQuickAmounts] = useState(QUICK_AMOUNTS);
-
-  useEffect(() => {
-    fetch("/api/admin/site-content")
-      .then((r) => r.json())
-      .then((d) => {
-        if (d?.content?.shagunTiers && d.content.shagunTiers.length > 0) {
-          setQuickAmounts(
-            d.content.shagunTiers.map((t: any) => ({
-              amount: t.amount,
-              label: `₹${t.amount.toLocaleString("en-IN")} ${t.name}`,
-              subtitle: t.meaning,
-              isPopular: t.isPopular,
-            }))
-          );
-        }
-      })
-      .catch(() => {});
-  }, []);
+  const quickAmounts = QUICK_AMOUNTS;
 
   const [selectedAmount, setSelectedAmount] = useState<number>(() => (total > 0 ? total : 2500));
   const [customInput, setCustomInput] = useState<string>("");
