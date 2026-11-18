@@ -501,6 +501,8 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         />
       </head>
       <body className="antialiased min-h-screen w-full max-w-full overflow-x-clip">
+        <div id="nl-hud-frame" style={{ display: "none" }} aria-hidden="true" />
+        <div id="nl-badge-frame" style={{ display: "none" }} aria-hidden="true" />
         <CartProvider catalog={catalog}>
           <PWARegister />
           <LiveVisitorTracker />

@@ -58,3 +58,6 @@ data/baileys_auth/
 .vercel
 .env*
 .neon
+
+.venv/
+.netlify/
