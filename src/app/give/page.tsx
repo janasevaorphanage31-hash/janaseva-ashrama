@@ -45,8 +45,47 @@ export const metadata: Metadata = {
 };
 
 export default function GivePage() {
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebPage",
+        "@id": `${SITE.url}/give#webpage`,
+        url: `${SITE.url}/give`,
+        name: "Support 25 Resident Boys | Janaseva Ashrama Bangalore | 80G Tax Exemption",
+        description:
+          "Direct donation portal for 25 orphaned boys at Janaseva Ashrama, Bengaluru. ₹500 feeds a child for a week. 100% Tax Deductible under Section 80G Form 10AC.",
+        potentialAction: {
+          "@type": "DonateAction",
+          target: {
+            "@type": "EntryPoint",
+            urlTemplate: `${SITE.url}/give`,
+            inLanguage: "en-IN",
+            actionPlatform: [
+              "http://schema.org/DesktopWebPlatform",
+              "http://schema.org/MobileWebPlatform",
+            ],
+          },
+          recipient: {
+            "@type": "NGO",
+            name: SITE.name,
+            legalName: SITE.legalName,
+            url: SITE.url,
+            taxID: SITE.pan,
+            telephone: SITE.phoneIntl,
+            identifier: [SITE.urn, SITE.jjActNumber, SITE.csrNumber, SITE.pan],
+          },
+        },
+      },
+    ],
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#FBF7EE] via-[#F6EFE2] to-[#ECE2D0] py-4 sm:py-10 px-2.5 sm:px-6">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <Suspense
         fallback={
           <div className="mx-auto max-w-md p-12 text-center text-teal-950 font-bold">

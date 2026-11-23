@@ -45,8 +45,57 @@ export const metadata: Metadata = {
 };
 
 export default function DonatePage() {
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebPage",
+        "@id": `${SITE.url}/donate#webpage`,
+        url: `${SITE.url}/donate`,
+        name: "Donate to Janaseva Ashrama | 80G Tax Exemption | 25 Resident Boys Bangalore",
+        description:
+          "Direct online donation portal for Janaseva Ashrama, Bengaluru. 100% Tax Deductible under Section 80G Form 10AC. Instant digital receipts.",
+        potentialAction: {
+          "@type": "DonateAction",
+          target: {
+            "@type": "EntryPoint",
+            urlTemplate: `${SITE.url}/donate`,
+            inLanguage: "en-IN",
+            actionPlatform: [
+              "http://schema.org/DesktopWebPlatform",
+              "http://schema.org/MobileWebPlatform",
+            ],
+          },
+          recipient: {
+            "@type": "NGO",
+            name: SITE.name,
+            legalName: SITE.legalName,
+            url: SITE.url,
+            taxID: SITE.pan,
+            telephone: SITE.phoneIntl,
+            identifier: [SITE.urn, SITE.jjActNumber, SITE.csrNumber, SITE.pan],
+          },
+        },
+      },
+      {
+        "@type": "FinancialService",
+        "@id": `${SITE.url}/donate#bank-transfer`,
+        name: "Janaseva Ashrama Official Bank & UPI Transfer",
+        provider: {
+          "@type": "NGO",
+          name: SITE.name,
+        },
+        description: `Official charity bank account for NEFT/RTGS/IMPS contributions: ${SITE.bankDetails.bankName}, Account: ${SITE.bankDetails.accountNumber}, IFSC: ${SITE.bankDetails.ifscCode}, UPI ID: ${SITE.bankDetails.upiId}. Eligible for 80G tax rebate.`,
+      },
+    ],
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#FBF7EE] via-[#F6EFE2] to-[#ECE2D0] py-4 sm:py-10 px-2.5 sm:px-6">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <Suspense
         fallback={
           <div className="mx-auto max-w-md p-12 text-center text-teal-950 font-bold">

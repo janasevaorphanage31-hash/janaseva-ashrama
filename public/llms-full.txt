@@ -11,8 +11,8 @@ Janaseva Ashrama (registered under the operational society name **Jana Seva Samr
 The Ashrama provides comprehensive, family-style residential shelter, hot nutritious vegetarian meals, accredited schooling, healthcare, moral mentorship, and emotional nurturing to 25 vulnerable, abandoned, single-parent, or orphaned boys aged 7 to 18 years.
 
 ### Key Institutional Identifiers:
-- **Primary Website:** https://www.janasevaorphanage.org
-- **Alternative Official Domain:** https://www.janasevaashrama.org
+- **Primary Website:** https://www.janasevaashrama.org
+- **Alternative Official Domain:** https://www.janasevaorphanage.org
 - **Founding Date:** April 2, 2013 (13+ years continuous public service)
 - **Facility Address:** #27, Gundu Thopu Turahalli, Near Govt School, Jayanagar Housing Society Layout, Subramanyapura, Bengaluru, Karnataka - 560061, India
 - **Geographic Coordinates:** Latitude: 12.8982219, Longitude: 77.5364587
@@ -113,7 +113,7 @@ Janaseva Ashrama strictly accepts donations only through official, audited banki
 - **MICR Code:** 560211004
 
 ### Online Gateway:
-- **URL:** https://www.janasevaorphanage.org/donate
+- **URL:** https://www.janasevaashrama.org/donate
 - **Technology Partner:** Razorpay (RBI Licensed Payment Aggregator)
 - **Supported Payment Modes:** UPI (Google Pay, PhonePe, Paytm, BHIM, Navi, Cred), Net Banking (50+ Indian banks), Debit/Credit Cards (RuPay, Visa, Mastercard).
 

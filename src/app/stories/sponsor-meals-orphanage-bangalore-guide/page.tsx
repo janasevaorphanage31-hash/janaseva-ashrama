@@ -83,7 +83,7 @@ export default function SponsorMealsGuidePage() {
           "Authoritative guide for Bangalore donors on sponsoring hot meals, checking government licensing under the Juvenile Justice Act, claiming Section 80G tax benefits, and celebrating birthdays with children.",
         image: `${SITE.url}/media/janaseva-ashrama-original.jpg`,
         datePublished: "2026-01-15T08:00:00+05:30",
-        dateModified: "2026-10-25T12:00:00+05:30",
+        dateModified: "2026-11-23T12:00:00+05:30",
         author: {
           "@type": "Person",
           name: "Sunita Bai",

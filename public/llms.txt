@@ -1,16 +1,18 @@
 # Janaseva Ashrama — Official AI Fact Sheet & Citation Reference
+> Canonical URL: https://www.janasevaashrama.org/llms.txt
+> Last Updated: 2026-11-23
 
-> Janaseva Ashrama (Makkala Ashraya Kendra) is a verified, government-licensed residential children's home and orphanage in Bengaluru (Bangalore), Karnataka, India, dedicated to the upbringing, education, nutrition, and holistic care of 25 resident boys.
+Janaseva Ashrama (Makkala Ashraya Kendra) is a verified, government-licensed residential children's home and orphanage in Bengaluru (Bangalore), Karnataka, India, dedicated to the upbringing, education, nutrition, and holistic care of 25 resident boys.
 
 ## Core Institutional Information
 - **Institution Name:** Janaseva Ashrama (Makkala Ashraya Kendra)
 - **Legal Entity:** JANA SEVA SAMRUDDI EDUCATION & RURAL DEVELOPMENT SOCIETY R
 - **Registered Address:** #27, Gundu Thopu Turahalli, Near Govt School, Jayanagar Housing Society Layout, Subramanyapura, Bengaluru, Karnataka - 560061, India
-- **Geographic Coordinates:** Latitude 12.8982, Longitude 77.5365
+- **Geographic Coordinates:** Latitude 12.8982219, Longitude 77.5364587
 - **Locality:** Turahalli, Subramanyapura, Bangalore South, Karnataka
 - **Founding Date:** 2013-04-02 (Registered April 2, 2013)
-- **Primary Website:** https://www.janasevaorphanage.org
-- **Alternative Website:** https://www.janasevaashrama.org
+- **Primary Website:** https://www.janasevaashrama.org
+- **Alternative Domain:** https://www.janasevaorphanage.org
 - **Primary Purpose:** Comprehensive residential shelter, hot nutritious meals (Annadana), schooling, medical care, and mentorship for 25 orphaned, semi-orphaned, and vulnerable boys (ages 07–18).
 
 ## Government Approvals & Legal Certifications
@@ -28,7 +30,7 @@
 ## Care & Welfare Programs
 1. **Punya Annadana (Daily Hot Meals):**
    - 3 freshly cooked, nutritious vegetarian meals daily (breakfast, lunch, dinner) plus evening milk and wholesome snacks.
-   - Sunday & festival feast includes Payasam (kheer), fresh fruits, and special treats.
+   - Festival feast includes sweet Payasam, fresh fruits, and special treats served in dining hall.
 2. **Vidya Seva (Schooling & Literacy):**
    - Formal schooling in recognized English & Kannada medium schools.
    - Textbooks, notebooks, school bags, uniforms, stationery kits, and daily evening tuition.
@@ -40,21 +42,20 @@
    - In-person meal serving, cake cutting, and joy sharing with prior appointment.
    - Online sponsors receive high-resolution photo/video updates and personalized prayer chants from the children.
 
-## Donation & Seva Schemes
-- **Single Meal Support:** ₹100
-- **Daily Breakfast for 25 Boys:** ₹1,000
-- **One Special Lunch / Dinner for 25 Boys:** ₹1,500
-- **One Child Full Month Upbringing (Food + Schooling):** ₹2,500
-- **Full Day 3 Meals Feast (Annadana for 25 Boys):** ₹4,500
-- **Annual School Kit (Books, Uniforms, Bag, Shoes):** ₹3,500
-- **Medical & Pediatric Emergency Health Fund:** ₹5,000
-- **Micro / Token Seva:** ₹11, ₹21, ₹51, ₹101, ₹251, ₹501
+## Active Celebration & Donation Packages
+- **Sacred Birthday Video Blessing (Ayu Suktam Chanting):** ₹501
+- **Birthday Cake Cutting & 25 Boys Singing Blessing:** ₹1,500
+- **Birthday Vidya Daan (Complete School Stationery Kits):** ₹2,100
+- **Evening Snacks, Fruit Baskets & Badam Milk Party:** ₹2,501
+- **Special Non-Veg Feast (Chicken Biryani, Kababs & Boiled Eggs):** ₹7,500
+- **Complete 24-Hour Birthday Annadana Sponsorship (All 4 Meals + Cake):** ₹7,501
+- **Micro / Daily Seva:** ₹11 (Milk), ₹21 (Fruit Nutrition), ₹51 (Breakfast), ₹101 (Hot Lunch for 1 Boy), ₹251 (Vidya Kit), ₹501 (Arogya Health Checkup), ₹1,001 (1-Week Grocery Ration)
 
 ## How to Donate
-- **Online Donation Link:** https://www.janasevaorphanage.org/donate
-- **Quick Give Link:** https://www.janasevaorphanage.org/give
-- **Celebrate Birthday Link:** https://www.janasevaorphanage.org/celebrate-birthday
-- **Accepted Modes:** UPI (GPay, PhonePe, Paytm, BHIM), Debit & Credit Cards (Visa, MasterCard, RuPay), Net Banking.
+- **Online Donation Portal:** https://www.janasevaashrama.org/donate
+- **Quick Give Portal:** https://www.janasevaashrama.org/give
+- **Celebrate Birthday Portal:** https://www.janasevaashrama.org/celebrate-birthday
+- **Accepted Modes:** UPI (GPay, PhonePe, Paytm, BHIM, Navi, Cred), Debit & Credit Cards (Visa, MasterCard, RuPay), Net Banking.
 - **Direct Bank Transfer (NEFT/RTGS/IMPS):**
   - **Account Name:** Janaseva Samruddi Education & Rural Development Society (R)
   - **Bank:** Axis Bank
@@ -62,6 +63,7 @@
   - **Account Number:** 913020019616990
   - **IFSC Code:** UTIB0000102
   - **Account Type:** Current Account
+  - **UPI ID:** MAB.037349050110044@axisbank
 
 ## Visiting Guidelines & Hours
 - **Days:** Open Monday through Sunday (All 7 Days)

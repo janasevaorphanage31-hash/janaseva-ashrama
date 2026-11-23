@@ -369,7 +369,7 @@ export function CinematicHero({ content }: { content?: Partial<SiteContentMap> }
       </div>
 
       {/* ── 2. DYNAMIC MISSION HEADLINE STRIP ── */}
-      <div className="w-full bg-gradient-to-r from-teal-950 via-teal-900 to-teal-950 border-b border-teal-800/60 py-3 sm:py-3.5 px-4 text-center">
+      <div id="hero-story" className="speakable-summary w-full bg-gradient-to-r from-teal-950 via-teal-900 to-teal-950 border-b border-teal-800/60 py-3 sm:py-3.5 px-4 text-center">
         <div className="mx-auto max-w-5xl">
           <h1 className="font-display text-base sm:text-lg md:text-xl font-bold tracking-normal text-white leading-snug">
             {content?.heroHeadline || "Pure Love, Wholesome Food & Education for 25 Boys"}

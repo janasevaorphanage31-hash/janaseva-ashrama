@@ -39,8 +39,66 @@ export const metadata: Metadata = {
 
 export default async function TransparencyPage() {
   const docs = await getDocuments();
+
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "AboutPage",
+        "@id": `${SITE.url}/transparency#webpage`,
+        url: `${SITE.url}/transparency`,
+        name: "Transparency & Financial Governance · Janaseva Ashrama Bangalore",
+        description:
+          "Official statutory certificates, Form 10AC Section 80G tax approvals, Juvenile Justice Act registration, and financial governance documents for Janaseva Ashrama.",
+        publisher: {
+          "@type": "NGO",
+          name: SITE.name,
+          legalName: SITE.legalName,
+          url: SITE.url,
+          taxID: SITE.pan,
+          identifier: [SITE.urn, SITE.jjActNumber, SITE.csrNumber, SITE.pan],
+        },
+        hasCredential: [
+          {
+            "@type": "GovernmentPermit",
+            name: "Juvenile Justice Act Form 28 Registration (KA18CH0242)",
+            identifier: SITE.jjActNumber,
+            issuedBy: {
+              "@type": "GovernmentOrganization",
+              name: "Directorate of Child Protection, Government of Karnataka",
+            },
+            validThrough: "2030-03-26",
+          },
+          {
+            "@type": "GovernmentPermit",
+            name: "Income Tax Act Section 80G Approval Order (Form 10AC)",
+            identifier: SITE.urn,
+            issuedBy: {
+              "@type": "GovernmentOrganization",
+              name: "Income Tax Department, Government of India",
+            },
+            validThrough: "2027-03-31",
+          },
+          {
+            "@type": "GovernmentPermit",
+            name: "MCA CSR-1 Registration for Corporate Social Responsibility",
+            identifier: SITE.csrNumber,
+            issuedBy: {
+              "@type": "GovernmentOrganization",
+              name: "Ministry of Corporate Affairs, Government of India",
+            },
+          },
+        ],
+      },
+    ],
+  };
+
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <Breadcrumbs items={[{ label: "Transparency & Governance" }]} />
       <PageHero eyebrow="Trust" title="Transparency" lead="Documents, governance, policies and how your donation is handled." />
       <TransparencySection docs={docs} standalone />

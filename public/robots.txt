@@ -1,5 +1,5 @@
-# Robots.txt for Janaseva Ashrama (https://janasevaashrama.org & https://www.janasevaashrama.org)
-# Auto-optimized for Google, Bing, and AI Search Engines (ChatGPT, Perplexity, Claude, Apple)
+# Robots.txt for Janaseva Ashrama (https://www.janasevaashrama.org)
+# Optimized for Google, Bing, and AI Search Engines (ChatGPT, Perplexity, Claude, Apple, Gemini)
 
 User-agent: *
 Allow: /
@@ -28,6 +28,9 @@ Allow: /
 User-agent: OAI-SearchBot
 Allow: /
 
+User-agent: ChatGPT-User
+Allow: /
+
 User-agent: GPTBot
 Allow: /
 
@@ -52,11 +55,20 @@ Allow: /
 User-agent: FacebookBot
 Allow: /
 
+User-agent: facebookexternalhit
+Allow: /
+
+User-agent: Meta-ExternalAgent
+Allow: /
+
 User-agent: Bytespider
 Allow: /
 
 User-agent: cohere-ai
 Allow: /
 
-# Sitemaps
+User-agent: Amazonbot
+Allow: /
+
+# Sitemaps & Machine-Readable AI Dossiers
 Sitemap: https://www.janasevaashrama.org/sitemap.xml

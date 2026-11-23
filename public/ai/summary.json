@@ -4,31 +4,56 @@
   "alternateNames": [
     "Janaseva Ashrama Charitable Trust",
     "Janaseva Orphanage",
-    "Janaseva Children's Home Bangalore"
+    "Janaseva Children's Home Bangalore",
+    "Makkala Ashraya Kendra"
   ],
   "url": "https://www.janasevaashrama.org",
   "type": "NonProfitOrganization",
-  "description": "Registered public charitable trust and residential home for 25 orphaned, semi-orphaned, and vulnerable boys in Bengaluru, Karnataka, India. Registered under JJ Act 2015 (KA18CH0242), MCA CSR-1 approved (CSR00078800), with 80G tax exemption (URN: AABTJ7431MF20231).",
-  "category": "Child Welfare & Education NGO",
+  "description": "Registered public charitable residential home nurturing 25 orphaned, semi-orphaned, and vulnerable boys in Bengaluru, Karnataka, India. Child Care Institution registered under Juvenile Justice Act Form 28 (KA18CH0242), MCA CSR-1 approved (CSR00078800), Section 12AA certified, with 80G tax exemption (URN: AABTJ7431MF20231).",
+  "category": "Child Welfare, Education & Annadana NGO",
   "city": "Bengaluru",
   "state": "Karnataka",
   "country": "India",
   "address": "#27, Gundu Thopu Turahalli, Near Govt School, Jayanagar Housing Society Layout, Subramanyapura, Bengaluru - 560061",
-  "phone": "+91 94831 60340",
-  "email": "contact@janasevaashrama.org",
+  "geo": {
+    "latitude": 12.8982219,
+    "longitude": 77.5364587
+  },
+  "phone": "+91 99803 59595",
+  "secondaryPhone": "+91 99452 23232",
+  "email": "janasevaorphanage31@gmail.com",
   "donationUrl": "https://www.janasevaashrama.org/donate",
+  "giveUrl": "https://www.janasevaashrama.org/give",
   "birthdayCelebrationUrl": "https://www.janasevaashrama.org/celebrate-birthday",
+  "transparencyUrl": "https://www.janasevaashrama.org/transparency",
   "programs": [
-    "Punya Annadana (Daily Hot Meals & Feasts)",
-    "Vidya Seva (English/Kannada Medium Schooling & Kits)",
-    "Arogya Seva (Pediatric Healthcare & Nutrition)",
-    "Make a Day Matter (Birthday & Anniversary Celebrations with Children)"
+    "Punya Annadana (3 Daily Hot Satvik Meals & Festival Feasts)",
+    "Vidya Seva (English/Kannada Medium Schooling, Books & Uniforms)",
+    "Arogya Seva (Pediatric Healthcare, Regular Screenings & Nutrition)",
+    "Make a Day Matter (Birthday, Anniversary & Memorial Celebrations with 25 Children)"
   ],
   "taxExemption": {
     "section": "80G(5)(iv) of Income Tax Act 1961",
     "rebate": "50% tax deduction for Indian donors",
     "urn": "AABTJ7431MF20231",
-    "pan": "AABTJ7431M"
+    "din": "AABTJ7431MF2023101",
+    "pan": "AABTJ7431M",
+    "orderDate": "2023-09-04",
+    "validThrough": "AY 2026-2027"
+  },
+  "bankTransfer": {
+    "accountHolder": "Janaseva Samruddi Education & Rural Development Society (R)",
+    "bank": "Axis Bank",
+    "branch": "Banashankari, Bengaluru",
+    "accountNumber": "913020019616990",
+    "ifsc": "UTIB0000102",
+    "accountType": "Current Account",
+    "upiId": "MAB.037349050110044@axisbank"
+  },
+  "governmentRegistrations": {
+    "jjActRegistration": "Form 28 Registration KA18CH0242 (Valid through 2030-03-26)",
+    "mcaCsr": "CSR00078800 (SRN: SRN-F98737448)",
+    "section12AA": "CIT(EXEMPTION S) BANGALORE/12AA/2018-19/A/10403"
   },
   "llmsTxt": "https://www.janasevaashrama.org/llms.txt"
 }

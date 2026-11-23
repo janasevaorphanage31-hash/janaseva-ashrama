@@ -61,7 +61,7 @@ const BIRTHDAY_FAQS = [
   },
   {
     q: "How much does it cost to sponsor a birthday meal for all children?",
-    a: "A personalized WhatsApp Video Song Blessing with 25 boys singing your name and chanting Vedic Ayu Suktam shlokas is ₹700. A wholesome morning breakfast package is ₹1,500. A grand festive birthday lunch with traditional sweet payasam, pooris, and vegetable curries for all 25 boys is ₹3,500. Evening snacks with fresh fruit platters is ₹2,500. Full-day nourishment covering breakfast, lunch, snacks, and dinner is ₹7,500.",
+    a: "A personalized WhatsApp Video Song Blessing with 25 boys singing your name and chanting Vedic Ayu Suktam shlokas is ₹501. A fresh 1kg eggless bakery cake cutting with song blessing for all 25 boys is ₹1,500. Sponsoring complete school stationery kits (Vidya Daan) for all 25 boys is ₹2,100. Evening snacks with fresh apple & banana baskets and warm badam milk is ₹2,501. A royal Special Non-Veg Feast with chicken biryani, kababs, and boiled eggs for all 25 boys is ₹7,500. Complete 24-hour Annadana covering all 4 meals (breakfast, lunch, snacks, dinner) plus cake is ₹7,501.",
   },
   {
     q: "What are the recommended visiting slots for birthday celebrations?",

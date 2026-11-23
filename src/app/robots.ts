@@ -1,5 +1,4 @@
 import type { MetadataRoute } from "next";
-import { SITE } from "@/lib/site";
 
 export const revalidate = 86400; // 24 hours
 
@@ -26,14 +25,18 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
     "Google-Extended",
     "Bingbot",
     "OAI-SearchBot",
+    "ChatGPT-User",
     "GPTBot",
     "PerplexityBot",
     "ClaudeBot",
+    "Claude-SearchBot",
+    "Applebot",
     "Applebot-Extended",
     "Amazonbot",
     "CCBot",
     "FacebookBot",
     "facebookexternalhit",
+    "Meta-ExternalAgent",
     "Bytespider",
     "cohere-ai",
   ];
