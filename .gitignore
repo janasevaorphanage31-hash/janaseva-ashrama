@@ -61,3 +61,4 @@ data/baileys_auth/
 
 .venv/
 .netlify/
+scratch/

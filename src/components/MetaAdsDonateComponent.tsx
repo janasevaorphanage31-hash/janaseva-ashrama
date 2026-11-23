@@ -65,7 +65,7 @@ const QUICK_SEVA_TIERS: SevaOption[] = [
     impact: "Hot wholesome satvik lunch with rice, sambar, rasam & fresh vegetables",
     badge: "Daily Punya",
     icon: "🍛",
-    image: "/media/banana-leaf-feast.jpg",
+    image: "/media/annadana-hall-hd.jpg",
     category: "quick",
   },
   {

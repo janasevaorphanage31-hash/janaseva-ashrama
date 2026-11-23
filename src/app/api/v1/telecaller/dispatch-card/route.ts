@@ -59,7 +59,7 @@ export async function POST(req: Request) {
     const res = await sendWhatsAppMediaMessage({
       to: normalized.metaTo,
       type: mediaType as "image" | "video" | "document",
-      mediaUrl: mediaUrl || "https://www.janasevaashrama.org/media/banana-leaf-feast.jpg",
+      mediaUrl: mediaUrl || "https://www.janasevaashrama.org/media/annadana-hall-hd.jpg",
       caption: captionText,
     });
 

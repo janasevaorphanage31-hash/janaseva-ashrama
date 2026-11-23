@@ -41,7 +41,7 @@ const ACTIVITIES: NgoActivity[] = [
     title: "Hot Meal Feeds & Hunger Relief",
     subtitle: "Fresh satvik food served with dignity",
     cadence: "Weekly Seva & Drives",
-    image: "/media/banana-leaf-feast.jpg",
+    image: "/media/annadana-hall-hd.jpg",
     metricBadge: "15,000+ Meals Served",
     emotionalTag: "🍲 Zero hunger for destitute elders",
     shortDesc: "Beyond daily campus cooking, we distribute hot rice, aromatic sambar, and fresh vegetables to homeless elders and hospital bystanders.",

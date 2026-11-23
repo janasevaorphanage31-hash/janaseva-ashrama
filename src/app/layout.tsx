@@ -155,7 +155,6 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
           `${SITE.url}/media/janaseva-ashrama-original.jpg`,
           `${SITE.url}/media/boys-group-altar.jpg`,
           `${SITE.url}/media/lawn-cheer-circle.jpg`,
-          `${SITE.url}/media/banana-leaf-feast.jpg`,
           `${SITE.url}/media/annadana-hall-hd.jpg`,
         ],
         email: SITE.email,
@@ -281,7 +280,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         image: [
           `${SITE.url}/media/birthday-cake-celebration.jpg`,
           `${SITE.url}/media/birthday-feast-annadana.jpg`,
-          `${SITE.url}/media/banana-leaf-feast.jpg`,
+          `${SITE.url}/media/non-veg-biryani-feast.jpg`,
           `${SITE.url}/media/annadana-hall-hd.jpg`,
         ],
         performer: {

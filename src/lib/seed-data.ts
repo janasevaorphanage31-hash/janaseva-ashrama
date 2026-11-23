@@ -352,7 +352,7 @@ export const DEFAULT_ITEMS: ImpactItem[] = [
     todayNeed: true,
     featured: false,
     unitLabel: "single meal",
-    imageUrl: "/media/banana-leaf-feast.jpg",
+    imageUrl: "/media/annadana-hall-hd.jpg",
     accountingMeaning: "Covers a single full-hall meal sitting for 25 boys with fresh cooking ingredients.",
     operationalMeaning: "Fulfills one major daily meal with dignity and warmth.",
     financeApproval: "approved",
@@ -569,7 +569,7 @@ export const DEFAULT_ITEMS: ImpactItem[] = [
 
 export const TODAY_SEED = [
   { title: "Morning Annadana Prayer", body: "All 25 resident boys folding hands before steel meal plates, chanting universal shlokas of gratitude before breakfast in our main hall.", category: "Annadana", imageUrl: "/media/annadana-hall-hd.jpg" },
-  { title: "Bale Ele Oota (Banana Leaf Feast)", body: "Traditional South Indian festival meal served hot on fresh green plantain leaves, celebrated with joy and dignity.", category: "Annadana", imageUrl: "/media/banana-leaf-feast.jpg" },
+  { title: "Special Festive Annadana Feast", body: "Traditional South Indian festival meal served hot with sweet payasam and fresh vegetables, celebrated with joy and dignity.", category: "Annadana", imageUrl: "/media/annadana-hall-hd.jpg" },
   { title: "Classroom Art & Creative Drawings", body: "Boys proudly displaying handmade sketches, creative posters, and drawings under the Janaseva banner.", category: "Education", imageUrl: "/media/art-drawings.jpg" },
   { title: "International Yoga Day & Meditation", body: "Practicing Padmasana and Sukhasana breathing techniques on striped mats for mental clarity and physical strength.", category: "Health", imageUrl: "/media/yoga-day.jpg" },
   { title: "Patriotic Flag Hoisting & Rangoli", body: "Independence Day celebrations with tricolour Bharat map rangoli, patriotic anthems, and disciplined flag salutes.", category: "Celebrations", imageUrl: "/media/flag-hoisting-rangoli.jpg" },
@@ -585,7 +585,7 @@ export const CAMPAIGN_SEED = {
   campaignType: "Community",
   story:
     "Join Bangalore well-wishers and volunteers in providing nutritious warm festive meals, fresh fruits, sweets, school uniforms, and learning kits for all 25 resident boys at Janaseva Ashrama. Every contribution directly nourishes a child with 100% transparency and instant Form 10AC Section 80G tax benefits.",
-  coverImage: "/media/banana-leaf-feast.jpg",
+  coverImage: "/media/annadana-hall-hd.jpg",
   organizerName: "Janaseva Friends & Well-Wishers",
   goalAmount: 25000,
 };

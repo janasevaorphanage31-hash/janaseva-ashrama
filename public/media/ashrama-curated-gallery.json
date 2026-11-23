@@ -12,14 +12,14 @@
   },
   {
     "id": "gallery-2",
-    "semanticName": "banana-leaf-feast.jpg",
-    "url": "/media/banana-leaf-feast.jpg",
-    "title": "Traditional Festival Banana Leaf Feast (Bale Ele Oota)",
-    "kannada": "ಸಾಂಪ್ರದಾಯಿಕ ಬಾಳೆ ಎಲೆ ಹಬ್ಬದ ಊಟ",
+    "semanticName": "annadana-hall-hd.jpg",
+    "url": "/media/annadana-hall-hd.jpg",
+    "title": "Special Festive Annadana Feast with Sweet Payasam",
+    "kannada": "ಸಂಭ್ರಮದ ವಿಶೇಷ ಹಬ್ಬದ ಊಟ ಹಾಗೂ ಸಿಹಿ ಪಾಯಸ",
     "category": "Annadana & Meals",
     "type": "image",
     "featured": true,
-    "description": "Festival Annadana served on fresh green plantain leaves with rice, sambar, seasonal vegetables, sweets, and fresh fruit slices."
+    "description": "Festival Annadana served with hot rice, sambar, seasonal vegetables, sweet payasam, and fresh fruits."
   },
   {
     "id": "gallery-3",
@@ -34,14 +34,14 @@
   },
   {
     "id": "gallery-4",
-    "semanticName": "annadana-leaves-prayer.jpg",
-    "url": "/media/annadana-leaves-prayer.jpg",
-    "title": "Folded Hands Prayer Before Fresh Banana Leaf Lunch",
-    "kannada": "ಬಾಳೆ ಎಲೆ ಊಟದ ಮುನ್ನ ಪ್ರಾರ್ಥನೆ",
+    "semanticName": "annadana-hall-hd.jpg",
+    "url": "/media/annadana-hall-hd.jpg",
+    "title": "Folded Hands Prayer Before Hot Nutritious Lunch",
+    "kannada": "ಪೌಷ್ಟಿಕ ಊಟದ ಮುನ್ನ ಮಕ್ಕಳ ಭಕ್ತಿಪೂರ್ವಕ ಪ್ರಾರ್ಥನೆ",
     "category": "Annadana & Meals",
     "type": "image",
     "featured": false,
-    "description": "Devotion and discipline: boys in matching orange uniforms giving thanks for donor support before their festive meal."
+    "description": "Devotion and discipline: boys in matching orange uniforms giving thanks for donor support before their lunch."
   },
   {
     "id": "gallery-5",
@@ -250,7 +250,7 @@
     "category": "Festivals & Spiritual",
     "type": "image",
     "featured": true,
-    "description": "Blessing the Ashrama library with banana trees, marigolds, Bhagavad Gita, textbooks, and fruit offerings."
+    "description": "Blessing the Ashrama library with auspicious marigolds, Bhagavad Gita, textbooks, and fruit offerings."
   },
   {
     "id": "gallery-24",

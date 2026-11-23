@@ -42,7 +42,7 @@ const CHAPTERS: VideoChapter[] = [
     subtitle: "Wholesome hot meals prepared fresh with motherly care",
     duration: "0:50",
     videoSrc: "/media/video-chant-prayer.mp4",
-    posterSrc: "/media/banana-leaf-feast.jpg",
+    posterSrc: "/media/annadana-hall-hd.jpg",
     associatedSlug: "meal",
     associatedItemName: "Warm Meal Support",
     associatedPrice: 100,

@@ -32,7 +32,7 @@ export const VERIFIED_ASHRAMA_FACTS = {
     {
       title: "Special Birthday / Celebration Seva Feast",
       amountINR: 5000,
-      description: "Special banana-leaf feast with sweet (payasa/halwa) and fresh fruits for all resident children.",
+      description: "Special festive feast with sweet (payasa/halwa) and fresh fruits for all resident children.",
     },
     {
       title: "School Uniform & Education Kit",

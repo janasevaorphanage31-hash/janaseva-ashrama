@@ -25,7 +25,7 @@ Hari Om & Namaste {{1}} Ji 🙏
 
 Today, we invite you to be the reason behind the bright smiles of our 25 resident boys. For just *₹4,500*, you can sponsor their entire day's nutritious meals:
 • Hot South Indian breakfast
-• Banana-leaf lunch with sambar, vegetable curry & sweet
+• Nutritious lunch with sambar, vegetable curry & sweet
 • Evening fresh milk & nutritious snacks
 • Wholesome dinner
 
@@ -60,7 +60,7 @@ Namaste {{1}} Ji! 🙏
 May your special day be filled with joy and divine blessings! On your auspicious occasion, bring pure happiness to 25 resident boys by sponsoring a special celebration feast for *₹5,000*.
 
 🎁 *What happens on your special day:*
-• Boys enjoy a special banana-leaf feast with sweet (Payasa/Halwa)
+• Boys enjoy a special festive lunch with sweet (Payasa/Halwa)
 • Special prayer circle dedicated in your name
 • Dedicated wish & blessing video delivered directly to your WhatsApp!
 

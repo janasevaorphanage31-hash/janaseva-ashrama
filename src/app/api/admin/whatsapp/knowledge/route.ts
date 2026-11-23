@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
         },
         {
           title: "Annadana & Daily Meals Seva Tiers",
-          content: `Full Day Meals for 25 boys costs ₹4,500. This covers hot South Indian breakfast, afternoon banana-leaf lunch with rice/sambar/rasam/vegetable curry, evening hot milk & nutritious snacks, and wholesome dinner. Monthly grocery provisions cost ₹6,000.`,
+          content: `Full Day Meals for 25 boys costs ₹4,500. This covers hot South Indian breakfast, afternoon hot lunch with rice/sambar/rasam/vegetable curry, evening hot milk & nutritious snacks, and wholesome dinner. Monthly grocery provisions cost ₹6,000.`,
           sourceType: "SEVA_CATALOG",
           language: "en",
           status: "PUBLISHED",

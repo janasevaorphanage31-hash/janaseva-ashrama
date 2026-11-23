@@ -56,15 +56,6 @@ const REEL_ITEMS: ReelCard[] = [
   },
   {
     type: "image",
-    src: "/media/banana-leaf-feast.jpg",
-    time: "01:30 PM",
-    title: "Traditional Festival Banana Leaf Feast (Bale Ele Oota)",
-    kannada: "ಸಾಂಪ್ರದಾಯಿಕ ಬಾಳೆ ಎಲೆ ಹಬ್ಬದ ಊಟ",
-    impactTag: "Traditional Feast",
-    sponsorAmount: 501,
-  },
-  {
-    type: "image",
     src: "/media/art-drawings.jpg",
     time: "03:30 PM",
     title: "Art & Drawing Competition Creations",

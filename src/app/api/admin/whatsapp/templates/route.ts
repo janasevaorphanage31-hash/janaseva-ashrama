@@ -130,7 +130,7 @@ export async function POST(req: NextRequest) {
             { type: "HEADER", format: "TEXT", text: "🎂 Celebrate with 25 Boys" },
             {
               type: "BODY",
-              text: "Namaste {{1}} Ji, celebrate your special day with a joyful banana leaf feast for our 25 resident boys (₹5,000). Receive heartfelt prayer video blessings!",
+              text: "Namaste {{1}} Ji, celebrate your special day with a joyful festive feast for our 25 resident boys (₹5,000). Receive heartfelt prayer video blessings!",
             },
           ],
         },

@@ -47,9 +47,9 @@ export const CURATED_OUTREACH_MEDIA: Record<string, MediaAsset> = {
   annadana_feast: {
     id: "annadana_feast",
     type: "image",
-    title: "🍲 Satvik Banana Leaf Feast",
-    description: "25 resident boys enjoying a freshly cooked hot lunch feast on banana leaves.",
-    url: `${SITE.url}/media/banana-leaf-feast.jpg`,
+    title: "🍲 Satvik Annadana Feast",
+    description: "25 resident boys enjoying a freshly cooked hot lunch feast with sweet payasam.",
+    url: `${SITE.url}/media/annadana-hall-hd.jpg`,
     filename: "janaseva-annadana-feast.jpg",
   },
   birthday_celebration: {
@@ -664,7 +664,7 @@ export function generateAntiBanMessage(options: AntiBanGenerateOptions): AntiBan
       ]);
 
       const donorAppealKn = pick([
-        `ತಮ್ಮ ಶುಭದಿನದಂದು ನಮ್ಮ ಆಶ್ರಮದ 25 ಬಾಲಕರಿಗೆ ಸಾತ್ವಿಕ ಬಾಳೆ ಎಲೆ ಅನ್ನದಾನ ಸೇವೆ ಮಾಡಿಸಿ ಮಕ್ಕಳ ಮುಗ್ಧ ಆಶೀರ್ವಾದ ಪಡೆಯಿರಿ. 🍲`,
+        `ತಮ್ಮ ಶುಭದಿನದಂದು ನಮ್ಮ ಆಶ್ರಮದ 25 ಬಾಲಕರಿಗೆ ಸಾತ್ವಿಕ ಅನ್ನದಾನ ಸೇವೆ ಮಾಡಿಸಿ ಮಕ್ಕಳ ಮುಗ್ಧ ಆಶೀರ್ವಾದ ಪಡೆಯಿರಿ. 🍲`,
         `ಈ ವಿಶೇಷ ದಿನದಂದು 25 ಅನಾಥ ಮಕ್ಕಳಿಗೆ ಒಂದು ಹೊತ್ತಿನ ಹಬ್ಬದ ಊಟ sponsor ಮಾಡಿ ಪುಣ್ಯ ಪಡೆದುಕೊಳ್ಳಿ. 🌸`,
         `ತಮ್ಮ ಜನ್ಮದಿನದ ಸವಿ ನೆನಪಿನಲ್ಲಿ ನಮ್ಮ 25 ಮಕ್ಕಳಿಗೆ ಸಾತ್ವಿಕ ಅನ್ನದಾನ ಸೇವೆ ನೆರವೇರಿಸಿ. 🍲`,
       ]);

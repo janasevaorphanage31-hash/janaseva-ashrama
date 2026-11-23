@@ -351,8 +351,8 @@ export function generateCampaignBlueprint(
             rationale: "Shows real smiling boys clapping around a celebratory cake with festive cheer.",
           },
           {
-            title: "Festive Banana Leaf Feast",
-            path: "/media/banana-leaf-feast.jpg",
+            title: "Festive Annadana Feast",
+            path: "/media/annadana-hall-hd.jpg",
             rationale: "Demonstrates hot fresh Annadana meal served with dignity in the dining hall.",
           },
           {
@@ -362,7 +362,7 @@ export function generateCampaignBlueprint(
           },
         ],
         aiImagePrompts: [
-          "Cinematic photorealistic documentary photograph, wide angle, Indian boys aged 8-15 wearing neat clean orange and white traditional kurtas smiling happily in a brightly lit South Indian Ashrama dining hall, eating warm festive lunch with payasam on banana leaves, natural warm daylight, Canon 50mm f/1.4 lens, candid expressions of genuine gratitude, no poverty exploitation, dignified and hopeful atmosphere --ar 1:1 --v 6.0",
+          "Cinematic photorealistic documentary photograph, wide angle, Indian boys aged 8-15 wearing neat clean orange and white traditional kurtas smiling happily in a brightly lit South Indian Ashrama dining hall, eating warm festive lunch with payasam served on stainless steel dining plates, natural warm daylight, Canon 50mm f/1.4 lens, candid expressions of genuine gratitude, no poverty exploitation, dignified and hopeful atmosphere --ar 1:1 --v 6.0",
           "Warm candid portrait of a group of 25 happy Indian schoolboys in Bengaluru singing and waving their hands in celebration with a colorful birthday cake in foreground, soft natural window light, warm terracotta walls, clean and wholesome environment --ar 4:5 --v 6.0",
         ],
         videoHookConcept:
@@ -534,7 +534,7 @@ export function generateCampaignBlueprint(
           },
         ],
         aiImagePrompts: [
-          "Documentary photography, wide eye-level angle, young smiling Indian orphan boy sitting cross-legged on a polished terracotta floor in front of a fresh banana leaf laden with steaming hot rice, sambar, and fresh banana, hands folded in grateful Namaste prayer, warm golden morning light streaming through windows, authentic and heart-warming --ar 1:1 --v 6.0",
+          "Documentary photography, wide eye-level angle, young smiling Indian orphan boy sitting at a clean dining table in front of a warm stainless plate laden with steaming hot rice, sambar, and fresh sweet, hands folded in grateful Namaste prayer, warm golden morning light streaming through windows, authentic and heart-warming --ar 1:1 --v 6.0",
           "Close up of traditional Indian copper tumbler of warm fresh cow milk and steaming idlis on a clean dining table in an ashrama setting, background blurred showing happy children studying, authentic Karnataka setting --ar 4:5 --v 6.0",
         ],
         videoHookConcept:

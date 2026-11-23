@@ -77,7 +77,7 @@ const CATEGORIES = [
 const ASHRAMA_PRESET_PHOTOS = [
   { label: "🍗 Non-Veg Biryani Feast (₹7,500)", url: "/media/non-veg-biryani-feast.jpg" },
   { label: "🍲 Annadana Hall", url: "/media/annadana-hall-hd.jpg" },
-  { label: "🍌 Banana Leaf Feast", url: "/media/banana-leaf-feast.jpg" },
+  { label: "🎂 Birthday Cake Celebration", url: "/media/birthday-cake-celebration.jpg" },
   { label: "🙏 Morning Satsang Altar", url: "/media/boys-group-altar.jpg" },
   { label: "🎨 Art & Drawings Class", url: "/media/art-drawings.jpg" },
   { label: "🎯 Carrom & Play", url: "/media/carrom-play.jpg" },
@@ -1229,7 +1229,7 @@ May Lord Shiva and the children's prayers bring lasting happiness and peace to y
       title: "Community Seva Drive",
       subtitle: "Serving with unconditional love",
       cadence: "Weekly Seva Drive",
-      image: "/media/banana-leaf-feast.jpg",
+      image: "/media/annadana-hall-hd.jpg",
       metricBadge: "Active Seva",
       emotionalTag: "🍲 Nourishing destitute lives",
       shortDesc: "Caregivers and children serve wholesome food to vulnerable families in Bengaluru.",

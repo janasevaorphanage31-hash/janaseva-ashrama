@@ -60,6 +60,7 @@ export const TRENDING_BIRTHDAY_PACKAGES: BirthdayPackage[] = [
     tag: "🍰 Fresh Cake & Song",
     kannada: "ಹುಟ್ಟುಹಬ್ಬದ ಕೇಕ್ ಹಾಗೂ ಹಾಡಿನ ಹರಕೆ",
     cost: 1500,
+    popular: true,
     description: "Fresh 1kg eggless bakery cake with celebrant's name written in icing. 25 boys gather around, sing, cut cake, and share joyous sweets.",
     servings: "25 boys cake celebration",
     icon: "🎂",
@@ -71,26 +72,6 @@ export const TRENDING_BIRTHDAY_PACKAGES: BirthdayPackage[] = [
       "Form 10AC 80G tax exemption benefit",
     ],
     menuTags: ["🎂 1kg Eggless Cake", "🍬 Traditional Sweets", "🎥 Singing Video", "📸 High-Res Photos"],
-  },
-  {
-    id: "pkg-lunch",
-    slug: "meal",
-    title: "Special Banana Leaf Festival Feast + Payasam",
-    tag: "⭐ Most Popular Choice",
-    kannada: "ಸಂಭ್ರಮದ ಬಾಳೆ ಎಲೆ ಊಟ ಹಾಗೂ ಸಿಹಿ ಪಾಯಸ",
-    cost: 3501,
-    popular: true,
-    description: "Traditional South Indian Banana Leaf (Bale Ele Oota) festival lunch served hot to all 25 boys in honour of your special day.",
-    servings: "Full satvik feast for all 25 boys",
-    icon: "🍛",
-    image: "/media/banana-leaf-feast.jpg",
-    features: [
-      "Full banana leaf satvik feast for 25 boys",
-      "Sweet Payasam, Pooris, Sagu, Sambar, Rice & Curd",
-      "Morning Vedic Shloka chanting of your family's name",
-      "WhatsApp video proof of boys relishing the feast",
-    ],
-    menuTags: ["🍚 Rice & Ghee", "🫓 Pooris & Sagu", "🍲 Dal Sambar", "🍮 Sweet Payasam"],
   },
   {
     id: "pkg-vidya",
@@ -219,7 +200,7 @@ const CELEBRATION_SHOWCASES: CelebrationShowcase[] = [
     deliveredDate: "Delivered on WhatsApp • 03 Oct",
     packageCost: 2501,
     videoUrl: "/media/video-chant-prayer.mp4",
-    thumbnailUrl: "/media/banana-leaf-feast.jpg",
+    thumbnailUrl: "/media/birthday-wishes-orange.jpg",
     quote: "Happy 25th Birthday Rohan Bhaiya! Thank you for sharing your milestone with us! May God bless your career!",
     highlights: "Fresh fruit baskets · Cake cutting ceremony",
   },
@@ -278,7 +259,7 @@ export function TrendingBirthdaySection({
                 : p.price === 1500
                 ? "/media/birthday-cake-celebration.jpg"
                 : p.price === 3501 || p.price === 3500
-                ? "/media/banana-leaf-feast.jpg"
+                ? "/media/annadana-hall-hd.jpg"
                 : p.price === 2100
                 ? "/media/art-drawings.jpg"
                 : p.price === 2501 || p.price === 2500

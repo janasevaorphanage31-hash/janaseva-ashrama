@@ -47,7 +47,7 @@ interface ConversationItem {
 const CANNED_RESPONSES = [
   {
     label: "🍲 Annadana Meals (₹4,500)",
-    text: "Namaste Ji 🙏 Sponsoring full-day meals for our 25 resident boys at Janaseva Ashrama is ₹4,500 (Breakfast, Afternoon banana-leaf lunch with sweet, Evening milk & snacks, and Dinner). 50% Tax Exemption under 80G Form 10AC: AABTJ7431MF20231. Donate: https://www.janasevaashrama.org/donate",
+    text: "Namaste Ji 🙏 Sponsoring full-day meals for our 25 resident boys at Janaseva Ashrama is ₹4,500 (Breakfast, Afternoon hot lunch with sweet, Evening milk & snacks, and Dinner). 50% Tax Exemption under 80G Form 10AC: AABTJ7431MF20231. Donate: https://www.janasevaashrama.org/donate",
   },
   {
     label: "📜 80G Receipt Info",
