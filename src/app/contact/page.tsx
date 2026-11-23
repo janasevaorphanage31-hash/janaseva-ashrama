@@ -39,8 +39,74 @@ export const metadata: Metadata = {
 
 export default async function ContactPage() {
   const siteContent = await getSiteContentMap();
+
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "ContactPage",
+        "@id": `${SITE.url}/contact#webpage`,
+        url: `${SITE.url}/contact`,
+        name: "Contact Us · Janaseva Ashrama Bangalore",
+        description:
+          "Official contact channels, visiting hours, telephone, WhatsApp, and Google Maps directions for Janaseva Ashrama in Turahalli, Bengaluru.",
+        mainEntity: {
+          "@type": "NGO",
+          name: SITE.name,
+          legalName: SITE.legalName,
+          url: SITE.url,
+          telephone: SITE.phoneIntl,
+          email: SITE.email,
+          hasMap: SITE.mapsUrl,
+          address: {
+            "@type": "PostalAddress",
+            streetAddress: "#27, Gundu Thopu Turahalli, Near Govt School, Jayanagar housing Society Layout, Subramanyapura",
+            addressLocality: SITE.city,
+            addressRegion: SITE.state,
+            postalCode: SITE.pincode,
+            addressCountry: "IN",
+          },
+          geo: {
+            "@type": "GeoCoordinates",
+            latitude: SITE.geo.latitude,
+            longitude: SITE.geo.longitude,
+          },
+          openingHoursSpecification: [
+            {
+              "@type": "OpeningHoursSpecification",
+              dayOfWeek: [
+                "Monday",
+                "Tuesday",
+                "Wednesday",
+                "Thursday",
+                "Friday",
+                "Saturday",
+                "Sunday",
+              ],
+              opens: "10:00",
+              closes: "18:00",
+            },
+          ],
+          contactPoint: [
+            {
+              "@type": "ContactPoint",
+              telephone: SITE.phoneIntl,
+              contactType: "customer support and donations",
+              areaServed: "IN",
+              availableLanguage: ["English", "Kannada", "Hindi"],
+            },
+          ],
+        },
+      },
+    ],
+  };
+
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <Breadcrumbs items={[{ label: "Contact Us" }]} />
       <PageHero eyebrow="Contact" title="Reach Janaseva" lead="Call, message or write - we will get back to you." />
       <ContactSection content={siteContent} />

@@ -37,8 +37,46 @@ export const metadata: Metadata = {
 };
 
 export default function RecurringGivingPage() {
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebPage",
+        "@id": `${SITE.url}/recurring-giving#webpage`,
+        url: `${SITE.url}/recurring-giving`,
+        name: "Monthly Regular Giving & Auto-Pay Pledge | Janaseva Ashrama",
+        description:
+          "Set up monthly auto-pay recurring contribution (₹100, ₹300, ₹500, or ₹1,000) to support daily meals, milk, healthcare and education for 25 boys residing at Janaseva Ashrama Bangalore.",
+        potentialAction: {
+          "@type": "DonateAction",
+          target: {
+            "@type": "EntryPoint",
+            urlTemplate: `${SITE.url}/recurring-giving`,
+            inLanguage: "en-IN",
+            actionPlatform: [
+              "http://schema.org/DesktopWebPlatform",
+              "http://schema.org/MobileWebPlatform",
+            ],
+          },
+          recipient: {
+            "@type": "NGO",
+            name: SITE.name,
+            legalName: SITE.legalName,
+            url: SITE.url,
+            taxID: SITE.pan,
+            telephone: SITE.phoneIntl,
+          },
+        },
+      },
+    ],
+  };
+
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <Breadcrumbs items={[{ label: "Regular Giving" }]} />
       <PageHero
         eyebrow="Regular giving"

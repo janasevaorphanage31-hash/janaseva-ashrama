@@ -39,8 +39,45 @@ export const metadata: Metadata = {
 };
 
 export default function StoryPage() {
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "AboutPage",
+        "@id": `${SITE.url}/story#webpage`,
+        url: `${SITE.url}/story`,
+        name: "Our Story & Life at Janaseva Ashrama | Children's Home in Bangalore",
+        description:
+          "Founding history, holistic daily routines, and life of 25 resident boys at Janaseva Ashrama in Turahalli, Bengaluru.",
+        mainEntity: {
+          "@type": "NGO",
+          name: SITE.name,
+          legalName: SITE.legalName,
+          url: SITE.url,
+          foundingDate: "2013-04-02",
+          foundingLocation: {
+            "@type": "Place",
+            name: "Bengaluru, Karnataka, India",
+          },
+          address: {
+            "@type": "PostalAddress",
+            streetAddress: "#27, Gundu Thopu Turahalli, Near Govt School, Jayanagar housing Society Layout, Subramanyapura",
+            addressLocality: SITE.city,
+            addressRegion: SITE.state,
+            postalCode: SITE.pincode,
+            addressCountry: "IN",
+          },
+        },
+      },
+    ],
+  };
+
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <Track event="story_view" />
       <PageHero eyebrow="Stories" title="Our story & life at Janaseva" lead="Who we are, why we exist, and what a real day looks like." />
       <StorySection />

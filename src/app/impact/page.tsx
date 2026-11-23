@@ -37,9 +37,41 @@ export const metadata: Metadata = {
   },
 };
 
+import { FAQ_ITEMS } from "@/lib/faq";
+
 export default function ImpactPage() {
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebPage",
+        "@id": `${SITE.url}/impact#webpage`,
+        url: `${SITE.url}/impact`,
+        name: "Direct Giving & Impact Areas · Janaseva Ashrama Bangalore",
+        description:
+          "Select essential meal kits, nutritious milk, school books, or medical support for 25 resident boys at Janaseva Ashrama. Form 10AC 80G tax benefit.",
+      },
+      {
+        "@type": "FAQPage",
+        "@id": `${SITE.url}/impact#faq`,
+        mainEntity: FAQ_ITEMS.slice(0, 8).map((f) => ({
+          "@type": "Question",
+          name: f.q,
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: f.a,
+          },
+        })),
+      },
+    ],
+  };
+
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <Breadcrumbs items={[{ label: "Direct Impact" }]} />
       <PageHero eyebrow="Your Impact" title="Choose what you want to make possible." lead="Build your contribution from current impact areas, review the total, then continue to secure checkout." />
       <ImpactCart page />
