@@ -1,6 +1,52 @@
 [build]
   command = "npm run build"
   publish = ".next"
+  # Only trigger a build when production application code or config changes.
+  # Ignores markdown docs, scratch files, and non-app commits to save ~15 credits per push.
+  ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF src/ public/ next.config.ts netlify.toml package.json"
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
+
+# Cache all static media, images, videos, fonts, and PDFs permanently in Netlify's Durable Edge Cache
+[[headers]]
+  for = "/media/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+    Netlify-CDN-Cache-Control = "public, max-age=31536000, durable"
+
+[[headers]]
+  for = "/uploads/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+    Netlify-CDN-Cache-Control = "public, max-age=31536000, durable"
+
+[[headers]]
+  for = "/documents/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+    Netlify-CDN-Cache-Control = "public, max-age=31536000, durable"
+
+[[headers]]
+  for = "/logo/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+    Netlify-CDN-Cache-Control = "public, max-age=31536000, durable"
+
+[[headers]]
+  for = "/icon.png"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+    Netlify-CDN-Cache-Control = "public, max-age=31536000, durable"
+
+[[headers]]
+  for = "/favicon.ico"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+    Netlify-CDN-Cache-Control = "public, max-age=31536000, durable"
+
+[[headers]]
+  for = "/manifest.webmanifest"
+  [headers.values]
+    Cache-Control = "public, max-age=86400"
+    Netlify-CDN-Cache-Control = "public, max-age=86400, durable"

@@ -552,10 +552,29 @@ export function TelecallerPortal({ initialCallerId }: { initialCallerId?: string
           if (res.ok && data.success) {
             successCount++;
           } else {
-            remaining.push(item);
+            // Guard against infinite retry loops
+            if (res.status === 401) {
+              // Session expired: pause queue and don't spam server
+              remaining.push(item);
+              break;
+            } else if (res.status >= 400 && res.status < 500 && res.status !== 429) {
+              // Permanent client error (e.g. 404 invalid lead, 400 bad payload): discard to avoid infinite loops
+              console.warn("Discarding unprocessable offline action to save credits:", item.url, res.status);
+            } else {
+              // Server error (5xx) or transient failure: allow up to 3 retries
+              const retries = (item.retryCount || 0) + 1;
+              if (retries < 3) {
+                remaining.push({ ...item, retryCount: retries });
+              } else {
+                console.warn("Discarding offline action after 3 failed retries:", item.url);
+              }
+            }
           }
         } catch {
-          remaining.push(item);
+          const retries = (item.retryCount || 0) + 1;
+          if (retries < 3) {
+            remaining.push({ ...item, retryCount: retries });
+          }
         }
       }
 

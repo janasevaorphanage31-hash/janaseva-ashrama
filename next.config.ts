@@ -53,6 +53,10 @@ const nextConfig: NextConfig = {
             key: "Cache-Control",
             value: "public, max-age=31536000, immutable",
           },
+          {
+            key: "Netlify-CDN-Cache-Control",
+            value: "public, max-age=31536000, durable",
+          },
         ],
       },
       {
@@ -61,6 +65,101 @@ const nextConfig: NextConfig = {
           {
             key: "Cache-Control",
             value: "public, max-age=31536000, immutable",
+          },
+          {
+            key: "Netlify-CDN-Cache-Control",
+            value: "public, max-age=31536000, durable",
+          },
+        ],
+      },
+      {
+        source: "/documents/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
+          {
+            key: "Netlify-CDN-Cache-Control",
+            value: "public, max-age=31536000, durable",
+          },
+        ],
+      },
+      {
+        source: "/logo/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
+          {
+            key: "Netlify-CDN-Cache-Control",
+            value: "public, max-age=31536000, durable",
+          },
+        ],
+      },
+      {
+        source: "/",
+        headers: [
+          {
+            key: "Netlify-CDN-Cache-Control",
+            value: "public, durable, s-maxage=3600, stale-while-revalidate=86400",
+          },
+          {
+            key: "CDN-Cache-Control",
+            value: "public, s-maxage=3600, stale-while-revalidate=86400",
+          },
+        ],
+      },
+      {
+        source: "/give",
+        headers: [
+          {
+            key: "Netlify-CDN-Cache-Control",
+            value: "public, durable, s-maxage=3600, stale-while-revalidate=86400",
+          },
+          {
+            key: "CDN-Cache-Control",
+            value: "public, s-maxage=3600, stale-while-revalidate=86400",
+          },
+        ],
+      },
+      {
+        source: "/celebrate-birthday",
+        headers: [
+          {
+            key: "Netlify-CDN-Cache-Control",
+            value: "public, durable, s-maxage=3600, stale-while-revalidate=86400",
+          },
+          {
+            key: "CDN-Cache-Control",
+            value: "public, s-maxage=3600, stale-while-revalidate=86400",
+          },
+        ],
+      },
+      {
+        source: "/campus",
+        headers: [
+          {
+            key: "Netlify-CDN-Cache-Control",
+            value: "public, durable, s-maxage=3600, stale-while-revalidate=86400",
+          },
+          {
+            key: "CDN-Cache-Control",
+            value: "public, s-maxage=3600, stale-while-revalidate=86400",
+          },
+        ],
+      },
+      {
+        source: "/impact",
+        headers: [
+          {
+            key: "Netlify-CDN-Cache-Control",
+            value: "public, durable, s-maxage=3600, stale-while-revalidate=86400",
+          },
+          {
+            key: "CDN-Cache-Control",
+            value: "public, s-maxage=3600, stale-while-revalidate=86400",
           },
         ],
       },
